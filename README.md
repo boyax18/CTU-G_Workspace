@@ -1,2 +1,2 @@
-# CTUG-Student-Services-Portal
+# CTU-G Workspace
 Integration of School Systems

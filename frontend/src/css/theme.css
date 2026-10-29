@@ -1,0 +1,315 @@
+/* CTU-G Workspace – design tokens, themes (light / dark) and motion.
+   Plain CSS on purpose: works with any Tailwind version, no config changes needed. */
+
+@property --bg-from { syntax: '<color>'; inherits: true; initial-value: #eef6ef; }
+@property --bg-via  { syntax: '<color>'; inherits: true; initial-value: #ecfdf5; }
+@property --bg-to   { syntax: '<color>'; inherits: true; initial-value: #dcfce7; }
+
+:root {
+  color-scheme: light;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --bg-from: #eef6ef; --bg-via: #ecfdf5; --bg-to: #dcfce7;
+
+  --glass-bg: rgba(255, 255, 255, 0.70);
+  --glass-border: rgba(255, 255, 255, 0.80);
+  --glass-shadow: 0 20px 25px -5px rgba(20, 83, 45, 0.10), 0 8px 10px -6px rgba(20, 83, 45, 0.10);
+  --glass-ring: rgba(20, 83, 45, 0.05);
+
+  --header-bg: rgba(255, 255, 255, 0.70); --header-border: rgba(255, 255, 255, 0.60);
+  --header-shadow: 0 1px 0 rgba(20, 83, 45, 0.04);
+  --header-shadow-scrolled: 0 8px 24px -12px rgba(20, 83, 45, 0.30);
+
+  --fg-strong: #111827; --fg-body: #4b5563; --fg-muted: #6b7280;
+  --fg-accent: #166534; --fg-error: #dc2626;
+
+  --accent: #166534; --accent-hover: #14532d; --accent-bright: #16a34a;
+  --accent-soft: rgba(22, 101, 52, 0.10); --on-accent: #ffffff;
+
+  --outline-fg: #166534; --outline-border: #166534; --outline-hover: rgba(22, 101, 52, 0.08);
+  --secondary-bg: rgba(255, 255, 255, 0.70); --secondary-hover: #ffffff;
+  --secondary-border: #166534; --secondary-fg: #166534;
+
+  --field-bg: rgba(255, 255, 255, 0.70); --field-border: rgba(20, 83, 45, 0.15);
+  --field-focus: #15803d; --field-ring: rgba(134, 239, 172, 0.55);
+  --placeholder: #9ca3af; --autofill-bg: #f1f8f3;
+
+  --pill-bg: rgba(255, 255, 255, 0.50); --pill-border: rgba(22, 101, 52, 0.30); --pill-fg: #14532d;
+  --notice-bg: #fffbeb; --notice-fg: #92400e;
+  --nav-hover: rgba(255, 255, 255, 0.60);
+  --menu-bg: rgba(255, 255, 255, 0.94);
+  --toggle-bg: rgba(22, 101, 52, 0.08); --thumb-bg: #ffffff;
+
+  --site-top: rgba(238, 246, 239, 0.84); --site-mid: rgba(238, 246, 239, 0.72); --site-bottom: rgba(238, 246, 239, 0.88);
+  --site-vignette: rgba(20, 83, 45, 0.10); --site-photo-filter: saturate(1.05);
+}
+
+/* Dark device + "System": a softer forest-green dark theme (not too dark) */
+html.dark {
+  color-scheme: dark;
+  --bg-from: #143823; --bg-via: #1a4a2e; --bg-to: #215b39;
+
+  --glass-bg: rgba(255, 255, 255, 0.09); --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 20px 30px -10px rgba(0, 20, 10, 0.45); --glass-ring: rgba(255, 255, 255, 0.05);
+
+  --header-bg: rgba(20, 56, 35, 0.74); --header-border: rgba(255, 255, 255, 0.12);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.03);
+  --header-shadow-scrolled: 0 10px 30px -12px rgba(0, 20, 10, 0.60);
+
+  --fg-strong: #f3faf5; --fg-body: #c5d6ca; --fg-muted: #9fb6a6;
+  --fg-accent: #86efac; --fg-error: #f87171;
+
+  --accent: #15803d; --accent-hover: #16a34a; --accent-bright: #4ade80;
+  --accent-soft: rgba(74, 222, 128, 0.16);
+
+  --outline-fg: #86efac; --outline-border: rgba(74, 222, 128, 0.60); --outline-hover: rgba(74, 222, 128, 0.12);
+  --secondary-bg: rgba(255, 255, 255, 0.10); --secondary-hover: rgba(255, 255, 255, 0.16);
+  --secondary-border: rgba(255, 255, 255, 0.28); --secondary-fg: #eef8f1;
+
+  --field-bg: rgba(255, 255, 255, 0.08); --field-border: rgba(255, 255, 255, 0.20);
+  --field-focus: #4ade80; --field-ring: rgba(74, 222, 128, 0.30);
+  --placeholder: #86a08f; --autofill-bg: #1b4a2f;
+
+  --pill-bg: rgba(255, 255, 255, 0.10); --pill-border: rgba(255, 255, 255, 0.22); --pill-fg: #c6f7d5;
+  --notice-bg: rgba(251, 191, 36, 0.12); --notice-fg: #fcd34d;
+  --nav-hover: rgba(255, 255, 255, 0.10); --menu-bg: rgba(16, 46, 30, 0.96);
+  --toggle-bg: rgba(255, 255, 255, 0.09); --thumb-bg: rgba(255, 255, 255, 0.20);
+
+  --site-top: rgba(8, 40, 24, 0.82); --site-mid: rgba(10, 48, 29, 0.64); --site-bottom: rgba(6, 32, 19, 0.86);
+  --site-vignette: rgba(0, 12, 6, 0.35); --site-photo-filter: saturate(0.95) brightness(0.95);
+}
+
+/* Explicit "Dark" choice: pure black. Only what differs from the green dark theme is overridden. */
+html.dark.theme-black {
+  --bg-from: #000000; --bg-via: #000000; --bg-to: #000000;
+
+  --glass-bg: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.80); --glass-ring: rgba(255, 255, 255, 0.03);
+
+  --header-bg: rgba(0, 0, 0, 0.78); --header-border: rgba(255, 255, 255, 0.10);
+  --header-shadow: 0 1px 0 rgba(255, 255, 255, 0.02);
+  --header-shadow-scrolled: 0 10px 30px -12px rgba(0, 0, 0, 0.90);
+
+  --fg-strong: #fafafa; --fg-body: #b8b8b8; --fg-muted: #8c8c8c;
+
+  --secondary-bg: rgba(255, 255, 255, 0.06); --secondary-hover: rgba(255, 255, 255, 0.12);
+  --secondary-border: rgba(255, 255, 255, 0.22);
+
+  --field-bg: rgba(255, 255, 255, 0.05); --field-border: rgba(255, 255, 255, 0.14);
+  --placeholder: #707070; --autofill-bg: #0e0e0e;
+
+  --pill-bg: rgba(255, 255, 255, 0.06); --pill-border: rgba(255, 255, 255, 0.16);
+  --nav-hover: rgba(255, 255, 255, 0.08); --menu-bg: rgba(0, 0, 0, 0.97);
+  --toggle-bg: rgba(255, 255, 255, 0.06); --thumb-bg: rgba(255, 255, 255, 0.14);
+
+  --site-top: rgba(0, 0, 0, 0.86); --site-mid: rgba(0, 0, 0, 0.72); --site-bottom: rgba(0, 0, 0, 0.92);
+  --site-vignette: rgba(0, 0, 0, 0.45); --site-photo-filter: saturate(0.85) brightness(0.9);
+}
+
+html { scroll-behavior: smooth; background: var(--bg-from); scroll-snap-type: y proximity; }
+@media (pointer: fine) { html { scroll-snap-type: y mandatory; } }
+
+/* One section per screen: fills the space under the 4rem navbar, content centred vertically,
+   and the page snaps from one section to the next (never skipping one). */
+.screen-section {
+  min-height: calc(100vh - 4rem);
+  min-height: calc(100svh - 4rem);
+  display: flex; flex-direction: column; justify-content: center;
+  scroll-snap-align: start; scroll-snap-stop: always;
+}
+.snap-end { scroll-snap-align: end; } /* footer: makes the very bottom of the page reachable */
+
+/* Temporary class added by ThemeProvider while switching themes */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease,
+    box-shadow 0.35s ease, fill 0.35s ease, stroke 0.35s ease !important;
+}
+
+/* ---------- Page background ---------- */
+.app-bg { background: var(--bg-from); } /* fallback colour under the photo */
+
+/* Full-page campus photo: one fixed, viewport-sized layer behind every section (no seams, no tiling).
+   The overlay gives a deep tint with strong contrast at the top (navbar) and bottom (footer). */
+.site-bg { position: fixed; inset: 0; z-index: -10; overflow: hidden; pointer-events: none; }
+.site-bg-photo {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  filter: var(--site-photo-filter);
+}
+.site-bg-overlay {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 40%, transparent 45%, var(--site-vignette) 100%),
+    linear-gradient(to bottom, var(--site-top) 0%, var(--site-mid) 45%, var(--site-bottom) 100%);
+}
+
+/* ---------- Surfaces ---------- */
+.surface-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), 0 0 0 1px var(--glass-ring);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+.surface-header {
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: var(--header-shadow);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+  transition: box-shadow 0.3s ease, background-color 0.3s ease;
+}
+.surface-header.is-scrolled { box-shadow: var(--header-shadow-scrolled); }
+.surface-footer {
+  background: var(--header-bg);
+  border-top: 1px solid var(--header-border);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
+}
+
+/* ---------- Text ---------- */
+.fg-strong { color: var(--fg-strong); }
+.fg-body { color: var(--fg-body); }
+.fg-muted { color: var(--fg-muted); }
+.fg-accent { color: var(--fg-accent); }
+.fg-error { color: var(--fg-error); }
+.link-muted { color: var(--fg-muted); transition: color 0.2s ease; }
+.link-muted:hover { color: var(--fg-accent); }
+.link-accent { color: var(--fg-accent); }
+.link-accent:hover { text-decoration: underline; }
+
+/* ---------- Small components ---------- */
+.chip-accent { background: var(--accent-soft); color: var(--fg-accent); }
+.step-badge { background: var(--accent); color: var(--on-accent); }
+.dot-accent { background: var(--accent); }
+.pill { background: var(--pill-bg); border: 1px solid var(--pill-border); color: var(--pill-fg);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.notice { background: var(--notice-bg); color: var(--notice-fg); }
+
+.nav-link { color: var(--fg-body); transition: background-color 0.2s ease, color 0.2s ease; }
+.nav-link:hover { background: var(--nav-hover); color: var(--fg-strong); }
+.nav-link[aria-current='page'] { background: var(--accent-soft); color: var(--fg-accent); }
+
+.icon-btn { color: var(--fg-muted); transition: background-color 0.2s ease, color 0.2s ease; }
+.icon-btn:hover { background: var(--nav-hover); color: var(--fg-accent); }
+
+/* ---------- Buttons ---------- */
+.btn { transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease,
+  transform 0.15s ease, box-shadow 0.2s ease; }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+.btn:focus-visible, .field:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover);
+  box-shadow: 0 6px 16px -6px var(--accent); }
+.btn-outline { background: transparent; color: var(--outline-fg); border-color: var(--outline-border); }
+.btn-outline:hover:not(:disabled) { background: var(--outline-hover); }
+.btn-secondary { background: var(--secondary-bg); color: var(--secondary-fg); border-color: var(--secondary-border);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.btn-secondary:hover:not(:disabled) { background: var(--secondary-hover); }
+
+/* ---------- Form fields ---------- */
+.field { background: var(--field-bg); border: 1px solid var(--field-border); color: var(--fg-strong);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease; }
+.field::placeholder { color: var(--placeholder); }
+.field:focus { outline: none; border-color: var(--field-focus); box-shadow: 0 0 0 3px var(--field-ring); }
+.field-error { border-color: var(--fg-error); }
+.field-error:focus { border-color: var(--fg-error); box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.30); }
+.field:-webkit-autofill {
+  -webkit-text-fill-color: var(--fg-strong);
+  -webkit-box-shadow: 0 0 0 1000px var(--autofill-bg) inset;
+  caret-color: var(--fg-strong);
+}
+
+/* ---------- Theme toggle (segmented control) ---------- */
+.theme-toggle { background: var(--toggle-bg); border: 1px solid var(--glass-border); }
+.theme-thumb { position: absolute; top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 3);
+  border-radius: 9999px; background: var(--thumb-bg); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: transform 0.35s var(--ease-out); }
+.theme-opt { color: var(--fg-muted); transition: color 0.2s ease; }
+.theme-opt:hover { color: var(--fg-strong); }
+.theme-opt[aria-checked='true'] { color: var(--fg-accent); }
+.theme-opt:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 1px; }
+
+/* ---------- Header extras ---------- */
+.scroll-progress { position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; pointer-events: none;
+  box-shadow: 0 0 10px var(--accent-bright);
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  transform: scaleX(var(--progress, 0)); transform-origin: left center; }
+/* Dropdown panel: floats over the page (absolute), anchored under the hamburger on the right */
+.mobile-menu {
+  position: absolute; top: calc(100% + 0.5rem); right: 1rem; z-index: 60;
+  width: min(20rem, calc(100vw - 2rem));
+  background: var(--menu-bg); border: 1px solid var(--glass-border); border-radius: 1rem;
+  box-shadow: 0 24px 48px -16px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--glass-ring);
+  opacity: 0; visibility: hidden; transform: translate3d(0, -8px, 0) scale(0.97); transform-origin: top right;
+  transition: opacity 0.2s ease, transform 0.3s var(--ease-out), visibility 0s linear 0.3s;
+}
+.mobile-menu[data-open='true'] { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+@media (min-width: 640px) { .mobile-menu { right: 1.5rem; } }
+@media (min-width: 1024px) { .mobile-menu { right: 2rem; } }
+.mobile-menu-scroll { max-height: calc(100vh - 5rem); overflow-y: auto; overscroll-behavior: contain; border-radius: 1rem; }
+
+/* ---------- Back to top with progress ring ---------- */
+.to-top {
+  position: fixed; z-index: 40; width: 2.75rem; height: 2.75rem; border-radius: 9999px;
+  right: 1.25rem; bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; justify-content: center;
+  background: var(--menu-bg); border: 1px solid var(--glass-border); color: var(--fg-accent);
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.35);
+  opacity: 0; visibility: hidden; transform: translate3d(0, 12px, 0) scale(0.9);
+  transition: opacity 0.3s ease, transform 0.4s var(--ease-out), visibility 0s linear 0.4s, color 0.2s ease;
+}
+.to-top[data-visible='true'] { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
+.to-top[data-visible='true']:hover { transform: translate3d(0, -3px, 0); color: var(--fg-strong); }
+.to-top:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 3px; }
+.to-top-ring { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); transform: rotate(-90deg); }
+.to-top-ring circle { fill: none; stroke-width: 2.5; }
+.to-top-track { stroke: var(--accent-soft); }
+.to-top-bar { stroke: var(--accent-bright); stroke-linecap: round; }
+@media (min-width: 640px) { .to-top { right: 1.75rem; } }
+
+/* ---------- Hero ---------- */
+
+/* ---------- Scroll reveal ---------- */
+.reveal { opacity: 0; --reveal-x: 0px; --reveal-y: 32px; }
+.reveal[data-dir='left']  { --reveal-x: -48px; --reveal-y: 0px; }
+.reveal[data-dir='right'] { --reveal-x: 48px;  --reveal-y: 0px; }
+@media (max-width: 1023px) {
+  .reveal[data-dir='left'], .reveal[data-dir='right'] { --reveal-x: 0px; --reveal-y: 32px; }
+}
+.reveal.is-visible { opacity: 1; animation: reveal-in 0.9s var(--ease-out) var(--reveal-delay, 0ms) backwards; }
+@keyframes reveal-in {
+  from { opacity: 0; transform: translate3d(var(--reveal-x), var(--reveal-y), 0) scale(0.97); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes reveal-fade { from { opacity: 0; } to { opacity: 1; } }
+.lift { transition: transform 0.35s var(--ease-out), box-shadow 0.35s ease; }
+.lift:hover { transform: translate3d(0, -4px, 0); }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  /* Keep a calm fade (no movement) so transitions still exist for these users */
+  .reveal.is-visible { animation: reveal-fade 0.5s ease var(--reveal-delay, 0ms) backwards; }
+  .lift:hover { transform: none; }
+  .theme-thumb, .mobile-menu, .btn, .field, .to-top { transition: none; }
+  html.theme-transition, html.theme-transition * { transition: none !important; }
+}
+
+/* ---------- Fluid type ----------
+   From 1280px up, every text size grows smoothly to (its size + 2px), reaching the maximum at 1920px,
+   matching the 1920px page container. Below 1280px sizes are exactly what Tailwind sets. */
+:root { --fluid-add: clamp(0px, calc((100vw - 1280px) * 0.003125), 2px); }
+@media (min-width: 1280px) {
+  html .text-xs { font-size: calc(0.75rem + var(--fluid-add)); }
+  html .text-sm { font-size: calc(0.875rem + var(--fluid-add)); }
+  html .text-base { font-size: calc(1rem + var(--fluid-add)); }
+  html .text-lg { font-size: calc(1.125rem + var(--fluid-add)); }
+  html .text-2xl { font-size: calc(1.5rem + var(--fluid-add)); }
+  html .text-3xl { font-size: calc(1.875rem + var(--fluid-add)); }
+  html .sm\:text-sm { font-size: calc(0.875rem + var(--fluid-add)); }
+  html .sm\:text-4xl { font-size: calc(2.25rem + var(--fluid-add)); }
+  html .lg\:text-5xl { font-size: calc(3rem + var(--fluid-add)); }
+}

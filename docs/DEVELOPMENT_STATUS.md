@@ -1,65 +1,105 @@
-# CTU-G Workspace — Development Status
+﻿# CTU-G Workspace â€” Development Status
 
-**As of:** 2026-11-08  
-**Basis:** Shared local build/test outputs and read-only planner/preflight results. This document is not a live database audit.
+**As of:** November 8, 2026
+**Basis:** Verified local build/test outputs and read-only planner/preflight results. This document is not a continuous live database audit.
 
-## System in scope
+## 1. System in Scope
 
-- Frontend: React + TypeScript + Vite + Tailwind CSS; public landing page with embedded login and a preliminary shared dashboard route.
-- Backend: Django + Django REST Framework, Django session authentication with CSRF protection.
-- Database: MySQL database `ctug_workspace` in local development; isolated ephemeral MySQL databases for Django tests.
-- Access model: application roles and permissions with hybrid dynamic access control. Framework Django Superuser is separate from application Admin and protected Technical Super Admin.
+- **Frontend:** React, TypeScript, Vite, and Tailwind CSS. Includes public pages, embedded login, registration, and a preliminary shared dashboard.
+- **Backend:** Django and Django REST Framework using session authentication and CSRF protection.
+- **Database:** MySQL (`ctug_workspace`) for local development, with isolated temporary MySQL databases for testing.
+- **Access Control:** Hybrid Dynamic Access Control with application roles, role permissions, individual permission overrides, and audit logging.
+- **Administrator Separation:** Django Superuser, Workspace Admin, and protected Technical Super Admin are distinct authorities.
 
-## Status by phase
+## 2. Development Status by Phase
 
-| Phase | Verified result | Operational status |
-| --- | --- | --- |
-| Frontend public registration and session integration (AR-5B) | `npm run build` passed; `npm test` passed 25/25 | Built/tested; full browser end-to-end authorization still requires verification |
-| Backend session authentication (AR-5A) | 14 session tests and 30 registration regression tests reported passing | Tested; production hardening/deployment not asserted |
-| AR-6A1 registration review service | 17 isolated tests reported passing | Service implemented/tested; live approval endpoint/grants not activated |
-| AR-6A2 initial Workspace Admin bootstrap | 15 isolated tests passed; read-only preflight succeeded | One Workspace Admin provisioned and audited in local DB; one-time bootstrap settings removed |
-| Catalogue V2 planner | Read-only planner ran; no conflicts reported | **Not approved for activation** |
-| AR-6B1 catalogue governance review | Planner findings gathered | **Current work** |
-| AR-6B2 controlled permission activation | Not performed | Blocked pending governance review |
-| AR-6C registration approval API | Not demonstrated | Pending |
-| AR-6D permission-aware Admin dashboard | Not demonstrated | Pending |
+| Phase | Verified Result | Operational Status |
+|---|---|---|
+| AR-5A â€” Backend Session Authentication | 14 session tests and 30 registration regression tests passed | Implemented and tested |
+| AR-5B â€” Frontend Session Integration | Production build successful; 25/25 tests passed | Implemented and tested; browser E2E pending |
+| AR-6A1 â€” Registration Review Service | 17/17 tests passed | Implemented and tested; live activation restricted |
+| AR-6A2 â€” First Workspace Admin Bootstrap | 15/15 tests passed | First Workspace Admin provisioned and audited |
+| Catalogue V2 Planner | Read-only execution; zero conflicts | Planning-only; activation not approved |
+| AR-6B1 â€” Catalogue Governance Review | Static verification passed; review draft documented | Review ongoing; governance approval pending |
+| AR-6B2 â€” Controlled Permission Activation | Not performed | Blocked pending approval |
+| AR-6C1 â€” Registration Review API | 18/18 API tests and 31/31 regression tests passed | Implemented and tested; live routes inactive |
+| AR-6C2 â€” Controlled API Integration Preparation | Not started | Next planned implementation phase |
+| AR-6D â€” Permission-Aware Admin Dashboard | Not implemented | Pending |
 
-## Last observed local database facts
+## 3. Last Observed Database Facts
 
-These are historical observations, not continuously refreshed metrics.
+These are verified historical observations, not continuously refreshed values.
 
-- Bootstrap preflight after provisioning: one active `Admin` role assignment; one previous first-bootstrap audit event; one framework operator.
-- Catalogue V2 planner: 10 proposed services, 95 proposed permissions, 106 proposed role bindings, 6 role definitions (4 existing role matches; 2 optional roles deferred), one retired tombstone.
-- Planner classifications: `CREATE=105`, `MATCH=4`, `DEFER=108`, `CONFLICT=0`, `unexpected existing rows=0`.
-- Planner was **read-only**; no DDL/DML, grants, service activation, or repair occurred.
-- The Admin account was provisioned, but **services/permissions/default grants were not activated** by bootstrap.
+- One Workspace Admin assignment was created.
+- One successful first-Admin bootstrap audit event was recorded.
+- One Django Superuser operator existed during the last bootstrap preflight.
+- The temporary first-Admin bootstrap setting was removed.
+- No services, permission definitions, or role-permission defaults were activated by the bootstrap.
 
-## Key separation of states
+### Permission Catalogue V2
 
-- **Provisioned:** an account and Admin role assignment exist.
-- **Defined:** a permission code/service is present as metadata.
-- **Granted:** a role/account permission binding is explicitly authorized and active.
-- **Enforced:** the backend checks effective permissions and object scope on each protected request.
-- **Available:** a service is enabled and all dependent workflows are safe/ready.
+| Item | Count |
+|---|---:|
+| Proposed services | 10 |
+| Proposed permissions | 95 |
+| Proposed role-permission bindings | 106 |
+| Proposed roles | 6 |
+| Existing matching roles | 4 |
+| Deferred optional roles | 2 |
+| CREATE classifications | 105 |
+| MATCH classifications | 4 |
+| DEFER classifications | 108 |
+| CONFLICT classifications | 0 |
 
-These states are not interchangeable.
+The planner operated in read-only mode. No database schema changes, permission grants, service activation, or catalogue repairs were performed.
 
-## Immediate next tasks
+## 4. AR-6C1 â€” Registration Review API Verification
 
-1. Review scoped account registration permissions and the V2 blocked governance decisions. Record approval evidence and object-level restrictions.
-2. Decide whether to approve V2 as-is or produce a versioned, documented revision. **Do not silently edit the pinned proposal**.
-3. Implement/review read-only and deny-path tests for catalogue activation and effective-permission evaluation before applying grants.
-4. Build an authenticated registration-review API only after permission and scope policy is approved.
-5. Integrate approved Admin workflow into the shared dashboard; verify it in a browser end to end.
-6. Reconcile database DBML, architecture, SRS, and API docs with code/migrations.
+**Date verified:** November 8, 2026
 
-## Risks and holds
+| Verification | Result |
+|---|---|
+| Django system check | Passed |
+| Registration Review API tests | 18/18 passed |
+| Registration Review and Session Authentication regression tests | 31/31 passed |
+| Combined executed tests | 49/49 passed |
 
-- Catalogue planner explicitly labels initialization, grants, service activation, live mutations, first-operator governance evidence, object authorization, session revocation and other gates **blocked**.
-- `Technical Super Admin` and `SSG Advisor` remain optional/deferred; bootstrap did **not** create or assign them.
-- Do not re-enable the one-time bootstrap feature in routine settings or run `--apply` again.
-- Local bootstrap operation produced a real dev account. Protect credentials; avoid publishing identifiers or logs containing personal information.
+The implementation includes candidate endpoints for viewing pending registrations, approving requests, and rejecting requests.
 
-## Completion standard
+Security coverage includes session authentication, CSRF enforcement, effective-permission checking, individual Deny precedence, Admin-role validation, self-review prevention, and transactional audit rollback.
 
-A phase can be labeled **complete** only after code review, passing relevant tests, validated migrations/configuration if applicable, documented security impacts, updated SRS/ERD/API docs if affected, and a reviewed commit. Track any incomplete verification explicitly.
+**Operational restriction:** The API remains disconnected from the live root URL configuration. Its feature gates remain disabled, and no live permission activation has been approved.
+
+## 5. Security and Authorization Rules
+
+The following distinctions must remain separate:
+
+- **Provisioned:** An account and its role assignment exist.
+- **Defined:** Permission codes and service metadata exist.
+- **Granted:** An authorized active permission binding exists.
+- **Enforced:** Django validates effective permissions and applicable object scope.
+- **Available:** The service and its dependent workflows have been approved and activated.
+
+A Workspace Admin role assignment alone does not grant access to protected features.
+
+Django Superuser credentials must not automatically authorize Workspace application actions.
+
+## 6. Immediate Next Tasks
+
+1. Complete the registration-review authorization-policy review and outstanding governance decisions.
+2. Prepare AR-6C2 controlled API integration tests while keeping live endpoints disabled.
+3. Review the pinned V2 catalogue and document any explicitly approved revisions.
+4. Design controlled permission initialization and activation procedures, subject to governance approval.
+5. Complete the registration-approval API release checks before connecting it to live Admin functions.
+6. Develop the permission-aware Admin dashboard after the backend access rules are approved.
+7. Verify end-to-end registration, approval, login, and dashboard behavior when activation is authorized.
+8. Reconcile affected SRS, ERD, architecture, API, and testing documentation with the implemented code.
+
+## 7. Outstanding Risks and Restrictions
+
+- Catalogue initialization, role grants, service activation, and live access-control mutations remain blocked pending approval.
+- Technical Super Admin and SSG Advisor remain deferred role implementations.
+- The one-time Admin bootstrap must not be re-enabled for routine use.
+- The inactive registration-review API must not be registered into the live URL configuration until the required authorization and governance controls are approved.
+- Session revocation, authentication-event retention, recovery governance, and full object-level authorization policies require further review.
+- Sensitive credentials, `.

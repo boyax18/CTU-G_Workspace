@@ -1,4 +1,4 @@
-﻿# Test Results and Evidence â€” CTU-G Workspace
+﻿# Test Results and Evidence — CTU-G Workspace
 
 **As of:** November 8, 2026
 **Evidence source:** Local PowerShell outputs and development test reports. Results must be verified again whenever relevant code, database schemas, or configuration changes.
@@ -18,12 +18,13 @@ The successful frontend build confirms TypeScript compilation and Vite bundling.
 
 | Phase | Test Suite | Observed Result |
 |---|---|---|
-| AR-5A â€” Session Authentication | Session and registration regression | 44/44 passed |
-| AR-6A1 â€” Registration Review Service | Registration approval/rejection service | 17/17 passed |
-| AR-6A2 â€” First Admin Bootstrap | Initial Admin provisioning and security tests | 15/15 passed |
-| AR-6C1 â€” Registration Review API | Session, CSRF, permissions, review actions, audit | 18/18 passed |
-| AR-6C1 â€” Regression Verification | Registration review and session authentication | 31/31 passed |
-| Django System Check | `python manage.py check` | Passed; 0 issues |
+| AR-5A — Session Authentication | Session and registration regression | 44/44 passed |
+| AR-6A1 — Registration Review Service | Registration approval/rejection service | 17/17 passed |
+| AR-6A2 — First Admin Bootstrap | Initial Admin provisioning and security tests | 15/15 passed |
+| AR-6C1 — Registration Review API | Session, CSRF, permissions, review actions, audit | 18/18 passed |
+| AR-6C1 — Regression Verification | Registration review and session authentication | 31/31 passed |
+| AR-6C2 — Routing Safety Verification | Routing safety plus registration-review API | 25/25 passed (7 routing + 18 API) |
+| Django System Check | `python manage.py check` and checks during test setup | Passed; 0 issues |
 
 **AR-6C1 final verification date:** November 8, 2026.
 
@@ -31,9 +32,27 @@ The AR-6C1 API suite initially recorded 17 passes and one failure caused by an i
 
 The subsequent 31 regression tests also passed.
 
-**Combined AR-6C1 test executions:** 49 successful test executions across two separate test commands.
+**Combined AR-6C1 test executions:** 49 successful test executions across two separate test commands. These are execution counts, not 49 unique test cases.
 
 The tests ran using isolated temporary MySQL databases, which were destroyed after execution.
+
+### AR-6C2 Final Routing Verification
+
+**Date verified:** November 8, 2026
+
+**Command (from `backend/`):**
+
+```powershell
+python manage.py test apps.accounts.test_registration_review_routing apps.accounts.test_registration_review_api --settings=config.test_settings --noinput --verbosity 2
+```
+
+- **Discovered:** 25 tests.
+- **Passed:** 25/25 (7 routing safety tests and 18 API tests).
+- **Failed:** 0.
+- **Database:** Temporary isolated MySQL test database, successfully destroyed after the run.
+- **Scope:** Routes remain absent from the live root URL configuration; feature flags still default to OFF.
+
+The 18 API tests were rerun in AR-6C2; they are not 18 additional, distinct test cases. A logged `RuntimeError` during the intentional audit-writer failure simulation is expected; the corresponding negative test passed.
 
 ## 3. Database and Security Verification
 
@@ -50,7 +69,7 @@ The tests ran using isolated temporary MySQL databases, which were destroyed aft
 | Registration-review permission definitions | All 3 verified |
 | Registration-review permission scope | `SCHOOL` |
 | Live permission catalogue activation | Not performed |
-| AR-6C1 live URL integration | Not performed |
+| AR-6C1/AR-6C2 live URL integration | Not performed |
 
 ### Catalogue Planner Classifications
 
@@ -63,25 +82,26 @@ The planner did not perform database modifications, permission grants, or servic
 
 **Security restriction:** AR-6B1 verification confirms that proposed permission definitions exist in the manifest. It does not authorize activating those permissions.
 
-## 4. AR-6C1 Security Test Coverage
+## 4. AR-6C1 and AR-6C2 Security Test Coverage
 
-The 18 API tests cover:
+The API and routing tests cover:
 
 - Anonymous and authenticated requests.
 - Session authentication requirements.
 - CSRF and invalid-origin rejection.
 - Django Superuser separation from Workspace Admin.
-- Effective permission evaluation.
-- Individual Deny overrides.
+- Effective permission evaluation and individual Deny overrides.
 - Inactive services and disabled feature flags.
 - Registration listing and pagination validation.
 - Registration approval and rejection.
-- Self-review prevention.
-- Previously reviewed account rejection.
+- Self-review prevention and previously reviewed account refusal.
 - Permission revocation after session creation.
 - Transactional rollback when audit writing fails.
+- Explicit confirmation that review routes are not present in the live URL configuration.
+- Explicit confirmation that isolated candidate routes resolve without publishing them.
+- Preservation of the existing session endpoint.
 
-**Result:** 18/18 passed.
+**Results:** AR-6C1 18/18; AR-6C2 combined 25/25.
 
 The API implementation remains isolated from the live root URL configuration. Its security-related feature gates remain disabled.
 
@@ -101,14 +121,11 @@ npm test
 
 ```powershell
 cd backend
-
 python manage.py check
-
 python manage.py test apps.accounts.test_session_auth apps.accounts.test_registration --settings=config.test_settings --noinput
-
 python manage.py test apps.accounts.test_registration_review apps.accounts.test_admin_bootstrap --settings=config.test_settings --noinput
-
 python manage.py test apps.accounts.test_registration_review_api --settings=config.test_settings --noinput --verbosity 2
+python manage.py test apps.accounts.test_registration_review_routing apps.accounts.test_registration_review_api --settings=config.test_settings --noinput --verbosity 2
 ```
 
 ### Read-Only Permission Catalogue Verification
@@ -134,7 +151,7 @@ These commands must not activate services or grant permissions.
 
 ## 7. Next Verification Requirements
 
-1. AR-6C2 controlled API integration testing with live routes still disabled.
+1. AR-6C3 integration readiness review, including authorization, security gaps, and governance release requirements.
 2. Formal review and authorization of the proposed permission catalogue.
 3. Controlled catalogue initialization, authorization, and activation tests.
 4. Complete object-level authorization and audit policy verification.
@@ -147,6 +164,8 @@ These commands must not activate services or grant permissions.
 
 **AR-6C1:** Implementation and automated testing verified.
 
+**AR-6C2:** Routing safety and API regression testing verified (25/25). The review API remains inactive.
+
 **Outstanding:** Governance approval, controlled permission activation, live URL integration, full browser testing, and deployment readiness.
 
-**Overall assessment:** Development verification is progressing successfully. The registration-review API remains inactive and is not approved for live operation.
+**Overall assessment:** Development verification is progressing successfully. The registration-review API is not approved for live operation.

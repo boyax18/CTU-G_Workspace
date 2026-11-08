@@ -1,5 +1,7 @@
 # CTU-G Workspace — Development Changelog
+
 Document meaningful changes after they are verified. Avoid including credentials, secrets, or personal account information.
+
 ## 2026-11-08 — Local Development Checkpoint
 
 ### Confirmed
@@ -9,8 +11,8 @@ Document meaningful changes after they are verified. Avoid including credentials
 - Backend authentication and registration regression tests passed: 44/44.
 - AR-6A1 Registration Review Service tests passed: 17/17.
 - AR-6A2 First Workspace Admin Bootstrap tests passed: 15/15.
-- First Workspace Admin successfully provisioned and audited.
-- Temporary bootstrap settings removed after provisioning.
+- First Workspace Admin successfully provisioned and audited in the local development database.
+- Temporary bootstrap settings were removed after provisioning.
 - Permission Catalogue V2 planner executed in read-only mode with zero conflicts.
 
 ### Permission Catalogue V2
@@ -67,7 +69,7 @@ Document meaningful changes after they are verified. Avoid including credentials
 - Django system check passed with zero issues.
 - Registration Review API tests passed: 18/18.
 - Registration Review and Session Authentication regression tests passed: 31/31.
-- Combined AR-6C1 test executions: 49/49 passed.
+- Combined AR-6C1 test executions: 49/49 passed across two runs (not 49 distinct tests).
 - Isolated MySQL test databases were destroyed after testing.
 
 ### Data and Migrations
@@ -103,6 +105,48 @@ Document meaningful changes after they are verified. Avoid including credentials
 - Permission-aware Admin dashboard implementation.
 
 **Status:** Implemented and tested; not activated or approved for live use.
+
+---
+
+## 2026-11-08 — AR-6C2 Routing Safety Verification
+
+### Changed
+
+- Added `backend/apps/accounts/test_registration_review_routing.py` with seven routing safety tests.
+- Preserved the isolated candidate URL configuration; no live root URL changes were made for this phase.
+
+### Verified
+
+- Routing safety tests passed: 7/7.
+- Existing registration-review API tests passed again: 18/18.
+- Combined run passed: 25/25 with zero failures.
+- Existing `/api/v1/auth/session/` route remained resolvable.
+- Isolated MySQL test database was destroyed after execution.
+
+### Data and Migrations
+
+- No migrations, permission grants, service activation, or live database changes were performed during this test run.
+
+### Security and Authorization
+
+- The pending-registration, approve, and reject routes remain absent from `config/urls.py`.
+- Feature flags default to disabled; enabling flags in isolated tests alone does not publish the routes.
+- The isolated candidate URL configuration resolves only when used explicitly for testing.
+- Catalogue activation and live registration review remain blocked pending governance approval.
+
+### Documentation Updated
+
+- `docs/implementation/authentication/ar-6c2-routing-safety-verification.md`
+- `docs/DEVELOPMENT_STATUS.md`
+- `docs/testing/TEST_RESULTS.md`
+- `docs/CHANGELOG.md`
+
+### Blocked / Follow-up
+
+- AR-6C3 integration-readiness and security-gap assessment.
+- Governance decisions, activation policy, object authorization, and live end-to-end verification.
+
+**Status:** Routing safety and regression tests passed; live API remains inactive.
 
 ---
 

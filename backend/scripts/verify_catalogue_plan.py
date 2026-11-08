@@ -27,8 +27,8 @@ from django.test.utils import CaptureQueriesContext  # noqa: E402
 from apps.access_control.catalogue.planner import readonly_snapshot  # noqa: E402
 
 EXPECTED_ERDS = {
-    "docs/database/full_schema.dbml": "e9235a87555ffcd50ecb6ab6c1a45f9c7c54e344ff8f269ecc890579f633e4b2",
-    "docs/database/schema.dbml": "f050f7b910038532ca8e73b283f16a57dedd6b738fdc74d293e64d539a4afac4",
+    "docs/database/full_schema.dbml": "e4362be913280ab6c23d5c66af249fc1923fccb1acd7b6c2696f7ee95c19d4a0",
+    "docs/database/schema.dbml": "3bc2060ae35fce16725d6ca5b90272e819039b8dce855ffe305b654140f77313",
 }
 
 

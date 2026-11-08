@@ -13,12 +13,16 @@ This folder holds the project's **living documentation**. The SRS describes **wh
 | `testing/TEST_RESULTS.md` | Reproducible test commands and observed outcomes | Every test run accepted as evidence |
 | `security/ACCESS_CONTROL_GATES.md` | Access-control restrictions and activation blockers | Before any change to roles, grants, approvals, or governance |
 | `decisions/ADR-001-admin-identity-separation.md` | Rationale for Django Superuser vs Workspace roles | When the decision changes |
+| `decisions/ADR-003-django-framework-account-flags.md` | Approved Option A for `is_staff` / `is_superuser` and ERD pins | When framework-account schema or its approval changes |
+| `implementation/access-control/erd-fingerprint-provenance-2026-11-08.md` | Explains the historical and approved DBML fingerprints | When protected ERD provenance is reviewed |
+| `implementation/authentication/ar-6c3-integration-readiness-assessment.md` | Remaining gates before live Admin registration-review integration | On verification or governance decisions |
+| `implementation/authentication/ar-6c2-routing-safety-verification.md` | Routing isolation and prior 25/25 test evidence | If routing or feature gates change |
 | `api/AUTH_ENDPOINT_INVENTORY.md` | Initial authentication API inventory to validate against route code | When auth endpoints/contracts change |
 | `templates/PHASE_COMPLETION_CHECKLIST.md` | Standard closure checklist for future phases | Every new phase |
 
 ## Existing documentation to retain
 
-Keep your existing SRS, architecture diagrams, Figma/FigJam sources, and `docs/database/*.dbml` files. **Do not overwrite them with this pack.** Audit the DBML against migrations (in particular, Django account `is_staff` and `is_superuser` columns). Add cross-links here once the actual filenames are verified.
+Keep the existing SRS, architecture diagrams, Figma/FigJam sources, and `docs/database/*.dbml` files. The two Django framework account fields (`is_staff` and `is_superuser`) are now formally accepted by **ADR-003**; do not modify the DBML or replay migrations as part of this documentation update. Verify the approved raw DBML fingerprints in the local workspace before relying on the revised integrity verifier.
 
 ## Documentation rules
 
@@ -30,4 +34,4 @@ Keep your existing SRS, architecture diagrams, Figma/FigJam sources, and `docs/d
 
 ## Installation
 
-This pack is additive. Extract its `docs/` folder into the repository root. Preview diffs if any matching files already exist. A developer must perform the final review and commit; this pack cannot edit your local Windows repository directly.
+This index is maintained in the project repository. When applying documentation patches, compare their files with your local versions, merge newer changes, and verify Git diffs before committing; the patches do not edit your local Windows repository automatically.

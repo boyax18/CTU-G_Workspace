@@ -150,6 +150,37 @@ Document meaningful changes after they are verified. Avoid including credentials
 
 ---
 
+## 2026-11-08 — ADR-003 Option A and AR-6C3 Readiness Assessment
+
+### Changed
+
+- Approved Option A: retain the existing `accounts.is_staff` and `accounts.is_superuser` boolean fields in the official protected ERD.
+- Recorded the decision in `docs/decisions/ADR-003-django-framework-account-flags.md`.
+- Reconciled the ERD fingerprint discrepancy in `docs/implementation/access-control/erd-fingerprint-provenance-2026-11-08.md` and prepared updated expected hashes for `backend/scripts/verify_catalogue_plan.py`.
+- Documented registration-review API integration blockers in `docs/implementation/authentication/ar-6c3-integration-readiness-assessment.md`.
+
+### Verified and Evidence Limits
+
+- Offline inspection of the uploaded project snapshot identified the same two columns in both protected DBML files, the Django Account model, and migration `0002`.
+- The prior pinned fingerprints were reproduced by removing only the two added field lines **in memory**; no DBML files were modified by this review.
+- Approved current raw SHA-256 values are recorded in ADR-003. Matching those pins against the current Windows workspace and rerunning Django/MySQL tests remain separate local verification tasks.
+- AR-6C3 is a **readiness assessment**, not a newly completed live integration or test run.
+
+### Data, Security and Authorization
+
+- No new migrations, schema writes, service activations, or permission grants were authorized by Option A.
+- Django framework flags do not automatically grant Workspace API permissions; effective permissions remain governed by Workspace access-control checks.
+- Registration-review routes and feature gates remain inactive pending separate scope, API contract, security, and activation approvals.
+
+### Blocked / Follow-up
+
+- Verify the approved DBML fingerprints and the read-only catalogue verifier on the current local checkout.
+- Complete the remaining AR-6C3 governance and operational release gates before any live Admin approval UI or API activation.
+
+**Status:** ERD design decision approved; local verification and registration-review integration remain pending.
+
+---
+
 ## Changelog Template
 
 ### YYYY-MM-DD — Phase / Code Reference

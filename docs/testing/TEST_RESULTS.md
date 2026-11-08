@@ -1,7 +1,7 @@
 ﻿# Test Results and Evidence — CTU-G Workspace
 
 **As of:** November 8, 2026
-**Evidence source:** Local PowerShell outputs and development test reports. Results must be verified again whenever relevant code, database schemas, or configuration changes.
+**Evidence source:** Local PowerShell outputs and development test reports, plus the November 8, 2026 local protected-ERD hash checks. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
 ## 1. Frontend Verification
 
@@ -70,6 +70,8 @@ The 18 API tests were rerun in AR-6C2; they are not 18 additional, distinct test
 | Registration-review permission scope | `SCHOOL` |
 | Live permission catalogue activation | Not performed |
 | AR-6C1/AR-6C2 live URL integration | Not performed |
+| AR-6C3 registration review integration | Source-based assessment documented; no live integration or new Django test run |
+| ADR-003 protected ERD SHA-256 | Both locally matched approved Option A pins on November 8, 2026 |
 
 ### Catalogue Planner Classifications
 
@@ -80,7 +82,7 @@ The 18 API tests were rerun in AR-6C2; they are not 18 additional, distinct test
 
 The planner did not perform database modifications, permission grants, or service activation.
 
-**Security restriction:** AR-6B1 verification confirms that proposed permission definitions exist in the manifest. It does not authorize activating those permissions.
+**Security restriction:** AR-6B1 verification confirms that proposed permission definitions exist in the manifest. The `SCHOOL` scope and three Admin registration-review permissions remain **proposals**, not approved grants or an authorization to activate services.
 
 ## 4. AR-6C1 and AR-6C2 Security Test Coverage
 
@@ -151,21 +153,37 @@ These commands must not activate services or grant permissions.
 
 ## 7. Next Verification Requirements
 
-1. AR-6C3 integration readiness review, including authorization, security gaps, and governance release requirements.
-2. Formal review and authorization of the proposed permission catalogue.
-3. Controlled catalogue initialization, authorization, and activation tests.
-4. Complete object-level authorization and audit policy verification.
-5. Browser-based authentication and registration-review integration tests.
-6. Verification of permission-aware Admin dashboard navigation.
-7. End-to-end registration, approval, login, and logout testing after authorized activation.
-8. Final security regression and release-readiness review.
+1. Complete the open AR-6C3 release gates after the documented source-based readiness assessment: registration-review object/field scope, API contract and security policy approvals.
+2. Approve the minimal registration-review permission definitions and any necessary service/role grants **separately** from ADR-003.
+3. Re-run the patched integrity verifier in the approved local read-only environment, with no database mutations.
+4. After explicit authorization, test controlled catalogue initialization, grant activation, auditing and rollback.
+5. Complete object-level authorization, session revocation, concurrency and transactional audit tests.
+6. Conduct browser authentication and registration-review integration tests and verify permission-aware Admin dashboard navigation.
+7. Demonstrate registration, authorized approval, login, dashboard and logout end to end only after approved activation.
+8. Complete final regression and release-readiness review. Do not infer production readiness from isolated passes.
 
-## 8. Current Testing Status
+## 8. ADR-003 Integrity and AR-6C3 Assessment Evidence
+
+**Option A scope:** The owner approved the existing `accounts.is_staff` and `accounts.is_superuser` columns in both protected DBML files. The checks below do **not** activate registration review.
+
+| Evidence | Observed result | Source |
+|---|---|---|
+| `docs/database/full_schema.dbml` SHA-256 | `e4362be913280ab6c23d5c66af249fc1923fccb1acd7b6c2696f7ee95c19d4a0` — matched | Owner's Windows `Get-FileHash` output, November 8, 2026 |
+| `docs/database/schema.dbml` SHA-256 | `3bc2060ae35fce16725d6ca5b90272e819039b8dce855ffe305b654140f77313` — matched | Owner's Windows `Get-FileHash` output, November 8, 2026 |
+| Historical pin reconciliation | Removing only the two framework-flag lines **in memory** reproduced both prior recorded fingerprints | Earlier offline ZIP inspection |
+| Updated `verify_catalogue_plan.py` Python syntax | Passed for the prepared patch; no local owner result reported | Earlier offline patch inspection |
+| AR-6C3 review | Source-based readiness assessment recorded; **not** a new automated integration test run | `docs/implementation/authentication/ar-6c3-integration-readiness-assessment.md` |
+
+**Still pending:** The owner has not supplied a successful execution log for the complete updated read-only Django/MySQL integrity verifier, new Django integration tests, any catalogue activation, or full browser E2E. ADR-003 design approval is **not** permission-catalogue or API activation approval.
+
+## 9. Current Testing Status
 
 **AR-6C1:** Implementation and automated testing verified.
 
 **AR-6C2:** Routing safety and API regression testing verified (25/25). The review API remains inactive.
 
-**Outstanding:** Governance approval, controlled permission activation, live URL integration, full browser testing, and deployment readiness.
+**AR-6C3:** Source-based readiness assessment recorded. ADR-003 ERD option approved; both local protected-ERD fingerprints confirmed. No new Django integration tests or live registration-review activation are claimed.
+
+**Outstanding:** Registration-review scope and API contract approval, controlled catalogue activation, local verifier execution, live URL integration, full browser testing, and deployment readiness.
 
 **Overall assessment:** Development verification is progressing successfully. The registration-review API is not approved for live operation.

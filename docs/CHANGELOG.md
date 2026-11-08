@@ -1,7 +1,5 @@
 # CTU-G Workspace — Development Changelog
-
 Document meaningful changes after they are verified. Avoid including credentials, secrets, or personal account information.
-
 ## 2026-11-08 — Local Development Checkpoint
 
 ### Confirmed

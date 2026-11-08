@@ -51,10 +51,27 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    #third party apps
+    'rest_framework',
+    'corsheaders',
+
+    # CTU-G Workspace apps
+    'apps.accounts.apps.AccountsConfig',
+    'apps.access_control.apps.AccessControlConfig',
+    'apps.academic.apps.AcademicConfig',
+    'apps.finance.apps.FinanceConfig',
+    'apps.clearance.apps.ClearanceConfig',
+    'apps.group_rating.apps.GroupRatingConfig',
+    'apps.announcements.apps.AnnouncementsConfig',
+    'apps.notifications.apps.NotificationsConfig',
+    'apps.support.apps.SupportConfig',
+    'apps.reports.apps.ReportsConfig',
 ]
 
+AUTH_USER_MODEL = 'accounts.Account'
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -87,12 +104,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django.db.backends.mysql",
         "NAME": required_environment_variable("DB_NAME"),
         "USER": required_environment_variable("DB_USER"),
         "PASSWORD": required_environment_variable("DB_PASSWORD"),
         "HOST": required_environment_variable("DB_HOST"),
         "PORT": required_environment_variable("DB_PORT"),
+        # Native TIMESTAMP must use the same UTC session as Django's conversions.
+        "OPTIONS": {"init_command": "SET time_zone = '+00:00'"},
     }
 }
 

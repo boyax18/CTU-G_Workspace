@@ -116,6 +116,7 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
         )}
       </form>
 
+      <p className="mt-3 text-center text-xs"><a className="link-accent" href="/forgot-password">Forgot Password?</a></p>
       {REGISTER_PATH && (
         <p className="fg-muted mt-5 text-center text-xs">
           Don’t have an account?{' '}

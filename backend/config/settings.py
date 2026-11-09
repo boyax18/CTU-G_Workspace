@@ -158,4 +158,22 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 # Email
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Console email during development; opt-in SMTP for Gmail delivery.
+WORKSPACE_PASSWORD_RESET_ENABLED = os.environ.get("WORKSPACE_PASSWORD_RESET_ENABLED", "0") == "1"
+WORKSPACE_EMAIL_SMTP_ENABLED = os.environ.get("WORKSPACE_EMAIL_SMTP_ENABLED", "0") == "1"
+WORKSPACE_PUBLIC_BASE_URL = os.environ.get("WORKSPACE_PUBLIC_BASE_URL", "http://localhost:5173").rstrip("/")
+PASSWORD_RESET_TIMEOUT = 1800  # 30 minutes
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "WORKSPACE_EMAIL_FROM", "ctuginatilanextensioncampus@gmail.com"
+)
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if WORKSPACE_EMAIL_SMTP_ENABLED
+    else "django.core.mail.backends.console.EmailBackend"
+)
+if WORKSPACE_EMAIL_SMTP_ENABLED:
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = required_environment_variable("WORKSPACE_EMAIL_USERNAME")
+    EMAIL_HOST_PASSWORD = required_environment_variable("WORKSPACE_EMAIL_APP_PASSWORD")

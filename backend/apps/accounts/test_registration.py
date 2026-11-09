@@ -34,7 +34,7 @@ class RegistrationAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.token = response.json()["csrfToken"]
         self.data = {
-            "school_id": "2026-REG-001", "email": "registrant@example.edu",
+            "school_id": "0012345", "email": "registrant@example.edu",
             "first_name": "Maria", "middle_name": "Cruz", "last_name": "Santos", "suffix": "Jr.",
             "requested_role": "Student", "password": "Copper!River7392", "password_confirmation": "Copper!River7392",
         }
@@ -99,9 +99,8 @@ class RegistrationAPITests(TestCase):
         self.assertEqual(account.request_status, "Approved")
         self.assertTrue(account.is_active)
 
-    def test_duplicate_school_id_uses_mysql_case_insensitive_uniqueness(self):
+    def test_duplicate_school_id_never_creates_second_account(self):
         self.post()
-        self.data["school_id"] = self.data["school_id"].lower()
         self.assertEqual(self.post().status_code, 202)
         self.assertEqual(Account.objects.count(), 1)
 
@@ -109,17 +108,30 @@ class RegistrationAPITests(TestCase):
         self.data["email"] = "not-an-email"
         self.assert_rejected(self.post(), "email")
 
-    def test_optional_fields_can_be_omitted(self):
-        for key in ("email", "middle_name", "suffix"):
+    def test_optional_profile_fields_can_be_omitted(self):
+        for key in ("middle_name", "suffix"):
             self.data.pop(key)
         self.assertEqual(self.post().status_code, 202)
         account = Account.objects.get()
-        self.assertIsNone(account.email)
+        self.assertEqual(account.email, "registrant@example.edu")
         self.assertIsNone(account.profile.middle_name)
         self.assertIsNone(account.profile.suffix)
 
+    def test_school_id_is_ascii_digits_only_and_at_most_seven(self):
+        for invalid in ("12345678", "ABC1234", "123-456", "１２３", "1 2345"):
+            with self.subTest(school_id=invalid):
+                cache.clear()
+                self.assert_rejected(self.post({**self.data, "school_id": invalid}), "school_id")
+        self.data["school_id"] = "0000001"
+        self.assertEqual(self.post().status_code, 202)
+        self.assertEqual(Account.objects.get().school_id, "0000001")
+
+    def test_email_is_required(self):
+        self.assert_rejected(self.post({key: value for key, value in self.data.items() if key != "email"}), "email")
+        self.assert_rejected(self.post({**self.data, "email": ""}), "email")
+
     def test_missing_required_fields(self):
-        for field in ("school_id", "first_name", "last_name", "requested_role", "password", "password_confirmation"):
+        for field in ("school_id", "email", "first_name", "last_name", "requested_role", "password", "password_confirmation"):
             with self.subTest(field=field):
                 cache.clear()
                 data = {key: value for key, value in self.data.items() if key != field}
@@ -159,7 +171,7 @@ class RegistrationAPITests(TestCase):
                 self.assert_rejected(self.post({**self.data, field: value}), field)
 
     def test_field_length_limits(self):
-        for field, length in (("school_id", 51), ("email", 151), ("first_name", 101), ("last_name", 101), ("middle_name", 101), ("suffix", 21), ("password", 129)):
+        for field, length in (("school_id", 8), ("email", 151), ("first_name", 101), ("last_name", 101), ("middle_name", 101), ("suffix", 21), ("password", 129)):
             with self.subTest(field=field):
                 cache.clear()
                 self.assert_rejected(self.post({**self.data, field: "x" * length}), field)

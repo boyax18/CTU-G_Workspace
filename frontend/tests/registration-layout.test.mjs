@@ -53,11 +53,11 @@ test('credentials and personal information retain their required fields and two-
   const personal = html.slice(html.indexOf('02 — Personal Information'), html.indexOf('03 — School Information'));
   for (const field of ['school_id', 'email', 'password', 'password_confirmation']) assert.ok(credentials.includes(`name="${field}"`));
   for (const field of ['first_name', 'last_name', 'middle_name', 'suffix']) assert.ok(personal.includes(`name="${field}"`));
-  for (const field of ['school_id', 'password', 'password_confirmation', 'first_name', 'last_name']) {
+  for (const field of ['school_id', 'email', 'password', 'password_confirmation', 'first_name', 'last_name']) {
     const input = html.match(new RegExp(`<input[^>]*name="${field}"[^>]*>`))[0];
     assert.ok(input.includes('required=""'), `${field} must be required`);
   }
-  for (const field of ['email', 'middle_name', 'suffix']) {
+  for (const field of ['middle_name', 'suffix']) {
     const input = html.match(new RegExp(`<input[^>]*name="${field}"[^>]*>`))[0];
     assert.ok(!input.includes('required='));
   }

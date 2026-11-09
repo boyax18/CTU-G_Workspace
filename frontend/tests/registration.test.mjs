@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { ApiError, postJSON } from '../src/api/client.ts';
 import { emptyRegistration, submitRegistration, validateRegistration } from '../src/features/auth/registration.ts';
 
-const valid = { ...emptyRegistration, school_id: ' 2026-001 ', first_name: ' Maria ', last_name: 'Santos', password: 'Copper!River7392', password_confirmation: 'Copper!River7392' };
+const valid = { ...emptyRegistration, school_id: ' 0012345 ', email: 'registrant@example.edu', first_name: ' Maria ', last_name: 'Santos', password: 'Copper!River7392', password_confirmation: 'Copper!River7392' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
 async function withFetch(mock, action) {
@@ -18,9 +18,14 @@ test('required fields and mismatched passwords are identified before submission'
   assert.deepEqual(validateRegistration(valid), {});
 });
 
-test('optional email is validated only when supplied', () => {
+test('email is required and school IDs have 1–7 ASCII digits', () => {
   assert.equal(validateRegistration(valid).email, undefined);
+  assert.ok(validateRegistration({ ...valid, email: '' }).email);
   assert.ok(validateRegistration({ ...valid, email: 'bad' }).email);
+  for (const school_id of ['12345678', 'CTU1234', '123-456', '１２３']) {
+    assert.ok(validateRegistration({ ...valid, school_id }).school_id);
+  }
+  assert.deepEqual(validateRegistration({ ...valid, school_id: '0000001' }), {});
 });
 
 test('real registration client bootstraps CSRF, includes cookies and allowlists payload', async () => {
@@ -36,7 +41,7 @@ test('real registration client bootstraps CSRF, includes cookies and allowlists 
   assert.equal(calls[1].options.credentials, 'same-origin');
   assert.equal(calls[1].options.headers['X-CSRFToken'], 'masked-token');
   const payload = JSON.parse(calls[1].options.body);
-  assert.equal(payload.school_id, '2026-001');
+  assert.equal(payload.school_id, '0012345');
   assert.equal(payload.first_name, 'Maria');
   assert.equal(payload.password, valid.password);
   assert.equal(payload.is_active, undefined);
@@ -60,10 +65,10 @@ test('Student and Instructor selections preserve the same public payload contrac
 });
 
 test('required credentials and personal names remain required; optional fields remain optional', () => {
-  for (const field of ['school_id', 'first_name', 'last_name', 'password', 'password_confirmation']) {
+  for (const field of ['school_id', 'email', 'first_name', 'last_name', 'password', 'password_confirmation']) {
     assert.ok(validateRegistration({ ...valid, [field]: '' })[field], `${field} must be required`);
   }
-  assert.deepEqual(validateRegistration({ ...valid, email: '', middle_name: '', suffix: '' }), {});
+  assert.deepEqual(validateRegistration({ ...valid, middle_name: '', suffix: '' }), {});
 });
 
 test('failed CSRF bootstrap prevents the POST', async () => {

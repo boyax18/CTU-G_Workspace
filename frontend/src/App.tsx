@@ -4,6 +4,8 @@ import DashboardLayout from './layouts/DashboardLayout';
 
 import HomePage from './features/home/pages/HomePage';
 import RegisterPage from './features/auth/RegisterPage';
+import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
+import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import SessionDashboardPage from './features/dashboard/SessionDashboardPage';
 
 export default function App() {
@@ -23,6 +25,10 @@ export default function App() {
         <HomePage />
       ) : path === '/register' ? (
         <RegisterPage />
+      ) : path === '/forgot-password' ? (
+        <ForgotPasswordPage />
+      ) : path === '/reset-password' ? (
+        <ResetPasswordPage />
       ) : (
         <div className="fg-body mx-auto max-w-xl px-6 py-16">
           <h1 className="fg-strong text-2xl font-bold">

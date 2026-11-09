@@ -112,12 +112,12 @@ export default function RegisterPage() {
                 <fieldset className="min-w-0">
                   <legend className={sectionHeading}>01 — Login Credentials</legend>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {field('school_id', 'School ID', 50, 'username', true)}
-                    {field('email', 'Email', 150, 'email', false, 'email')}
+                    {field('school_id', 'School ID', 7, 'username', true)}
+                    {field('email', 'Email', 150, 'email', true, 'email')}
                     {field('password', 'Password', 128, 'new-password', true, 'password')}
                     {field('password_confirmation', 'Confirm Password', 128, 'new-password', true, 'password')}
                   </div>
-                  <p className="fg-muted mt-3 text-xs leading-relaxed">Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your name, school ID, or email.</p>
+                  <p className="fg-muted mt-3 text-xs leading-relaxed">School ID must contain 1–7 digits. Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your name, school ID, or email.</p>
                 </fieldset>
 
                 <fieldset className="min-w-0">

@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+import re
 
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -17,8 +18,8 @@ class StringField(serializers.CharField):
 
 
 class RegistrationSerializer(serializers.Serializer):
-    school_id = StringField(max_length=50)
-    email = StringField(max_length=150, allow_blank=True, required=False, default="")
+    school_id = StringField(max_length=7, trim_whitespace=False)
+    email = StringField(max_length=150, allow_blank=False, required=True)
     first_name = StringField(max_length=100)
     middle_name = StringField(max_length=100, allow_blank=True, required=False, default="")
     last_name = StringField(max_length=100)
@@ -38,23 +39,23 @@ class RegistrationSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
     def validate_school_id(self, value):
-        value = Account.normalize_username(value)
-        if len(value) > 50:
-            raise serializers.ValidationError("Ensure this field has no more than 50 characters.")
+        if not re.fullmatch(r"[0-9]{1,7}", value):
+            raise serializers.ValidationError(
+                "School ID must contain 1 to 7 digits only."
+            )
         return value
 
     def validate_email(self, value):
-        if value:
-            try:
-                Account._meta.get_field("email").clean(value, None)
-            except DjangoValidationError as exc:
-                raise serializers.ValidationError(exc.messages) from exc
+        try:
+            Account._meta.get_field("email").clean(value, None)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages) from exc
         return value
 
     def validate(self, data):
         if data["password"] != data["password_confirmation"]:
             raise serializers.ValidationError({"password_confirmation": ["Passwords do not match."]})
-        candidate = Account(school_id=data["school_id"], email=data["email"] or None)
+        candidate = Account(school_id=data["school_id"], email=data["email"])
         candidate.first_name, candidate.last_name = data["first_name"], data["last_name"]
         candidate.username = data["school_id"]
         try:

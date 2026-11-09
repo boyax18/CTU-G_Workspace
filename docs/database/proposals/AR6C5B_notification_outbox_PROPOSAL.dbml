@@ -1,0 +1,28 @@
+// CTU-G Workspace: AR-6C5B OUTBOX PROPOSAL ONLY
+// NOT an amendment to the official ERD; DO NOT merge or migrate without approval.
+// Requires a privacy/retention policy and a verified envelope-encryption plan.
+// The audit and accounts tables are defined in the OFFICIAL ERD, not here.
+
+Table registration_notification_outbox {
+  outbox_id bigint [pk, increment]
+  decision_audit_log_id int [not null, unique, note: 'Exactly one decision notification per audit event']
+  template_code varchar(64) [not null, note: 'registration.approved or registration.rejected']
+  encrypted_recipient varbinary(1024) [not null, note: 'Application envelope-encrypted address; never plaintext']
+  encryption_key_version varchar(32) [not null]
+  delivery_status enum('Pending', 'Leased', 'Retry', 'Delivered', 'Dead') [not null, default: 'Pending']
+  attempt_count int [not null, default: 0]
+  next_attempt_at datetime [not null]
+  lease_expires_at datetime
+  lease_token varchar(64)
+  last_failure_code varchar(64) [note: 'Controlled code only; never exception text or raw SMTP response']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  delivered_at datetime
+  updated_at datetime
+
+  indexes {
+    (delivery_status, next_attempt_at)
+    lease_expires_at
+  }
+}
+
+Ref: registration_notification_outbox.decision_audit_log_id > access_audit_logs.access_audit_log_id

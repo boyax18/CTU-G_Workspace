@@ -23,6 +23,7 @@ from apps.access_control.models import (
 from apps.access_control.services import has_permission
 
 from .models import Account
+from .registration_notifications import schedule_registration_decision_email_after_commit
 
 
 APPROVE_CODE = "accounts.registration_requests.approve"
@@ -228,6 +229,15 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
             new_value=new,
             reason="account_status_change",
         )
+
+        # Optional, best-effort email only after the status, role and audit
+        # changes have committed. No network I/O occurs in the transaction.
+        # A durable outbox is required before treating email as guaranteed.
+        if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED", False):
+            schedule_registration_decision_email_after_commit(
+                recipient_email=target.email,
+                approved=approve,
+            )
     return target_id
 
 

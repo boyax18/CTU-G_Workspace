@@ -40,6 +40,8 @@ class IsolatedMySQLRunner(DiscoverRunner):
                 creation = connections[alias].creation
                 stack.enter_context(patch.object(creation, "_create_test_db", side_effect=fresh_creator(creation)))
             old_config = super().setup_databases(**kwargs)
+        if "aliases" in kwargs and not kwargs["aliases"]:
+            return old_config
         with connections["default"].cursor() as cursor:
             cursor.execute("SELECT DATABASE()")
             if cursor.fetchone()[0] != name:

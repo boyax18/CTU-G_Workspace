@@ -1,84 +1,145 @@
-import { useEffect, useState } from 'react';
-import Button from '../../components/common/Button';
-import { getWorkspaceSession, logoutWorkspace } from '../auth/session';
-import type { AuthenticatedWorkspaceSession } from '../auth/session';
-
-type ScreenState =
-  | { status: 'loading' }
-  | { status: 'anonymous' }
-  | { status: 'error'; message: string }
-  | { status: 'ready'; session: AuthenticatedWorkspaceSession };
+import { useDashboardContext } from '../../hooks/useDashboardContext';
+import {
+  canOpenDashboardView,
+  DASHBOARD_NAV_ITEMS,
+  getVisibleDashboardItems,
+} from './navigation';
+import DashboardIcon from '../../components/dashboard/DashboardIcon';
 
 export default function SessionDashboardPage() {
-  const [state, setState] = useState<ScreenState>({ status: 'loading' });
-  const [signingOut, setSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState('');
-  const [refreshIndex, setRefreshIndex] = useState(0);
+  const { session, view, navigate } = useDashboardContext();
+  const { account, permissions } = session;
 
-  useEffect(() => {
-    let cancelled = false;
-    getWorkspaceSession().then((session) => {
-      if (cancelled) return;
-      setState(session.authenticated ? { status: 'ready', session } : { status: 'anonymous' });
-    }).catch(() => {
-      if (!cancelled) setState({ status: 'error', message: 'We could not verify your session.' });
-    });
-    return () => { cancelled = true; };
-  }, [refreshIndex]);
-
-  const signOut = async () => {
-    if (signingOut) return;
-    setSigningOut(true);
-    setSignOutError('');
-    try {
-      await logoutWorkspace();
-      window.location.assign('/');
-    } catch {
-      setSignOutError('Sign-out could not be confirmed. Please try again.');
-      setSigningOut(false);
-    }
-  };
-
-  if (state.status === 'loading') {
-    return <p role="status" className="fg-muted mx-auto max-w-3xl p-8 text-sm">Checking your session…</p>;
-  }
-  if (state.status === 'anonymous') {
+  if (!canOpenDashboardView(view, permissions)) {
     return (
-      <section className="mx-auto max-w-3xl p-8" aria-labelledby="session-heading">
-        <h1 id="session-heading" className="fg-strong text-xl font-semibold">Sign in required</h1>
-        <p className="fg-body mt-2 text-sm">You need an approved, active Workspace account to continue.</p>
-        <a href="/#login" className="link-accent mt-4 inline-block text-sm font-medium">Return to sign-in</a>
-      </section>
-    );
-  }
-  if (state.status === 'error') {
-    return (
-      <section className="mx-auto max-w-3xl p-8" aria-labelledby="session-error">
-        <h1 id="session-error" className="fg-strong text-xl font-semibold">Session unavailable</h1>
-        <p role="alert" className="fg-body my-4 text-sm">{state.message}</p>
-        <Button onClick={() => { setState({ status: 'loading' }); setRefreshIndex((current) => current + 1); }}>Try again</Button>
+      <section className="dashboard-panel rounded-2xl border p-6 sm:p-8">
+        <h2 className="dashboard-heading text-xl font-bold">This section is unavailable</h2>
+        <p className="dashboard-muted mt-2 text-sm">Your current session does not report the required module permission.</p>
+        <button className="dashboard-primary-link mt-5 rounded-lg px-4 py-2 text-sm font-medium" onClick={() => navigate('overview')}>
+          Return to overview
+        </button>
       </section>
     );
   }
 
-  const { account } = state.session;
-  return (
-    <section className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-8" aria-labelledby="dashboard-heading">
-      <div className="surface-glass rounded-2xl p-6 sm:p-8">
-        <p className="fg-accent text-xs font-semibold uppercase tracking-widest">CTU-G Workspace</p>
-        <h1 id="dashboard-heading" className="fg-strong mt-2 text-2xl font-semibold">Welcome to your workspace</h1>
-        <p className="fg-muted mt-2 text-sm">Your sign-in is active. The shared dashboard modules will be added after their permissions and workflows are approved.</p>
-        <dl className="fg-body mt-6 space-y-3 text-sm">
-          <div><dt className="font-semibold">School ID</dt><dd>{account.school_id}</dd></div>
-          <div>
-            <dt className="font-semibold">Assigned roles</dt>
-            <dd>{account.roles.join(', ') || 'None'}</dd>
-          </div>
-        </dl>
-        <p className="fg-muted mt-5 text-xs">Roles shown here are informational. Every protected operation must be authorized by Django.</p>
-        {signOutError && <p role="alert" className="fg-error mt-4 text-sm">{signOutError}</p>}
-        <div className="mt-6"><Button variant="outline" loading={signingOut} onClick={signOut}>Sign out</Button></div>
+  if (view === 'account') {
+    return (
+      <div className="space-y-5">
+        <div>
+          <p className="dashboard-eyebrow">Account information</p>
+          <h2 className="dashboard-heading mt-1 text-2xl font-bold sm:text-3xl">Your Workspace account</h2>
+          <p className="dashboard-muted mt-2 text-sm">Read-only details from your verified session.</p>
+        </div>
+        <section className="dashboard-panel rounded-2xl border p-6 sm:p-8" aria-label="Account details">
+          <dl className="grid gap-6 text-sm sm:grid-cols-2">
+            <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">School ID</dt><dd className="dashboard-heading mt-2 font-semibold">{account.school_id}</dd></div>
+            <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Assigned roles</dt><dd className="dashboard-heading mt-2 font-semibold">{account.roles.join(', ') || 'None'}</dd></div>
+            <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Session status</dt><dd className="mt-2 font-semibold text-emerald-700">Authenticated</dd></div>
+            <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Effective permission hints</dt><dd className="dashboard-heading mt-2 font-semibold">{permissions.length}</dd></div>
+          </dl>
+          <p className="dashboard-muted mt-7 border-t pt-4 text-xs leading-relaxed">
+            Role names and permission hints never authorize an API call. Django verifies access on every protected request.
+          </p>
+        </section>
       </div>
-    </section>
+    );
+  }
+
+  if (view !== 'overview') {
+    const item = DASHBOARD_NAV_ITEMS.find((entry) => entry.id === view);
+    return (
+      <div className="space-y-5">
+        <div>
+          <p className="dashboard-eyebrow">Module space</p>
+          <h2 className="dashboard-heading mt-1 text-2xl font-bold sm:text-3xl">{item?.label ?? 'Workspace module'}</h2>
+        </div>
+        <section className="dashboard-panel rounded-2xl border p-6 sm:p-8">
+          <div className="dashboard-placeholder-icon mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <DashboardIcon name="shield" />
+          </div>
+          <h3 className="dashboard-heading text-lg font-semibold">Module integration is pending</h3>
+          <p className="dashboard-muted mt-2 max-w-2xl text-sm leading-relaxed">
+            Your session currently includes a permission hint for this module. This page is only the shared shell placeholder;
+            no live module API or account action has been connected.
+          </p>
+          <button className="dashboard-primary-link mt-5 rounded-lg px-4 py-2 text-sm font-medium" onClick={() => navigate('overview')}>
+            Back to overview
+          </button>
+        </section>
+      </div>
+    );
+  }
+
+  const modules = getVisibleDashboardItems(permissions).filter((item) => item.section === 'modules');
+
+  return (
+    <div className="space-y-7">
+      <section className="dashboard-hero relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10">
+        <div className="relative z-10 max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Cebu Technological University · Ginatilan</p>
+          <h2 className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Welcome to your workspace</h2>
+          <p className="mt-3 text-sm leading-relaxed text-emerald-50/90">
+            A shared campus portal with one dashboard layout. Your available module spaces depend on your current effective permissions.
+          </p>
+          <button className="mt-6 rounded-xl border border-white/35 bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25"
+            onClick={() => navigate('account')}>
+            View account details
+          </button>
+        </div>
+        <div aria-hidden="true" className="dashboard-hero-ring absolute -right-20 -top-32 h-96 w-96 rounded-full" />
+      </section>
+
+      <section aria-label="Workspace summary" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="dashboard-panel rounded-2xl border p-5">
+          <p className="dashboard-muted text-xs font-semibold uppercase tracking-wide">Session</p>
+          <p className="dashboard-heading mt-3 text-xl font-bold">Verified</p>
+          <p className="dashboard-muted mt-1 text-xs">Approved Workspace session</p>
+        </div>
+        <div className="dashboard-panel rounded-2xl border p-5">
+          <p className="dashboard-muted text-xs font-semibold uppercase tracking-wide">Effective permissions</p>
+          <p className="dashboard-heading mt-3 text-xl font-bold">{permissions.length}</p>
+          <p className="dashboard-muted mt-1 text-xs">Current session hints, not cached grants</p>
+        </div>
+        <div className="dashboard-panel rounded-2xl border p-5">
+          <p className="dashboard-muted text-xs font-semibold uppercase tracking-wide">Available module spaces</p>
+          <p className="dashboard-heading mt-3 text-xl font-bold">{modules.length}</p>
+          <p className="dashboard-muted mt-1 text-xs">Live module pages not yet connected</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="dashboard-modules-heading">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="dashboard-eyebrow">Your access</p>
+            <h3 id="dashboard-modules-heading" className="dashboard-heading mt-1 text-xl font-bold">Module spaces</h3>
+          </div>
+          <p className="dashboard-muted text-xs">Shown by exact permission code · not role name</p>
+        </div>
+        {modules.length === 0 ? (
+          <div className="dashboard-panel rounded-2xl border p-6">
+            <h4 className="dashboard-heading font-semibold">No additional module spaces yet</h4>
+            <p className="dashboard-muted mt-2 text-sm">Your account is verified. New modules will appear after their backend permissions and integrations are approved.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {modules.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className="dashboard-panel dashboard-module-card group rounded-2xl border p-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700"
+                onClick={() => navigate(item.id)}
+              >
+                <div className="dashboard-placeholder-icon mb-4 flex h-11 w-11 items-center justify-center rounded-xl">
+                  <DashboardIcon name={item.icon}/>
+                </div>
+                <p className="dashboard-heading font-semibold">{item.label}</p>
+                <p className="dashboard-muted mt-2 text-xs">Integration pending</p>
+                <p className="mt-4 flex items-center gap-1 text-xs font-semibold text-emerald-700">Open module space <DashboardIcon name="chevron"/></p>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }

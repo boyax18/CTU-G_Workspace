@@ -1,0 +1,44 @@
+/* Shared Workspace shell. Uses existing CTU-G ThemeProvider; no global public-page changes. */
+.dashboard-app {
+  --db-background: #f2f6f3;
+  --db-panel: #ffffff;
+  --db-edge: #dae6dd;
+  --db-text: #1a3025;
+  --db-muted: #62746a;
+  --db-topbar: rgba(255,255,255,.92);
+  background: var(--db-background);
+  color: var(--db-text);
+}
+.dark .dashboard-app {
+  --db-background: #101c17;
+  --db-panel: #182820;
+  --db-edge: #345044;
+  --db-text: #e9f5ec;
+  --db-muted: #b3c8ba;
+  --db-topbar: rgba(24,40,32,.94);
+}
+.dashboard-sidebar { background: linear-gradient(175deg, #0b5039 0%, #093c2d 58%, #062e24 100%); color: white; }
+.dashboard-nav-link { color: rgba(240,253,244,.84); }
+.dashboard-nav-link:hover { background: rgba(255,255,255,.11); color: white; }
+.dashboard-nav-active, .dashboard-nav-active:hover { background: rgba(255,255,255,.19); color: #ffffff; box-shadow: inset 3px 0 #87e9ad; }
+.dashboard-topbar { background: var(--db-topbar); border-color: var(--db-edge); backdrop-filter: blur(12px); }
+.dashboard-topbar-icon { color: var(--db-text); }
+.dashboard-topbar-icon:hover { background: var(--db-edge); }
+.dashboard-identity { border-color: var(--db-edge); }
+.dashboard-panel { background: var(--db-panel); border-color: var(--db-edge); box-shadow: 0 8px 30px rgba(10,62,34,.035); }
+.dashboard-heading { color: var(--db-text); }
+.dashboard-muted { color: var(--db-muted); }
+.dashboard-eyebrow { color: #147647; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; }
+.dark .dashboard-eyebrow { color: #a3e0b7; }
+.dashboard-primary-link { background: #147647; color: #fff; }
+.dashboard-primary-link:hover { background: #0b5039; }
+.dashboard-hero { background: linear-gradient(115deg, #0e543a 0%, #116d48 65%, #228a5b 100%); }
+.dashboard-hero-ring { border: 65px solid rgba(255,255,255,.065); pointer-events: none; }
+.dashboard-placeholder-icon { background: #e3f3e8; color: #146a43; }
+.dark .dashboard-placeholder-icon { background: #244e35; color: #d3f9de; }
+.dashboard-module-card:hover { border-color: #78ba96; box-shadow: 0 14px 28px rgba(12,75,39,.08); }
+.dashboard-skip-link { position: fixed; z-index: 100; top: -100px; left: 1rem; background: white; color: #123524; padding: .65rem 1rem; border-radius: .4rem; }
+.dashboard-skip-link:focus { top: .8rem; }
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-app *, .dashboard-app *::before, .dashboard-app *::after { transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

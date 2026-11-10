@@ -97,13 +97,13 @@ def _state(value, field):
     return json.loads(encoded)
 
 
-def record_access_audit(*, actor, action, target=None, role=None, permission=None,
-                        old_value=None, new_value=None, reason=None):
+def _record_access_audit_id(*, actor, action, target=None, role=None, permission=None,
+                            old_value=None, new_value=None, reason=None):
     """Stage one audit INSERT in the caller's primary-database transaction.
 
-    No model or success receipt is returned. Failures propagate AND mark the
-    current atomic scope rollback-only, even if a caller accidentally catches
-    them. Catch outside the owning transaction, not in a recovery savepoint.
+    Returns the provisional inserted ID for trusted internal callers. Failures
+    mark the current scope rollback-only, even if caught by the caller.
+    Catch outside the owning transaction, not in a recovery savepoint.
     Direct ORM/SQL updates remain outside this append-only service contract.
     """
     connection = transaction.get_connection(DEFAULT_DB_ALIAS)
@@ -130,12 +130,38 @@ def record_access_audit(*, actor, action, target=None, role=None, permission=Non
         target_id = _reference_id(target, Account, "target")
         role_id = _reference_id(role, Role, "role")
         permission_id = _reference_id(permission, Permission, "permission")
-        AccessAuditLog.objects.using(DEFAULT_DB_ALIAS).create(
+        event = AccessAuditLog.objects.using(DEFAULT_DB_ALIAS).create(
             actor_account_id=actor_id, target_account_id=target_id,
             role_id=role_id, permission_id=permission_id, action=action,
             old_value=previous, new_value=following, reason=reason,
         )
         # created_at comes solely from the existing database/model default.
+        return event.pk  # provisional until the enclosing transaction commits
     except Exception:
         transaction.set_rollback(True, using=DEFAULT_DB_ALIAS)
         raise
+
+
+def record_access_audit(*, actor, action, target=None, role=None, permission=None,
+                        old_value=None, new_value=None, reason=None):
+    """Preserve the existing append-only audit contract: always return None."""
+    _record_access_audit_id(
+        actor=actor, action=action, target=target, role=role,
+        permission=permission, old_value=old_value, new_value=new_value,
+        reason=reason,
+    )
+    return None
+
+
+def record_access_audit_receipt(*, actor, action, target=None, role=None, permission=None,
+                                old_value=None, new_value=None, reason=None):
+    """Trusted transactional sibling: return the exact inserted audit PK.
+
+    Only valid inside an enclosing primary-database transaction. The returned
+    PK is NOT evidence of commit; no success response may precede commit.
+    """
+    return _record_access_audit_id(
+        actor=actor, action=action, target=target, role=role,
+        permission=permission, old_value=old_value, new_value=new_value,
+        reason=reason,
+    )

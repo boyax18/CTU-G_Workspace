@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS, transaction
 from django.utils import timezone
 
-from apps.access_control.audit import record_access_audit
+from apps.access_control.audit import record_access_audit, record_access_audit_receipt
 from apps.access_control.models import (
     AccountPermission,
     AccountRole,
@@ -24,6 +24,7 @@ from apps.access_control.services import has_permission
 
 from .models import Account
 from .registration_notifications import schedule_registration_decision_email_after_commit
+from .registration_outbox import record_registration_decision_outbox
 
 
 APPROVE_CODE = "accounts.registration_requests.approve"
@@ -220,24 +221,33 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
         }
         if approve:
             new["role_id"] = requested_role.pk
-        record_access_audit(
-            actor=reviewer,
-            target=target,
-            role=requested_role if approve else None,
-            action="account.registration.approve" if approve else "account.registration.reject",
-            old_value=old,
-            new_value=new,
-            reason="account_status_change",
-        )
-
-        # Optional, best-effort email only after the status, role and audit
-        # changes have committed. No network I/O occurs in the transaction.
-        # A durable outbox is required before treating email as guaranteed.
-        if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED", False):
-            schedule_registration_decision_email_after_commit(
-                recipient_email=target.email,
+        audit_values = {
+            "actor": reviewer,
+            "target": target,
+            "role": requested_role if approve else None,
+            "action": "account.registration.approve" if approve else "account.registration.reject",
+            "old_value": old,
+            "new_value": new,
+            "reason": "account_status_change",
+        }
+        if getattr(settings, "WORKSPACE_REGISTRATION_OUTBOX_ENABLED", False):
+            # The audit receipt and encrypted outbox row are one transaction;
+            # both roll back if encryption, validation or insertion fails.
+            receipt_id = record_access_audit_receipt(**audit_values)
+            record_registration_decision_outbox(
+                audit_log_id=receipt_id,
+                target_account_id=target.pk,
                 approved=approve,
+                recipient_email=target.email,
             )
+        else:
+            # Existing audit and best-effort callback path remains unchanged.
+            record_access_audit(**audit_values)
+            if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED", False):
+                schedule_registration_decision_email_after_commit(
+                    recipient_email=target.email,
+                    approved=approve,
+                )
     return target_id
 
 

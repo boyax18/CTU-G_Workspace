@@ -177,3 +177,8 @@ if WORKSPACE_EMAIL_SMTP_ENABLED:
     EMAIL_USE_TLS = True
     EMAIL_HOST_USER = required_environment_variable("WORKSPACE_EMAIL_USERNAME")
     EMAIL_HOST_PASSWORD = required_environment_variable("WORKSPACE_EMAIL_APP_PASSWORD")
+
+# AR-6C5B.4: development-only durable email intent; disabled by default.
+# The key WORKSPACE_OUTBOX_KEK_V1_B64 is read only when encrypting a recipient.
+WORKSPACE_REGISTRATION_OUTBOX_ENABLED = os.environ.get("WORKSPACE_REGISTRATION_OUTBOX_ENABLED", "0") == "1"
+WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION = os.environ.get("WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION", "v1")

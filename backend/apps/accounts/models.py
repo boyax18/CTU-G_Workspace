@@ -191,3 +191,5 @@ class UserProfile(models.Model):
     def __str__(self):
         name = " ".join(part for part in (self.first_name, self.last_name) if part)
         return name or f"Profile for account {self.account_id}"
+
+from .outbox_models import RegistrationNotificationOutbox  # noqa: E402,F401

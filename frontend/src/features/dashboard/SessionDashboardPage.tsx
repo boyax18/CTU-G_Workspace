@@ -5,6 +5,8 @@ import {
   getVisibleDashboardItems,
 } from './navigation';
 import DashboardIcon from '../../components/dashboard/DashboardIcon';
+import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
+import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
 export default function SessionDashboardPage() {
   const { session, view, navigate } = useDashboardContext();
@@ -43,6 +45,11 @@ export default function SessionDashboardPage() {
         </section>
       </div>
     );
+  }
+
+  // AR-6C7D.1: fictional mock UI only; hard-disabled pending separate approval.
+  if (view === 'registration-review' && REGISTRATION_REVIEW_UI_PREVIEW_ENABLED) {
+    return <RegistrationReviewPreview permissions={permissions} />;
   }
 
   if (view !== 'overview') {

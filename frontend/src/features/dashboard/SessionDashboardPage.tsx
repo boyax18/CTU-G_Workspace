@@ -5,6 +5,8 @@ import {
   getVisibleDashboardItems,
 } from './navigation';
 import DashboardIcon from '../../components/dashboard/DashboardIcon';
+import RegistrationReviewLivePanel from '../admin/RegistrationReviewLivePanel';
+import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from '../admin/registrationReviewApiGate';
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
@@ -50,6 +52,11 @@ export default function SessionDashboardPage() {
   // AR-6C7D.1: fictional mock UI only; hard-disabled pending separate approval.
   if (view === 'registration-review' && REGISTRATION_REVIEW_UI_PREVIEW_ENABLED) {
     return <RegistrationReviewPreview permissions={permissions} />;
+  }
+
+  // AR-6C7E.1: only visible after independently approved frontend/backend activation.
+  if (view === 'registration-review' && REGISTRATION_REVIEW_LIVE_API_ENABLED) {
+    return <RegistrationReviewLivePanel roles={account.roles} permissions={permissions} />;
   }
 
   if (view !== 'overview') {

@@ -41,6 +41,10 @@ _ID_LIST_FIELDS = frozenset({"role_ids", "permission_ids"})
 _ENUM_FIELDS = {
     "effect": frozenset({"Grant", "Deny"}),
     "request_status": frozenset({"Pending", "Approved", "Rejected"}),
+    "rejection_code": frozenset({
+        "incomplete_submission", "ineligible_registration",
+        "identity_mismatch", "duplicate_request",
+    }),
 }
 _STATE_FIELDS = _ID_FIELDS | _ID_LIST_FIELDS | frozenset(_ENUM_FIELDS) | frozenset({"is_active"})
 _ACTION_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]*", re.ASCII)

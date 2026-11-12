@@ -35,3 +35,9 @@ CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SECURE = False  # strictly loopback HTTP development
 CSRF_COOKIE_SECURE = False
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+
+# Task 1: local review connects to real ctug_workspace. It must NEVER become a
+# reapplication testing environment, even if a developer sets global .env flags.
+WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = False
+WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = False
+WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = False

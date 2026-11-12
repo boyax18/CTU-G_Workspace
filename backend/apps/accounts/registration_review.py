@@ -221,6 +221,9 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
         }
         if approve:
             new["role_id"] = requested_role.pk
+        else:
+            # Immutable, bounded decision snapshot; required for delayed v2 emails.
+            new["rejection_code"] = rejection_code
         audit_values = {
             "actor": reviewer,
             "target": target,
@@ -247,6 +250,7 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
                 schedule_registration_decision_email_after_commit(
                     recipient_email=target.email,
                     approved=approve,
+                    rejection_code=rejection_code,
                 )
     return target_id
 

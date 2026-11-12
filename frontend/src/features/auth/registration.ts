@@ -29,11 +29,22 @@ export function validateRegistration(data: RegistrationData): Partial<Record<key
   return errors;
 }
 
-export async function submitRegistration(data: RegistrationData): Promise<void> {
+export async function submitRegistration(data: RegistrationData, reapplicationToken?: string): Promise<void> {
   // Explicitly select public fields; never serialize arbitrary form/account state.
-  await postJSON('/api/v1/auth/register/', {
+  const payload = {
     school_id: data.school_id.trim(), email: data.email.trim(), first_name: data.first_name.trim(),
     middle_name: data.middle_name.trim(), last_name: data.last_name.trim(), suffix: data.suffix.trim(),
     requested_role: data.requested_role, password: data.password, password_confirmation: data.password_confirmation,
+  };
+  if (reapplicationToken) {
+    await postJSON('/api/v1/auth/reapply/complete/', { ...payload, reapplication_token: reapplicationToken });
+  } else {
+    await postJSON('/api/v1/auth/register/', payload);
+  }
+}
+
+export async function requestReapplicationLink(schoolId: string, email: string): Promise<void> {
+  await postJSON('/api/v1/auth/reapply/link/', {
+    school_id: schoolId.trim(), email: email.trim(),
   });
 }

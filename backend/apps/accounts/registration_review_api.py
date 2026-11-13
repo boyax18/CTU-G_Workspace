@@ -15,6 +15,7 @@ from rest_framework.throttling import SimpleRateThrottle
 
 from apps.access_control.models import AccountRole, Service
 from apps.access_control.services import has_permission
+from apps.access_control.writer_boundary import WriterBoundaryUnavailable
 
 from .models import Account
 from .registration_review import (
@@ -66,7 +67,7 @@ class RegistrationReviewAPI(WorkspaceSessionAPI):
         # target are intentionally indistinguishable to the caller.
         if isinstance(exc, RegistrationReviewDenied):
             return Response({"error": {"code": "request_unavailable", "message": "Registration request is unavailable."}}, status=404)
-        if isinstance(exc, RegistrationReviewUnavailable):
+        if isinstance(exc, (RegistrationReviewUnavailable, WriterBoundaryUnavailable)):
             return Response({"error": {"code": "review_unavailable", "message": "Registration review is unavailable."}}, status=503)
         if isinstance(exc, RequestDataTooBig):
             exc = exceptions.ParseError("Request body too large.")

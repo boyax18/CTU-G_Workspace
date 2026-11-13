@@ -3,8 +3,9 @@
 import os
 import pathlib
 import subprocess
+import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from apps.access_control.tests_support import g1d_p3c5_windows_pipe_fence_test_only as m
 
@@ -146,6 +147,50 @@ class TestP3C5WindowsNamedPipeAdapter(unittest.TestCase):
         self.assertNotIn('taskkill', text.lower())
         self.assertNotIn('DROP DATABASE ctug_workspace', text)
         self.assertNotIn('--install', text)
+
+    def test_cleanup_verifies_identity_and_gracefully_stops_child_server(self):
+        with tempfile.TemporaryDirectory(prefix="ctug-p3c5-separate-") as directory:
+            self.driver.work = pathlib.Path(directory)
+            self.driver.data = self.driver.work / "data"
+            self.driver.proc = Mock()
+            self.driver.proc.poll.return_value = None
+            identity = str(self.driver.data) + '\t1\t1\t' + self.driver.pipe + '\t8.4.13'
+            with patch.object(self.driver, '_mysql', side_effect=[
+                subprocess.CompletedProcess([], 0, identity, ''),
+                subprocess.CompletedProcess([], 0, '', ''),
+            ]) as mysql, patch.object(m.shutil, 'rmtree') as remove:
+                self.driver._cleanup()
+                self.assertEqual(('root', 'SHUTDOWN;'), mysql.call_args_list[1].args)
+                self.driver.proc.wait.assert_called_once_with(timeout=12)
+                self.driver.proc.terminate.assert_not_called()
+                remove.assert_called_once_with(self.driver.work.resolve())
+
+    def test_cleanup_refuses_shutdown_and_delete_on_identity_mismatch(self):
+        self.driver.proc = Mock()
+        self.driver.proc.poll.return_value = None
+        with patch.object(self.driver, '_mysql', return_value=subprocess.CompletedProcess([], 0, 'wrong-instance', '')) as mysql:
+            with patch.object(m.shutil, 'rmtree') as remove:
+                with self.assertRaises(m.RehearsalError):
+                    self.driver._cleanup()
+                self.assertEqual(1, mysql.call_count)
+                remove.assert_not_called()
+
+    def test_cleanup_refuses_unowned_directory(self):
+        with tempfile.TemporaryDirectory(prefix="other-owner-") as directory:
+            self.driver.work = pathlib.Path(directory)
+            self.driver.data = self.driver.work / "data"
+            with patch.object(m.shutil, 'rmtree') as remove:
+                with self.assertRaises(m.RehearsalError):
+                    self.driver._cleanup()
+                remove.assert_not_called()
+
+    def test_cleanup_failure_is_never_silently_reported_as_success(self):
+        with tempfile.TemporaryDirectory(prefix="ctug-p3c5-separate-") as directory:
+            self.driver.work = pathlib.Path(directory)
+            self.driver.data = self.driver.work / "data"
+            with patch.object(m.shutil, 'rmtree', side_effect=OSError):
+                with self.assertRaises(m.RehearsalError):
+                    self.driver._cleanup()
 
 
 if __name__ == '__main__':

@@ -190,22 +190,33 @@ class WindowsNamedPipeRehearsal(DockerRehearsal):
         return subprocess.CompletedProcess(args, 0, "", "")
 
     def _cleanup(self):
-        # Only ever terminate the subprocess handle created here; never terminate unrelated processes
-        # on a MySQL service or remove any user-supplied data directory.
+        # On Windows mysqld may be a launcher with a child server. Terminating
+        # only that handle can leave the child and its locked data files alive.
+        # Authenticate and verify our private instance before graceful shutdown.
         if self.proc is not None and self.proc.poll() is None:
+            response = self._mysql("root", "SELECT @@global.datadir, @@global.skip_networking, @@global.named_pipe, @@global.socket, @@global.version;")
+            if response.returncode != 0 or not self._identity_verified(response.stdout):
+                raise RehearsalError("Disposable cleanup identity unavailable; directory retained")
+            shutdown = self._mysql("root", "SHUTDOWN;")
+            if shutdown.returncode != 0:
+                raise RehearsalError("Disposable graceful shutdown failed; directory retained")
             try:
-                self.proc.terminate()
                 self.proc.wait(timeout=12)
             except (OSError, subprocess.TimeoutExpired):
-                self.proc.kill()
-                self.proc.wait(timeout=12)
-        if self.work is not None and self.work.is_dir() and self.work.name.startswith("ctug-p3c5-separate-"):
-            try:
-                shutil.rmtree(self.work)
-            except OSError:
-                # A locked Windows file may prevent cleanup. Never force-remove
-                # a directory whose ownership cannot be verified.
-                pass
+                raise RehearsalError("Disposable server shutdown unresolved; directory retained") from None
+        if self.work is None or not self.work.exists():
+            return
+        # Validate the resolved absolute target before ANY recursive removal.
+        work = self.work.resolve(strict=True)
+        if (self.work.is_symlink() or work != self.work.absolute()
+                or work.parent != Path(tempfile.gettempdir()).resolve(strict=True)
+                or not work.name.startswith("ctug-p3c5-separate-")
+                or self.data != work / "data"):
+            raise RehearsalError("Disposable cleanup path refused")
+        try:
+            shutil.rmtree(work)
+        except OSError:
+            raise RehearsalError("Disposable cleanup incomplete; directory retained") from None
 
     def run(self) -> dict:
         report = super().run()

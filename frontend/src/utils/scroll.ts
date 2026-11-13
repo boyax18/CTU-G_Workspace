@@ -2,6 +2,10 @@ const behavior = (): ScrollBehavior =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 
 export function scrollToSection(id: string): void {
+  if (window.location.pathname !== '/') {
+    window.location.assign(`/#${encodeURIComponent(id)}`);
+    return;
+  }
   if (id === 'home') {
     window.scrollTo({ top: 0, behavior: behavior() });
     return;
@@ -14,6 +18,10 @@ export function scrollToSection(id: string): void {
 
 /** The login card lives in the hero, so go there and focus the first field. */
 export function focusLoginForm(): void {
+  if (window.location.pathname !== '/') {
+    window.location.assign('/#login');
+    return;
+  }
   scrollToSection('home');
   window.setTimeout(() => {
     document.getElementById('school-id')?.focus({ preventScroll: true });

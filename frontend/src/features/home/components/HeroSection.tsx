@@ -4,6 +4,7 @@ import { LockIcon } from '../../../components/common/Icons';
 import { CAMPUS_NAME, REGISTER_PATH } from '../../../utils/constants';
 import { scrollToSection } from '../../../utils/scroll';
 import HomeLoginForm from './HomeLoginForm';
+import { loginWorkspace } from '../../auth/session';
 
 export default function HeroSection() {
   return (
@@ -45,7 +46,12 @@ export default function HeroSection() {
         </div>
 
         <div className="flex justify-center">
-          <HomeLoginForm />
+          <HomeLoginForm
+            onSubmit={async ({ schoolId, password }) => {
+              await loginWorkspace(schoolId, password);
+              window.location.assign('/dashboard');
+            }}
+          />
         </div>
       </div>
     </section>

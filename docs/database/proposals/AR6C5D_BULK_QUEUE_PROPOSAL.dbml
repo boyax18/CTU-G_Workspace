@@ -1,0 +1,44 @@
+// AR-6C5D PROPOSAL ONLY. Not part of the official full_schema.dbml.
+// Requires project-owner schema and institutional retention approval.
+// Bounded snapshot of up to a proposed 500 IDs, NOT client-side unbounded filters.
+
+Table registration_bulk_jobs {
+  bulk_job_id bigint [pk, increment]
+  requested_by_account_id int [not null, ref: > accounts.account_id]
+  idempotency_key_hash binary(32) [not null]
+  action enum('Approve', 'Reject') [not null]
+  rejection_code varchar(64)
+  selection_mode enum('Explicit', 'AllMatching') [not null]
+  selection_count int [not null]
+  status enum('Queued', 'Running', 'Completed', 'Partial', 'Stopped', 'Cancelled') [not null, default: 'Queued']
+  succeeded_count int [not null, default: 0]
+  skipped_count int [not null, default: 0]
+  failed_count int [not null, default: 0]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  started_at datetime
+  finished_at datetime
+  updated_at datetime
+
+  indexes {
+    (requested_by_account_id, idempotency_key_hash) [unique, name: 'bulk_actor_idempotency_uk']
+    (status, created_at) [name: 'bulk_job_status_idx']
+  }
+}
+
+Table registration_bulk_job_items {
+  bulk_job_item_id bigint [pk, increment]
+  bulk_job_id bigint [not null, ref: > registration_bulk_jobs.bulk_job_id]
+  target_account_id int [not null, ref: > accounts.account_id]
+  status enum('Pending', 'Leased', 'Approved', 'Rejected', 'Skipped', 'Failed') [not null, default: 'Pending']
+  attempt_count int [not null, default: 0]
+  lease_token varchar(64)
+  lease_expires_at datetime
+  last_failure_code varchar(64)
+  processed_at datetime
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (bulk_job_id, target_account_id) [unique, name: 'bulk_job_target_uk']
+    (status, lease_expires_at) [name: 'bulk_item_lease_idx']
+  }
+}

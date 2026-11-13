@@ -1,0 +1,2308 @@
+{
+  "schema_version": "static-catalogue-v2.0",
+  "manifest_version": "catalogue-v2.0",
+  "source_revision": "v2.0-review-1",
+  "planning_only": true,
+  "acceptance_scope": "owner-accepted static planning baseline only; no live grant or security-policy approval",
+  "provenance": {
+    "proposal": {
+      "path": "docs/architecture/AR-3B2A-permission-catalogue-v2-proposal.md",
+      "sha256": "56ccd699a127ac7a734bd53a2cb7d4a30a1d3953413e4c423897b4a9c9398b78"
+    },
+    "c1_manifest": {
+      "path": "backend/apps/access_control/catalogue/c1_v1.json",
+      "sha256": "86d72d82295cb358244145c6d24ebe8ba948f5211de298ebf897b5d3d83ed447"
+    },
+    "c1_source": {
+      "path": "docs/implementation/access-control/phase1h-c1-permission-catalogue-governance-proposal.md",
+      "sha256": "02eb308db5aff1491ea2d024f5f7f1074125e3a7b9bb02dbd1409f6a6170a99e"
+    },
+    "srs": {
+      "path": "docs/SRS/CTU-G_Workspace_SRS_v1.md",
+      "sha256": "af4ead4f88bdb0877ab6c3b8965bec5caf0f058d74ab0d878ec690379210346f"
+    },
+    "ar2": {
+      "path": "docs/architecture/AR-2-revised-administrator-access-control.md",
+      "sha256": "b36c0dac6d18badc435cce242725d2d6424db9d7e12d6d4943f20c7eaaf8ce36"
+    },
+    "ar3a": {
+      "path": "docs/architecture/AR-3A-administrator-architecture-finalization.md",
+      "sha256": "464c0fec172ef5ba887dbc22ec5b09c3396ca1be53087d999bbf763966edded1"
+    }
+  },
+  "services": [
+    {
+      "service_code": "accounts",
+      "service_name": "Accounts and Profiles",
+      "description": "Account identity, personal profiles and controlled school-account administration.",
+      "decision_refs": [
+        "D01",
+        "D03",
+        "D06",
+        "D09",
+        "D11"
+      ]
+    },
+    {
+      "service_code": "access_control",
+      "service_name": "Access Control and Governance",
+      "description": "Custom permission evaluation, delegated management, technical governance and security audit access.",
+      "decision_refs": [
+        "D01",
+        "D04",
+        "D05",
+        "D07",
+        "D08",
+        "D09",
+        "D10",
+        "D11",
+        "D18"
+      ]
+    },
+    {
+      "service_code": "academic",
+      "service_name": "Academic Administration",
+      "description": "Courses, school years, periods, sections, academic profiles and class advisers.",
+      "decision_refs": [
+        "D01",
+        "D02",
+        "D06"
+      ]
+    },
+    {
+      "service_code": "finance",
+      "service_name": "SSG Finance",
+      "description": "Organization fee schedules, payments, receipts, funds, expenses and exemptions.",
+      "decision_refs": [
+        "D01",
+        "D03",
+        "D06",
+        "D12"
+      ]
+    },
+    {
+      "service_code": "clearance",
+      "service_name": "School Clearance",
+      "description": "Subject assignments, signatories, clearance requests, signatures and student clearance communication.",
+      "decision_refs": [
+        "D01",
+        "D02",
+        "D06",
+        "D13",
+        "D14"
+      ]
+    },
+    {
+      "service_code": "group_rating",
+      "service_name": "Group Rating",
+      "description": "Assigned rating sheets, criteria, leader invitations, groups, submissions and scores.",
+      "decision_refs": [
+        "D01",
+        "D15"
+      ]
+    },
+    {
+      "service_code": "announcements",
+      "service_name": "Campus Announcements",
+      "description": "Official campus announcements with controlled authorship.",
+      "decision_refs": [
+        "D01",
+        "D17"
+      ]
+    },
+    {
+      "service_code": "notifications",
+      "service_name": "Announcement Read Tracking",
+      "description": "Per-user announcement read state without a new generic notification store.",
+      "decision_refs": [
+        "D01",
+        "D17"
+      ]
+    },
+    {
+      "service_code": "reports",
+      "service_name": "Financial Reports",
+      "description": "Draft generation and controlled access to period-based financial reports.",
+      "decision_refs": [
+        "D01",
+        "D03",
+        "D16"
+      ]
+    },
+    {
+      "service_code": "support",
+      "service_name": "Public Help and Contact",
+      "description": "Existing public help/contact content without a support-ticket or impersonation system.",
+      "decision_refs": [
+        "D01",
+        "D02"
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "role_name": "Student",
+      "description": "System role for student accounts.",
+      "provisioning": "existing"
+    },
+    {
+      "role_name": "Instructor",
+      "description": "System role for instructor accounts.",
+      "provisioning": "existing"
+    },
+    {
+      "role_name": "Treasurer",
+      "description": "Restricted system role for treasury accounts.",
+      "provisioning": "existing"
+    },
+    {
+      "role_name": "Admin",
+      "description": "Restricted system role for administrator accounts.",
+      "provisioning": "existing"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "description": "Proposed technical governance operator; no automatic academic or financial access.",
+      "provisioning": "separate_future_provisioning"
+    },
+    {
+      "role_name": "SSG Advisor",
+      "description": "Optional Instructor responsibility for scoped read-only financial overview, approved reports and transaction history; Finance Monitor is the same responsibility.",
+      "provisioning": "proposed_optional"
+    }
+  ],
+  "role_keys": {
+    "S": "Student",
+    "I": "Instructor",
+    "T": "Treasurer",
+    "A": "Admin",
+    "G": "Technical Super Admin",
+    "V": "SSG Advisor"
+  },
+  "role_eligibility": [
+    {
+      "role_name": "Student",
+      "requirement": "Approved Student base role; registration approval assigns membership."
+    },
+    {
+      "role_name": "Instructor",
+      "requirement": "Approved Instructor base role; registration approval assigns membership."
+    },
+    {
+      "role_name": "Treasurer",
+      "requirement": "Eligible Student plus reviewed Treasurer appointment; retain Student."
+    },
+    {
+      "role_name": "Admin",
+      "requirement": "Approved school-admin promotion; retain eligible pre-existing Instructor membership."
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "requirement": "Protected governance assignment; complete Super Admin profile also requires Admin."
+    },
+    {
+      "role_name": "SSG Advisor",
+      "requirement": "Eligible active Instructor plus valid independently appointed monitoring responsibility."
+    }
+  ],
+  "permissions": [
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.profile.self.read",
+      "permission_name": "Read own profile",
+      "module_name": "profiles",
+      "action_name": "read_self",
+      "description": "Read only the actor's identity/profile fields; never password hashes, reset tokens or sessions.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.profile.self.update",
+      "permission_name": "Update own personal names",
+      "module_name": "profiles",
+      "action_name": "update_self",
+      "description": "Update own first, middle, last and suffix names; exclude school ID, roles, account status and credential changes.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.registration_requests.read",
+      "permission_name": "Review registration requests",
+      "module_name": "registration_requests",
+      "action_name": "read",
+      "description": "Read Student/Instructor requests needed for school review; exclude privileged provisioning and secrets.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.registration_requests.approve",
+      "permission_name": "Approve school registration",
+      "module_name": "registration_requests",
+      "action_name": "approve",
+      "description": "Approve another eligible Student/Instructor request through a future atomic approval/assignment service.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.registration_requests.reject",
+      "permission_name": "Reject school registration",
+      "module_name": "registration_requests",
+      "action_name": "reject",
+      "description": "Reject another pending Student/Instructor request with bounded, appropriate review attribution.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.school_accounts.suspend",
+      "permission_name": "Suspend ordinary school account",
+      "module_name": "school_accounts",
+      "action_name": "suspend",
+      "description": "Suspend another Student/Instructor account; exclude reserved administrators and restricted provisioning.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.school_accounts.activate",
+      "permission_name": "Reactivate approved school account",
+      "module_name": "school_accounts",
+      "action_name": "activate",
+      "description": "Reactivate another already Approved Student/Instructor account; never approve a Pending request implicitly.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.school_accounts.provision",
+      "permission_name": "Provision restricted school operator",
+      "module_name": "school_accounts",
+      "action_name": "provision",
+      "description": "Reserved restricted Treasurer/School Admin provisioning; requires separate governance and attribution policy.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.school_accounts.recover",
+      "permission_name": "Recover school account access",
+      "module_name": "school_accounts",
+      "action_name": "recover",
+      "description": "Reserved identity-verified recovery; no credential/token disclosure or bypass of privileged recovery.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.catalogue.read",
+      "permission_name": "Read permission catalogue",
+      "module_name": "catalogue",
+      "action_name": "read",
+      "description": "Read service/permission definitions and readiness metadata without exposing business records or secrets.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.role_permissions.manage",
+      "permission_name": "Manage ordinary role permissions",
+      "module_name": "role_permissions",
+      "action_name": "manage",
+      "description": "Invoke trusted role-grant/revoke services only with separate approved service delegation and eligible targets.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.account_permissions.manage",
+      "permission_name": "Manage ordinary account overrides",
+      "module_name": "account_permissions",
+      "action_name": "manage",
+      "description": "Invoke trusted Grant/Deny/deactivation services only with separate approved service delegation and eligible targets.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.effective_permissions.inspect",
+      "permission_name": "Inspect effective permissions",
+      "module_name": "effective_permissions",
+      "action_name": "inspect",
+      "description": "Inspect attributable account/role/permission identifiers and outcomes; exclude profile, finance and assessment bodies.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.audit.read",
+      "permission_name": "Read access-control audit",
+      "module_name": "audit",
+      "action_name": "read",
+      "description": "Read security-change attribution and allowlisted snapshots; do not treat this as business-ledger or credential access.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.diagnostics.read",
+      "permission_name": "Read redacted technical diagnostics",
+      "module_name": "diagnostics",
+      "action_name": "read",
+      "description": "Future read-only health/configuration checks with no passwords, tokens, request bodies or business-record dumps.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.catalogue.initialize",
+      "permission_name": "Initialize reviewed catalogue",
+      "module_name": "catalogue",
+      "action_name": "initialize",
+      "description": "Reserved future command authority; separate initial attribution and exact approved manifest are prerequisites.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.services.activation.manage",
+      "permission_name": "Control service activation",
+      "module_name": "service_activation",
+      "action_name": "manage",
+      "description": "Reserved activation/deactivation with outage and grant-impact review; ordinary permission mutation does not change Services.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.governance_grants.manage",
+      "permission_name": "Change protected governance grants",
+      "module_name": "governance_grants",
+      "action_name": "manage",
+      "description": "Reserved independently approved governance changes; never route through ordinary delegation services.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.technical_accounts.provision",
+      "permission_name": "Provision application governance operator",
+      "module_name": "technical_accounts",
+      "action_name": "provision",
+      "description": "Reserved creation of a real named application governance operator through independently approved provisioning; never assign Django staff or superuser flags.",
+      "readiness": "B",
+      "origin": "REVISE",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.technical_accounts.recover",
+      "permission_name": "Recover application governance operator",
+      "module_name": "technical_accounts",
+      "action_name": "recover",
+      "description": "Reserved independently verified recovery of an application governance operator under the protected recovery contract; never recover Django framework privileges.",
+      "readiness": "B",
+      "origin": "REVISE",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.academic",
+      "permission_name": "Delegate approved academic scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Separately approved academic permission/recipient allowlist; no blanket access or automatic grant to X.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.finance",
+      "permission_name": "Delegate approved finance scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Separately approved finance permission/recipient allowlist; no financial-record read authority.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.clearance",
+      "permission_name": "Delegate approved clearance scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Reserved service delegation; mixed signatory/student recipient policy is not representable as a broad current scope.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.group_rating",
+      "permission_name": "Delegate approved rating scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Separately approved teaching-only subset; no automatic assessment or student-leader authority.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.announcements",
+      "permission_name": "Delegate approved announcement scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Separately approved scope only; public-reader versus School Admin author roles must not be conflated.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.notifications",
+      "permission_name": "Delegate approved read-state scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Separately approved own-read-state scope; does not authorize viewing another user's read state.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.delegate.reports",
+      "permission_name": "Delegate approved report scope",
+      "module_name": "delegation",
+      "action_name": "delegate",
+      "description": "Separately approved Treasurer draft-report subset; no finalization or unrestricted financial disclosure.",
+      "readiness": "F",
+      "origin": "KEEP",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.catalogue.read",
+      "permission_name": "Read academic catalogue",
+      "module_name": "catalogue",
+      "action_name": "read",
+      "description": "Read courses, school years, periods and section definitions without student rosters.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CATALOG",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.profile.self.read",
+      "permission_name": "Read own academic profile",
+      "module_name": "academic_profiles",
+      "action_name": "read_self",
+      "description": "Read only the actor's user-linked academic_profile and its course/year/section/period context.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.advisees.read",
+      "permission_name": "Read assigned advisees",
+      "module_name": "class_advisers",
+      "action_name": "read_assigned",
+      "description": "Read minimal student academic data only for sections currently assigned to the actor as class adviser.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "ASSIGNED",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.courses.manage",
+      "permission_name": "Manage course definitions",
+      "module_name": "courses",
+      "action_name": "manage",
+      "description": "Maintain approved course definitions; preserve referenced historical records.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.periods.manage",
+      "permission_name": "Manage school years and periods",
+      "module_name": "school_periods",
+      "action_name": "manage",
+      "description": "Maintain school-year/semester dates and activation with consistency and historical-data checks.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.sections.manage",
+      "permission_name": "Manage year and section definitions",
+      "module_name": "year_and_sections",
+      "action_name": "manage",
+      "description": "Maintain course/year/section definitions without silently moving historical students or assignments.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.profiles.manage",
+      "permission_name": "Manage student academic profiles",
+      "module_name": "academic_profiles",
+      "action_name": "manage",
+      "description": "Maintain approved student academic status and section/year references; no role or credential changes.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "academic",
+      "permission_code": "academic.advisers.manage",
+      "permission_name": "Assign class advisers",
+      "module_name": "class_advisers",
+      "action_name": "manage",
+      "description": "Assign eligible approved instructors to sections; validate the unique section/adviser relationship.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.fee_schedule.read",
+      "permission_name": "Read organization fee schedule",
+      "module_name": "fee_schedules",
+      "action_name": "read",
+      "description": "Read applicable period fee amounts without access to other students' payment records.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CATALOG",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.fee_schedule.manage",
+      "permission_name": "Manage organization fee schedule",
+      "module_name": "fee_schedules",
+      "action_name": "manage",
+      "description": "Maintain period fee amounts under approved rules; do not rewrite amounts used by historical payments.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.payments.self.read",
+      "permission_name": "Read own payments",
+      "module_name": "payments",
+      "action_name": "read_self",
+      "description": "Read only org_fee_payments linked to the actor's user_id and applicable receipt details.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.payments.read",
+      "permission_name": "Read payment ledger",
+      "module_name": "payments",
+      "action_name": "read",
+      "description": "Read school organization-fee payments needed for Treasurer duties; exclude credentials and unrelated personal data.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.payments.record",
+      "permission_name": "Record organization payment",
+      "module_name": "payments",
+      "action_name": "record",
+      "description": "Record attributable valid payments with amount/status/period invariants; no silent edit, void or deletion.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.receipts.self.read",
+      "permission_name": "Read own receipts",
+      "module_name": "receipts",
+      "action_name": "read_self",
+      "description": "Read receipts only through payments belonging to the actor's user_id.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.receipts.issue",
+      "permission_name": "Issue payment receipt",
+      "module_name": "receipts",
+      "action_name": "issue",
+      "description": "Issue a unique receipt for a valid payment with issuer attribution and duplicate-issuance policy.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.funds.record",
+      "permission_name": "Record other funds",
+      "module_name": "other_funds",
+      "action_name": "record",
+      "description": "Record attributable non-fee funds for an approved period; preserve financial history.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.expenses.record",
+      "permission_name": "Record expense",
+      "module_name": "expenses",
+      "action_name": "record",
+      "description": "Record attributable expenses for an approved period under financial validation and retention rules.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.expense_images.attach",
+      "permission_name": "Attach expense evidence",
+      "module_name": "expense_images",
+      "action_name": "attach",
+      "description": "Attach authorized evidence to an expense; require reviewed upload/storage/content controls.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.ledger.read",
+      "permission_name": "Read finance working ledger",
+      "module_name": "ledger",
+      "action_name": "read",
+      "description": "Read Treasurer payment/fund/expense detail needed for reconciliation, without granting mutation authority.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.summary.read",
+      "permission_name": "Read financial summary",
+      "module_name": "summaries",
+      "action_name": "read",
+      "description": "Read approved period aggregates; do not expose student payment rows or raw receipt/signature images.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "AGG",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.exemptions.manage",
+      "permission_name": "Manage approved fee exemptions",
+      "module_name": "student_fee_exemptions",
+      "action_name": "manage",
+      "description": "Manage justified exemptions for other eligible students with explicit school approval and no self-benefit.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.subjects.manage",
+      "permission_name": "Manage subject catalogue",
+      "module_name": "subjects",
+      "action_name": "manage",
+      "description": "Maintain subjects and lecture/lab units; preserve referenced assignments and clearance history.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.teaching_assignments.manage",
+      "permission_name": "Manage teaching assignments",
+      "module_name": "subject_teachers",
+      "action_name": "manage",
+      "description": "Assign eligible instructors to subject/period/section combinations using the approved unique key.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.signatories.manage",
+      "permission_name": "Manage signatory appointments",
+      "module_name": "authorized_signatories",
+      "action_name": "manage",
+      "description": "Maintain fixed/adviser appointments under the ERD's position rules; do not assign Treasurer roles implicitly.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.assignments.self.read",
+      "permission_name": "Read own signatory assignments",
+      "module_name": "assignments",
+      "action_name": "read_self",
+      "description": "Read only teaching, adviser and fixed/dynamic signatory assignments resolved to the actor.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "ASSIGNED",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.requests.self.read",
+      "permission_name": "Read own clearance requests",
+      "module_name": "clearance_requests",
+      "action_name": "read_self",
+      "description": "Read only organization/subject requests belonging to the actor's user_id.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.requests.self.submit",
+      "permission_name": "Submit own clearance requests",
+      "module_name": "clearance_requests",
+      "action_name": "submit_self",
+      "description": "Submit own eligible subject/signatory requests for a consistent active period; no duplicate or cross-section requests.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.requests.assigned.read",
+      "permission_name": "Read assigned clearance requests",
+      "module_name": "clearance_requests",
+      "action_name": "read_assigned",
+      "description": "Read only students/requests for the actor's resolved current teaching or authorized signatory responsibility.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "ASSIGNED",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.subject_requests.sign",
+      "permission_name": "Sign assigned subject clearance",
+      "module_name": "subject_requests",
+      "action_name": "sign",
+      "description": "Sign only requests whose subject_teachers resolves to the actor and matches the student's section/period.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SIGN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.organization_requests.sign",
+      "permission_name": "Sign authorized organization clearance",
+      "module_name": "organization_requests",
+      "action_name": "sign",
+      "description": "Sign only for the actor's resolved fixed/adviser/Treasurer responsibility; deny vacant or ambiguous assignments.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SIGN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.signatures.self.manage",
+      "permission_name": "Manage own signing signature",
+      "module_name": "signatures",
+      "action_name": "manage_self",
+      "description": "Manage only the actor's active signature after signatory eligibility is established; never expose others' signature_data.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SIGN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.messages.self.read",
+      "permission_name": "Read own clearance messages",
+      "module_name": "clearance_messages",
+      "action_name": "read_self",
+      "description": "Read only messages for the actor's user_id; no inferred instructor-wide thread access.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.messages.send",
+      "permission_name": "Send routed clearance message",
+      "module_name": "clearance_messages",
+      "action_name": "send",
+      "description": "Reserved until recipient/thread/period privacy semantics can be enforced with the approved schema.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "ROUTED",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "clearance",
+      "permission_code": "clearance.progress.read",
+      "permission_name": "Read school clearance progress",
+      "module_name": "progress",
+      "action_name": "read",
+      "description": "Read school operational clearance status summaries without signing, bypassing signatories or exposing signature images.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "SCHOOL",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.sheets.assigned.read",
+      "permission_name": "Read assigned rating sheets",
+      "module_name": "rating_sheets",
+      "action_name": "read_assigned",
+      "description": "Read sheets only for the actor's actual subject_teachers assignments and permitted periods.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CLASS",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.sheets.manage",
+      "permission_name": "Manage assigned rating sheets",
+      "module_name": "rating_sheets",
+      "action_name": "manage",
+      "description": "Create/change sheet Draft/Open/Closed state only for the actor's teaching assignment; enforce submission immutability.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CLASS",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.criteria.manage",
+      "permission_name": "Manage owned sheet criteria",
+      "module_name": "rating_criteria",
+      "action_name": "manage",
+      "description": "Maintain criteria only for an owned eligible sheet, with stable ordering and scoring consistency.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CLASS",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.invitations.manage",
+      "permission_name": "Manage leader invitations",
+      "module_name": "leader_invitations",
+      "action_name": "manage",
+      "description": "Invite eligible students only to an owned sheet's class/period; enforce unique invitation and response rules.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CLASS",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.invitations.self.respond",
+      "permission_name": "Respond to own leader invitation",
+      "module_name": "leader_invitations",
+      "action_name": "respond_self",
+      "description": "Read/respond only to invitations addressed to the actor's user_id; do not create an assignment by choosing a role label.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.groups.manage",
+      "permission_name": "Manage own accepted leader group",
+      "module_name": "groups",
+      "action_name": "manage_owned",
+      "description": "Manage a group only through the actor's accepted leader invitation for the same sheet.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GROUP",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.members.manage",
+      "permission_name": "Manage own group members",
+      "module_name": "group_members",
+      "action_name": "manage_owned",
+      "description": "Manage only an authorized leader's group roster; enforce same-sheet eligibility, unique membership and leader invariants.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GROUP",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.submissions.self.manage",
+      "permission_name": "Manage own rating submission",
+      "module_name": "rating_submissions",
+      "action_name": "manage_self",
+      "description": "Draft/submit only as the actor's group_member rater; enforce group/sheet/criteria alignment, deadlines and no self-rating.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "GROUP",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.results.self.read",
+      "permission_name": "Read own rating result",
+      "module_name": "results",
+      "action_name": "read_self",
+      "description": "Read the actor's approved own-result aggregate without disclosing co-rater identities or other students' results.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "group_rating",
+      "permission_code": "group_rating.results.assigned.read",
+      "permission_name": "Read assigned class rating results",
+      "module_name": "results",
+      "action_name": "read_assigned",
+      "description": "Read assessment results only for sheets owned through the actor's teaching assignment and approved assessment privacy rules.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "CLASS",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "announcements",
+      "permission_code": "announcements.read",
+      "permission_name": "Read campus announcements",
+      "module_name": "announcements",
+      "action_name": "read",
+      "description": "Read authorized official announcements; public publication is a separate explicit policy, not inferred from this grant.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "ANNOUNCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "announcements",
+      "permission_code": "announcements.create",
+      "permission_name": "Create official announcement",
+      "module_name": "announcements",
+      "action_name": "create",
+      "description": "Create an attributable official school announcement; no invented Draft/audience/approval fields.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "ANNOUNCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "announcements",
+      "permission_code": "announcements.update",
+      "permission_name": "Update official announcement",
+      "module_name": "announcements",
+      "action_name": "update",
+      "description": "Correct official content under an approved authorship/history policy; preserve poster attribution.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "ANNOUNCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "notifications",
+      "permission_code": "notifications.read_state.self.read",
+      "permission_name": "Read own announcement read state",
+      "module_name": "announcement_reads",
+      "action_name": "read_self",
+      "description": "Read only announcement-read rows for the actor's user_id and announcements the actor may access.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "notifications",
+      "permission_code": "notifications.read_state.self.mark",
+      "permission_name": "Mark own announcement read",
+      "module_name": "announcement_reads",
+      "action_name": "mark_self",
+      "description": "Mark only the actor's own accessible announcement read, preserving the composite user/announcement primary key.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "OWN",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "reports",
+      "permission_code": "reports.financial.drafts.read",
+      "permission_name": "Read finance draft reports",
+      "module_name": "financial_reports",
+      "action_name": "read_drafts",
+      "description": "Read working Draft reports for Treasurer reconciliation without granting finalization.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "reports",
+      "permission_code": "reports.financial.final.read",
+      "permission_name": "Read finalized financial reports",
+      "module_name": "financial_reports",
+      "action_name": "read_final",
+      "description": "Read approved Final report aggregates and authorized report content; no raw student payment or signature-image access.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "AGG",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "reports",
+      "permission_code": "reports.financial.generate",
+      "permission_name": "Generate finance draft report",
+      "module_name": "financial_reports",
+      "action_name": "generate",
+      "description": "Generate attributable Draft reports with validated period totals and Expense/Fund references.",
+      "readiness": "P",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "reports",
+      "permission_code": "reports.financial.finalize",
+      "permission_name": "Finalize financial report",
+      "module_name": "financial_reports",
+      "action_name": "finalize",
+      "description": "Reserved until maker/checker, attributable finalization, immutable source snapshot and retention rules are approved.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "reports",
+      "permission_code": "reports.financial.export",
+      "permission_name": "Export approved financial report",
+      "module_name": "financial_reports",
+      "action_name": "export",
+      "description": "Reserved until report-content minimization, disclosure, export and retention policies are approved.",
+      "readiness": "B",
+      "origin": "KEEP",
+      "scope": "FINANCE",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.school_accounts.read",
+      "permission_name": "Read eligible school accounts",
+      "module_name": "school_accounts",
+      "action_name": "read",
+      "description": "List approved school-account fields for authorized school duties; exclude credentials, governance operators and unrelated confidential records.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.school_access.inspect",
+      "permission_name": "Inspect school account access",
+      "module_name": "school_access",
+      "action_name": "inspect",
+      "description": "Inspect eligible ordinary accounts' roles and permitted capability summaries; exclude protected technical records and secrets.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.role_assignments.ordinary.manage",
+      "permission_name": "Manage ordinary extra roles",
+      "module_name": "ordinary_role_assignments",
+      "action_name": "manage",
+      "description": "Attach or remove approved Treasurer/SSG Advisor responsibilities for eligible other accounts; never assign Admin, governance or framework privilege.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.admin_assignments.manage",
+      "permission_name": "Manage school Admin assignments",
+      "module_name": "admin_assignments",
+      "action_name": "manage",
+      "description": "Promote or remove another eligible Normal Admin through protected review, actor-impact and last-effective-operator safeguards.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.governance_assignments.manage",
+      "permission_name": "Manage governance assignments",
+      "module_name": "governance_assignments",
+      "action_name": "manage",
+      "description": "Reserved independently approved application Super Admin elevation/removal; no self-assignment or ordinary-role shortcut.",
+      "readiness": "B",
+      "origin": "ADD",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.role_templates.protected.manage",
+      "permission_name": "Manage protected role templates",
+      "module_name": "protected_role_templates",
+      "action_name": "manage",
+      "description": "Reserved exact-delta changes to protected or actor-assigned templates with independent review and effective-operator checks.",
+      "readiness": "B",
+      "origin": "ADD",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.policy_settings.manage",
+      "permission_name": "Manage reviewed governance policy",
+      "module_name": "policy_settings",
+      "action_name": "manage",
+      "description": "Reserved versioned allowlisted access-policy changes; never arbitrary settings files, secret configuration or unreviewed service activation.",
+      "readiness": "B",
+      "origin": "ADD",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.authentication_events.school.read",
+      "permission_name": "Read school authentication events",
+      "module_name": "school_authentication_events",
+      "action_name": "read",
+      "description": "Read redacted events for eligible school-account activity under an approved event-source and privacy contract.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "EVENT_SCHOOL",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "accounts",
+      "permission_code": "accounts.authentication_events.governance.read",
+      "permission_name": "Read governance authentication events",
+      "module_name": "governance_authentication_events",
+      "action_name": "read",
+      "description": "Read approved redacted privileged authentication/security events; no credential, token, request-body or business-record access.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "EVENT_GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.audit.school.read",
+      "permission_name": "Read school access audit",
+      "module_name": "school_audit",
+      "action_name": "read",
+      "description": "Read scoped ordinary school-account/assignment security changes; exclude protected governance detail and unrelated personal data.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "SCHOOL_AUDIT",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "access_control",
+      "permission_code": "access_control.recovery.authorize",
+      "permission_name": "Authorize governed access recovery",
+      "module_name": "governed_recovery",
+      "action_name": "authorize",
+      "description": "Reserved independently verified in-band recovery approval; unavailable-operator recovery still requires a separate institutional ceremony.",
+      "readiness": "B",
+      "origin": "ADD",
+      "scope": "GOV",
+      "grant_protection": "GOV"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.monitoring.overview.read",
+      "permission_name": "View financial monitoring overview",
+      "module_name": "financial_monitoring",
+      "action_name": "read_overview",
+      "description": "Read approved period aggregates for a valid Advisor appointment without identifying individual payer data or finance write access.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "MONITOR",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "reports",
+      "permission_code": "reports.monitoring.financial.read",
+      "permission_name": "View monitoring financial reports",
+      "module_name": "financial_monitoring",
+      "action_name": "read_reports",
+      "description": "Read a minimized approved Final-report projection for the Advisor appointment; exclude Draft, generation, finalization and export.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "MONITOR",
+      "grant_protection": "ORD"
+    },
+    {
+      "service_code": "finance",
+      "permission_code": "finance.monitoring.transactions.read",
+      "permission_name": "View monitoring transaction history",
+      "module_name": "financial_monitoring",
+      "action_name": "read_transactions",
+      "description": "Read approved redacted transaction-history fields for the Advisor period; exclude identifying detail, raw receipts/images and mutation rights.",
+      "readiness": "P",
+      "origin": "ADD",
+      "scope": "MONITOR",
+      "grant_protection": "ORD"
+    }
+  ],
+  "default_bindings": [
+    {
+      "role_name": "Student",
+      "permission_code": "accounts.profile.self.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "accounts.profile.self.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "accounts.profile.self.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.profile.self.read"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "accounts.profile.self.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "accounts.profile.self.update"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "accounts.profile.self.update"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "accounts.profile.self.update"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.profile.self.update"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "accounts.profile.self.update"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.registration_requests.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.registration_requests.approve"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.registration_requests.reject"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.school_accounts.suspend"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.school_accounts.activate"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.catalogue.read"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.role_permissions.manage"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.account_permissions.manage"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.effective_permissions.inspect"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.audit.read"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.diagnostics.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "academic.catalogue.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "academic.catalogue.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "academic.catalogue.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "academic.catalogue.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "academic.profile.self.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "academic.advisees.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "academic.courses.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "academic.periods.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "academic.sections.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "academic.profiles.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "academic.advisers.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "finance.fee_schedule.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.fee_schedule.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "finance.fee_schedule.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.fee_schedule.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "finance.payments.self.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.payments.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.payments.record"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "finance.receipts.self.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.receipts.issue"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.funds.record"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.expenses.record"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.expense_images.attach"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.ledger.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "finance.summary.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "finance.summary.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "finance.exemptions.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.subjects.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.teaching_assignments.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.signatories.manage"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "clearance.assignments.self.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "clearance.assignments.self.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.assignments.self.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "clearance.requests.self.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "clearance.requests.self.submit"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "clearance.requests.assigned.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "clearance.requests.assigned.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.requests.assigned.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "clearance.subject_requests.sign"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "clearance.organization_requests.sign"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "clearance.organization_requests.sign"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.organization_requests.sign"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "clearance.signatures.self.manage"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "clearance.signatures.self.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.signatures.self.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "clearance.messages.self.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "clearance.progress.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "group_rating.sheets.assigned.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "group_rating.sheets.manage"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "group_rating.criteria.manage"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "group_rating.invitations.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "group_rating.invitations.self.respond"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "group_rating.groups.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "group_rating.members.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "group_rating.submissions.self.manage"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "group_rating.results.self.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "group_rating.results.assigned.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "announcements.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "announcements.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "announcements.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "announcements.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "announcements.create"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "announcements.update"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "notifications.read_state.self.read"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "notifications.read_state.self.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "notifications.read_state.self.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "notifications.read_state.self.read"
+    },
+    {
+      "role_name": "Student",
+      "permission_code": "notifications.read_state.self.mark"
+    },
+    {
+      "role_name": "Instructor",
+      "permission_code": "notifications.read_state.self.mark"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "notifications.read_state.self.mark"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "notifications.read_state.self.mark"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "reports.financial.drafts.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "reports.financial.final.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "reports.financial.final.read"
+    },
+    {
+      "role_name": "Treasurer",
+      "permission_code": "reports.financial.generate"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.school_accounts.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "access_control.school_access.inspect"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "access_control.role_assignments.ordinary.manage"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "access_control.admin_assignments.manage"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "accounts.authentication_events.school.read"
+    },
+    {
+      "role_name": "Technical Super Admin",
+      "permission_code": "accounts.authentication_events.governance.read"
+    },
+    {
+      "role_name": "Admin",
+      "permission_code": "access_control.audit.school.read"
+    },
+    {
+      "role_name": "SSG Advisor",
+      "permission_code": "finance.monitoring.overview.read"
+    },
+    {
+      "role_name": "SSG Advisor",
+      "permission_code": "reports.monitoring.financial.read"
+    },
+    {
+      "role_name": "SSG Advisor",
+      "permission_code": "finance.monitoring.transactions.read"
+    }
+  ],
+  "historical_retirements": [
+    {
+      "permission_code": "access_control.role_assignments.manage",
+      "service_code": "access_control",
+      "lifecycle": "RETIRED_FOR_V2_SELECTION",
+      "original_definition": {
+        "service_code": "access_control",
+        "permission_code": "access_control.role_assignments.manage",
+        "permission_name": "Manage controlled role assignments",
+        "module_name": "role_assignments",
+        "action_name": "manage",
+        "description": "Reserved trusted assignment/revocation with self-escalation, incompatible-role and last-operator safeguards.",
+        "readiness": "B",
+        "decision_refs": [
+          "D01",
+          "D04",
+          "D05",
+          "D07",
+          "D08",
+          "D09",
+          "D10",
+          "D11",
+          "D18"
+        ],
+        "policy_markers": [
+          "policy_blocked"
+        ]
+      },
+      "replacement_codes": [
+        "access_control.role_assignments.ordinary.manage",
+        "access_control.admin_assignments.manage",
+        "access_control.governance_assignments.manage"
+      ],
+      "default_roles": [],
+      "existing_record_policy": "preserve_and_report",
+      "automatic_grant_remapping": false,
+      "execution_allowed": false
+    }
+  ],
+  "delta": {
+    "retained_codes": [
+      "accounts.profile.self.read",
+      "accounts.profile.self.update",
+      "accounts.registration_requests.read",
+      "accounts.registration_requests.approve",
+      "accounts.registration_requests.reject",
+      "accounts.school_accounts.suspend",
+      "accounts.school_accounts.activate",
+      "accounts.school_accounts.provision",
+      "accounts.school_accounts.recover",
+      "access_control.catalogue.read",
+      "access_control.role_permissions.manage",
+      "access_control.account_permissions.manage",
+      "access_control.effective_permissions.inspect",
+      "access_control.audit.read",
+      "access_control.diagnostics.read",
+      "access_control.catalogue.initialize",
+      "access_control.services.activation.manage",
+      "access_control.governance_grants.manage",
+      "access_control.delegate.academic",
+      "access_control.delegate.finance",
+      "access_control.delegate.clearance",
+      "access_control.delegate.group_rating",
+      "access_control.delegate.announcements",
+      "access_control.delegate.notifications",
+      "access_control.delegate.reports",
+      "academic.catalogue.read",
+      "academic.profile.self.read",
+      "academic.advisees.read",
+      "academic.courses.manage",
+      "academic.periods.manage",
+      "academic.sections.manage",
+      "academic.profiles.manage",
+      "academic.advisers.manage",
+      "finance.fee_schedule.read",
+      "finance.fee_schedule.manage",
+      "finance.payments.self.read",
+      "finance.payments.read",
+      "finance.payments.record",
+      "finance.receipts.self.read",
+      "finance.receipts.issue",
+      "finance.funds.record",
+      "finance.expenses.record",
+      "finance.expense_images.attach",
+      "finance.ledger.read",
+      "finance.summary.read",
+      "finance.exemptions.manage",
+      "clearance.subjects.manage",
+      "clearance.teaching_assignments.manage",
+      "clearance.signatories.manage",
+      "clearance.assignments.self.read",
+      "clearance.requests.self.read",
+      "clearance.requests.self.submit",
+      "clearance.requests.assigned.read",
+      "clearance.subject_requests.sign",
+      "clearance.organization_requests.sign",
+      "clearance.signatures.self.manage",
+      "clearance.messages.self.read",
+      "clearance.messages.send",
+      "clearance.progress.read",
+      "group_rating.sheets.assigned.read",
+      "group_rating.sheets.manage",
+      "group_rating.criteria.manage",
+      "group_rating.invitations.manage",
+      "group_rating.invitations.self.respond",
+      "group_rating.groups.manage",
+      "group_rating.members.manage",
+      "group_rating.submissions.self.manage",
+      "group_rating.results.self.read",
+      "group_rating.results.assigned.read",
+      "announcements.read",
+      "announcements.create",
+      "announcements.update",
+      "notifications.read_state.self.read",
+      "notifications.read_state.self.mark",
+      "reports.financial.drafts.read",
+      "reports.financial.final.read",
+      "reports.financial.generate",
+      "reports.financial.finalize",
+      "reports.financial.export"
+    ],
+    "revisions": [
+      {
+        "permission_code": "access_control.technical_accounts.provision",
+        "changes": {
+          "permission_name": {
+            "old": "Provision technical operator",
+            "new": "Provision application governance operator"
+          },
+          "description": {
+            "old": "Reserved named-human Technical Super Admin provisioning through a separate reviewed bootstrap/provisioning path.",
+            "new": "Reserved creation of a real named application governance operator through independently approved provisioning; never assign Django staff or superuser flags."
+          }
+        }
+      },
+      {
+        "permission_code": "access_control.technical_accounts.recover",
+        "changes": {
+          "permission_name": {
+            "old": "Recover technical operator",
+            "new": "Recover application governance operator"
+          },
+          "description": {
+            "old": "Reserved independently verified technical recovery; no self-recovery or Django superuser shortcut.",
+            "new": "Reserved independently verified recovery of an application governance operator under the protected recovery contract; never recover Django framework privileges."
+          }
+        }
+      }
+    ],
+    "added_codes": [
+      "accounts.school_accounts.read",
+      "access_control.school_access.inspect",
+      "access_control.role_assignments.ordinary.manage",
+      "access_control.admin_assignments.manage",
+      "access_control.governance_assignments.manage",
+      "access_control.role_templates.protected.manage",
+      "access_control.policy_settings.manage",
+      "accounts.authentication_events.school.read",
+      "accounts.authentication_events.governance.read",
+      "access_control.audit.school.read",
+      "access_control.recovery.authorize",
+      "finance.monitoring.overview.read",
+      "reports.monitoring.financial.read",
+      "finance.monitoring.transactions.read"
+    ],
+    "retired_codes": [
+      "access_control.role_assignments.manage"
+    ]
+  },
+  "scope_definitions": [
+    {
+      "scope_id": "OWN",
+      "description": "Resolve actual Account→UserProfile owner; own profile/payment/receipt/request/read-state/result only. Exclude credentials, tokens, other-user identity and unapproved detail. Notification checks also require accessible announcement."
+    },
+    {
+      "scope_id": "SCHOOL",
+      "description": "Eligible ordinary school request/account/student/section/appointment only; actor/target/self-interest, period and data minimization rules. No implied protected-operator view or self-approval/appointment."
+    },
+    {
+      "scope_id": "CATALOG",
+      "description": "Approved campus/period definitions without student rosters or private finance records. Historical definition consistency still required."
+    },
+    {
+      "scope_id": "ASSIGNED",
+      "description": "Current actual adviser/teaching/signatory assignment and matching student/section/period; role label is insufficient."
+    },
+    {
+      "scope_id": "SIGN",
+      "description": "Actor-owned signature and resolved signing eligibility; request/appointment/student/period consistency, historical evidence and ambiguous Treasurer denial. No raw signature access for other people."
+    },
+    {
+      "scope_id": "FINANCE",
+      "description": "Authorized period/working-record relationship, financial invariants and attribution; Student+Treasurer cannot collect/receipt/exempt/sign their own conflicting records. Expense-beneficiary/checker fields are not invented; unsupported conflicts remain blocked."
+    },
+    {
+      "scope_id": "AGG",
+      "description": "Approved aggregate/Final-report content and disclosure scope; no raw payer ledger, receipt or signature images."
+    },
+    {
+      "scope_id": "CLASS",
+      "description": "Actual owned/assigned teaching sheet, class/period and permitted rating lifecycle/privacy. Instructor is not all-student access."
+    },
+    {
+      "scope_id": "GROUP",
+      "description": "Accepted own leader invitation or real group-member participation in same sheet/period; unique membership, no self-rating, criteria/submission consistency. rater_id references group_members, not directly users."
+    },
+    {
+      "scope_id": "ANNOUNCE",
+      "description": "Approved authorship/history and audience/publication rules; no audience/published columns are implied. Current target policy remains unresolved."
+    },
+    {
+      "scope_id": "ROUTED",
+      "description": "Clearance message recipient/thread/period privacy; representation is unresolved, so sending stays B."
+    },
+    {
+      "scope_id": "GOV",
+      "description": "Redacted catalogue/security/config or exact security-change target/authority/review state. Never a business-data, password or token authorization."
+    },
+    {
+      "scope_id": "SCHOOL_AUDIT",
+      "description": "Approved ordinary school-account/assignment audit projection; exclude protected governance detail and unrelated records."
+    },
+    {
+      "scope_id": "EVENT_SCHOOL",
+      "description": "Approved school authentication event source, actor/subject/redaction/retention rules; unknown-login identity is not a fake persisted actor."
+    },
+    {
+      "scope_id": "EVENT_GOV",
+      "description": "Approved privileged authentication event projection, with redacted technical/security scope and no secret/body dumps."
+    },
+    {
+      "scope_id": "MONITOR",
+      "description": "Valid Instructor+Advisor appointment/period and the specific minimized financial projection in §5."
+    }
+  ],
+  "composition": {
+    "normal_admin": {
+      "required_roles": [
+        "Admin"
+      ],
+      "effective_permission_required": true,
+      "object_authorization_required": true,
+      "global_default_management": false
+    },
+    "application_super_admin": {
+      "required_roles": [
+        "Admin",
+        "Technical Super Admin"
+      ],
+      "required_effective_permissions": [
+        "access_control.catalogue.read",
+        "access_control.role_permissions.manage",
+        "access_control.account_permissions.manage",
+        "access_control.effective_permissions.inspect",
+        "access_control.audit.read",
+        "access_control.admin_assignments.manage"
+      ],
+      "role_membership_sufficient": false,
+      "direct_grants_replace_roles": false,
+      "approved_active_account_required": true,
+      "usable_approved_governance_workflow_required": true,
+      "per_service_delegation_required": true,
+      "object_authorization_required": true,
+      "framework_privilege_implied": false,
+      "policy_status": "BLOCKED_PENDING_GOVERNANCE_DECISIONS"
+    },
+    "ssg_advisor": {
+      "required_roles": [
+        "Instructor",
+        "SSG Advisor"
+      ],
+      "required_effective_permissions": [
+        "finance.monitoring.overview.read",
+        "reports.monitoring.financial.read",
+        "finance.monitoring.transactions.read"
+      ],
+      "role_membership_sufficient": false,
+      "grants_alone_confer_eligibility": false,
+      "approved_active_account_required": true,
+      "valid_appointment_and_period_required": true,
+      "read_only_projection_required": true,
+      "other_role_writes_suppressed": false,
+      "treasurer_coappointment": "BLOCKED_PENDING_REVIEWED_CONFLICT_EXCEPTION",
+      "policy_status": "BLOCKED_PENDING_APPOINTMENT_AND_PRIVACY_DECISIONS"
+    },
+    "required_multi_role_combinations": [
+      [
+        "Student",
+        "Treasurer"
+      ],
+      [
+        "Instructor",
+        "Admin"
+      ],
+      [
+        "Instructor",
+        "SSG Advisor"
+      ],
+      [
+        "Instructor",
+        "Admin",
+        "Technical Super Admin"
+      ]
+    ],
+    "authorization": {
+      "explicit_deny_precedence": true,
+      "requested_roles_are_authority": false,
+      "role_names_are_bypass": false,
+      "django_superuser_is_application_bypass": false,
+      "object_ownership_checks_required": true,
+      "financial_self_interest_checks_required": true,
+      "direct_grants_are_account_wide": true,
+      "dependent_grant_revocation_review_required": true,
+      "self_and_assigned_role_ordinary_mutations_allowed": false,
+      "effective_last_operator_protection_required": true,
+      "runtime_enforcement_implemented_by_manifest": false
+    }
+  },
+  "delegation": {
+    "status": "OFF",
+    "enabled_scopes": [],
+    "wildcards_allowed": false,
+    "legacy_cartesian_widening_allowed": false,
+    "ordinary_reserved_target_mutations_allowed": false,
+    "service_authority_codes": [
+      "access_control.delegate.academic",
+      "access_control.delegate.finance",
+      "access_control.delegate.clearance",
+      "access_control.delegate.group_rating",
+      "access_control.delegate.announcements",
+      "access_control.delegate.notifications",
+      "access_control.delegate.reports"
+    ],
+    "unsupported_configurations": [
+      {
+        "configuration": "Student+Treasurer override under finance recipient set {Treasurer}",
+        "current_result": "Refused because all active target roles must be in scope",
+        "proposed_treatment": "Require Treasurer and explicitly permit Student as additional role under exact code/operation policy; Student-only still denied. No broad Cartesian widening.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Instructor+SSG Advisor under role set {SSG Advisor}",
+        "current_result": "Mixed-role target refused; adding Instructor could admit Instructor-only",
+        "proposed_treatment": "New predicate requires actual Advisor+Instructor eligibility/appointment; role-default grants and account overrides have separate recipient rules.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Instructor+Admin or A+G account override",
+        "current_result": "Reserved assignment protects target, even inactive; ordinary path cannot be widened to Admin",
+        "proposed_treatment": "Separate protected workflow with independent review/actor impact; preserve ordinary refusal.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Admin/G default edit; any actor-assigned role",
+        "current_result": "Reserved/assigned-role guard refuses",
+        "proposed_treatment": "Protected exact-delta service, last-operator checks and approved shared-role exception; no direct B2 mutation.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Granting new school-use codes under accounts/access_control",
+        "current_result": "Governance permission classifier refuses ordinary mutation",
+        "proposed_treatment": "Protected initializer/governance distribution with exact approved A/S/etc defaults; usage authority does not imply grant-management authority.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Combined Student reads and Treasurer operator codes in one scope",
+        "current_result": "Cartesian product can authorize operator codes to Student-only",
+        "proposed_treatment": "Unsupported/unsafe. Use separate per-code/per-operation recipient predicates; do not split identity or change selected UI role.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Clearance mixed student/teacher/Treasurer/Admin signing codes",
+        "current_result": "C1 disabled scope; broad registry cannot encode distinct duties safely",
+        "proposed_treatment": "Remain OFF pending finer signatory/recipient/period policy and business checks.",
+        "status": "BLOCKED"
+      },
+      {
+        "configuration": "Per-change independent review, expiry, approval ticket, object-limited grant",
+        "current_result": "Not represented by ApprovedDelegationScope or grant rows",
+        "proposed_treatment": "Reviewed durable workflow/evidence and contextual services, with schema review if needed. Reason/action strings are not substitutes.",
+        "status": "BLOCKED"
+      }
+    ]
+  },
+  "policy_blockers": [
+    {
+      "id": "V2-01",
+      "status": "OPEN",
+      "decision": "Accept/revise 95 definitions, one tombstone, two metadata revisions, six role definitions and 106 pairs. Any change requires recomputation, not silent seed edits.",
+      "references": "AR-3A A01/A11; OD-01/12; C1 D01/D04/D18"
+    },
+    {
+      "id": "V2-02",
+      "status": "OPEN",
+      "decision": "Exact ordinary extra-role allowlist, A/G naming and protected promotion/removal. One Advisor responsibility is settled; optional role implementation and duration still need approval.",
+      "references": "A01/A02/A03; OD-01/03/04/06; D03/D06"
+    },
+    {
+      "id": "V2-03",
+      "status": "OPEN",
+      "decision": "Approve three minimized views and scope; retain dedicated codes or explicitly revise to reuse proven-equivalent old views. Decide V/T coexistence.",
+      "references": "A03; OD-05/06; D12/D16"
+    },
+    {
+      "id": "V2-04",
+      "status": "OPEN",
+      "decision": "Accept exact separation of identity creation, membership elevation, protected template change, governance-grant change and recovery approval/execution. Recovery approval remains B unless this distinction is adopted.",
+      "references": "A04/A05/A09; OD-02/08/11; D07/D08"
+    },
+    {
+      "id": "V2-05",
+      "status": "OPEN",
+      "decision": "Independent reviewers/executors, exact reviewed state, approval binding/expiry/replay, source-of-authority and self-benefit rules. Ordinary self/assigned-role refusals retained.",
+      "references": "A04/A05; OD-08/11; D05–D08"
+    },
+    {
+      "id": "V2-06",
+      "status": "OPEN",
+      "decision": "Approve K/usable-workflow/quorum, common lock order and independent recovery, including simultaneous revocations. A role count is insufficient.",
+      "references": "A06; OD-02/09; D08"
+    },
+    {
+      "id": "V2-07",
+      "status": "OPEN",
+      "decision": "First real human, independent institutional evidence, initial metadata/authority/activation delta, first-init serialization and supported audit event contract.",
+      "references": "A07/A09; OD-09; D09/D10/D18"
+    },
+    {
+      "id": "V2-08",
+      "status": "OPEN",
+      "decision": "Choose auth/framework/review event sources, retention/access, failed unknown-subject handling and session revocation/step-up storage.",
+      "references": "A09/A10; OD-07/13/14; D07/D10/D11"
+    },
+    {
+      "id": "V2-09",
+      "status": "OPEN",
+      "decision": "Explicit staff/superuser flags or reviewed alternative, restricted AdminSite/backend/manager and recovery; no custom bypass. Any schema changes separate.",
+      "references": "A08; OD-10; FR-DJA-01–07"
+    },
+    {
+      "id": "V2-10",
+      "status": "OPEN",
+      "decision": "Resolve finance/signature/rating/message/report/audience/privacy rules and settings deployment; readiness and service activation remain separate from catalogue approval.",
+      "references": "A12/A13; OD-05/06/12/14; D02/D05/D12–D18"
+    }
+  ],
+  "blocked_permissions": [
+    {
+      "permission_code": "accounts.school_accounts.provision",
+      "status": "BLOCKED",
+      "required_decisions": "V2-02/07/08: restricted identity provisioning, attribution and approval."
+    },
+    {
+      "permission_code": "accounts.school_accounts.recover",
+      "status": "BLOCKED",
+      "required_decisions": "V2-07/08: verified identity recovery and session/evidence contract."
+    },
+    {
+      "permission_code": "access_control.catalogue.initialize",
+      "status": "BLOCKED",
+      "required_decisions": "V2-01/07/10: approved manifest, real actor, audit/serialization and write environment."
+    },
+    {
+      "permission_code": "access_control.services.activation.manage",
+      "status": "BLOCKED",
+      "required_decisions": "V2-06/10: feature readiness, grant impact, effective-operator and activation review."
+    },
+    {
+      "permission_code": "access_control.governance_grants.manage",
+      "status": "BLOCKED",
+      "required_decisions": "V2-04/05/06/08: protected grants, independence, bound evidence and last operator."
+    },
+    {
+      "permission_code": "access_control.technical_accounts.provision",
+      "status": "BLOCKED",
+      "required_decisions": "V2-02/07/08: named application governance identity provisioning, not Django flags."
+    },
+    {
+      "permission_code": "access_control.technical_accounts.recover",
+      "status": "BLOCKED",
+      "required_decisions": "V2-06/07/08: verified application governance recovery, not Django recovery."
+    },
+    {
+      "permission_code": "clearance.messages.send",
+      "status": "BLOCKED",
+      "required_decisions": "V2-10: recipient/thread/period privacy not safely represented."
+    },
+    {
+      "permission_code": "reports.financial.finalize",
+      "status": "BLOCKED",
+      "required_decisions": "V2-10: attributable finalizer/checker, immutable source and retention."
+    },
+    {
+      "permission_code": "reports.financial.export",
+      "status": "BLOCKED",
+      "required_decisions": "V2-03/10: approved content/disclosure/export and retention."
+    },
+    {
+      "permission_code": "access_control.governance_assignments.manage",
+      "status": "BLOCKED",
+      "required_decisions": "V2-02/04/05/06: protected elevation, independent review and last operator."
+    },
+    {
+      "permission_code": "access_control.role_templates.protected.manage",
+      "status": "BLOCKED",
+      "required_decisions": "V2-04/05/06/08: assigned/protected template exception and evidence."
+    },
+    {
+      "permission_code": "access_control.policy_settings.manage",
+      "status": "BLOCKED",
+      "required_decisions": "V2-05/06/10: allowlisted versioned settings and shared deployment barrier."
+    },
+    {
+      "permission_code": "access_control.recovery.authorize",
+      "status": "BLOCKED",
+      "required_decisions": "V2-04/06/07/08: independent approval role and recoverable ceremony."
+    }
+  ],
+  "operational_gates": {
+    "initialization": "BLOCKED",
+    "grants": "BLOCKED",
+    "service_activation": "BLOCKED",
+    "live_mutations": "BLOCKED",
+    "administrator_provisioning": "BLOCKED",
+    "first_operator_attribution": "BLOCKED",
+    "independent_review_evidence": "BLOCKED",
+    "effective_last_operator": "BLOCKED",
+    "object_authorization": "BLOCKED",
+    "session_revocation": "BLOCKED",
+    "authentication_events": "BLOCKED",
+    "django_superuser_changes": "BLOCKED"
+  }
+}

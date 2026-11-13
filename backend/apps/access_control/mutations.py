@@ -20,6 +20,7 @@ from .delegation import (
     is_reserved_role, require_delegation, require_governance_authority,
 )
 from .models import AccountPermission, AccountRole, Permission, Role, RolePermission, Service
+from .writer_boundary import require_verified_writer
 
 
 def _pk(value, model):
@@ -44,6 +45,13 @@ class _Context:
 
 @contextmanager
 def _management_context(actor, permission, management_code, *, role=None, target=None):
+    # P3C6A: fail closed before ORM validation or acquiring a transaction.
+    if management_code == ROLE_PERMISSION_MANAGE:
+        require_verified_writer("role_permission.change")
+    elif management_code == ACCOUNT_PERMISSION_MANAGE:
+        require_verified_writer("account_permission.change")
+    else:
+        require_verified_writer(None)  # Invalid management codes always fail.
     actor_id, permission_id = _pk(actor, Account), _pk(permission, Permission)
     role_id = _pk(role, Role) if role is not None else None
     target_id = _pk(target, Account) if target is not None else None

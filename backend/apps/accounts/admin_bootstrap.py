@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from apps.access_control.audit import record_access_audit
 from apps.access_control.models import AccessAuditLog, AccountRole, Role
+from apps.access_control.writer_boundary import require_verified_writer
 from .models import Account
 
 
@@ -62,6 +63,8 @@ def provision_first_workspace_admin(*, operator_school_id, operator_password,
     """
     if not getattr(settings, "WORKSPACE_FIRST_ADMIN_BOOTSTRAP_ENABLED", False):
         raise BootstrapRefused("One-time Workspace Admin bootstrap is disabled.")
+    # P3C6A: deny the bootstrap before its DB preflight when enforcement is on.
+    require_verified_writer("bootstrap.initial_admin")
     _require_local_primary_mysql()
     if not all(type(v) is str and v.strip() for v in (
         operator_school_id, operator_password, new_school_id,

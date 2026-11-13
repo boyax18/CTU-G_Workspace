@@ -21,6 +21,7 @@ from apps.access_control.models import (
     Service,
 )
 from apps.access_control.services import has_permission
+from apps.access_control.writer_boundary import require_verified_writer
 
 from .models import Account
 from .registration_notifications import schedule_registration_decision_email_after_commit
@@ -73,6 +74,9 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
     """
     if not getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False):
         raise RegistrationReviewUnavailable("Registration review is not activated.")
+
+    # P3C6A: when enforcement is enabled, stop BEFORE any primary-DB read/write.
+    require_verified_writer("registration.approve" if approve else "registration.reject")
 
     actor_id = _account_id(actor)
     target_id = _target_id(target_id)

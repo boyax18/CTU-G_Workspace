@@ -21,7 +21,7 @@ from apps.access_control.models import (
     Service,
 )
 from apps.access_control.services import has_permission
-from apps.access_control.writer_boundary import require_verified_writer
+from apps.access_control.writer_boundary import require_verified_writer, writer_atomic
 
 from .models import Account
 from .registration_notifications import schedule_registration_decision_email_after_commit
@@ -75,6 +75,13 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
     if not getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False):
         raise RegistrationReviewUnavailable("Registration review is not activated.")
 
+    from apps.access_control.executor.client import LOCAL, remote_call
+    remote = remote_call("registration.approve" if approve else "registration.reject", {
+        "actor_id": getattr(actor, "pk", None), "target_id": target_id, "rejection_code": rejection_code,
+    })
+    if remote is not LOCAL:
+        return remote
+
     # P3C6A: when enforcement is enabled, stop BEFORE any primary-DB read/write.
     require_verified_writer("registration.approve" if approve else "registration.reject")
 
@@ -89,7 +96,7 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
         raise RegistrationReviewDenied("Use an approved non-sensitive rejection code.")
 
     code = APPROVE_CODE if approve else REJECT_CODE
-    with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
+    with writer_atomic():
         connection = transaction.get_connection(DEFAULT_DB_ALIAS)
         if connection.vendor != "mysql" or connection.isolation_level != "read committed":
             raise RegistrationReviewUnavailable("Trusted review requires primary MySQL READ COMMITTED.")

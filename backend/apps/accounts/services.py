@@ -16,6 +16,14 @@ def register_account(data):
     Valid duplicates receive the same public acknowledgement. Hashing is still
     performed to avoid a cheap timing path; existing records are never updated.
     """
+    from apps.access_control.executor.client import LOCAL, remote_call
+    from apps.access_control.writer_boundary import WriterBoundaryUnavailable
+    try:
+        remote = remote_call("registration.submit", {"data": data})
+    except WriterBoundaryUnavailable:
+        raise RegistrationUnavailable() from None
+    if remote is not LOCAL:
+        return remote
     try:
         with transaction.atomic():
             role = Role.objects.select_for_update().get(role_name=data["requested_role"], is_active=True)

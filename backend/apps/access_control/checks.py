@@ -13,12 +13,13 @@ def protected_executor_release_checks(app_configs, **kwargs):
             hint="Coordinate the executor rollout; enabling this gate currently stops covered writes.",
             id="access_control.E201",
         ))
-    # There is no approved production ledger schema, trust enrollment or trusted
-    # executor integration. Neither a flag nor a caller-supplied certificate can
-    # turn an isolated rehearsal into deployment authorization.
-    errors.append(Error(
-        "Task 2 production executor, durable evidence and institutional release gates remain unverified.",
-        hint="See docs/implementation/access-control/CORE_TASK_2_COMPLETION_REPORT.md; live protected apply is disabled.",
-        id="access_control.E202",
-    ))
+    try:
+        from .executor.diagnostics import verify_deployment
+        verify_deployment()
+    except Exception:
+        errors.append(Error(
+            "Task 2 production storage, credentials, signed trust or executor readiness is unverified.",
+            hint="Deploy approved security SQL and enrolled identities; isolated tests cannot authorize production.",
+            id="access_control.E202",
+        ))
     return errors

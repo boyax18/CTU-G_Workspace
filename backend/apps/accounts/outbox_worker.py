@@ -55,6 +55,12 @@ def _require_delivery_enabled():
         raise OutboxWorkerUnavailable("Registration email outbox is disabled.")
     if connections[DEFAULT_DB_ALIAS].vendor != "mysql":
         raise OutboxWorkerUnavailable("Worker requires the primary MySQL database.")
+    identity = getattr(settings, "WORKSPACE_NOTIFICATIONS_IDENTITY", None)
+    if identity is not None:
+        with connections[DEFAULT_DB_ALIAS].cursor() as cursor:
+            cursor.execute("SELECT DATABASE(),CURRENT_USER(),@@server_uuid")
+            if cursor.fetchone() != (identity["schema"], identity["principal"], identity["server_uuid"]):
+                raise OutboxWorkerUnavailable("Notification worker database identity refused.")
     backend = getattr(settings, "EMAIL_BACKEND", "")
     if backend == "django.core.mail.backends.locmem.EmailBackend":
         return  # Only used in isolated tests.

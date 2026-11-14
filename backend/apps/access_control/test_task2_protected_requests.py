@@ -145,7 +145,8 @@ class ReleaseAcceptanceTests(SimpleTestCase):
     def test_offline_report_cannot_claim_release(self):
         output = StringIO()
         call_command("report_task2_acceptance", stdout=output)
-        self.assertIn('"verdict": "INCOMPLETE"', output.getvalue())
+        self.assertIn('"verdict": "IMPLEMENTATION COMPLETE BUT RELEASE BLOCKED"', output.getvalue())
+        self.assertIn('"production_apply_authorized": false', output.getvalue())
         with self.assertRaises(CommandError):
             call_command("report_task2_acceptance", require_release=True, stdout=StringIO())
 

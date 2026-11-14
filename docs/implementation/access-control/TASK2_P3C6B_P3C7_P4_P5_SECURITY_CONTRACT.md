@@ -1,5 +1,11 @@
 # Task 2 remaining security controls and isolated execution contract
 
+**Historical checkpoint, superseded 2026-11-14:** the operational executor,
+persistent security integration and actual-schema verification are now described
+in [the executor deployment contract](TASK2_EXECUTOR_DEPLOYMENT_CONTRACT.md) and
+the current completion report. The gaps below describe the earlier candidate;
+they are retained as provenance, not the current implementation status.
+
 Date: 2026-11-13, Asia/Manila. Source checkpoint: `29af78e`, branch `ronald`.
 
 **Production release: BLOCKED. Remaining Task 2 implementation: INCOMPLETE.**

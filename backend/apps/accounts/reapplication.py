@@ -17,6 +17,7 @@ from django.db import DEFAULT_DB_ALIAS, DatabaseError, transaction
 from html import escape
 
 from apps.access_control.audit import record_access_audit
+from apps.access_control.writer_boundary import writer_atomic
 from apps.access_control.models import AccountPermission, AccountRole, AccessAuditLog, Role
 
 from .models import Account, UserProfile
@@ -136,6 +137,14 @@ def complete_reapplication(*, token, data):
     """
     if not getattr(settings, "WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED", False):
         raise ReapplicationUnavailable("Reapplication is disabled.")
+    from apps.access_control.executor.client import LOCAL, remote_call
+    from apps.access_control.writer_boundary import WriterBoundaryUnavailable
+    try:
+        remote = remote_call("registration.reapply", {"token": token, "data": data})
+    except WriterBoundaryUnavailable:
+        raise ReapplicationUnavailable("Reapplication executor is unavailable.") from None
+    if remote is not LOCAL:
+        return remote
     if type(token) is not str or not 1 <= len(token) <= 1024:
         raise ReapplicationDenied()
     try:
@@ -148,7 +157,7 @@ def complete_reapplication(*, token, data):
             or type(payload["eh"]) is not str or len(payload["eh"]) != 64):
         raise ReapplicationDenied()
     try:
-        with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
+        with writer_atomic():
             account = (Account.objects.using(DEFAULT_DB_ALIAS)
                        .select_for_update()
                        .select_related("requested_role")

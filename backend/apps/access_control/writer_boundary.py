@@ -1,14 +1,9 @@
-"""G1D-P3C6A integration seam: fail-closed *when explicitly enabled*.
+"""Django integration guard for the separately authenticated database executor.
 
-This is not a database writer fence. It prevents the mapped Django write
-services from running while an independently validated executor is absent.
-Direct SQL, administrative DB accounts, other application code and database
-users can still bypass Python. Do not treat this module as a release gate.
-
-Existing operational code remains unchanged with the flag unset/False for
-compatibility with already-approved development workflows. Enabling the
-flag deliberately denies all mapped writes until a separate, reviewed
-executor implementation replaces this stopgap.
+With enforcement enabled, service entry points forward fixed operations over
+mTLS. Only a ledger-owned executor transaction can enter the local write body.
+The actual database fence is implemented by restricted grants and writer-lease
+triggers, not by this Python context. Legacy False is development compatibility.
 """
 
 from django.conf import settings
@@ -44,6 +39,26 @@ def require_verified_writer(operation):
         return
     if enabled is not True:
         raise WriterBoundaryUnavailable("Invalid protected-writer gate configuration; denied.")
+    from .executor.runtime import active_operation
+    current = active_operation()
+    aliases = {"role_permission.change": {"role_permission.grant", "role_permission.revoke"},
+               "account_permission.change": {"account_permission.grant", "account_permission.deny", "account_permission.deactivate"}}
+    if current is not None and (current == operation or current in aliases.get(operation, ())):
+        # Only executor code joins the outer ledger transaction. Runtime has no
+        # protected-table DML grants; forging Python state cannot grant SQL rights.
+        from django.db import connection
+        if connection.in_atomic_block:
+            return
     raise WriterBoundaryUnavailable(
         "A verified protected database writer is not integrated; operation denied."
     )
+
+
+def writer_atomic():
+    """Join an authenticated ledger transaction; otherwise retain durable ownership."""
+    from contextlib import nullcontext
+    from django.db import connection, transaction
+    from .executor.runtime import active_operation
+    if active_operation() is not None and connection.in_atomic_block:
+        return nullcontext()
+    return transaction.atomic(using="default", durable=True)

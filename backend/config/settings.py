@@ -19,7 +19,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from backend/.env.
-load_dotenv(BASE_DIR / ".env")
+if os.environ.get("WORKSPACE_DEPLOYMENT_SETTINGS") != "1":
+    load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/

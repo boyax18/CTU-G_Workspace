@@ -6,12 +6,11 @@ from django.core.management.base import BaseCommand, CommandError
 
 
 BLOCKERS = (
-    "No reviewed production executor or authenticated ordinary-writer transport is integrated.",
     "No independently enrolled institutional trust roots, real signer custody or revocation channel.",
-    "No approved persistent security ledger schema, retention policy or production migration.",
-    "No verified production credential separation, complete writer inventory or DB-level fencing.",
+    "Production approval and installation of the implemented security SQL/ERD amendments and retention policy remain required.",
+    "Production credential activation, complete external-writer/session inventory and environment-specific fence verification remain required.",
     "No approved backup/restore, session draining, recovery ceremony or release authorization.",
-    "Protected provisioning/bootstrap are executable only in guarded disposable tests.",
+    "The implemented protected executor and operator client have not been authorized for live provisioning/bootstrap.",
 )
 
 
@@ -24,11 +23,13 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(json.dumps({
-            "verdict": "INCOMPLETE", "production_release": "BLOCKED",
-            "production_writer_fence_verified": False, "live_apply_available": False,
-            "phases": {"P3C6B": "PARTIAL", "P3C7": "PARTIAL",
-                       "P4": "ISOLATED_CANDIDATE", "P5": "ISOLATED_CANDIDATE",
-                       "acceptance": "NOT_MET"},
+            "verdict": "IMPLEMENTATION COMPLETE BUT RELEASE BLOCKED", "production_release": "BLOCKED",
+            "engineering_implemented": True, "production_writer_fence_verified": False,
+            "protected_apply_implemented": True, "production_apply_authorized": False,
+            "verification_evidence": "See CORE_TASK_2_COMPLETION_REPORT.md; this offline command does not run or certify tests.",
+            "phases": {"P3C6B": "IMPLEMENTED", "P3C7": "IMPLEMENTED",
+                       "P4": "IMPLEMENTED", "P5": "IMPLEMENTED",
+                       "acceptance": "PRODUCTION_RELEASE_BLOCKED"},
             "blockers": BLOCKERS,
         }, indent=2))
         if options["require_release"]:

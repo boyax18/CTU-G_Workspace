@@ -139,11 +139,24 @@ class LoginView(WorkspaceSessionAPI):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         values = serializer.validated_data
-        account = authenticate(
-            request=request._request,
-            school_id=values["school_id"],
-            password=values["password"],
-        )
+        from apps.access_control.executor.client import enabled, authenticate_actor
+        proof = None
+        if enabled():
+            from apps.access_control.executor.errors import AuthenticationDenied
+            try:
+                verified = authenticate_actor(values["school_id"], values["password"])
+            except AuthenticationDenied:
+                return Response({"error": {"code": "invalid_credentials", "message": "Unable to sign in with these credentials."}}, status=401)
+            proof = verified["proof"]
+            account = Account.objects.filter(pk=verified["actor_id"]).first()
+            if account is not None:
+                account.backend = "django.contrib.auth.backends.ModelBackend"
+        else:
+            account = authenticate(
+                request=request._request,
+                school_id=values["school_id"],
+                password=values["password"],
+            )
         if _workspace_account(account) is None:
             return Response(
                 {"error": {"code": "invalid_credentials", "message": "Unable to sign in with these credentials."}},
@@ -158,6 +171,8 @@ class LoginView(WorkspaceSessionAPI):
         # Compute the response before creating the session, so a database error
         # never leaves behind a logged-in session and a failed API response.
         login(request._request, account)
+        if proof is not None:
+            request.session["workspace_executor_proof"] = proof
         return Response({"authenticated": True, **payload})
 
 

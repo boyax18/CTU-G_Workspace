@@ -1,275 +1,318 @@
 # Core Task 2 — Technical Super Admin Foundation completion report
 
-Assessment date: 2026-11-13, Asia/Manila. Branch: `ronald`.
+Assessment: **2026-11-14, Asia/Manila**. Branch: `ronald`.
 
-## Executive summary and final verdict
+## Executive summary and verdict
 
-**INCOMPLETE. Production release is BLOCKED.**
+**IMPLEMENTATION COMPLETE BUT RELEASE BLOCKED.**
 
-This work implements the two-tier access-control management restriction, safe
-API failure handling, strict signed evidence validation, deployment rejection
-checks, and tested disposable MySQL provisioning/bootstrap/ledger candidates.
-It does **not** complete P3C6B's production trusted executor integration or P3C7's
-institutional trust, persistent production storage and actual-schema writer
-fencing. P4/P5 run only in guarded disposable tests. Their operational release
-is unavailable. Passing tests are not production authorization.
-
-No live protected role/account was created, promoted or activated. No live
-database DML, privilege changes, migrations, credential issuance, ERD edits,
-Git push, Docker installation or external messaging was performed. The ordinary
-School Admin bootstrap remains its existing separately gated mechanism; it is
-not a Technical Super Admin bootstrap.
-
-## Checkpoint reconciliation and phase statuses
-
-Inspected HEAD matched the supplied checkpoint exactly:
-`29af78ec98bb9820a163005f65ab9e678db884a7`, on `ronald`. The initial index was
-empty. The reported 1,286-test baseline was independently rerun successfully.
-Historical documents contain older source-export and pending-verification
-language; they are not current production attestations. The new assessment and
-security contract record the actual results without rewriting that history.
-
-| Phase/control | Actual status at this assessment |
+| Acceptance dimension | Actual status |
 | --- | --- |
-| Earlier profile/preflight and G0/G1A/G1B/G1C/G1D P0/P1 foundations | Existing read-only tools and test candidates; covered by the passing checkpoint regression; no operational authority inferred |
-| P3A root-endorsed registry | Existing synthetic/test-only contracts; no institutional enrollment |
-| P3B root-bound executor/ledger | Existing disposable composition; no production executor |
-| P3C1 writer inventory | Existing static triage; cannot enumerate every DB/external writer |
-| P3C2 grants triage / P3C4 DBA visibility | Existing read-only tools; production grants/session inventory not newly attested |
-| P3C3 recovery holds | Existing test contracts; no institution-approved recovery ceremony |
-| P3C5 privilege rehearsal | 21/21 actual checks passed on a newly initialized separate MySQL 8.4 server; demonstration schema only; Windows cleanup corrected and rerun successfully under P3C7 recovery scope |
-| P3C6A | Existing opt-in fail-closed guard preserved; enabled enforcement still denies all covered writes |
-| **P3C6B** | **PARTIAL:** runtime two-tier governance restriction and unavailable-writer HTTP handling implemented; authenticated trusted database execution/ordinary-writer integration absent |
-| **P3C7** | **PARTIAL:** signature validator, disposable persistent ledger, one-use attempts, concurrency/rollback/uncertain-outcome tests and deployment diagnostics implemented; production security prerequisites and remaining integrations absent |
-| **P4** | **ISOLATED CANDIDATE:** inactive technical role plus exact six inactive bindings and audit tested against application tables; no live apply path |
-| **P5** | **ISOLATED CANDIDATE:** independently signed existing-School-Admin bootstrap tested with atomic activation, assignment, effective permission checks and audit; no live account nomination/elevation |
-| **Final acceptance** | **NOT MET:** regression and migration drift checks pass; production architecture and institutional gates remain unresolved |
+| Engineering implementation | Implemented: trusted executor integration, persistent signed evidence/ledger, restricted credentials and DB writer leases, recovery, operational P4/P5 handlers and operator client |
+| Isolated security verification | Actual migrated application schema and security objects on a physically separate disposable MySQL 8.4 server; final result recorded below |
+| Production release authorized | **NO**: no institutional enrollment, production SQL/ERD approval, credential/privilege activation or live provisioning authorization is inferred |
 
-No new major phase is introduced. Remaining engineering belongs within these
-locked phases; the verdict is not IMPLEMENTATION COMPLETE BUT RELEASE BLOCKED,
-because production integration work itself remains unfinished.
+The previous INCOMPLETE report was correct at `bc9f703`: the trusted executor and
+persistent security integration were missing. They now exist in operational
+modules, outside `tests_support`, and run through the existing service entry
+points. The old candidate and its document are retained as historical provenance.
+This verdict does not claim that Core Task 2 is deployed or that a live Technical
+Super Admin exists. Production acceptance remains blocked.
 
-## Exact source changes
+No live database privileges/schema/account/role were changed; no official ERD,
+private environment, backup, production key or unrelated work was edited. No
+Docker requirement, Git push or external email/message was introduced.
 
-Created:
+## Roadmap status
 
-1. `backend/apps/access_control/technical_admin.py` — protected composite-profile predicate using the existing dynamic evaluator.
-2. `backend/apps/access_control/protected_requests.py` — bounded canonical, exact-context, three-signature Ed25519 verification without I/O or write capabilities.
-3. `backend/apps/access_control/checks.py` — explicit deployment security errors for absent enforcement and unverified executor/security gates.
-4. `backend/apps/access_control/management/commands/report_task2_acceptance.py` — offline status/blocker report; release-required mode refuses.
-5. `backend/apps/access_control/tests_support/task2_protected_executor_test_only.py` — actual-table disposable provisioning/bootstrap and scratch durable ledger candidate.
-6. `backend/apps/access_control/tests_support/task2_signed_fixture_test_only.py` — ephemeral fictional signer/key fixtures.
-7. `backend/apps/access_control/test_task2_protected_requests.py` — evidence and release rejection tests.
-8. `backend/apps/access_control/test_task2_protected_executor.py` — guarded MySQL provisioning, bootstrap, replay, concurrent execution and recovery tests.
-9. `backend/requirements-security.txt` — optional verification dependency, pinned to the already installed version.
-10. `docs/implementation/access-control/TASK2_P3C6B_P3C7_P4_P5_SECURITY_CONTRACT.md` — behavior, threat boundaries, storage and remaining implementation/release contract.
-11. `docs/implementation/access-control/CORE_TASK_2_COMPLETION_REPORT.md` — this report.
+| Locked phase | Implemented behavior and actual boundary |
+| --- | --- |
+| Earlier P3C6A and historical G1/P3 foundations | Existing guarded/read-only/test contracts retained; covered by full regression; their synthetic identities are not production trust |
+| **P3C6B** | Existing registration submit/approve/reject, reapplication and permission mutations forward to a fixed mTLS dispatcher. Authorized ordinary base-role assignment has an explicit reviewed policy. Runtime SQL cannot write accounts, assignments, permissions, catalogue, audits or security state. Ordinary/protected executor credentials and database checks are separate. |
+| **P3C7** | Root-endorsed roster and policy binding, executor-issued certificate-bound actor proofs, persistent signed authorization archives and signed commit receipts, one-use claims, DB connection-bound leases, replay/concurrency controls, dedicated recovery hold/rotation and operational deployment diagnostics. |
+| **P4** | Operational protected handler provisions the inactive Technical Super Admin role, exact six Core K definitions/bindings and audit receipts under a verified lease and independently signed approval. |
+| **P5** | Operational handler authenticates the operator, validates independent exact-request approval and before-state, and atomically bootstraps a distinct existing School Admin's protected responsibility, bindings and audit. It creates/activates no account. |
+| **Final acceptance** | Engineering and isolated verification are assessed here. Institutional production approval, schema installation, actual deployment credentials/fencing and release ceremony remain withheld. |
+
+There are exactly two application Admin tiers: School Admin (`Admin`) and the
+Technical Super Admin composite (`Admin` + `Technical Super Admin`). Django
+framework superuser/staff flags remain separate. The existing hybrid evaluator,
+explicit Deny precedence, service/recipient delegation scopes and transactional
+audits remain authoritative; no role-title permission bypass was added.
+
+## Implemented execution and persistence
+
+The web profile holds only a runtime DB credential and ordinary client TLS key.
+Its service calls reach a separate ordinary executor. Protected P4/P5 requires a
+different client certificate and protected executor/database principal. The
+runtime profile refuses protected client configuration; no executor DB password
+or issuer key is loaded there. Deployment profiles skip the development `.env`
+and require separately provisioned configuration and verified database TLS.
+
+The executor authenticates the actor's password and issues a short-lived,
+certificate/epoch-bound Ed25519 proof. It ignores caller role claims and checks
+fresh permissions inside the shared transaction. The root-signed roster binds
+schema/server UUID, epoch/incarnation, independent signers, issuer keys, peer
+certificate scopes, policy hash and release/fence/recovery evidence. It is
+reloaded/revalidated; missing, stale, changed or untrusted evidence refuses work.
+
+Admission durably reserves request/nonce and stores a claim hash. The secret
+stays in the invocation's memory. ATTEMPTED is committed before application DML.
+The next transaction holds the control mutex, validates current evidence, obtains
+a connection-bound database lease, runs the existing service and atomically
+commits application state, exact audit links, optional encrypted outbox and signed
+result. Failure never falls back to local ORM writes or automatic re-execution.
+
+Evidence archives the exact root endorsement and an executor signature over the
+sanitized request and execution identity. Commit receipts separately sign the
+result, request/evidence hashes and audit IDs. Verification remains possible after
+epoch rotation. Passwords, link secrets and public registration PII are redacted;
+their fast hashes are not persisted. Signing keys are outside DB/source control.
+
+Grants and triggers fence ten relevant application tables. A lease must match
+the actual connection, authenticated DB user, unexpired attempt, epoch/incarnation
+and unhalted control row. A protected label alone does not grant protected DB
+authority. Ordinary writers cannot alter reserved/governance state or Approved
+account fields. Audits and evidence are append/transition restricted. A separate
+notification identity can update only existing delivery-state columns and cannot
+edit recipients or application authority; SMTP remains separately gated.
+
+Reconciliation verifies signatures and returns APPLIED or HOLD. Actual process
+interruption leaves an unfinished attempt. Recovery uses its own credential and
+retains events; it can hold writers or apply a newer root-approved epoch and
+different incarnation, never reset an attempt or automatically demote an operator.
+Routine signed roster renewal preserves the exact trust definition and generation,
+requires a strictly higher persisted expiry floor and cannot clear a hold. This
+supports continuous short-lived trust without five-minute service shutdowns.
+
+The full implementation and configuration/release contract is
+[TASK2_EXECUTOR_DEPLOYMENT_CONTRACT.md](TASK2_EXECUTOR_DEPLOYMENT_CONTRACT.md).
+
+## Exact files created and modified in this continuation
+
+Created under `backend/apps/access_control/executor/` (exact relative filenames):
+
+```text
+__init__.py
+client.py
+diagnostics.py
+engine.py
+errors.py
+protocol.py
+provisioning.py
+receipts.py
+recovery.py
+role_assignment.py
+runtime.py
+schema.py
+server.py
+trust.py
+```
+
+Other files created:
+
+```text
+backend/apps/access_control/management/commands/execute_protected_request.py
+backend/apps/access_control/management/commands/serve_workspace_executor.py
+backend/apps/access_control/test_executor_protocol.py
+backend/apps/access_control/tests_support/executor_actual_schema.py
+backend/config/executor_isolated_settings.py
+backend/config/executor_notifications_settings.py
+backend/config/executor_runtime_settings.py
+backend/config/executor_settings.py
+docs/implementation/access-control/TASK2_EXECUTOR_DEPLOYMENT_CONTRACT.md
+```
 
 Modified:
 
-1. `backend/apps/access_control/apps.py` — register deployment checks.
-2. `backend/apps/access_control/delegation.py` — require the protected composite profile plus effective management/delegation authority.
-3. `backend/apps/access_control/test_mutations.py` — give positive fixtures the required composite profile, preserve negative protections, add three profile-removal/School Admin denial cases.
-4. `backend/apps/accounts/registration_review_api.py` — map writer-unavailable failures to generic HTTP 503.
-5. `backend/apps/accounts/test_registration_review_api.py` — two no-write API tests for enabled writer enforcement.
-6. `backend/apps/access_control/tests_support/g1d_p3c5_windows_pipe_fence_test_only.py` — verified graceful shutdown, absolute-path cleanup guards and surfaced cleanup failure.
-7. `backend/apps/access_control/test_task2_g1d_p3c5_windows_isolated.py` — four offline recovery/cleanup tests.
+```text
+backend/apps/access_control/checks.py
+backend/apps/access_control/management/commands/report_task2_acceptance.py
+backend/apps/access_control/mutations.py
+backend/apps/access_control/test_task2_protected_requests.py
+backend/apps/access_control/writer_boundary.py
+backend/apps/accounts/admin_bootstrap.py
+backend/apps/accounts/outbox_worker.py
+backend/apps/accounts/reapplication.py
+backend/apps/accounts/registration_review.py
+backend/apps/accounts/services.py
+backend/apps/accounts/session_auth.py
+backend/config/settings.py
+docs/implementation/access-control/TASK2_P3C6B_P3C7_P4_P5_SECURITY_CONTRACT.md
+docs/implementation/access-control/CORE_TASK_2_COMPLETION_REPORT.md
+```
 
 ## Database schema and migrations
 
-No application model, migration, official ERD or real-database schema changed.
-`makemigrations --check --dry-run --settings=config.settings` returned
-**No changes detected**. No `migrate` command was run against the real database.
+Existing Django migrations created the **17 actual application tables** on the
+new private server. The proposed security SQL then created four InnoDB tables:
+`wex_control`, `wex_requests`, `wex_audits`, `wex_recovery_events`, plus fixed
+lease/classification functions and authorization/evidence triggers. The harness
+used independent runtime, ordinary, protected, recovery and notification users.
 
-The isolated candidate explicitly creates `task2_candidate_control` and
-`task2_candidate_ledger` only inside a fresh guarded test schema. Both use
-InnoDB, exact binary ASCII evidence identifiers, unique request/nonce/operation
-scopes and application/audit foreign keys. They are dropped after each test;
-the runner destroys the disposable database. This is storage design/testing,
-not approval or installation of a persistent production evidence schema.
+These storage objects are reviewable deployment SQL, not approved official ERD
+changes or an automatic Django migration. No application models/migrations or
+real schema changed. The required migration check returned **No changes detected**.
+That result does not imply the proposed security tables are installed in the
+real environment. Their production installation and definer/grant ownership
+require specific institutional/schema/DBA approval.
 
-The existing separate-server privilege rehearsal creates synthetic tables/users
-only in its own fresh data directory/private named-pipe instance. It does not
-use the normal MySQL service for privilege experiments.
+The second server used a newly initialized temporary data directory, random
+private named pipe, `--no-defaults`, TCP disabled and MySQL X disabled. Actual
+data-directory/pipe/server identity was checked before DDL. Stock mysql.exe's
+explicit RSA exchange primed disposable named-pipe authentication; production
+profiles instead require MySQL TLS `VERIFY_IDENTITY`. No privileges were changed
+on the normal MySQL server. All fixture credentials/keys are synthetic and
+temporary. The harness cleans up only its own children/server/directory.
 
-## Git commits
+## Verification commands and actual results
 
-- Starting checkpoint: `29af78ec98bb9820a163005f65ab9e678db884a7`.
-- Verified implementation/security-contract commit: `185c27ef9ffa903ad2af06861c31c983e104702b`
-  (`feat(access-control): enforce technical governance and test protected ceremonies`, 17 files).
-- This report is committed separately after verification. Its own commit can be
-  resolved with `git log -1 --format=%H -- docs/implementation/access-control/CORE_TASK_2_COMPLETION_REPORT.md`;
-  a commit cannot contain its own eventual hash.
-- No push was performed.
-
-## Regression commands and actual results
-
-All Python commands used `backend/.venv/Scripts/python.exe -B` from `backend`.
-The base Python executable initially required sandbox escalation; the approved
-verification commands then ran using the existing environment. No dependencies
-were installed. Versions observed: Python 3.13.7, Django 6.1.2, cryptography 46.0.4.
-
-Full-suite PowerShell enumeration (54 checkpoint modules, 56 after additions):
+Commands ran from `backend` using `.venv/Scripts/python.exe -B`. The full suite
+enumerates every test module in Accounts and Access Control, the repository's
+established backend regression method (57 modules after this continuation).
 
 ```powershell
 $testModules = Get-ChildItem apps/accounts,apps/access_control -Filter 'test*.py' -File |
     Sort-Object FullName | ForEach-Object { 'apps.' + $_.Directory.Name + '.' + $_.BaseName }
 & .venv/Scripts/python.exe -B manage.py test @testModules --settings=config.test_settings --noinput --verbosity 1
+& .venv/Scripts/python.exe -B -m apps.access_control.tests_support.executor_actual_schema
+& .venv/Scripts/python.exe -B manage.py makemigrations --check --dry-run --settings=config.settings
+& .venv/Scripts/python.exe -B manage.py check --deploy --tag security --settings=config.settings
+& .venv/Scripts/python.exe -B manage.py report_task2_acceptance --settings=config.test_settings --require-release
 ```
 
 | Verification | Actual result |
 | --- | --- |
-| Checkpoint full regression | **1,286/1,286 passed**, 356.945 seconds; random MySQL database created/destroyed |
-| Initial new evidence/executor suite | **50/50 passed**, 30.641 seconds |
-| Mutations + registration-review API + P3C6A focused suite | **91/91 passed**, 19.884 seconds |
-| Expanded new suite with concurrency/interruption/lost acknowledgment | **54/54 passed**, 29.678 seconds |
-| Full regression before the rehearsal cleanup correction | **1,345/1,345 passed**, 311.715 seconds |
-| Windows adapter suite including four cleanup tests | **21/21 passed**, 0.027 seconds; offline, no DB startup |
-| Final full regression | **1,349/1,349 passed**, 423.343 seconds; all 56 modules, disposable MySQL database created/destroyed |
-| Migration drift, normal settings, check/dry-run | **Passed: No changes detected**, exit 0 |
-| Deployment security check | **Expected refusal**, exit 1: `access_control.E201`, `access_control.E202`, plus six existing deployment warnings |
-| Offline acceptance with `--require-release` | **Expected refusal**, exit 1: verdict INCOMPLETE and precise blockers |
-| Existing Windows separate-server MySQL privilege rehearsal | **21/21 passed**, exit 0; production writer fence explicitly False |
-| Existing source-only writer scanner | **125 Python files scanned; 15 findings** (14 ORM mutation, one dynamic SQL), requiring review across eight files; not proof of exclusive writers |
-| Scoped whitespace/diff review | `git diff --check` passed |
+| Starting checkpoint | `bc9f70340267da6680de6010149ee50cfc3354f9`, branch `ronald`; prior report baseline 1,349 tests |
+| Focused service compatibility | **88/88 passed**, 23.993 seconds: mutation, registration review and P3C6A boundary modules |
+| Initial new protocol/root contracts | **18/18 passed**, 0.224 seconds; an additional policy-hash negative brings the final new module to 19, covered by full regression |
+| Focused protocol/evidence/writer guards | **58/58 passed**, 0.143 seconds before the final extra policy case |
+| Final protocol/evidence/writer guards | **59/59 passed**, 0.123 seconds, including non-secret request/hash correlation on unavailable-writer errors for explicit receipt recovery |
+| Actual-schema initial integration | **23/23 passed** using operational code, not the earlier test-only executor |
+| Expanded actual-schema authorization/recovery | **50/50 passed**, including actual executor-process termination/restart and recovery rotation |
+| Persistent endorsement/receipt signatures | **53/53 passed**, including tampered evidence/result rejection after rotation |
+| Actual-schema run including restricted notification worker | **56/56 passed**, exit 0; all 17 migrated application tables plus four security tables on a fresh private server; no external mail |
+| Final actual-schema run with continuous signed roster renewal | **58/58 passed**, exit 0; signed refresh preserves generation/availability and cannot replay/reset validity |
+| Final full backend regression | **1,368/1,368 passed**, 177.913 seconds, exit 0; fresh random MySQL schema created/destroyed |
+| Migration drift | **No changes detected**, exit 0; no migrate on real DB |
+| Deployment diagnostics on existing development settings | **Expected refusal**, exit 1: `access_control.E201`, `access_control.E202`, six existing HTTPS/cookie/DEBUG/host warnings |
+| Offline acceptance with `--require-release` | **Expected refusal**, exit 1; implemented engineering is distinguished from unauthorized production release |
+| Scoped diff/whitespace review | `git diff --check` passed |
 
-Focused commands:
+Development failures were corrected rather than counted as security passes:
+named-pipe full authentication and strict X.509 fixture prerequisites were fixed;
+an unsupported table-level LOCK TABLES grant was removed; the negative-test helper
+was corrected to recognize Django's wrapped MySQL 1143 denial. A captured full
+run printed 1,368 OK but its PowerShell stderr/Tee wrapper returned 1; the direct
+command was rerun and returned exit 0 with the final result above. None of these
+failures caused a production change or a weakened authorization assertion.
 
-```powershell
-& .venv/Scripts/python.exe -B manage.py test apps.access_control.test_task2_protected_requests apps.access_control.test_task2_protected_executor --settings=config.test_settings --noinput --verbosity 1
-& .venv/Scripts/python.exe -B manage.py test apps.access_control.test_mutations apps.accounts.test_registration_review_api apps.access_control.test_task2_g1d_p3c6a_writer_boundary --settings=config.test_settings --noinput --verbosity 1
-& .venv/Scripts/python.exe -B manage.py makemigrations --check --dry-run --settings=config.settings
-& .venv/Scripts/python.exe -B manage.py check --deploy --tag security --settings=config.settings
-& .venv/Scripts/python.exe -B manage.py report_task2_acceptance --settings=config.test_settings --require-release
-& .venv/Scripts/python.exe -B -m apps.access_control.tests_support.g1d_p3c5_windows_pipe_fence_test_only --ack P3C5_SECOND_SERVER_NO_PRODUCTION
-```
+## Security evidence and authorization outcomes
 
-The first standalone migration-check attempt used `config.test_settings` and
-failed with MySQL error 1049 because that settings module chooses an uncreated
-random name outside the test runner. It made no database change. The corrected
-read-only normal-settings check passed. This environmental failure is not hidden
-or counted as a passing test.
+The actual-schema proof invokes the existing Django service functions through
+the mTLS client and separate server processes. It proves public registration,
+reapplication, School Admin approval/rejection/base assignment, Technical Super
+Admin permission mutations, protected P4 provisioning/P5 bootstrap and atomic
+audit/outbox behavior with restricted credentials.
 
-## Security evidence and authorization results
+Negative direct SQL uses authenticated principals and requires specific MySQL
+privilege/trigger errors, not connection failures. It denies runtime account
+approval/password takeover, role assignment/default/override writes, catalogue
+and service changes, audit forgery, ledger/control mutation and trigger removal.
+It additionally exercises an ordinary executor's forged protected ledger row and
+active ordinary lease: neither admits Admin assignment, governance grants or
+technical-account password changes. Evidence-state reset and control-floor
+forgery are denied at the DB boundary.
 
-The 54 new tests plus nine new cases in existing modules add 63 tests. Evidence
-covers tampered signatures/context, key/person separation, revoked epochs,
-strict IDs/types, future/expired requests, permission expansion, replay,
-state drift, catalogue placement/collision, audit rollback, holds and fresh
-permission evaluation. Two independent connection tests verify a single winner
-for concurrent admission and concurrent execution. A simulated lost commit
-acknowledgment reconciles APPLIED on a new connection without re-execution;
-simulated interruption/failed audit leaves HOLD and rolls back application DML.
-These are fault simulations, not power-loss, hardware-durability or institutional
-disaster-recovery tests.
+Wrong password, missing/wrong-kind client certificate, wrong server pin, request
+replay and concurrent network replay fail. Concurrent replay produces one commit
+and one audit. A forced audit error rolls back account/assignment/audit/outbox
+while retaining ATTEMPTED. Killing only the harness's executor while blocked on
+an actual account-row lock leaves the target unchanged and a durable HOLD;
+restart cannot replay it. A dedicated recovery hold fences writes, a forged
+roster rotation is refused, an approved rotation invalidates old actor proofs,
+and fresh authentication works. Signed archives/commit results verify after
+rotation; forged evidence/results fail independently.
+Same-generation root-signed roster refresh preserves availability; replaying the
+refresh cannot reset its validity floor or trust definition.
 
-The first 21-check rehearsal exposed an inherited cleanup bug during post-run
-process inspection: terminating the launcher left its child server alive. Only
-this task's child was stopped after verifying its exact data directory, private
-pipe and creation time. Initial directory deletion hit a transient locked file;
-after confirming the process had exited, removal of that exact directory passed.
-The harness was then corrected to authenticate/reverify its own server, issue
-graceful SHUTDOWN and fail on incomplete cleanup. A second actual rehearsal
-passed all 21 checks, and process/directory inspection confirmed no new instance
-remained. Two older temporary rehearsal instances, created before this task,
-were identified and left untouched. Their cleanup is a separate owner operation;
-they are not production-fence or readiness evidence.
-
-| Actor/state | Verified application result |
+| Actor/state | Verified result |
 | --- | --- |
-| School Admin with explicit registration permission | Existing review/ordinary Student or Instructor assignment flow passes regression |
-| School Admin with an explicit access-control management grant but no technical profile | Role/default and account-override mutations denied with no changes |
-| Technical title without School Admin responsibility | Management denied even when evaluator reports a management grant |
-| Both profiles plus effective action and delegation permissions, reviewed scope/eligible target | Ordinary permission mutations succeed and audit atomically |
-| Composite profile with missing grant, explicit Deny, inactive service/role/account or revoked assignment | Denied on fresh evaluation; cached Python attributes do not restore authority |
-| Framework superuser/staff flags alone | No application Technical Super Admin authority |
-| Ordinary mutation targeting reserved roles, governance permissions or self/assigned roles | Existing prohibitions remain; regression passed |
-| Writer enforcement enabled but no trusted executor | Covered writes refused; registration API returns generic 503 and no mutation |
+| School Admin + effective ordinary operational permission | Registration approval/rejection and reviewed base assignment succeed |
+| School Admin without technical composite profile | Access-control management refused |
+| Technical Super Admin composite + action/delegation permissions and eligible reviewed target | Existing ordinary permission mutation succeeds and audits |
+| Role title alone, missing/expired proof, explicit Deny, inactive/revoked state or unreviewed scope | Denied by existing evaluator/service contracts and new executor checks |
+| Framework flags alone | Do not grant application technical authority |
+| Runtime DB credential using direct SQL | Cannot write authorization/account/audit/security state |
+| Ordinary executor credential trying protected state, even with a forged ordinary lease | Denied by database identity/grant/trigger boundary |
+| Protected P4/P5 with exact independent approvals and active enrolled operator | Executed only on disposable actual schema in this work |
 
-## Known limitations, vulnerabilities and production readiness
+## Remaining release requirements and limitations
 
-**Not production ready.** The production gaps are substantive:
+Production is **not authorized**. The remaining requirements are concrete
+deployment/institutional decisions, not missing executor or ledger code:
 
-1. P3C6B's authenticated runtime/executor transport and fixed dispatcher are not
-   implemented. The normal services still use ORM writes in legacy development
-   mode. An enabled writer gate stops them; it cannot safely route them yet.
-2. Real DB runtime/executor/migration/recovery credential separation, full writer
-   inventory, session draining and actual-schema DB denial have not been
-   verified or applied. Direct SQL/privileged writers bypass Python checks.
-3. Persistent production evidence/control/approval/event storage and retention
-   are unapproved/unimplemented. The official ERD does not acquire scratch
-   tables merely because the tests pass.
-4. No real institutional roots, actor/approver appointments, authenticated roster
-   loader, executor identity/custody, trusted time or revocation-refresh channel
-   is installed. Validator trust/time arguments require an independently trusted
-   supplier; they cannot be accepted from an untrusted request.
-5. The disposable candidate's control mutex serializes its own operations, not
-   other ORM/SQL writers. It has no production executor-bound claim capability.
-   Its before-state checks do not constitute a real DB fence.
-6. Backup/restore evidence, restore-resistant incarnation/epoch, independently
-   approved hold resolution, last-effective-operator recovery and production
-   rollback/revocation ceremonies remain outstanding. No automatic compensation
-   can safely demote the only effective operator.
-7. Protected catalogue/metadata release, real target appointment/authentication
-   and live P4/P5 apply authorization remain absent. No new operational endpoint
-   or live apply command is provided; old preparation `--apply` stays disabled.
-8. Deployment diagnostics additionally found DEBUG True, empty ALLOWED_HOSTS,
-   missing HSTS/HTTPS redirection and insecure session/CSRF cookie deployment
-   configuration. These development settings were not silently changed.
+1. Approve the four-table security evidence design, retention/privacy/access
+   policy, trigger/functions, official ERD amendments and installation/rollback
+   procedure. Install nothing automatically through application migrations.
+2. Appoint real signers/operators and root/key custodians; provision real TLS,
+   issuer and institutional keys/pins, protected host ACLs and independent current
+   roster/epoch custody. No fixture key/person is a production signer.
+3. Approve and activate the actual DB account/definer/host grant matrix. Inventory
+   every external script, worker, inherited role, admin surface and active session;
+   drain old writers and verify direct SQL denials using actual deployment
+   credentials and MySQL TLS. This work proves the isolated pattern, not that
+   unrelated existing production principals have been fenced.
+4. Independently verify fresh backup restoration, storage durability, trusted
+   clocks, restore-resistant external minimum epoch/incarnation and the actual
+   recovery/revocation ceremony. Process interruption tests are not power-loss or
+   full disaster-restore evidence. Root rosters expire within five minutes; real
+   operational signing/refresh/revocation custody must maintain that requirement.
+5. Approve exact protected metadata/release hashes, business recipient policies,
+   real human target, authentication and concrete live release delta. Only then
+   explicitly authorize a live P4/P5 invocation. No account is nominated here.
 
-The exact contracts, grant separation requirements and remaining implementation
-work are detailed in
-[the remaining security contract](TASK2_P3C6B_P3C7_P4_P5_SECURITY_CONTRACT.md).
+The executor host/private credentials, DB/definer administration, institutional
+root and session confidentiality remain trusted boundaries. A compromised DBA
+or privileged executor host is not made harmless by Python, SQL triggers or
+signatures. The ordinary credential is trusted for ordinary service execution;
+it cannot cross the database's protected-principal boundary. Actor proofs are
+short-lived bearer assertions bound to a TLS client, not hardware MFA. Production
+load/host/security review remains necessary. General future privileged demotion
+or governance-revocation CRUD is deliberately absent; it needs separate
+last-effective-operator rules rather than weakening the initial bootstrap scope.
 
-## Required manual/institutional approvals
+## Commits and preserved workspace
 
-Approve the real evidence schema/official ERD and migration design; independent
-identity appointments, roots/keys/custody/revocation; runtime/executor DB grant
-matrix and authenticated transport; complete writer/maintenance fencing; backup
-restoration and crash/recovery procedures; exact protected catalogue and bootstrap
-target. Then implement and verify the remaining production integration in a
-schema-compatible disposable environment. Only afterward seek explicit live
-release authorization for the concrete reviewed delta. None is inferred here.
+- Starting implementation/report commits: `185c27ef9ffa903ad2af06861c31c983e104702b`
+  and `bc9f70340267da6680de6010149ee50cfc3354f9`.
+- This continuation's verified implementation commit:
+  `6632fe93bc16371a7f2d1216e475272f92347357`
+  (`feat(access-control): integrate trusted MySQL executors and durable evidence`, 36 scoped files).
+- This report is committed afterward. Resolve its own exact hash with
+  `git log -1 --format=%H -- docs/implementation/access-control/CORE_TASK_2_COMPLETION_REPORT.md`.
+- No push was performed. The final index is empty; only the original unrelated
+  modified/untracked work remains outside the scoped commits.
 
-## Preserved workspace and final Git status
-
-The original unrelated changes remain excluded from scoped commits:
+Preserved tracked modifications are `backend/.env.example` and
+`docs/database/full_schema.dbml`. Their working-copy SHA-256 values remain:
 
 ```text
- M backend/.env.example
- M docs/database/full_schema.dbml
-?? Scripts/
-?? backend/apps/config/
-?? docs/CTU-G_Workspace_Technical_Inspection_2026-11-08.md
-?? docs/SRS/CTU-G_Workspace_SRS_v0.4_COMPANION_PROPOSALS.md
-?? docs/api/API_CONTRACT_VERIFICATION_DRAFT.md
-?? docs/database/proposals/AR6C5D_BULK_QUEUE_APPROVED_FOR_REVIEW.dbml
-?? docs/database/proposals/AR6C5D_BULK_QUEUE_REVIEW_v2.dbml
-?? docs/decisions/DOCUMENTATION_DECISION_REGISTER_DRAFT.md
-?? docs/implementation/access-control/TASK2_G1D_P1_PRODUCTION_AUTHORIZATION_DESIGN_PROPOSAL.md
-?? docs/implementation/authentication/AR6C5D_APPROVED_SCHEMA_REVIEW.md
-?? docs/implementation/authentication/AR6C5D_SCHEMA_REVIEW.md
-?? docs/operations/
-?? docs/security/SECURITY_PRIVACY_OPERATIONS_GATES_DRAFT.md
-?? docs/testing/MASTER_TEST_UAT_PLAN_DRAFT.md
-?? docs/traceability/
-?? install_superuser_admin.py
-?? review_only/
+full_schema.dbml BEFB42DF64A6D10B1AA0828A8E2A0A62FF3167B2B35DADCFA973FECF6D54C6D1
+.env.example    3AB15E4485AF2EA76481F0F2FBF2BD17736623166735800834F99E2EE8AD7AE7
 ```
 
-The preserved official ERD working-copy SHA-256 is
-`BEFB42DF64A6D10B1AA0828A8E2A0A62FF3167B2B35DADCFA973FECF6D54C6D1`;
-the preserved `.env.example` SHA-256 is
-`3AB15E4485AF2EA76481F0F2FBF2BD17736623166735800834F99E2EE8AD7AE7`.
-No `.env`, secret/key material, backup, dependency directory or unrelated work
-is part of the commits. Final status intentionally remains dirty for the
-pre-existing user work; the index is empty after the scoped commits.
+All original untracked Scripts, review_only, backend/apps/config, operations,
+traceability, inspection, SRS/API/decision/security/testing/schema-review proposal
+documents and install_superuser_admin.py remain untracked and untouched. No
+environment secret, private key, backup, dependency tree or fixture data directory
+is included in either commit.
 
 ## Core Task 3 readiness
 
-Independent read-only design and work using ordinary existing authorization may
-continue. Task 3 must not depend on a live Technical Super Admin, treat the new
-test fixtures as credentials, or assume Task 2 acceptance has passed. Resolve the
-P3C6B/P3C7 production implementation and institutional storage/trust/fence gates
-before privileged Task 3 integration or deployment. Keep the fail-closed boundary
-and rerun the actual-schema negative tests after that integration.
+Core Task 3 engineering can use the implemented fixed boundary and isolated
+fixtures. It must not assume a live technical operator, seed generic privileges,
+reuse fictional signing identities or bypass the pending production gates.
+Privileged integration/deployment remains contingent on the institutional and
+environment-specific release requirements above. No new major roadmap phase has
+been added.

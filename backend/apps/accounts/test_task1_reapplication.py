@@ -9,7 +9,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core import mail, signing
 from django.core.exceptions import ImproperlyConfigured
-from django.db import connection
+from django.db import connection, transaction
 from django.test import TestCase, override_settings
 
 from apps.access_control.models import (
@@ -112,6 +112,52 @@ class ReapplicationWorkflowTests(TestCase):
             complete_reapplication(token=token, data={**self.data, "school_id": "1000002"})
         self.account.refresh_from_db()
         self.assertEqual(self.account.request_status, "Rejected")
+
+    def test_duplicate_email_is_neutral_and_rolls_back_reapplication(self):
+        from rest_framework.test import APIClient
+
+        token = self._token()
+        other = Account.objects.create(school_id="1000002", email="taken@example.edu")
+        before = Account.objects.values().get(pk=self.account.pk)
+        profile_before = UserProfile.objects.values().get(account=self.account)
+        audit_count = AccessAuditLog.objects.count()
+        client = APIClient(enforce_csrf_checks=True)
+        csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        conflict = client.post("/api/v1/auth/reapply/complete/", {
+            **self.data, "email": " TAKEN@EXAMPLE.EDU ", "reapplication_token": token,
+        }, format="json", HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(conflict.status_code, 202, conflict.content)
+        self.assertEqual(Account.objects.values().get(pk=self.account.pk), before)
+        self.assertEqual(UserProfile.objects.values().get(account=self.account), profile_before)
+        self.assertEqual(AccessAuditLog.objects.count(), audit_count)
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
+        other.refresh_from_db()
+        self.assertEqual(other.email, "taken@example.edu")
+        # The same link can still submit an available address; collision did not
+        # consume the rejection cycle or reveal the other email's ownership.
+        success = client.post("/api/v1/auth/reapply/complete/", {
+            **self.data, "reapplication_token": token,
+        }, format="json", HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual((conflict.status_code, conflict.json()), (success.status_code, success.json()))
+
+    def test_reapplication_can_retain_its_own_email(self):
+        complete_reapplication(token=self._token(), data={**self.data, "email": " OLD@EXAMPLE.EDU "})
+        self.account.refresh_from_db()
+        self.assertEqual(self.account.email, "old@example.edu")
+        self.assertEqual(self.account.request_status, "Pending")
+
+    def test_email_conflict_leaves_executor_outer_transaction_usable(self):
+        from apps.access_control.executor.runtime import executing
+
+        token = self._token()
+        Account.objects.create(school_id="1000002", email="taken@example.edu")
+        before = Account.objects.values().get(pk=self.account.pk)
+        with (transaction.atomic(), executing("registration.reapply"),
+              override_settings(WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=True)):
+            complete_reapplication(token=token, data={**self.data, "email": "TAKEN@example.edu"})
+            self.assertFalse(connection.needs_rollback)
+            self.assertEqual(Account.objects.values().get(pk=self.account.pk), before)
+        self.assertFalse(AccessAuditLog.objects.filter(action="account.registration.reapply").exists())
 
     def test_expired_or_tampered_tokens_cannot_change_account(self):
         token = self._token()

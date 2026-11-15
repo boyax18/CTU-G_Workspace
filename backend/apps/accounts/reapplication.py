@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.core import signing
 from django.core.mail import send_mail
-from django.db import DEFAULT_DB_ALIAS, DatabaseError, transaction
+from django.db import DEFAULT_DB_ALIAS, DatabaseError, IntegrityError, transaction
 from html import escape
 
 from apps.access_control.audit import record_access_audit
@@ -157,7 +157,9 @@ def complete_reapplication(*, token, data):
             or type(payload["eh"]) is not str or len(payload["eh"]) != 64):
         raise ReapplicationDenied()
     try:
-        with writer_atomic():
+        # A savepoint also rolls back a conflict inside the executor's outer
+        # ledger transaction, leaving it usable for the generic acknowledgement.
+        with writer_atomic(), transaction.atomic(using=DEFAULT_DB_ALIAS):
             account = (Account.objects.using(DEFAULT_DB_ALIAS)
                        .select_for_update()
                        .select_related("requested_role")
@@ -212,5 +214,17 @@ def complete_reapplication(*, token, data):
                 new_value={"account_id": account.pk, "request_status": "Pending", "is_active": False},
                 reason="account_status_change",
             )
+    except IntegrityError as exc:
+        if exc.args and exc.args[0] == 1062:
+            try:
+                email = Account.objects.normalize_email(data["email"])
+                if email is not None and (Account.objects.using(DEFAULT_DB_ALIAS)
+                        .filter(email=email).exclude(pk=payload["aid"]).exists()):
+                    # Same public acknowledgement as a successful submission.
+                    # The rejected account, profile, audit and token are intact.
+                    return
+            except DatabaseError:
+                pass
+        raise ReapplicationUnavailable("Reapplication data service is unavailable.") from exc
     except DatabaseError as exc:
         raise ReapplicationUnavailable("Reapplication data service is unavailable.") from exc

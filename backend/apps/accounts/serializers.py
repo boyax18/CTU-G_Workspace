@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import Account
+from .email_identity import normalize_account_email
 
 
 class StringField(serializers.CharField):
@@ -46,6 +47,7 @@ class RegistrationSerializer(serializers.Serializer):
         return value
 
     def validate_email(self, value):
+        value = normalize_account_email(value)
         try:
             Account._meta.get_field("email").clean(value, None)
         except DjangoValidationError as exc:

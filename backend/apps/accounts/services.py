@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, IntegrityError, transaction
+from django.db.models import Q
 
 from apps.access_control.models import Role
 
@@ -24,13 +25,15 @@ def register_account(data):
         raise RegistrationUnavailable() from None
     if remote is not LOCAL:
         return remote
+    email = None
     try:
+        email = Account.objects.normalize_email(data["email"])
         with transaction.atomic():
             role = Role.objects.select_for_update().get(role_name=data["requested_role"], is_active=True)
             if role.role_name not in {"Student", "Instructor"}:
                 raise RegistrationUnavailable()
             account = Account.objects.create_user(
-                school_id=data["school_id"], email=data["email"] or None,
+                school_id=data["school_id"], email=email,
                 password=data["password"], requested_role=role,
             )
             UserProfile.objects.create(
@@ -42,7 +45,10 @@ def register_account(data):
         # The atomic block has exited; a failed INSERT cannot leave an orphan.
         if exc.args and exc.args[0] == 1062:
             try:
-                if Account.objects.filter(school_id=data["school_id"]).exists():
+                duplicate = Q(school_id=data["school_id"])
+                if email is not None:
+                    duplicate |= Q(email=email)
+                if Account.objects.filter(duplicate).exists():
                     return
             except DatabaseError:
                 pass

@@ -37,7 +37,7 @@ class ResetDailyThrottle(ResetThrottle):
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
-    # School ID plus email is needed because email is not unique in the ERD.
+    # Retain School ID plus registered email as the recovery contract.
     school_id = serializers.CharField(max_length=50, trim_whitespace=True)
     email = serializers.EmailField(max_length=150)
 

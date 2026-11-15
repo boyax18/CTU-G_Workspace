@@ -11,12 +11,15 @@ class RegistrationUnavailable(Exception):
     """Safe service failure; database details never reach public responses."""
 
 
-def register_account(data):
-    """Atomically create a Pending/inactive account and profile, without grants.
+def register_account(data, *, registration_token=None):
+    """Stage Student requests for OTP; retain direct Instructor registration.
 
-    Valid duplicates receive the same public acknowledgement. Hashing is still
-    performed to avoid a cheap timing path; existing records are never updated.
+    Instructor duplicates retain their existing public acknowledgement.
+    Student permanent writes occur only in the locked OTP completion service.
     """
+    if data.get("requested_role") == "Student":
+        from .registration_staging import begin_student_registration
+        return begin_student_registration(data, registration_token)
     from apps.access_control.executor.client import LOCAL, remote_call
     from apps.access_control.writer_boundary import WriterBoundaryUnavailable
     try:

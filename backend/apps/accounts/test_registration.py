@@ -6,7 +6,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.access_control.models import AccountRole, Role
@@ -17,6 +17,7 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug
     raise ImproperlyConfigured("Registration database tests require --settings=config.test_settings; development data must never be used.")
 
 
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class RegistrationAPITests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -36,7 +37,7 @@ class RegistrationAPITests(TestCase):
         self.data = {
             "school_id": "0012345", "email": "registrant@example.edu",
             "first_name": "Maria", "middle_name": "Cruz", "last_name": "Santos", "suffix": "Jr.",
-            "requested_role": "Student", "password": "Copper!River7392", "password_confirmation": "Copper!River7392",
+            "requested_role": "Instructor", "password": "Copper!River7392", "password_confirmation": "Copper!River7392",
         }
 
     def post(self, data=None, **headers):
@@ -74,8 +75,16 @@ class RegistrationAPITests(TestCase):
         self.assertNotIn(account.password, response.content.decode())
         self.assertNotIn(self.data["password"], response.content.decode())
 
-    def test_student_registration_creates_only_pending_inactive_account_and_profile(self):
-        self.assert_pending("Student")
+    def test_student_registration_stages_without_account_or_profile(self):
+        from .models import StudentRegistrationStage
+        self.data["requested_role"] = "Student"
+        response = self.post()
+        self.assertEqual(response.status_code, 202, response.content)
+        self.assertEqual(response.json()["status"], "verification_required")
+        self.assertEqual(StudentRegistrationStage.objects.count(), 1)
+        self.assertFalse(Account.objects.exists())
+        self.assertFalse(UserProfile.objects.exists())
+        self.assertFalse(AccountRole.objects.exists())
 
     def test_instructor_registration_creates_only_pending_inactive_account_and_profile(self):
         self.data["requested_role"] = "Instructor"
@@ -220,9 +229,9 @@ class RegistrationAPITests(TestCase):
         self.assertNotIn("sensitive", " ".join(captured.output))
 
     def test_inactive_or_missing_role_fails_without_writes(self):
-        Role.objects.filter(role_name="Student").update(is_active=False)
+        Role.objects.filter(role_name=self.data["requested_role"]).update(is_active=False)
         self.assert_rejected(self.post(), status=503)
-        Role.objects.filter(role_name="Student").delete()
+        Role.objects.filter(role_name=self.data["requested_role"]).delete()
         self.assert_rejected(self.post(), status=503)
 
     def test_malformed_nonobject_and_duplicate_key_json(self):

@@ -3,28 +3,21 @@ import type { FormEvent } from 'react';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { EyeIcon, EyeOffIcon } from '../../components/common/Icons';
-import { ApiError } from '../../api/client';
-import { emptyRegistration, submitRegistration, requestReapplicationLink, validateRegistration } from './registration';
+import { ApiError, initializeCSRF } from '../../api/client';
+import ApiErrorNotice from '../../components/common/ApiErrorNotice';
+import { emptyRegistration, getRegistrationVerification, submitRegistration, validateRegistration } from './registration';
+import { asApiError, clearRegistrationSecrets, registrationRecovery } from './registrationFeedback';
 import type { RegistrationData } from './registration';
 import RegistrationSchoolInformation from './RegistrationSchoolInformation';
 
-// Capture before first render; Strict Mode may run state initializers twice.
-const initialReapplicationToken = typeof window !== 'undefined'
-  ? new URLSearchParams(window.location.hash.slice(1)).get('reapply') || '' : '';
-
 export default function RegisterPage() {
-  const [reapplicationToken] = useState(initialReapplicationToken);
-  useEffect(() => {
-    if (reapplicationToken) window.history.replaceState(null, '', window.location.pathname);
-  }, [reapplicationToken]);
-  const [linkSchoolId, setLinkSchoolId] = useState('');
-  const [linkEmail, setLinkEmail] = useState('');
-  const [linkRequested, setLinkRequested] = useState(false);
-  const [linkBusy, setLinkBusy] = useState(false);
-  const [linkError, setLinkError] = useState('');
   const [data, setData] = useState<RegistrationData>({ ...emptyRegistration });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState('');
+  const [failure, setFailure] = useState<ApiError | null>(null);
+  const [needsStatus, setNeedsStatus] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [retryWait, setRetryWait] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -32,63 +25,83 @@ export default function RegisterPage() {
   const inFlight = useRef(false);
   const result = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setRetryWait(wait => Math.max(0, wait - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const change = (name: keyof RegistrationData, value: string) => {
     setData((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: '' }));
+    setFailure(null);
   };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (inFlight.current) return;
+    if (inFlight.current || needsStatus || retryWait > 0) return;
+    if (verificationPending) { window.location.assign('/register/verify'); return; }
     const found = validateRegistration(data);
     setErrors(found);
     setNotice('');
+    setFailure(null);
     if (Object.keys(found).length) {
+      setFailure(new ApiError('Check the highlighted registration fields.', 400, 'validation_error'));
       document.getElementById(`register-${Object.keys(found)[0]}`)?.focus();
       return;
     }
     inFlight.current = true;
     setLoading(true);
     try {
-      await submitRegistration(data, reapplicationToken || undefined);
+      const response = await submitRegistration(data);
       setData({ ...emptyRegistration });
       setShowPassword(false);
       setShowConfirmation(false);
+      if (response.status === 'verification_required' || response.status === 'existing_verification') {
+        window.location.assign('/register/verify');
+        return;
+      }
       setSubmitted(true);
       window.setTimeout(() => result.current?.focus(), 0);
     } catch (error) {
-      if (error instanceof ApiError) {
-        const fields = Object.fromEntries(Object.entries(error.fields).map(([key, values]) => [key, values.join(' ')]));
-        setErrors(fields);
-        setNotice(error.fields.non_field_errors?.join(' ') || error.message);
-        document.getElementById(`register-${Object.keys(fields)[0]}`)?.focus();
-      } else {
-        setNotice('Registration could not be completed. Please try again.');
+      const problem = asApiError(error);
+      setFailure(problem);
+      setErrors(Object.fromEntries(Object.entries(problem.fields).map(([key, values]) => [key, values.join(' ')])));
+      if (clearRegistrationSecrets(problem)) {
+        setData(current => ({ ...current, password: '', password_confirmation: '' }));
+        setShowPassword(false);
+        setShowConfirmation(false);
       }
+      if (problem.code === 'delivery_failed') setVerificationPending(true);
+      if (problem.outcomeUnknown) setNeedsStatus(true);
+      if (problem.code === 'throttled') setRetryWait(problem.retryAfter ?? 60);
     } finally {
       inFlight.current = false;
       setLoading(false);
     }
   };
 
-  const requestLink = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (linkBusy) return;
-    if (!/^[0-9]{1,7}$/.test(linkSchoolId.trim()) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(linkEmail.trim())) {
-      setLinkError('Enter a valid School ID and your previously registered email.');
-      return;
-    }
-    setLinkBusy(true);
-    setLinkError('');
+  const recover = async (action: 'security' | 'status') => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setLoading(true);
     try {
-      await requestReapplicationLink(linkSchoolId, linkEmail);
-      setLinkRequested(true);
+      if (action === 'security') {
+        await initializeCSRF();
+        setFailure(null);
+        setNotice('Security check refreshed. Review your details and submit again.');
+      } else {
+        await getRegistrationVerification();
+        setData({ ...emptyRegistration });
+        window.location.assign('/register/verify');
+      }
     } catch (error) {
-      setLinkError(error instanceof ApiError ? error.message : 'The verification request could not be completed.');
-    } finally {
-      setLinkBusy(false);
-    }
+      const problem = asApiError(error);
+      setFailure(action === 'status' && needsStatus && problem.code === 'expired'
+        ? new ApiError('We could not confirm whether the earlier registration completed. Its saved verification session is unavailable. Check its status with your School Admin before submitting again.', 410, 'expired', {}, { requestId: problem.requestId, outcomeUnknown: true })
+        : problem);
+    } finally { inFlight.current = false; setLoading(false); }
   };
+  const recovery = failure ? registrationRecovery(failure, 'registration') : null;
 
   const field = (name: keyof RegistrationData, label: string, maxLength: number, autoComplete: string, required = false, type = 'text') => {
     const isPassword = type === 'password';
@@ -115,23 +128,28 @@ export default function RegisterPage() {
     <section className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="registration-title">
       <div className="surface-glass rounded-2xl p-6 sm:p-8">
         <p className="fg-accent text-xs font-semibold uppercase tracking-widest">CTU-G Workspace</p>
-        <h1 id="registration-title" className="fg-strong mt-2 text-2xl font-bold">{reapplicationToken ? 'Reapply for Registration' : 'Create Account'}</h1>
+        <h1 id="registration-title" className="fg-strong mt-2 text-2xl font-bold">Create Account</h1>
         {submitted ? (
           <div ref={result} tabIndex={-1} role="status" className="fg-body mt-6 space-y-3 rounded-xl border border-emerald-500/30 p-5">
             <h2 className="fg-strong text-lg font-semibold">Registration submitted</h2>
             <p className="text-sm">Eligible new accounts are pending administrative review. You can sign in after an administrator approves and activates your account.</p>
-            <p className="text-sm">If this was a verified reapplication, your account returns to Pending for a fresh administrative review. Otherwise, previously submitted requests are unchanged.</p>
             <a href="/" className="link-accent inline-block text-sm font-medium">Return to home</a>
           </div>
         ) : (
           <>
-            <p className="fg-muted mt-2 text-sm leading-relaxed">{reapplicationToken
-              ? 'Your verification link was received. Enter every field again, including your new password. Previous details are not prefilled.'
-              : 'Create your CTU-G Workspace account. Student and Instructor registrations require administrative approval.'}</p>
+            <p className="fg-muted mt-2 text-sm leading-relaxed">Create your CTU-G Workspace account. Student and Instructor registrations require administrative approval.</p>
             <p className="fg-muted mt-2 text-xs">Fields marked * are required.</p>
             <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-6" aria-busy={loading}>
-              {notice && <p role="alert" className="notice rounded-lg p-3 text-sm">{notice}</p>}
-              <fieldset disabled={loading} className="min-w-0 space-y-7">
+              {failure && <ApiErrorNotice error={failure}>
+                {recovery === 'security' && <Button type="button" disabled={loading} onClick={() => void recover('security')}>Refresh security check</Button>}
+                {(needsStatus || recovery === 'check_status') && <Button type="button" disabled={loading} onClick={() => void recover('status')}>Check registration status</Button>}
+                {recovery === 'correct' && <Button type="button" onClick={() => document.getElementById('register-requested_role')?.focus()}>Review registration details</Button>}
+                {needsStatus && <Button type="button" disabled={loading} onClick={() => { setNeedsStatus(false); setFailure(null); setData(current => ({ ...current, password: '', password_confirmation: '' })); }}>Restart registration</Button>}
+              </ApiErrorNotice>}
+              {notice && <p role="status" aria-live="polite" className="notice rounded-lg p-3 text-sm">{notice}</p>}
+              {retryWait > 0 && <p className="fg-muted text-sm">Try again in {retryWait} seconds.</p>}
+              {verificationPending && <p className="fg-body text-sm">Your details are saved temporarily. Proceed to the verification screen to resend the code.</p>}
+              {!verificationPending && <fieldset disabled={loading} className="min-w-0 space-y-7">
                 <legend className="sr-only">Registration details</legend>
                 <div className="sm:max-w-xs">
                   <label htmlFor="register-requested_role" className="fg-body mb-1.5 block text-xs font-medium">Register as</label>
@@ -165,31 +183,13 @@ export default function RegisterPage() {
                 </fieldset>
 
                 <RegistrationSchoolInformation role={data.requested_role} />
-              </fieldset>
-              <Button type="submit" loading={loading} fullWidth>{loading ? 'Submitting request…' : reapplicationToken ? 'Resubmit Registration' : 'Submit Registration'}</Button>
+              </fieldset>}
+              <Button type="submit" loading={loading} disabled={needsStatus || retryWait > 0} fullWidth>{loading
+                ? (data.requested_role === 'Student' ? 'Requesting verification…' : 'Submitting request…')
+                : (data.requested_role === 'Student' ? 'Proceed Email Verification' : 'Submit Registration')}</Button>
               <a href="/" className="link-accent block text-center text-sm">Back to Home</a>
             </form>
           </>
-        )}
-        {!reapplicationToken && !submitted && (
-          <div className="mt-8 border-t border-emerald-500/20 pt-6">
-            <h2 className="fg-strong text-base font-semibold">Was your registration rejected?</h2>
-            <p className="fg-muted mt-2 text-sm">Request a secure reapplication link sent only to the email already on your rejected registration. After verification, you must complete the entire registration form again.</p>
-            {linkRequested ? (
-              <p role="status" className="fg-body mt-3 text-sm">If those details match an eligible rejected registration, a verification link will be sent. Check your email.</p>
-            ) : (
-              <form onSubmit={requestLink} className="mt-4 space-y-3" aria-busy={linkBusy}>
-                {linkError && <p role="alert" className="fg-error text-sm">{linkError}</p>}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Input id="reapply-school-id" label="Previously registered School ID" name="school_id" value={linkSchoolId}
-                    maxLength={7} required onChange={(event) => setLinkSchoolId(event.target.value)} />
-                  <Input id="reapply-email" label="Previously registered email" name="email" type="email" value={linkEmail}
-                    maxLength={150} required onChange={(event) => setLinkEmail(event.target.value)} />
-                </div>
-                <Button type="submit" loading={linkBusy} fullWidth>Request Reapplication Link</Button>
-              </form>
-            )}
-          </div>
         )}
       </div>
     </section>

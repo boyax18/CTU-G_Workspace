@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ApiError, postJSON } from '../src/api/client.ts';
-import { emptyRegistration, submitRegistration, validateRegistration } from '../src/features/auth/registration.ts';
+import { cancelRegistrationVerification, emptyRegistration, getRegistrationVerification, resendRegistrationCode, submitRegistration, validateRegistration, verifyRegistrationCode } from '../src/features/auth/registration.ts';
 
 const valid = { ...emptyRegistration, school_id: ' 0012345 ', email: 'registrant@example.edu', first_name: ' Maria ', last_name: 'Santos', password: 'Copper!River7392', password_confirmation: 'Copper!River7392' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+const verification = { status: 'verification_required', delivery_sent: true, expires_in: 1800, retry_after: 60, resends_remaining: 3, attempts_remaining: 5 };
 
 async function withFetch(mock, action) {
   const original = globalThis.fetch;
@@ -32,7 +33,7 @@ test('real registration client bootstraps CSRF, includes cookies and allowlists 
   const calls = [];
   await withFetch(async (path, options) => {
     calls.push({ path, options });
-    return calls.length === 1 ? json({ csrfToken: 'masked-token' }) : json({ message: 'accepted' }, 202);
+    return calls.length === 1 ? json({ csrfToken: 'masked-token' }) : json(verification, 202);
   }, () => submitRegistration({ ...valid, is_active: true, course: 'untrusted', year_level: 'untrusted', section: 'untrusted' }));
   assert.equal(calls[0].path, '/api/v1/auth/csrf/');
   assert.equal(calls[1].path, '/api/v1/auth/register/');
@@ -55,7 +56,7 @@ test('Student and Instructor selections preserve the same public payload contrac
     await withFetch(async (path, options) => {
       if (path.endsWith('/csrf/')) return json({ csrfToken: 'token' });
       posted = JSON.parse(options.body);
-      return json({ message: 'accepted' }, 202);
+      return json(role === 'Student' ? verification : { message: 'accepted' }, 202);
     }, () => submitRegistration({ ...valid, requested_role: role, middle_name: ' Cruz ', suffix: ' Jr. ' }));
     assert.equal(posted.requested_role, role);
     assert.equal(posted.middle_name, 'Cruz');
@@ -94,7 +95,7 @@ test('API validation messages are available for accessible field errors', async 
   } }, 400), async () => {
     await assert.rejects(() => submitRegistration(valid), (error) => {
       assert.equal(error.code, 'validation_error');
-      assert.deepEqual(error.fields, { password: ['Too common.'] });
+      assert.deepEqual(error.fields, { password: ['Choose a stronger password using the requirements shown.'] });
       return true;
     });
   });
@@ -117,4 +118,47 @@ test('non-JSON server errors become safe client errors', async () => {
 
 test('cross-origin API paths are refused', async () => {
   await assert.rejects(() => postJSON('https://attacker.example/api/', valid), ApiError);
+});
+
+test('Student submission exposes verification-required result, without storing a browser token in application state', async () => {
+  await withFetch(async (path) => path.endsWith('/csrf/') ? json({ csrfToken: 'token' }) : json(verification, 202), async () => {
+    const result = await submitRegistration(valid);
+    assert.equal(result.status, 'verification_required');
+    assert.equal(result.browser_token, undefined);
+  });
+});
+
+test('resume reads only cookie-bound verification status with no identity in URL or payload', async () => {
+  await withFetch(async (path, options) => {
+    assert.equal(path, '/api/v1/auth/register/verification/');
+    assert.equal(options.credentials, 'same-origin');
+    assert.equal(options.cache, 'no-store');
+    assert.equal(options.body, undefined);
+    return json(verification, 202);
+  }, async () => assert.equal((await getRegistrationVerification()).attempts_remaining, 5));
+});
+
+test('OTP verify, resend and cancel use CSRF-protected POST and only their expected payload', async () => {
+  for (const [action, expectedPath, expectedPayload] of [
+    [() => verifyRegistrationCode('012345'), 'verify', { code: '012345' }],
+    [resendRegistrationCode, 'resend', {}], [cancelRegistrationVerification, 'cancel', {}],
+  ]) {
+    const calls = [];
+    await withFetch(async (path, options) => {
+      calls.push({ path, options });
+      return path.endsWith('/csrf/') ? json({ csrfToken: 'otp-csrf' }) : json(expectedPath === 'verify' ? { status: 'completed' } : expectedPath === 'cancel' ? { status: 'cancelled' } : verification);
+    }, action);
+    assert.equal(calls[1].path, `/api/v1/auth/register/${expectedPath}/`);
+    assert.equal(calls[1].options.headers['X-CSRFToken'], 'otp-csrf');
+    assert.equal(calls[1].options.credentials, 'same-origin');
+    assert.deepEqual(JSON.parse(calls[1].options.body), expectedPayload);
+  }
+});
+
+test('failed OTP and delivery responses remain errors rather than registration success', async () => {
+  for (const code of ['otp_invalid', 'otp_expired', 'attempts_exhausted', 'delivery_failed', 'conflict']) {
+    await withFetch(async (path) => path.endsWith('/csrf/') ? json({ csrfToken: 'token' }) : json({ error: { code, message: 'Could not complete verification.' } }, 400), async () => {
+      await assert.rejects(() => verifyRegistrationCode('123456'), error => error instanceof ApiError && error.code === code);
+    });
+  }
 });

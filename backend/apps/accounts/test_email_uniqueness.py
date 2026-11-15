@@ -104,16 +104,11 @@ class EmailDatabaseTests(TestCase):
 
 
 class ConcurrentEmailRegistrationTests(TransactionTestCase):
-    def test_racing_different_school_ids_and_roles_create_only_one_account(self):
+    def test_racing_instructor_submissions_create_only_one_account(self):
         for name in ("Student", "Instructor"):
             Role.objects.create(role_name=name)
+        # Student creation now requires a verified stage (covered by OTP races).
         barrier = Barrier(2, timeout=20)
-        original_save = Account.save
-
-        def synchronized_save(account, *args, **kwargs):
-            if account._state.adding:
-                barrier.wait()
-            return original_save(account, *args, **kwargs)
 
         def submit(n, role, email):
             try:
@@ -124,12 +119,13 @@ class ConcurrentEmailRegistrationTests(TransactionTestCase):
                     "password_confirmation": "Copper!River7392",
                 })
                 serializer.is_valid(raise_exception=True)
+                barrier.wait()
                 return register_account(serializer.validated_data)
             finally:
                 connections.close_all()
 
-        with patch.object(Account, "save", synchronized_save), ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(submit, 1, "Student", "Race@EXAMPLE.EDU"),
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(submit, 1, "Instructor", "Race@EXAMPLE.EDU"),
                        pool.submit(submit, 2, "Instructor", " race@example.edu ")]
             self.assertEqual([f.result(timeout=30) for f in futures], [None, None])
         self.assertEqual(Account.objects.count(), 1)
@@ -152,7 +148,7 @@ class EmailMigrationTests(TransactionTestCase):
     def tearDown(self):
         # These are exclusively this test's synthetic fixtures.
         self.old_account.objects.all().delete()
-        MigrationExecutor(connection).migrate([self.after])
+        MigrationExecutor(connection).migrate([("accounts", "0005_student_registration_otp")])
         super().tearDown()
 
     def test_forward_and_reverse_preserve_all_account_values(self):
@@ -160,9 +156,10 @@ class EmailMigrationTests(TransactionTestCase):
             self.old_account.objects.create(school_id=f"m{n}", email=email, password="preserved-hash")
         before = list(self.old_account.objects.order_by("pk").values())
         MigrationExecutor(connection).migrate([self.after])
-        self.assertEqual(list(Account.objects.order_by("pk").values()), before)
+        migrated_account = MigrationExecutor(connection).loader.project_state([self.after]).apps.get_model("accounts", "Account")
+        self.assertEqual(list(migrated_account.objects.order_by("pk").values()), before)
         with self.assertRaises(IntegrityError), transaction.atomic():
-            Account.objects.create(school_id="collision", email="CANONICAL@example.edu")
+            migrated_account.objects.create(school_id="collision", email="CANONICAL@example.edu")
         with CaptureQueriesContext(connection) as queries:
             MigrationExecutor(connection).migrate([self.before])
         ddl = [q["sql"] for q in queries if q["sql"].startswith("ALTER TABLE")]

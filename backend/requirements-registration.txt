@@ -1,0 +1,2 @@
+# WF-01.01 authenticated encryption; same pinned version as existing outbox/security.
+cryptography==46.0.4

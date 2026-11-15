@@ -16,7 +16,7 @@ from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from .serializers import RegistrationSerializer
-from .services import RegistrationUnavailable, register_account
+from .services import register_account
 
 logger = logging.getLogger(__name__)
 
@@ -66,32 +66,28 @@ class PublicJSONView(APIView):
     renderer_classes = [JSONRenderer]
     parser_classes = [RegistrationJSONParser]
 
+    def initialize_request(self, request, *args, **kwargs):
+        from .api_errors import request_id
+        request = super().initialize_request(request, *args, **kwargs)
+        request_id(request)
+        return request
+
     def handle_exception(self, exc):
-        if not isinstance(exc, exceptions.APIException):
-            # DEBUG is enabled locally; never expose a technical error page or
-            # submitted credentials through this public API.
-            logger.error("Public registration request failed (%s).", type(exc).__name__)
-            return Response(
-                {"error": {"code": "registration_unavailable", "message": "Registration is temporarily unavailable. Please try again later."}},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-        response = super().handle_exception(exc)
-        codes = {
-            400: ("validation_error", "Check the submitted registration details."),
-            403: ("csrf_failed", "Security check failed. Refresh the page and try again."),
-            405: ("method_not_allowed", "This request method is not supported."),
-            406: ("not_acceptable", "Request an application/json response."),
-            415: ("unsupported_media_type", "Send an application/json request."),
-            429: ("throttled", "Too many requests. Please wait before trying again."),
-        }
-        code, message = codes.get(response.status_code, ("request_failed", "The request could not be completed."))
-        error = {"code": code, "message": message}
-        if isinstance(exc, exceptions.ValidationError) and isinstance(exc.detail, dict):
-            error["fields"] = exc.detail
-        response.data = {"error": error}
-        return response
+        from .api_errors import response_for_exception
+        return response_for_exception(exc, self)
 
     def finalize_response(self, request, response, *args, **kwargs):
+        from .api_errors import normalize_error, request_id
+        response["X-Request-ID"] = request_id(request)
+        if response.status_code >= 400:
+            code = normalize_error(response, request)
+            event = {
+                "event": "public_api_error",
+                "request_id": request_id(request), "error_code": code, "http_status": response.status_code,
+                "operation": type(self).__name__, "failure_kind": getattr(self, "public_api_failure_kind", "expected"),
+            }
+            logger.log(logging.ERROR if response.status_code >= 500 else logging.INFO,
+                       json.dumps(event, sort_keys=True), extra=event)
         response = super().finalize_response(request, response, *args, **kwargs)
         patch_cache_control(response, no_store=True)
         return response
@@ -121,14 +117,13 @@ class RegistrationView(PublicJSONView):
         try:
             serializer = RegistrationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
+            if serializer.validated_data["requested_role"] == "Student":
+                from .student_registration_api import COOKIE, verification_response
+                result = register_account(serializer.validated_data, registration_token=request.COOKIES.get(COOKIE))
+                return verification_response(result)
             register_account(serializer.validated_data)
         except RequestDataTooBig as exc:
             raise exceptions.ParseError("Request body is too large.") from exc
-        except RegistrationUnavailable:
-            return Response(
-                {"error": {"code": "registration_unavailable", "message": "Registration is temporarily unavailable. Please try again later."}},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
         return Response(
             {"message": "Registration request received. Eligible new accounts are pending administrative review."},
             status=status.HTTP_202_ACCEPTED,

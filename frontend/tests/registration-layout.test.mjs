@@ -32,6 +32,7 @@ const hooks = registerHooks({
 
 const { default: RegisterPage } = await import('../src/features/auth/RegisterPage.tsx');
 const { default: SchoolInformation } = await import('../src/features/auth/RegistrationSchoolInformation.tsx');
+const { default: VerifyEmailPage } = await import('../src/features/auth/VerifyEmailPage.tsx');
 hooks.deregister();
 
 test('actual registration page places Register as before three ordered sections', () => {
@@ -43,7 +44,8 @@ test('actual registration page places Register as before three ordered sections'
   assert.ok(positions.every((position) => position >= 0));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   assert.equal((html.match(/<form\b/g) || []).length, 1);
-  assert.match(html, />Submit Registration<\/button>/);
+  assert.match(html, />Proceed Email Verification<\/button>/);
+  assert.doesNotMatch(html, /Resume email verification/);
   assert.match(html, />Back to Home<\/a>/);
 });
 
@@ -63,6 +65,14 @@ test('credentials and personal information retain their required fields and two-
   }
   assert.ok(credentials.includes('grid gap-4 sm:grid-cols-2'));
   assert.ok(personal.includes('grid gap-4 sm:grid-cols-2'));
+});
+
+test('registration has one form without previous credentials or a reapplication flow', () => {
+  const html = renderToStaticMarkup(createElement(RegisterPage));
+  assert.equal((html.match(/<form\b/g) || []).length, 1);
+  assert.equal((html.match(/name="school_id"/g) || []).length, 1);
+  assert.equal((html.match(/name="email"/g) || []).length, 1);
+  assert.doesNotMatch(html, /Previously registered|Reapplication|verification link|Resubmit Registration|reapply-/i);
 });
 
 test('role selector offers only Student and Instructor; password controls are labelled non-submit buttons', () => {
@@ -89,4 +99,11 @@ test('Instructor school information shows only the after-approval assignment mes
   const html = renderToStaticMarkup(createElement(SchoolInformation, { role: 'Instructor' }));
   assert.ok(html.includes('Instructor academic and teaching assignments will be configured after account approval.'));
   assert.doesNotMatch(html, /<dt>|<(input|select|textarea)\b|Configured later/);
+});
+
+test('verification page initially checks the server-held attempt without claiming an account exists', () => {
+  const html = renderToStaticMarkup(createElement(VerifyEmailPage));
+  assert.match(html, />Verify your email<\/h1>/);
+  assert.match(html, /Checking your registration/);
+  assert.doesNotMatch(html, /Registration submitted|pending administrative review/);
 });

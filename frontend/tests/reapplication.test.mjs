@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { emptyRegistration, requestReapplicationLink, submitRegistration } from '../src/features/auth/registration.ts';
+import { emptyRegistration, submitRegistration } from '../src/features/auth/registration.ts';
+import * as registration from '../src/features/auth/registration.ts';
 
 const valid = {
   ...emptyRegistration, school_id: '1000001', email: 'new@example.edu',
@@ -13,29 +14,23 @@ const withFetch = async (run) => {
   const posts = [];
   globalThis.fetch = async (url, options) => {
     posts.push({ url, options });
-    return posts.length % 2 ? json({ csrfToken: 'csrf-token' }) : json({ message: 'accepted' }, 202);
+    return posts.length % 2 ? json({ csrfToken: 'csrf-token' }) : json({ status: 'verification_required', delivery_sent: true, expires_in: 1800, retry_after: 60, resends_remaining: 3, attempts_remaining: 5 }, 202);
   };
   try { await run(posts); } finally { globalThis.fetch = original; }
 };
 
-test('reapplication request has only School ID and old email', async () => {
-  await withFetch(async (posts) => {
-    await requestReapplicationLink(' 1000001 ', ' old@example.edu ');
-    assert.equal(posts[1].url, '/api/v1/auth/reapply/link/');
-    assert.deepEqual(JSON.parse(posts[1].options.body), {
-      school_id: '1000001', email: 'old@example.edu',
-    });
-  });
+test('registration client no longer exposes a reapplication link request', () => {
+  assert.equal(registration.requestReapplicationLink, undefined);
 });
 
-test('verified reapplication resubmits every full form field and token', async () => {
+test('a stale reapplication argument cannot redirect a standard registration', async () => {
   await withFetch(async (posts) => {
     await submitRegistration(valid, 'signed-token-example');
-    assert.equal(posts[1].url, '/api/v1/auth/reapply/complete/');
+    assert.equal(posts[1].url, '/api/v1/auth/register/');
     const body = JSON.parse(posts[1].options.body);
-    assert.equal(body.reapplication_token, 'signed-token-example');
+    assert.equal(body.reapplication_token, undefined);
     assert.equal(body.password, valid.password);
-    assert.deepEqual(Object.keys(body).sort(), [...Object.keys(emptyRegistration), 'reapplication_token'].sort());
+    assert.deepEqual(Object.keys(body).sort(), Object.keys(emptyRegistration).sort());
   });
 });
 

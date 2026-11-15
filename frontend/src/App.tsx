@@ -4,6 +4,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 
 import HomePage from './features/home/pages/HomePage';
 import RegisterPage from './features/auth/RegisterPage';
+import VerifyEmailPage from './features/auth/VerifyEmailPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import SessionDashboardPage from './features/dashboard/SessionDashboardPage';
@@ -25,6 +26,8 @@ export default function App() {
         <HomePage />
       ) : path === '/register' ? (
         <RegisterPage />
+      ) : path === '/register/verify' ? (
+        <VerifyEmailPage />
       ) : path === '/forgot-password' ? (
         <ForgotPasswordPage />
       ) : path === '/reset-password' ? (

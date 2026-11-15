@@ -1,4 +1,4 @@
-import { postJSON } from '../../api/client.ts';
+import { ApiError, getJSON, postJSON } from '../../api/client.ts';
 
 export interface RegistrationData {
   school_id: string;
@@ -29,22 +29,59 @@ export function validateRegistration(data: RegistrationData): Partial<Record<key
   return errors;
 }
 
-export async function submitRegistration(data: RegistrationData, reapplicationToken?: string): Promise<void> {
+export interface RegistrationVerification {
+  status: string;
+  delivery_sent?: boolean;
+  expires_in?: number;
+  retry_after?: number;
+  resends_remaining?: number;
+  attempts_remaining?: number;
+}
+
+function verificationResult(value: unknown, statuses: string[], mutation: boolean): RegistrationVerification {
+  const body = value !== null && typeof value === 'object' ? value as Record<string, unknown> : {};
+  if (typeof body.status !== 'string' || !statuses.includes(body.status)) {
+    throw new ApiError('We could not confirm the result. Check the current status before trying again.', 0, 'invalid_response', {}, { outcomeUnknown: mutation });
+  }
+  if (['completed', 'cancelled'].includes(body.status)) return { status: body.status };
+  const names = ['expires_in', 'retry_after', 'resends_remaining', 'attempts_remaining'] as const;
+  if (typeof body.delivery_sent !== 'boolean' || names.some(key => typeof body[key] !== 'number' || !Number.isInteger(body[key]) || (body[key] as number) < 0 || (body[key] as number) > 86400)) {
+    throw new ApiError('We could not confirm the verification status. Check its status before trying again.', 0, 'invalid_response', {}, { outcomeUnknown: mutation });
+  }
+  return {
+    status: body.status, delivery_sent: body.delivery_sent, expires_in: body.expires_in as number,
+    retry_after: body.retry_after as number, attempts_remaining: body.attempts_remaining as number,
+    resends_remaining: body.resends_remaining as number,
+  };
+}
+
+export async function submitRegistration(data: RegistrationData): Promise<RegistrationVerification> {
   // Explicitly select public fields; never serialize arbitrary form/account state.
   const payload = {
     school_id: data.school_id.trim(), email: data.email.trim(), first_name: data.first_name.trim(),
     middle_name: data.middle_name.trim(), last_name: data.last_name.trim(), suffix: data.suffix.trim(),
     requested_role: data.requested_role, password: data.password, password_confirmation: data.password_confirmation,
   };
-  if (reapplicationToken) {
-    await postJSON('/api/v1/auth/reapply/complete/', { ...payload, reapplication_token: reapplicationToken });
-  } else {
-    await postJSON('/api/v1/auth/register/', payload);
+  const result = await postJSON('/api/v1/auth/register/', payload);
+  if (data.requested_role === 'Student') return verificationResult(result, ['verification_required', 'existing_verification'], true);
+  if (!result || typeof result !== 'object' || typeof (result as Record<string, unknown>).message !== 'string') {
+    throw new ApiError('We could not confirm the result. Check its status before trying again.', 0, 'invalid_response', {}, { outcomeUnknown: true });
   }
+  return { status: 'submitted' };
 }
 
-export async function requestReapplicationLink(schoolId: string, email: string): Promise<void> {
-  await postJSON('/api/v1/auth/reapply/link/', {
-    school_id: schoolId.trim(), email: email.trim(),
-  });
+export async function getRegistrationVerification(): Promise<RegistrationVerification> {
+  return verificationResult(await getJSON('/api/v1/auth/register/verification/'), ['verification_required', 'existing_verification'], false);
+}
+
+export async function verifyRegistrationCode(code: string): Promise<RegistrationVerification> {
+  return verificationResult(await postJSON('/api/v1/auth/register/verify/', { code }), ['completed'], true);
+}
+
+export async function resendRegistrationCode(): Promise<RegistrationVerification> {
+  return verificationResult(await postJSON('/api/v1/auth/register/resend/', {}), ['verification_required'], true);
+}
+
+export async function cancelRegistrationVerification(): Promise<void> {
+  verificationResult(await postJSON('/api/v1/auth/register/cancel/', {}), ['cancelled'], true);
 }

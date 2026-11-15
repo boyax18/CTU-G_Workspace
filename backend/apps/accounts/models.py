@@ -101,6 +101,8 @@ class Account(AbstractBaseUser):
     school_id = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=255, db_column="password_hash")
     email = models.EmailField(max_length=150, null=True, blank=True, unique=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True, editable=False)
+    email_verified_address = models.EmailField(max_length=150, null=True, blank=True, editable=False)
 
     requested_role = models.ForeignKey(
         "access_control.Role",
@@ -201,5 +203,25 @@ class UserProfile(models.Model):
     def __str__(self):
         name = " ".join(part for part in (self.first_name, self.last_name) if part)
         return name or f"Profile for account {self.account_id}"
+
+class StudentRegistrationStage(models.Model):
+    """Encrypted short-lived data; keyed identity digests reserve staged attempts."""
+
+    token_hash = models.CharField(max_length=64, unique=True)
+    school_id_digest = models.CharField(max_length=64, unique=True)
+    email_digest = models.CharField(max_length=64, unique=True)
+    encrypted_payload = models.TextField()
+    otp_digest = models.CharField(max_length=64, blank=True, default="")
+    otp_expires_at = models.DateTimeField(null=True, blank=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    resend_count = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+    last_sent_at = models.DateTimeField()
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "student_registration_staging"
+
 
 from .outbox_models import RegistrationNotificationOutbox  # noqa: E402,F401

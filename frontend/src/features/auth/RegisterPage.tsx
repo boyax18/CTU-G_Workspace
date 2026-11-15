@@ -143,7 +143,10 @@ export default function RegisterPage() {
               {failure && <ApiErrorNotice error={failure}>
                 {recovery === 'security' && <Button type="button" disabled={loading} onClick={() => void recover('security')}>Refresh security check</Button>}
                 {(needsStatus || recovery === 'check_status') && <Button type="button" disabled={loading} onClick={() => void recover('status')}>Check registration status</Button>}
-                {recovery === 'correct' && <Button type="button" onClick={() => document.getElementById('register-requested_role')?.focus()}>Review registration details</Button>}
+                {failure.code === 'conflict' && <div className="space-y-2">
+                  <p>Check both your School ID and email, then try again. If you already submitted an application, wait for its review.</p>
+                  <p>Already have an approved account? <a href="/" className="link-accent underline">Sign in</a>.</p>
+                </div>}
                 {needsStatus && <Button type="button" disabled={loading} onClick={() => { setNeedsStatus(false); setFailure(null); setData(current => ({ ...current, password: '', password_confirmation: '' })); }}>Restart registration</Button>}
               </ApiErrorNotice>}
               {notice && <p role="status" aria-live="polite" className="notice rounded-lg p-3 text-sm">{notice}</p>}

@@ -110,10 +110,13 @@ test('generic registration conflict retains safe inputs, clears passwords and ne
     await page.getByLabel('Password *', { exact: true }).fill('Copper!River7392');
     await page.getByLabel('Confirm Password *', { exact: true }).fill('Copper!River7392');
     await page.getByRole('button', { name: 'Proceed Email Verification' }).press('Enter');
-    await page.getByRole('button', { name: 'Review registration details' }).waitFor();
+    await page.getByRole('alert').first().waitFor();
     const alert = await page.getByRole('alert').first().innerText();
     assert.match(alert, /We could not complete this registration\. Please check your information or contact support\./);
-    assert.ok(!/School ID|email|PRIVATE/.test(alert));
+    assert.match(alert, /Check both your School ID and email/);
+    assert.doesNotMatch(alert, /School ID (?:is |has been )?already|email (?:is |has been )?already|PRIVATE/i);
+    assert.equal(await page.getByRole('button', { name: 'Review registration details' }).count(), 0);
+    assert.equal(await page.getByRole('link', { name: 'Sign in', exact: true }).getAttribute('href'), '/');
     assert.equal(await page.getByLabel('Email *', { exact: true }).inputValue(), 'fictional@example.edu');
     assert.equal(await page.getByLabel('First Name *', { exact: true }).inputValue(), 'Test');
     assert.equal(await page.getByLabel('Password *', { exact: true }).inputValue(), '');

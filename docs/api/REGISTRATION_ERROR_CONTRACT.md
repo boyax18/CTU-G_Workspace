@@ -47,6 +47,8 @@ React extends ApiError/readResponse/postJSON/getJSON. Known messages and recover
 
 ApiErrorNotice uses a focused `role=alert`, `aria-live=assertive`, `aria-atomic=true` summary and validated request reference. Field errors keep the existing Input component's label/aria-invalid/aria-describedby semantics. Keyboard-accessible native controls provide correction, security refresh, status read, resend, cancellation or restart. Countdown text is outside the live alert to avoid repeated screen-reader announcements. No separate Resume email verification control is added; Student primary action remains Proceed Email Verification. A reported mail-send failure retains staged ownership and offers that action to reach the resend screen without resubmitting credentials.
 
+16 November UX follow-up: removed the unhelpful “Review registration details” button. Registration conflicts now provide plain guidance to check both School ID and email, wait for review if already applied, or use the supported Sign in link for an approved account. Safe input retention, password clearing, request references and generic HTTP 409 behavior remain unchanged. Field-specific identity disclosure still requires explicit owner authorization under the existing privacy contract. The follow-up passed 47 focused frontend checks, nine headless UI checks, build and scoped lint; no backend/schema/workflow change was made for this UX adjustment.
+
 ## Verification, changed files and commit
 
 | Check | Result |

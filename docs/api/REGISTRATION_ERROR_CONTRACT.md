@@ -90,6 +90,12 @@ Previously implemented OTP prerequisites included under the user's explicit clar
 - frontend/src/App.tsx; frontend/tests/registration-layout.test.mjs.
 - docs/workflows/group_a/WF-01.01_Student_Registration_Review.md and WF-01.01_Student_Registration_Implementation.md — historical prerequisite records; current error evidence is this contract. Their catalogue reference remains a separate owner-controlled workspace artifact.
 
-Commit hashes are recorded in the receipt below after the reviewed implementation commit. No push is performed.
+Tests were run in the shared working tree, which also contains pre-existing unrelated changes. Those unrelated changes were not staged; this is not a clean production release certification.
+
+## Commit receipt
+
+Implementation and authorized OTP prerequisites: `70ccf553a61b802bc8816687e69ac72fcadd2052` — `feat(auth): centralize registration errors and OTP recovery` (34 reviewed files).
+
+This receipt is a documentation-only follow-up so the implementation hash can be recorded without a self-referential commit. The official ERD, externally edited workflow catalogue and unrelated access-control/rejection/outbox work are excluded. No push was performed. The existing migration 0005 was committed unchanged as explicitly authorized; this task generated/applied no new migration to the development database.
 
 References: [DRF exceptions and direct-response scope](https://www.django-rest-framework.org/api-guide/exceptions/), [DRF view lifecycle](https://www.django-rest-framework.org/api-guide/views/), [Playwright installed Edge channel](https://playwright.dev/docs/browsers).

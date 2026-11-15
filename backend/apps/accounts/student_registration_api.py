@@ -14,6 +14,7 @@ COOKIE_PATH = "/api/v1/auth/"
 def verification_response(result):
     result = dict(result)
     token = result.pop("browser_token", None)
+    preserve_cookie = result.pop("preserve_verification_cookie", False) is True
     state = result["status"]
     if state in ERRORS:
         response = error_response(state)
@@ -27,7 +28,7 @@ def verification_response(result):
         response.set_cookie(COOKIE, token, max_age=policy()["stage_seconds"],
                             httponly=True, secure=settings.SESSION_COOKIE_SECURE,
                             samesite="Strict", path=COOKIE_PATH)
-    if state in {"completed", "cancelled", "expired", "conflict"}:
+    if state in {"completed", "cancelled", "expired"} or (state == "conflict" and not preserve_cookie):
         response.delete_cookie(COOKIE, path=COOKIE_PATH, samesite="Strict")
     return response
 

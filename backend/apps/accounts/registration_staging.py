@@ -71,8 +71,17 @@ def _token_hash(token):
     return _digest("browser-token", token)
 
 
-def _conflict():
-    return {"status": "conflict", "message": CONFLICT}
+def _conflict(*, preserve_cookie=False):
+    result = {"status": "conflict", "message": CONFLICT}
+    if preserve_cookie:
+        result["preserve_verification_cookie"] = True
+    return result
+
+
+def _identity_conflicts(payload):
+    # The same normalized identities and actual DB collation apply before mail
+    # delivery, when continuing a saved attempt, and at permanent creation.
+    return Account.objects.filter(Q(school_id=payload["school_id"]) | Q(email=payload["email"])).exists()
 
 
 def _summary(stage, now, *, status="verification_required"):
@@ -88,6 +97,10 @@ def _summary(stage, now, *, status="verification_required"):
 
 
 def _issue_code(stage, now):
+    payload = _decrypt(stage)
+    if _identity_conflicts(payload):
+        stage.delete()
+        return _conflict()
     previous_digest = stage.otp_digest
     for _ in range(8):
         code = f"{secrets.randbelow(1_000_000):06d}"
@@ -100,7 +113,7 @@ def _issue_code(stage, now):
     stage.otp_expires_at = min(stage.expires_at, now + timedelta(seconds=policy()["otp_seconds"]))
     stage.last_sent_at = now
     stage.save()
-    recipient = _decrypt(stage)["email"]
+    recipient = payload["email"]
     try:
         delivered = send_mail(
             "CTU-G Workspace registration verification code",
@@ -146,11 +159,18 @@ def begin_student_registration(data, token=None):
         with transaction.atomic():
             owned = StudentRegistrationStage.objects.select_for_update().filter(token_hash=_token_hash(token)).first()
             if owned:
+                if _identity_conflicts(_decrypt(owned)):
+                    owned.delete()
+                    return _conflict()
+                if _identity_conflicts(payload):
+                    # Reject changed conflicting input, but preserve possession
+                    # of the original, immutable and still-eligible attempt.
+                    return _conflict(preserve_cookie=True)
                 # The existing attempt remains immutable; cookie possession resumes it.
                 return _summary(owned, now, status="existing_verification")
             if not Role.objects.filter(role_name="Student", is_active=True).exists():
                 raise RegistrationUnavailable()
-            if Account.objects.filter(Q(school_id=payload["school_id"]) | Q(email=payload["email"])).exists():
+            if _identity_conflicts(payload):
                 return _conflict()
             browser_token = secrets.token_urlsafe(32)
             token_hash = _token_hash(browser_token)
@@ -178,6 +198,8 @@ def student_verification_status(token):
         stage = StudentRegistrationStage.objects.filter(token_hash=_token_hash(token)).first()
         if not stage or stage.expires_at <= timezone.now():
             return {"status": "expired"}
+        if _identity_conflicts(_decrypt(stage)):
+            return _conflict()
         return _summary(stage, timezone.now())
     except DatabaseError:
         raise RegistrationUnavailable() from None
@@ -225,7 +247,7 @@ def student_verification_action(token, action, code=""):
             stage.email_verified_at = now
             stage.save(update_fields=["email_verified_at"])
             role = Role.objects.select_for_update().get(role_name="Student", is_active=True)
-            if Account.objects.filter(Q(school_id=payload["school_id"]) | Q(email=payload["email"])).exists():
+            if _identity_conflicts(payload):
                 stage.delete()
                 return _conflict()
             account = Account.objects.create(

@@ -176,6 +176,101 @@ class StudentOTPTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(self.client.get("/api/v1/auth/register/verification/").status_code, 202)
 
+    def test_used_normalized_email_is_rejected_before_staging_or_mail_for_every_account_state(self):
+        for status, active in (("Pending", False), ("Approved", True), ("Rejected", False)):
+            with self.subTest(status=status):
+                owner = Account.objects.create(school_id="existing", email="used@example.edu", request_status=status, is_active=active)
+                submitted = data()
+                submitted["email"] = "  USED@EXAMPLE.EDU  "
+                with patch("apps.accounts.registration_staging.send_mail") as sender:
+                    response = self.post(payload=submitted)
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.json()["error"]["message"], CONFLICT)
+                self.assertNotIn("fields", response.json()["error"])
+                self.assertNotIn("verification_required", response.json().values())
+                sender.assert_not_called()
+                self.assertFalse(StudentRegistrationStage.objects.exists())
+                self.assertFalse(UserProfile.objects.exists())
+                self.assertEqual(Account.objects.count(), 1)
+                owner.delete()
+
+    def test_owned_attempt_does_not_bypass_used_email_check_for_changed_submission(self):
+        code = self.start()
+        token = self.client.cookies[COOKIE].value
+        original = StudentRegistrationStage.objects.values().get()
+        Account.objects.create(school_id="existing", email="used@example.edu")
+        submitted = data()
+        submitted["email"] = "USED@example.edu"
+        with patch("apps.accounts.registration_staging.send_mail") as sender:
+            response = self.post(payload=submitted)
+        self.assertEqual(response.status_code, 409)
+        sender.assert_not_called()
+        self.assertEqual(self.client.cookies[COOKIE].value, token)
+        self.assertEqual(StudentRegistrationStage.objects.values().get(), original)
+        self.assertNotIn("preserve_verification_cookie", response.json())
+        self.assertEqual(self.verify(code).status_code, 200)
+        self.assertEqual(Account.objects.get(school_id=data()["school_id"]).email, data()["email"])
+
+    def test_owned_attempt_cannot_continue_when_its_saved_email_has_been_claimed(self):
+        self.start()
+        Account.objects.create(school_id="existing", email=data()["email"])
+        with patch("apps.accounts.registration_staging.send_mail") as sender:
+            response = self.post()
+        self.assertEqual(response.status_code, 409)
+        sender.assert_not_called()
+        self.assertFalse(StudentRegistrationStage.objects.exists())
+        self.assertEqual(Account.objects.count(), 1)
+        self.assertFalse(UserProfile.objects.exists())
+
+    def test_resend_does_not_send_to_an_email_claimed_after_staging(self):
+        self.start()
+        Account.objects.create(school_id="existing", email=data()["email"])
+        StudentRegistrationStage.objects.update(last_sent_at=timezone.now() - timedelta(seconds=61))
+        with patch("apps.accounts.registration_staging.send_mail") as sender:
+            response = self.post("register/resend/", {})
+        self.assertEqual(response.status_code, 409)
+        sender.assert_not_called()
+        self.assertFalse(StudentRegistrationStage.objects.exists())
+        self.assertEqual(Account.objects.count(), 1)
+
+    def test_verification_screen_status_rejects_a_saved_email_that_is_now_used(self):
+        self.start()
+        Account.objects.create(school_id="existing", email=data()["email"])
+        with patch("apps.accounts.registration_staging.send_mail") as sender:
+            response = self.client.get("/api/v1/auth/register/verification/")
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["error"]["message"], CONFLICT)
+        sender.assert_not_called()
+        self.assertEqual(Account.objects.count(), 1)
+
+    def test_account_claiming_email_between_initial_check_and_issue_prevents_mail(self):
+        original_create = StudentRegistrationStage.objects.create
+
+        def claim_then_stage(**kwargs):
+            stage = original_create(**kwargs)
+            Account.objects.create(school_id="existing", email=data()["email"])
+            return stage
+
+        with patch("apps.accounts.registration_staging.StudentRegistrationStage.objects.create", side_effect=claim_then_stage), patch("apps.accounts.registration_staging.send_mail") as sender:
+            response = self.post()
+        self.assertEqual(response.status_code, 409)
+        sender.assert_not_called()
+        self.assertFalse(StudentRegistrationStage.objects.exists())
+        self.assertEqual(Account.objects.count(), 1)
+
+    def test_email_reserved_by_another_stage_with_different_school_id_sends_no_second_mail(self):
+        self.start()
+        other = APIClient(enforce_csrf_checks=True)
+        csrf = other.get("/api/v1/auth/csrf/").json()["csrfToken"]
+        submitted = data(2)
+        submitted["email"] = data()["email"].upper()
+        with patch("apps.accounts.registration_staging.send_mail") as sender:
+            response = other.post("/api/v1/auth/register/", submitted, format="json", HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(response.status_code, 409)
+        sender.assert_not_called()
+        self.assertEqual(StudentRegistrationStage.objects.count(), 1)
+        self.assertFalse(Account.objects.exists())
+
     def test_another_browser_cannot_resume_cancel_or_overwrite_from_identity_alone(self):
         code = self.start()
         other = APIClient(enforce_csrf_checks=True)

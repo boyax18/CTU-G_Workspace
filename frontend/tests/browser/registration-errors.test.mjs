@@ -112,6 +112,7 @@ test('generic registration conflict retains safe inputs, clears passwords and ne
     await page.getByRole('button', { name: 'Proceed Email Verification' }).press('Enter');
     await page.getByRole('alert').first().waitFor();
     const alert = await page.getByRole('alert').first().innerText();
+    assert.equal(new URL(page.url()).pathname, '/register');
     assert.match(alert, /We could not complete this registration\. Please check your information or contact support\./);
     assert.match(alert, /Check both your School ID and email/);
     assert.doesNotMatch(alert, /School ID (?:is |has been )?already|email (?:is |has been )?already|PRIVATE/i);

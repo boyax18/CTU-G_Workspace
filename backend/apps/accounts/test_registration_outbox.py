@@ -7,16 +7,17 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
-from django.db import connection
+from django.db import OperationalError, connection, transaction
 from django.test import TestCase, override_settings
 
 from apps.access_control.models import AccessAuditLog, AccountRole, Permission, Role, RolePermission, Service
-from .models import Account
+from .models import Account, UserProfile
 from .outbox_crypto import OutboxCryptoUnavailable, decrypt_recipient
 from .outbox_models import RegistrationNotificationOutbox
 from .registration_review import (
     RegistrationReviewDenied, approve_registration, reject_registration,
 )
+from .registration_outbox import RegistrationOutboxError, record_registration_decision_outbox
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("Outbox tests require --settings=config.test_settings.")
@@ -96,14 +97,12 @@ class RegistrationOutboxTests(TestCase):
         self.assertTrue(self.target.is_active)
         self.assertEqual(self.target.request_status, "Approved")
 
-    def test_rejection_stores_pending_event_and_preserves_inactive_account(self):
+    def test_rejection_stores_pending_event_and_deletes_account(self):
         reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="identity_mismatch")
         row = RegistrationNotificationOutbox.objects.get()
         self.assertEqual(row.template_code, "registration.rejected")
         self.assertEqual(self._email(row), self.email)
-        self.target.refresh_from_db()
-        self.assertFalse(self.target.is_active)
-        self.assertEqual(self.target.request_status, "Rejected")
+        self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 
@@ -191,3 +190,36 @@ class RegistrationOutboxTests(TestCase):
             approve_registration(actor=self.reviewer, target_id=self.target.pk)
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
         self.assertEqual(AccessAuditLog.objects.count(), 1)
+
+    def test_account_delete_failure_rolls_back_profile_audit_and_outbox(self):
+        profile = UserProfile.objects.create(account=self.target, first_name="Synthetic")
+
+        def deny_account_delete(execute, sql, params, many, context):
+            if sql.startswith("DELETE FROM accounts "):
+                raise OperationalError(1142, "synthetic denial")
+            return execute(sql, params, many, context)
+
+        with connection.execute_wrapper(deny_account_delete):
+            with self.assertRaises(OperationalError):
+                reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="identity_mismatch")
+        self.target.refresh_from_db()
+        self.assertEqual(self.target.request_status, "Pending")
+        self.assertTrue(UserProfile.objects.filter(pk=profile.pk).exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
+
+    def test_deleted_rejection_outbox_requires_matching_immutable_snapshot(self):
+        for changes in ({"account_id": self.target.pk + 1}, {"account_deleted": False}):
+            with self.subTest(changes=changes):
+                snapshot = {"account_id": self.target.pk, "request_status": "Rejected",
+                            "account_deleted": True, "rejection_code": "identity_mismatch", **changes}
+                event = AccessAuditLog.objects.create(
+                    actor_account=self.reviewer, target_account=None, action="account.registration.reject",
+                    old_value={"account_id": self.target.pk, "request_status": "Pending"}, new_value=snapshot,
+                )
+                with self.assertRaises(RegistrationOutboxError), transaction.atomic():
+                    record_registration_decision_outbox(
+                        audit_log_id=event.pk, target_account_id=self.target.pk,
+                        approved=False, recipient_email=self.email,
+                    )
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())

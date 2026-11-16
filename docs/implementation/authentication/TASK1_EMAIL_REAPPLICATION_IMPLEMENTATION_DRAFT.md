@@ -1,5 +1,13 @@
 # CTU-G Workspace — Task 1: Email Notifications and Verified Reapplication
 
+**Lifecycle update, 2026-11-15:** The registration page no longer offers previous-credential
+fields, verification-link requests or token-based resubmission. Future eligible
+rejections remove the applicant account/profile while retaining an immutable
+decision snapshot and notification intent. See
+[rejection deletion implementation](REJECTION_DELETION_IMPLEMENTATION.md).
+The gated backend reapplication code remains for historical compatibility; the
+original design and verification record below describe the earlier lifecycle.
+
 **Status:** Implemented and verified in automated local tests with feature gates disabled. **NOT deployed or production-approved.** Git commit status is recorded in repository history.
 
 **Approved by project owner:** D1–D5, 12 November 2026. **Development discipline:** Inspect → Reconcile → Approve → Implement → Test → Document → Commit → Continue.

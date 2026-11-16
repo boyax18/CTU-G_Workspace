@@ -260,9 +260,10 @@ class Task1BulkNotificationCompatibilityTests(TestCase):
             subject, plain, html = _message_for(row)
             self.assertIn("Registration Rejected", subject)
             self.assertIn("Registration identity could not be verified", plain)
-            self.assertIn("Reapply for Registration", html)
-        # Source current reason may change; historic v2 messages do not.
-        Account.objects.filter(pk=self.targets[0].pk).update(rejection_reason="duplicate_request")
+            self.assertIn("Register Again", html)
+            self.assertNotIn("verification link", plain)
+        # The account is gone; delayed notifications retain their reason.
+        self.assertFalse(Account.objects.filter(pk__in=[a.pk for a in self.targets]).exists())
         for row in RegistrationNotificationOutbox.objects.select_related("decision_audit_log"):
             self.assertIn("Registration identity could not be verified", _message_for(row)[1])
 

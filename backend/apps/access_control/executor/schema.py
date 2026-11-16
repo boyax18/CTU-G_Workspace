@@ -71,6 +71,29 @@ def statements(ordinary="wex_ordinary", protected="wex_protected", notifications
     result = [sql.replace("__PROTECTED_PRINCIPAL__", protected) for sql in result]
     # Parameter name must differ from the table alias and column names.
     result[-1] = result[-1].replace("wex_governance(p INT)", "wex_governance(pid INT)").replace("p.permission_id=p AND", "p.permission_id=pid AND")
+    result.append("""CREATE FUNCTION wex_rejected_registration(aid INT) RETURNS BOOLEAN
+        READS SQL DATA SQL SECURITY DEFINER
+        RETURN wex_lease(0) AND EXISTS(
+          SELECT 1 FROM accounts a
+          JOIN roles base_role ON base_role.role_id=a.requested_role_id
+          JOIN wex_requests r ON r.request_id=@wex_request
+          JOIN wex_audits link ON link.request_id=r.request_id
+          JOIN access_audit_logs decision ON decision.access_audit_log_id=link.audit_id
+          WHERE a.account_id=aid AND a.request_status='Rejected' AND a.is_active=0
+            AND a.is_staff=0 AND a.is_superuser=0 AND a.reviewed_by=r.actor_id
+            AND a.account_id<>r.actor_id AND a.reviewed_at IS NOT NULL
+            AND base_role.is_active=1 AND BINARY base_role.role_name IN ('Student','Instructor')
+            AND r.kind='ordinary' AND r.operation='registration.reject'
+            AND decision.actor_account_id=r.actor_id AND decision.target_account_id IS NULL
+            AND decision.action='account.registration.reject'
+            AND JSON_UNQUOTE(JSON_EXTRACT(decision.old_value,'$.request_status'))='Pending'
+            AND JSON_UNQUOTE(JSON_EXTRACT(decision.new_value,'$.request_status'))='Rejected'
+            AND JSON_UNQUOTE(JSON_EXTRACT(decision.new_value,'$.account_deleted'))='true'
+            AND CAST(JSON_UNQUOTE(JSON_EXTRACT(decision.old_value,'$.account_id')) AS UNSIGNED)=aid
+            AND CAST(JSON_UNQUOTE(JSON_EXTRACT(decision.new_value,'$.account_id')) AS UNSIGNED)=aid
+            AND JSON_UNQUOTE(JSON_EXTRACT(decision.new_value,'$.rejection_code'))=a.rejection_reason
+            AND NOT EXISTS(SELECT 1 FROM account_roles ar WHERE ar.account_id=aid)
+            AND NOT EXISTS(SELECT 1 FROM account_permissions ap WHERE ap.account_id=aid))""")
     result.insert(3, """CREATE TABLE wex_recovery_events (
         event_id BIGINT AUTO_INCREMENT PRIMARY KEY, action ENUM('HOLD','ROTATE','REFRESH') NOT NULL,
         previous_epoch INT NOT NULL, next_epoch INT NOT NULL, reason_hash CHAR(64) NOT NULL,
@@ -97,7 +120,7 @@ def statements(ordinary="wex_ordinary", protected="wex_protected", notifications
                     # Framework flags and credential changes of approved users are protected.
                     condition = f"{row}.is_staff=1 OR {row}.is_superuser=1"
                     if event == "DELETE":
-                        condition = "TRUE"
+                        condition = "NOT wex_rejected_registration(OLD.account_id)"
                     elif event == "UPDATE" and row == "NEW":
                         condition += " OR OLD.request_status='Approved'"
                 elif table == "access_audit_logs":
@@ -105,6 +128,8 @@ def statements(ordinary="wex_ordinary", protected="wex_protected", notifications
                         requirements.append("SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='audit is append only';")
                     else:
                         requirements.append("IF NOT EXISTS(SELECT 1 FROM wex_requests WHERE request_id=@wex_request AND actor_id=NEW.actor_account_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='audit actor mismatch'; END IF;")
+                elif table == "users" and event == "DELETE":
+                    requirements.append("IF NOT wex_rejected_registration(OLD.account_id) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='verified registration rejection required'; END IF;")
                 if condition:
                     requirements.append(f"IF NOT wex_lease(1) AND ({condition}) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='protected state refused'; END IF;")
             body = " ".join(requirements)
@@ -151,6 +176,10 @@ def grants(schema, runtime, ordinary, protected, recovery, notifications="wex_no
             if user == ordinary and table in {"roles", "services", "permissions"}:
                 continue
             privileges = "INSERT" if table == "access_audit_logs" else "INSERT,UPDATE"
+            if user == ordinary and table in {"accounts", "users"}:
+                # DELETE is fenced by the exact rejection lease and immutable
+                # decision receipt, never exposed to runtime or other handlers.
+                privileges += ",DELETE"
             result.append(f"GRANT {privileges} ON {db}.{identifier(table)} TO '{user}'@'localhost'")
         result.append(f"GRANT INSERT,UPDATE ON {db}.wex_requests TO '{user}'@'localhost'")
     result.append(f"GRANT SELECT,UPDATE ON {db}.wex_control TO '{recovery}'@'localhost'")

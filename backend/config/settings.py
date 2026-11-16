@@ -37,7 +37,13 @@ SECRET_KEY = required_environment_variable("DJANGO_SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Comma-separated hosts Django will serve. Add LAN IPs/hostnames here so other
+# devices on the network can reach the app through the Vite dev server proxy.
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("WORKSPACE_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -216,3 +222,6 @@ STUDENT_REGISTRATION_MAX_ATTEMPTS = int(os.environ.get("STUDENT_REGISTRATION_MAX
 STUDENT_REGISTRATION_STAGE_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_STAGE_SECONDS", "1800"))
 STUDENT_REGISTRATION_STAGING_KEY = os.environ.get("STUDENT_REGISTRATION_STAGING_KEY", SECRET_KEY)
 EMAIL_TIMEOUT = 10
+
+# Public support only. Empty means "Contact the School Admin office".
+WORKSPACE_REGISTRATION_SUPPORT_CONTACT = os.environ.get("WORKSPACE_REGISTRATION_SUPPORT_CONTACT", "")

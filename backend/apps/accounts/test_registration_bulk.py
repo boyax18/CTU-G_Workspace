@@ -90,13 +90,11 @@ class BulkRegistrationReviewTests(TestCase):
         self.one.refresh_from_db()
         self.assertEqual(self.one.request_status, "Approved")
 
-    def test_rejection_leaves_accounts_inactive_and_audited(self):
+    def test_rejection_deletes_accounts_and_preserves_audit(self):
         response = self.post(self.request_for("reject"))
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["counts"]["Rejected"], 2)
-        self.one.refresh_from_db()
-        self.assertEqual(self.one.rejection_reason, "duplicate_request")
-        self.assertFalse(self.one.is_active)
+        self.assertFalse(Account.objects.filter(pk__in=[self.one.pk, self.two.pk]).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.one).exists())
         self.assertEqual(AccessAuditLog.objects.count(), 2)
 

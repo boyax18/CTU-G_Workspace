@@ -247,20 +247,22 @@ def run():
             checks.append("existing_role_and_account_permission_mutations_via_restricted_executor")
             with using_actor_proof(school_auth["proof"]):
                 reject_registration(actor=school, target_id=pending[1].pk, rejection_code="duplicate_request")
-            checks.append("existing_registration_rejection_via_executor")
+            assert not Account.objects.filter(pk=pending[1].pk).exists()
+            assert not UserProfile.objects.filter(account_id=pending[1].pk).exists()
+            rejection = AccessAuditLog.objects.get(action="account.registration.reject", new_value__account_id=pending[1].pk)
+            assert rejection.target_account_id is None and rejection.new_value["account_deleted"] is True
+            checks.append("registration_rejection_deletes_account_profile_and_preserves_audit_via_executor")
             public_data = {"school_id": "7000001", "email": "fictional@example.invalid", "first_name": "Fictional", "last_name": "Applicant",
                            "middle_name": "", "suffix": "", "requested_role": "Student", "password": password, "password_confirmation": password}
             register_account(public_data)
             submitted = Account.objects.get(school_id="7000001")
             assert not submitted.is_active and submitted.request_status == "Pending" and not AccountRole.objects.filter(account=submitted).exists()
             checks.append("existing_public_registration_works_without_runtime_account_write_grant")
-            from apps.accounts.reapplication import complete_reapplication, SALT, _digest
-            from django.core import signing
-            rejection = AccessAuditLog.objects.filter(target_account=pending[1], action="account.registration.reject").latest("pk")
-            link = signing.dumps({"aid": pending[1].pk, "rid": rejection.pk, "eh": _digest(pending[1].email)}, salt=SALT)
-            complete_reapplication(token=link, data={**public_data, "school_id": pending[1].school_id, "email": pending[1].email})
-            assert Account.objects.get(pk=pending[1].pk).request_status == "Pending"
-            checks.append("existing_reapplication_token_audit_and_profile_transaction_works")
+            register_account({**public_data, "school_id": pending[1].school_id, "email": pending[1].email})
+            replacement = Account.objects.get(school_id=pending[1].school_id)
+            assert replacement.pk != pending[1].pk and replacement.request_status == "Pending"
+            assert not replacement.is_active and UserProfile.objects.filter(account=replacement).exists()
+            checks.append("rejected_applicant_can_register_again_without_previous_credentials_or_token")
             from apps.access_control.executor.role_assignment import assign_ordinary_role
             with using_actor_proof(school_auth["proof"]):
                 assert assign_ordinary_role(actor=school, target_id=pending[0].pk, role_id=roles["Instructor"].pk)
@@ -276,6 +278,8 @@ def run():
                 raise AssertionError(label + " unexpectedly succeeded")
             for label, sql in (
                 ("runtime_direct_approval_denied", "UPDATE accounts SET is_active=1,request_status='Approved' WHERE account_id=" + str(pending[2].pk)),
+                ("runtime_direct_account_deletion_denied", "DELETE FROM accounts WHERE account_id=" + str(pending[2].pk)),
+                ("runtime_direct_profile_deletion_denied", "DELETE FROM users WHERE account_id=" + str(pending[2].pk)),
                 ("runtime_direct_account_password_hijack_denied", "UPDATE accounts SET password_hash='forged' WHERE account_id=" + str(technical.pk)),
                 ("runtime_direct_role_assignment_denied", f"INSERT INTO account_roles(account_id,role_id) VALUES({pending[2].pk},{roles['Admin'].pk})"),
                 ("runtime_direct_role_grant_denied", f"UPDATE role_permissions SET is_active=1"),
@@ -362,6 +366,8 @@ def run():
             try:
                 with ordinary_db.cursor() as c:
                     denied_sql(c, "ordinary_database_credential_without_lease_denied", "UPDATE accounts SET is_active=1 WHERE account_id=%s", (pending[4].pk,), (1644,))
+                    denied_sql(c, "ordinary_account_delete_without_lease_denied", "DELETE FROM accounts WHERE account_id=%s", (pending[4].pk,), (1644,))
+                    denied_sql(c, "ordinary_profile_delete_without_lease_denied", "DELETE FROM users WHERE account_id=%s", (pending[4].pk,), (1644,))
                     columns = "request_id,nonce,request_hash,operation,kind,principal,peer,actor_id,connection_id,claim_hash,epoch,incarnation,evidence,status,issued,expires"
                     values = (secrets.token_hex(32), secrets.token_hex(32), "0" * 64, "role.assign", "protected", "wex_ordinary@localhost", tls["runtime"]["fingerprint"], school.pk, "0" * 64, trust.epoch, trust.incarnation, b"{}", int(time.time()), int(time.time()) + 60)
                     sql = "INSERT INTO wex_requests(" + columns + ") VALUES(%s,%s,%s,%s,%s,%s,%s,%s,CONNECTION_ID(),%s,%s,%s,%s,'CLAIMED',%s,%s)"
@@ -370,6 +376,9 @@ def run():
                     c.execute(sql, ordinary_values)
                     c.execute("UPDATE wex_requests SET status='ATTEMPTED' WHERE request_id=%s", (ordinary_values[0],))
                     c.execute("SET @wex_request=%s", (ordinary_values[0],))
+                    denied_sql(c, "ordinary_unrelated_operation_cannot_delete_account", "DELETE FROM accounts WHERE account_id=%s", (pending[4].pk,), (1644,))
+                    denied_sql(c, "ordinary_unrelated_operation_cannot_delete_profile", "DELETE FROM users WHERE account_id=%s", (pending[4].pk,), (1644,))
+                    denied_sql(c, "ordinary_cannot_delete_approved_account", "DELETE FROM accounts WHERE account_id=%s", (pending[0].pk,), (1644,))
                     denied_sql(c, "ordinary_active_lease_cannot_assign_admin", "INSERT INTO account_roles(account_id,role_id,assigned_by) VALUES(%s,%s,%s)", (pending[4].pk, roles["Admin"].pk, school.pk), (1644,))
                     denied_sql(c, "ordinary_active_lease_cannot_grant_governance", "INSERT INTO account_permissions(account_id,permission_id,effect,is_active) SELECT %s,permission_id,'Grant',1 FROM permissions WHERE permission_code='access_control.audit.read'", (pending[0].pk,), (1644,))
                     denied_sql(c, "ordinary_active_lease_cannot_hijack_technical_password", "UPDATE accounts SET password_hash='forged' WHERE account_id=%s", (technical.pk,), (1644,))
@@ -474,8 +483,8 @@ def run():
                 assert c.fetchone() == (2,)
                 c.execute("SELECT evidence FROM wex_requests")
                 stored = b" ".join(bytes(r[0]) for r in c.fetchall())
-                assert password.encode() not in stored and link.encode() not in stored
-            checks.append("persistent_evidence_excludes_passwords_and_reapplication_link_secrets")
+                assert password.encode() not in stored and public_data["email"].encode() not in stored
+            checks.append("persistent_evidence_excludes_passwords_and_registration_email")
             roster.update(issued=int(time.time()), expires=int(time.time()) + 299)
             roster_file.write_bytes(canonical({"payload": roster, "signature": root.sign(DOMAIN + canonical(roster)).hex()}))
             as_recovery(lambda control: control.refresh("d" * 64))

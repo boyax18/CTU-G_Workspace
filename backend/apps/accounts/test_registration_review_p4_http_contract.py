@@ -185,13 +185,12 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         response = self.post("reject", {"rejection_code": "identity_mismatch"})
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Rejected"})
-        self.pending.refresh_from_db()
-        self.assertEqual(self.pending.request_status, "Rejected")
-        self.assertFalse(self.pending.is_active)
+        self.assertFalse(Account.objects.filter(pk=self.pending.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.pending).exists())
         audit = AccessAuditLog.objects.get()
         self.assertEqual(audit.action, "account.registration.reject")
-        self.assertEqual(audit.target_account_id, self.pending.pk)
+        self.assertIsNone(audit.target_account_id)
+        self.assertEqual(audit.new_value["account_id"], self.pending.pk)
 
     def test_reject_requires_exact_one_valid_code(self):
         for value in ({}, {"rejection_code": "custom"}, {"rejection_code": "duplicate_request", "admin": True}):

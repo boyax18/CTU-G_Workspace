@@ -8,7 +8,7 @@ services, permission definitions, roles, or role-permission defaults.
 """
 
 from django.conf import settings
-from django.db import DEFAULT_DB_ALIAS, transaction
+from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
 from django.utils import timezone
 
 from apps.access_control.audit import record_access_audit, record_access_audit_receipt
@@ -63,6 +63,20 @@ def _target_id(value):
     if type(value) is not int or not 1 <= value <= 2_147_483_647:
         raise RegistrationReviewDenied("An existing pending account is required.")
     return value
+
+
+def _delete_rejected_registration(target_id):
+    # A fixed two-table delete avoids Django's CASCADE collector issuing
+    # DELETEs against unrelated history tables. Database foreign keys and the
+    # executor's rejection-only triggers remain authoritative and fail closed.
+    with transaction.get_connection(DEFAULT_DB_ALIAS).cursor() as cursor:
+        cursor.execute("DELETE FROM users WHERE account_id=%s", [target_id])
+        cursor.execute(
+            "DELETE FROM accounts WHERE account_id=%s AND request_status='Rejected' "
+            "AND is_active=0 AND is_staff=0 AND is_superuser=0", [target_id],
+        )
+        if cursor.rowcount != 1:
+            raise RegistrationReviewUnavailable("The rejected registration could not be removed.")
 
 
 def _decide(*, actor, target_id, approve, rejection_code=None):
@@ -208,6 +222,8 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
             "request_status": "Pending",
             "is_active": False,
         }
+        if not approve and AccountPermission.objects.using(DEFAULT_DB_ALIAS).filter(account=target).exists():
+            raise RegistrationReviewDenied("A registration with permission history requires separate review.")
         target.request_status = "Approved" if approve else "Rejected"
         target.is_active = bool(approve)
         target.reviewed_by = reviewer
@@ -235,9 +251,12 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
         else:
             # Immutable, bounded decision snapshot; required for delayed v2 emails.
             new["rejection_code"] = rejection_code
+            new["account_deleted"] = True
         audit_values = {
             "actor": reviewer,
-            "target": target,
+            # Rejection retains the immutable account ID in the snapshot, not
+            # a foreign key that would prevent removal of this applicant.
+            "target": target if approve else None,
             "role": requested_role if approve else None,
             "action": "account.registration.approve" if approve else "account.registration.reject",
             "old_value": old,
@@ -263,6 +282,18 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
                     approved=approve,
                     rejection_code=rejection_code,
                 )
+        if not approve:
+            # Delete only the locked, eligible applicant after its audit and
+            # notification intent exist. Existing protected references refuse
+            # deletion and roll back the entire decision; never rewrite audits.
+            try:
+                _delete_rejected_registration(target_id)
+            except IntegrityError as exc:
+                if not exc.args or exc.args[0] != 1451:
+                    raise
+                raise RegistrationReviewDenied(
+                    "The registration has protected history and requires separate review."
+                ) from exc
     return target_id
 
 
@@ -272,7 +303,7 @@ def approve_registration(*, actor, target_id):
 
 
 def reject_registration(*, actor, target_id, rejection_code):
-    """Reject one pending Student/Instructor with a non-sensitive reason code."""
+    """Audit rejection and remove an eligible applicant's account and profile."""
     return _decide(
         actor=actor,
         target_id=target_id,

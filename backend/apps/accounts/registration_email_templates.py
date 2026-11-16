@@ -69,7 +69,7 @@ def render_decision_email(*, approved, rejection_code=None):
             raise ValueError("A supported immutable rejection reason is required.")
         status = "REJECTED"
         description = "Your account registration has been rejected by the administrator."
-        action = "Reapply for Registration"
+        action = "Register Again"
         url = _public_url("/register")
         subject = "CTU-G Workspace | Registration Rejected"
         reason = REJECTION_LABELS[rejection_code]
@@ -78,7 +78,7 @@ def render_decision_email(*, approved, rejection_code=None):
     further = (
         "You can now sign in using your registered School ID and password."
         if approved else
-        "You may request a verification link on the registration page, then re-enter all registration details."
+        "You may submit a new registration by completing the registration form again."
     )
     body = (
         "CTU-G Workspace\nCebu Technological University - Ginatilan Campus\n\n"

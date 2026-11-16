@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    // Listen on all interfaces so devices on the LAN can open the dev server.
+    host: true,
     proxy: {
       '/api': {
         target: process.env.CTUG_API_TARGET || 'http://127.0.0.1:8000',

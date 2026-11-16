@@ -109,7 +109,7 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
           reason as RegistrationReviewRejectionCode,
         );
       }
-      setNotice(`Server confirmed ${selection.action === 'approve' ? 'approval' : 'rejection'} of School ID ${selection.item.school_id}.`);
+      setNotice(`Server confirmed ${selection.action === 'approve' ? 'approval' : 'rejection and account removal'} of School ID ${selection.item.school_id}.`);
       setSelection(null);
       setReason('');
       setListing({ status: 'loading' });
@@ -192,6 +192,9 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
         <section role="dialog" aria-modal="true" aria-labelledby="review-decision-heading" className="dashboard-panel rounded-2xl border-2 border-emerald-600 p-5">
           <h3 id="review-decision-heading" className="dashboard-heading text-lg font-bold">Confirm {selection.action === 'approve' ? 'approval' : 'rejection'}?</h3>
           <p className="dashboard-muted mt-2 text-sm">School ID {selection.item.school_id} · {selection.item.requested_role}. This is a real account action and will be audited.</p>
+          {selection.action === 'reject' && (
+            <p className="dashboard-muted mt-2 text-sm">Rejection removes this applicant’s account and profile. The decision stays in the audit history. They can register again using the standard form.</p>
+          )}
           {selection.action === 'reject' && (
             <label className="mt-4 block text-sm font-medium">Rejection reason
               <select className="dashboard-panel mt-2 block w-full max-w-md rounded-lg border p-3" value={reason} onChange={(event) => setReason(event.target.value as RegistrationReviewRejectionCode | '')}>

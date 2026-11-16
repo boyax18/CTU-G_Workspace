@@ -201,9 +201,7 @@ class RegistrationReviewAPITests(TestCase):
     def test_reject_audits_and_does_not_assign_role(self):
         result = self.post(f"/{self.target.pk}/reject/", {"rejection_code": "identity_mismatch"})
         self.assertEqual(result.status_code, 200, result.content)
-        self.target.refresh_from_db()
-        self.assertFalse(self.target.is_active)
-        self.assertEqual(self.target.request_status, "Rejected")
+        self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 

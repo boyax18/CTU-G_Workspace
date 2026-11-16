@@ -250,10 +250,9 @@ class RegistrationReviewP3CAuthenticatedBoundaryTests(TestCase):
     def test_valid_admin_rejection_is_audited_without_role_assignment(self):
         response = self.post("reject", {"rejection_code": "duplicate_request"})
         self.assertEqual(response.status_code, 200, response.content)
-        self.pending.refresh_from_db()
-        self.assertEqual(self.pending.request_status, "Rejected")
-        self.assertFalse(self.pending.is_active)
+        self.assertFalse(Account.objects.filter(pk=self.pending.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.pending).exists())
         receipt = AccessAuditLog.objects.get()
         self.assertEqual(receipt.action, "account.registration.reject")
-        self.assertEqual(receipt.target_account_id, self.pending.pk)
+        self.assertIsNone(receipt.target_account_id)
+        self.assertEqual(receipt.new_value["account_id"], self.pending.pk)

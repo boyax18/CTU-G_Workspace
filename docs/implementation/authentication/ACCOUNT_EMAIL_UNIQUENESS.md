@@ -1,5 +1,12 @@
 # Account email uniqueness
 
+**Subsequent lifecycle change:** Future eligible rejections now remove the
+applicant account/profile and release its credentials for ordinary registration,
+while retaining rejection evidence and notifications. See
+[rejection deletion implementation](REJECTION_DELETION_IMPLEMENTATION.md).
+The inspection, migration and test record below describes the original email
+uniqueness commit `c13f5c7` and its earlier retained-account reapplication policy.
+
 Reviewed on 2026-11-15 (Asia/Manila). Source and migration implementation only;
 the live migration has **not** been applied. School ID remains the unique login
 identifier (`USERNAME_FIELD = "school_id"`).

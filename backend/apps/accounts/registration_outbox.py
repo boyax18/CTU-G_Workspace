@@ -46,15 +46,25 @@ def record_registration_decision_outbox(*, audit_log_id, target_account_id,
         code = "registration.approved" if approved else "registration.rejected"
         expected_action = "account.registration.approve" if approved else "account.registration.reject"
         event = AccessAuditLog.objects.using(DEFAULT_DB_ALIAS).only(
-            "action", "target_account_id", "new_value"
+            "action", "target_account_id", "old_value", "new_value"
         ).get(pk=audit_log_id)
-        if event.action != expected_action or event.target_account_id != target_account_id:
+        snapshot = event.new_value if type(event.new_value) is dict else {}
+        previous = event.old_value if type(event.old_value) is dict else {}
+        deleted_rejection = (
+            not approved and event.target_account_id is None
+            and type(snapshot.get("account_id")) is int
+            and snapshot.get("account_id") == target_account_id
+            and previous.get("account_id") == target_account_id
+            and previous.get("request_status") == "Pending"
+            and snapshot.get("account_deleted") is True
+            and snapshot.get("request_status") == "Rejected"
+        )
+        if event.action != expected_action or not (event.target_account_id == target_account_id or deleted_rejection):
             raise RegistrationOutboxError("Registration outbox audit binding is invalid.")
 
         version = 2 if getattr(settings, "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", False) else 1
         if version == 2 and not approved:
             from .registration_email_templates import REJECTION_LABELS
-            snapshot = event.new_value if type(event.new_value) is dict else {}
             if snapshot.get("rejection_code") not in REJECTION_LABELS:
                 raise RegistrationOutboxError("Immutable rejection reason is unavailable.")
         values = {

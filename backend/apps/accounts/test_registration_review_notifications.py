@@ -105,10 +105,7 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["applicant@example.edu"])
         self.assertIn("rejected", mail.outbox[0].subject.lower())
-        self.target.refresh_from_db()
-        self.assertEqual(self.target.request_status, "Rejected")
-        self.assertFalse(self.target.is_active)
-        self.assertTrue(Account.objects.filter(pk=self.target.pk).exists())
+        self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 
     def test_disabled_notification_gate_does_not_register_callback(self):

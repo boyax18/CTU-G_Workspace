@@ -42,13 +42,6 @@ class OTPActionSerializer(serializers.Serializer):
         return super().to_internal_value(data)
 
 
-class StudentVerificationStatusView(PublicJSONView):
-    http_method_names = ["get", "options"]
-
-    def get(self, request):
-        return verification_response(student_verification_status(request.COOKIES.get(COOKIE)))
-
-
 class StudentOTPThrottle(RegistrationBurstThrottle):
     scope = "student_registration_otp_burst"
     rate = "30/min"
@@ -59,11 +52,29 @@ class StudentOTPDailyThrottle(StudentOTPThrottle):
     rate = "200/day"
 
 
+class StudentVerificationStatusView(PublicJSONView):
+    http_method_names = ["get", "options"]
+    # Same IP budgets as the OTP actions, for both roles, checked before any
+    # database work (WF-01 R-04, owner-approved 16 Nov 2026).
+    throttle_classes = [StudentOTPThrottle, StudentOTPDailyThrottle]
+
+    def get(self, request):
+        if request.query_params.get("requested_role") == "Instructor":
+            self.public_registration_role = "Instructor"
+        result = student_verification_status(request.COOKIES.get(COOKIE))
+        if request.query_params.get("requested_role") == "Instructor" and result.get("status") in {"verification_required", "existing_verification"} and "requested_role" not in result:
+            # A query may select presentation, never reinterpret a legacy stage.
+            result["requested_role"] = "Student"
+        return verification_response(result)
+
+
 class StudentVerificationActionView(RegistrationView):
     action = "verify"
     throttle_classes = [StudentOTPThrottle, StudentOTPDailyThrottle]
 
     def post(self, request):
+        if request.query_params.get("requested_role") == "Instructor":
+            self.public_registration_role = "Instructor"
         code = ""
         if self.action == "verify":
             serializer = OTPActionSerializer(data=request.data)

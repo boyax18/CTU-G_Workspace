@@ -6,7 +6,7 @@ import logging
 from django.core.exceptions import RequestDataTooBig
 from django.middleware.csrf import get_token
 from django.utils.cache import patch_cache_control
-from rest_framework import exceptions, status
+from rest_framework import exceptions
 from rest_framework.authentication import CSRFCheck
 from rest_framework.parsers import BaseParser
 from rest_framework.permissions import AllowAny
@@ -78,6 +78,9 @@ class PublicJSONView(APIView):
 
     def finalize_response(self, request, response, *args, **kwargs):
         from .api_errors import normalize_error, request_id
+        if response.status_code >= 400 and isinstance(response.data, dict):
+            if response.data.get("requested_role", getattr(self, "public_registration_role", None)) == "Instructor":
+                response.data["requested_role"] = "Instructor"
         response["X-Request-ID"] = request_id(request)
         if response.status_code >= 400:
             code = normalize_error(response, request)
@@ -115,16 +118,14 @@ class RegistrationView(PublicJSONView):
 
     def post(self, request):
         try:
+            if isinstance(request.data, dict) and request.data.get("requested_role") == "Instructor":
+                self.public_registration_role = "Instructor"
             serializer = RegistrationSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            if serializer.validated_data["requested_role"] == "Student":
+            if serializer.validated_data["requested_role"] in {"Student", "Instructor"}:
                 from .student_registration_api import COOKIE, verification_response
                 result = register_account(serializer.validated_data, registration_token=request.COOKIES.get(COOKIE))
                 return verification_response(result)
-            register_account(serializer.validated_data)
         except RequestDataTooBig as exc:
             raise exceptions.ParseError("Request body is too large.") from exc
-        return Response(
-            {"message": "Registration request received. Eligible new accounts are pending administrative review."},
-            status=status.HTTP_202_ACCEPTED,
-        )
+        raise RuntimeError("Unsupported public registration role.")

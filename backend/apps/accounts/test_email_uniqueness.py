@@ -6,11 +6,13 @@ from threading import Barrier
 from unittest.mock import patch
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.db import IntegrityError, connection, connections, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.test.utils import CaptureQueriesContext
+from rest_framework.test import APIClient
 
 from apps.access_control.models import AccessAuditLog, AccountRole, Role
 from .models import Account, UserProfile
@@ -25,12 +27,16 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug
 
 class EmailRegistrationAPITests(test_registration.RegistrationAPITests):
     def test_duplicate_email_has_identical_public_response_and_preserves_owner(self):
-        first = self.post()
+        self.assertEqual(self.complete().status_code, 200)
         owner = Account.objects.get()
         before = Account.objects.values().get(pk=owner.pk)
         self.data.update(school_id="0012346", email=" \tREGISTRANT@EXAMPLE.EDU\t ", first_name="Other")
         second = self.post()
-        self.assertEqual((second.status_code, second.json()), (first.status_code, first.json()))
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(second.json()["error"]["code"], "conflict")
+        other = self.post({**self.data, "school_id": owner.school_id, "email": "other@example.edu"})
+        self.assertEqual(other.status_code, 409)
+        self.assertEqual(second.json()["error"]["message"], other.json()["error"]["message"])
         self.assertEqual(Account.objects.count(), 1)
         self.assertEqual(UserProfile.objects.count(), 1)
         self.assertEqual(Account.objects.values().get(pk=owner.pk), before)
@@ -43,12 +49,13 @@ class EmailRegistrationAPITests(test_registration.RegistrationAPITests):
         serializer = RegistrationSerializer(data=self.data)
         self.assertTrue(serializer.is_valid(), serializer.errors)
         self.assertEqual(serializer.validated_data["email"], "new.person@example.edu")
-        self.assertEqual(self.post().status_code, 202)
+        self.assertEqual(self.complete().status_code, 200)
         self.assertEqual(Account.objects.get().email, "new.person@example.edu")
 
     def test_unrelated_duplicate_key_error_stays_unavailable(self):
-        with patch("apps.accounts.services.UserProfile.objects.create", side_effect=IntegrityError(1062, "private detail")):
-            self.assert_rejected(self.post(), status=503)
+        self.assertEqual(self.post().status_code, 202)
+        with patch("apps.accounts.registration_staging.UserProfile.objects.create", side_effect=IntegrityError(1062, "private detail")):
+            self.assert_rejected(self.verify(), status=503)
 
     def test_executor_unavailability_does_not_fall_back_to_local_writes(self):
         with override_settings(WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=True):
@@ -103,19 +110,63 @@ class EmailDatabaseTests(TestCase):
         self.assertTrue(account.check_password("Good!Password5432"))
 
 
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class ConcurrentEmailRegistrationTests(TransactionTestCase):
-    def test_racing_instructor_submissions_create_only_one_account(self):
-        for name in ("Student", "Instructor"):
-            Role.objects.create(role_name=name)
-        # Student creation now requires a verified stage (covered by OTP races).
+    def test_concurrent_instructor_http_requests_reserve_one_stage_then_create_one_verified_pair(self):
+        from django.core import mail
+        from .test_student_registration_otp import last_code
+        cache.clear()
+        Role.objects.create(role_name="Instructor")
         barrier = Barrier(2, timeout=20)
 
-        def submit(n, role, email):
+        def submit(n):
+            try:
+                client = APIClient(enforce_csrf_checks=True)
+                csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+                barrier.wait()
+                response = client.post("/api/v1/auth/register/", {
+                    "school_id": "1000011", "email": f"race{n}@example.edu",
+                    "first_name": "Concurrent", "last_name": "Instructor",
+                    "requested_role": "Instructor", "password": "Copper!River7392",
+                    "password_confirmation": "Copper!River7392",
+                }, format="json", HTTP_X_CSRFTOKEN=csrf)
+                self.assertNotIn(settings.SESSION_COOKIE_NAME, response.cookies)
+                return response, client, csrf
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = [future.result(timeout=30) for future in [pool.submit(submit, 1), pool.submit(submit, 2)]]
+        self.assertCountEqual([response.status_code for response, _, _ in results], [202, 409])
+        self.assertNotEqual(results[0][0]["X-Request-ID"], results[1][0]["X-Request-ID"])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertFalse(Account.objects.exists())
+        self.assertFalse(UserProfile.objects.exists())
+        _, owner, csrf = next(row for row in results if row[0].status_code == 202)
+        completed = owner.post("/api/v1/auth/register/verify/?requested_role=Instructor", {"code": last_code()}, format="json", HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(completed.status_code, 200, completed.content)
+        self.assertEqual(Account.objects.count(), 1)
+        self.assertEqual(UserProfile.objects.count(), 1)
+        self.assertIsNotNone(Account.objects.get().email_verified_at)
+        self.assertFalse(Account.objects.get().is_active)
+        self.assertFalse(AccountRole.objects.exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
+
+    def test_racing_instructor_normalized_email_reservations_then_completion_create_one_account(self):
+        from .registration_staging import student_verification_action
+        from .test_student_registration_otp import last_code
+        cache.clear()
+        for name in ("Student", "Instructor"):
+            Role.objects.create(role_name=name)
+        barrier = Barrier(2, timeout=20)
+
+        def submit(n, email):
             try:
                 serializer = RegistrationSerializer(data={
                     "school_id": f"100000{n}", "email": email,
                     "first_name": "Concurrent", "last_name": "Applicant",
-                    "requested_role": role, "password": "Copper!River7392",
+                    "requested_role": "Instructor", "password": "Copper!River7392",
                     "password_confirmation": "Copper!River7392",
                 })
                 serializer.is_valid(raise_exception=True)
@@ -125,9 +176,11 @@ class ConcurrentEmailRegistrationTests(TransactionTestCase):
                 connections.close_all()
 
         with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(submit, 1, "Instructor", "Race@EXAMPLE.EDU"),
-                       pool.submit(submit, 2, "Instructor", " race@example.edu ")]
-            self.assertEqual([f.result(timeout=30) for f in futures], [None, None])
+            results = [future.result(timeout=30) for future in [pool.submit(submit, 1, "Race@EXAMPLE.EDU"), pool.submit(submit, 2, " race@example.edu ")]]
+        self.assertCountEqual([result["status"] for result in results], ["verification_required", "conflict"])
+        self.assertFalse(Account.objects.exists())
+        owner = next(result for result in results if result["status"] == "verification_required")
+        self.assertEqual(student_verification_action(owner["browser_token"], "verify", last_code())["status"], "completed")
         self.assertEqual(Account.objects.count(), 1)
         self.assertEqual(Account.objects.get().email, "race@example.edu")
         self.assertEqual(UserProfile.objects.count(), 1)

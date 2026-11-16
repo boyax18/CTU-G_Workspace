@@ -30,7 +30,7 @@ Validation errors may include a bounded `error.fields` map of public field names
 | 400 | attempts_exhausted | Clear code; cancellation/restart remains explicit. |
 | 403 | csrf_failed | Refresh the security token explicitly; do not repeat the failed POST automatically. |
 | 405 / 406 / 415 | method_not_allowed / not_acceptable / unsupported_media_type | Safe protocol error; no technical/raw response text. |
-| 409 | conflict | Same generic message before/after OTP; never identify School ID versus email. |
+| 409 | conflict | Same Student generic message for both roles before/after OTP; never identify the conflicting field. |
 | 410 | expired | No usable verification session; clear code and show restart. A 410 alone cannot prove whether an earlier uncertain verification committed. |
 | 429 | throttled / resend_cooldown / resends_exhausted | Respect bounded retry hints and existing per-stage limits; no automatic POST retry. |
 | 503 | delivery_failed | Encrypted stage retained by existing workflow; show bounded resend recovery, never delivery success. |
@@ -102,6 +102,22 @@ Previously implemented OTP prerequisites included under the user's explicit clar
 
 Tests were run in the shared working tree, which also contains pre-existing unrelated changes. Those unrelated changes were not staged; this is not a clean production release certification.
 
+## Shared Student/Instructor feedback — 16 November 2026
+
+The owner's latest instruction adopts Student error feedback/response for Instructor, superseding the earlier Instructor-only sentence, action panel and configuration/recipient metadata. Both roles use the existing registry, scoped backend mapper, ApiError client and accessible notice.
+
+All initial/final identity conflicts return HTTP 409, code conflict and exactly:
+"We could not complete this registration. Please check your information or contact support."
+The error envelope contains code/message/request_id and optional safe field errors/retry metadata; OTP errors share the existing status/expiry/attempt/resend/delivery counters. Instructor errors no longer expose requested_role, support_contact, password_reset_enabled, can_continue, email or otp_expires_in. Successful owned-stage replies retain role context only where required to preserve the original role. Staff ID validation and forbidden Instructor school fields retain role-appropriate safe field text.
+
+Both registration forms show the same check-details/wait-for-review guidance and Sign in link to /. Instructor substitutes Staff ID for School ID. There is no separate reset/unavailable, Continue or contact-action panel. Both OTP screens share generic saved-registration email wording, attempts, expiry error with Resend code, resend countdown, Cancel registration, explicit security refresh/status/restart and no automatic POST retry. Passwords/OTP clear under the same existing conditions.
+
+Matching/nonconflicting original-browser attempts resume without overwriting details or sending new mail. Changed conflicting submitted identities return shared 409 while preserving the valid original stage/cookie; correction permits continuation. Cross-browser identity knowledge still cannot resume/cancel. Unrelated duplicate-key storage failures now produce genuine safe 503 with rollback for both roles, correcting the legacy Student false-conflict classification to its existing workflow transaction-error contract. Real identity/reservation collisions remain 409.
+
+Core Instructor staging/OTP, Staff ID, no Student-only fields, atomic Pending/profile/proof, rate/expiry/writer boundaries and later School Admin review remain. Password-recovery implementation/flag is untouched; official support contact remains owner input, with Student's generic support wording on the registration form. No public configuration endpoint or new schema was added.
+
+Verification: 165 focused backend checks, 93 related regressions, 51 focused frontend checks, 29 browser checks and one real OTP/browser/CSRF/MySQL/protected-read acceptance passed; build/lint passed. Full frontend: 139/140 passed, one known unrelated dashboard/mock-isolation failure. Disposable databases were destroyed; no real email/inbox or production acceptance was claimed. See the [current feedback consistency report](../workflows/group_a/WF-01.02_Feedback_Consistency.md). No new commit/push or agent policy/Human Approval; the receipt below describes earlier work.
+
 ## Commit receipt
 
 Implementation and authorized OTP prerequisites: `70ccf553a61b802bc8816687e69ac72fcadd2052` — `feat(auth): centralize registration errors and OTP recovery` (34 reviewed files).
@@ -109,3 +125,14 @@ Implementation and authorized OTP prerequisites: `70ccf553a61b802bc8816687e69ac7
 This receipt is a documentation-only follow-up so the implementation hash can be recorded without a self-referential commit. The official ERD, externally edited workflow catalogue and unrelated access-control/rejection/outbox work are excluded. No push was performed. The existing migration 0005 was committed unchanged as explicitly authorized; this task generated/applied no new migration to the development database.
 
 References: [DRF exceptions and direct-response scope](https://www.django-rest-framework.org/api-guide/exceptions/), [DRF view lifecycle](https://www.django-rest-framework.org/api-guide/views/), [Playwright installed Edge channel](https://playwright.dev/docs/browsers).
+
+## WF-01 audit corrections — 16 November 2026
+
+Owner-approved (OD-1(a), OD-2, OD-3, packages P1-P4). The error envelope, codes, HTTP statuses and messages above are unchanged. Record: [WF-01 audit corrections](../workflows/group_a/WF-01_Audit_Corrections_2026-11-16.md).
+
+| Area | Contract change |
+| --- | --- |
+| Success summaries | verification_required / existing_verification bodies (register, status, resend) add code_valid_seconds: the configured code lifetime (D-01), an integer 1-86400. It is guidance only and never appears in error envelopes. Clients treat it as optional. |
+| Mail ordering | The staging row and code digest commit before mail is sent. delivery_failed semantics are unchanged; invalidation clears only the code that failed, never a newer code from a concurrent resend. |
+| Rate limits | GET /register/verification/ applies the 30/min and 200/day IP budgets to both roles before any lookup (HTTP 429 throttled). Per-identity budgets (keyed ID and email, shared across roles) now apply to Student as well as Instructor: admission 5/min and 30/day; owned OTP/status 30/min and 200/day. |
+| Client wording | A 410 on the first load of the code screen shows neutral text (no saved registration in this browser; it may have expired, been cancelled or already been submitted) instead of claiming expiry. A submission answered with existing_verification shows that the newly entered details were not used. The Resend button's accessible name is always Resend code; its countdown is a linked description. |

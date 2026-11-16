@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ApiError, API_MESSAGES, getJSON, postJSON } from '../src/api/client.ts';
-import { clearRegistrationSecrets, registrationRecovery } from '../src/features/auth/registrationFeedback.ts';
+import { asApiError, clearRegistrationSecrets, registrationRecovery } from '../src/features/auth/registrationFeedback.ts';
 import { submitRegistration, emptyRegistration, verifyRegistrationCode } from '../src/features/auth/registration.ts';
 
 const ref = 'a'.repeat(32);
@@ -12,6 +12,53 @@ async function withFetch(mock, action) {
   globalThis.fetch = mock;
   try { return await action(); } finally { globalThis.fetch = before; }
 }
+
+test('Student and Instructor conflicts share one safe message before and after OTP', async () => {
+  for (const role of ['Student', 'Instructor']) {
+    for (const path of ['/api/v1/auth/register/', '/api/v1/auth/register/verify/']) {
+      await withFetch(async () => json({ requested_role: role, error: { code: 'email_already_used', message: secret, fields: { email: [secret] } } }, 409), async () => {
+        await assert.rejects(() => getJSON(path), error => {
+          assert.equal(error.message, API_MESSAGES.conflict);
+          assert.deepEqual(error.fields, {});
+          assert.ok(!error.message.includes(secret));
+          return true;
+        });
+      });
+    }
+  }
+});
+
+test('deprecated Instructor action metadata cannot change shared error feedback or leak into ApiError', async () => {
+  await withFetch(async () => json({ requested_role: 'Instructor', support_contact: secret, password_reset_enabled: true, can_continue: true,
+    error: { code: 'conflict', message: secret } }, 409), async () => {
+    await assert.rejects(() => getJSON('/api/v1/auth/register/'), error => {
+      assert.equal(error.message, API_MESSAGES.conflict);
+      assert.equal(error.instructor, undefined);
+      assert.deepEqual(error.context, {});
+      assert.ok(!JSON.stringify(error).includes(secret));
+      return true;
+    });
+  });
+});
+
+test('both role feedback paths strip field details from conflict errors', () => {
+  for (const role of ['Student', 'Instructor']) {
+    const error = asApiError(new ApiError(secret, 409, 'conflict', { email: [secret] }, { requestId: ref }), role);
+    assert.equal(error.message, API_MESSAGES.conflict);
+    assert.deepEqual(error.fields, {});
+    assert.equal(error.requestId, ref);
+  }
+});
+
+test('Staff ID validation retains its label in the shared error response path', async () => {
+  await withFetch(async () => json({ error: { code: 'validation_error', fields: { school_id: [secret] } } }, 400), async () => {
+    await assert.rejects(() => getJSON('/api/v1/auth/register/'), error => {
+      assert.equal(asApiError(error, 'Instructor').fields.school_id[0], 'Staff ID must contain 1 to 7 digits only.');
+      assert.equal(asApiError(error, 'Student').fields.school_id[0], 'School ID must contain 1 to 7 digits only.');
+      return true;
+    });
+  });
+});
 
 for (const [status, code, recovery] of [
   [400, 'validation_error', 'correct'], [400, 'otp_invalid', 'correct'], [400, 'otp_expired', 'resend'],

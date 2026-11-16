@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 from django.conf import settings
 from django.core.cache import cache
+from django.core import mail
 from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError, connection
 from django.test import TestCase, override_settings
@@ -44,6 +45,17 @@ class RegistrationAPITests(TestCase):
         return self.client.post("/api/v1/auth/register/", self.data if data is None else data,
                                 format="json", HTTP_X_CSRFTOKEN=self.token, **headers)
 
+    def verify(self):
+        from .test_student_registration_otp import last_code
+        return self.client.post("/api/v1/auth/register/verify/?requested_role=Instructor", {"code": last_code()},
+                                format="json", HTTP_X_CSRFTOKEN=self.token)
+
+    def complete(self):
+        response = self.post()
+        self.assertEqual(response.status_code, 202, response.content)
+        self.assertFalse(Account.objects.exists())
+        return self.verify()
+
     def assert_rejected(self, response, field=None, status=400):
         self.assertEqual(response.status_code, status, response.content)
         self.assertIn("error", response.json())
@@ -54,8 +66,8 @@ class RegistrationAPITests(TestCase):
         self.assertEqual(AccountRole.objects.count(), 0)
 
     def assert_pending(self, role):
-        response = self.post()
-        self.assertEqual(response.status_code, 202, response.content)
+        response = self.complete()
+        self.assertEqual(response.status_code, 200, response.content)
         account = Account.objects.get()
         profile = UserProfile.objects.get(account=account)
         self.assertEqual(account.request_status, "Pending")
@@ -71,7 +83,7 @@ class RegistrationAPITests(TestCase):
         self.assertIsNone(account.reviewed_at)
         self.assertFalse(AccountRole.objects.exists())
         self.assertNotIn(settings.SESSION_COOKIE_NAME, self.client.cookies)
-        self.assertEqual(set(response.json()), {"message"})
+        self.assertEqual(response.json()["status"], "completed")
         self.assertNotIn(account.password, response.content.decode())
         self.assertNotIn(self.data["password"], response.content.decode())
 
@@ -87,18 +99,29 @@ class RegistrationAPITests(TestCase):
         self.assertFalse(AccountRole.objects.exists())
 
     def test_instructor_registration_creates_only_pending_inactive_account_and_profile(self):
+        from .models import StudentRegistrationStage
+        from .student_registration_api import COOKIE
+
         self.data["requested_role"] = "Instructor"
         self.assert_pending("Instructor")
+        account = Account.objects.get()
+        self.assertIsNotNone(account.email_verified_at)
+        self.assertEqual(account.email_verified_address, self.data["email"])
+        self.assertFalse(StudentRegistrationStage.objects.exists())
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertFalse(self.client.cookies.get(COOKIE).value)
 
-    def test_duplicate_school_id_is_neutral_and_does_not_update_existing_account(self):
-        first = self.post()
+    def test_duplicate_school_id_is_generic_409_and_does_not_update_existing_account(self):
+        self.assertEqual(self.complete().status_code, 200)
         account = Account.objects.get()
         original_hash = account.password
         account.request_status, account.is_active = "Approved", True
         account.save(update_fields=["request_status", "is_active"])
         self.data.update(email="different@example.edu", first_name="Changed")
         second = self.post()
-        self.assertEqual((first.status_code, first.json()), (second.status_code, second.json()))
+        self.assertEqual(second.status_code, 409)
+        self.assertEqual(second.json()["error"]["code"], "conflict")
+        self.assertNotIn("fields", second.json()["error"])
         self.assertEqual(Account.objects.count(), 1)
         self.assertEqual(UserProfile.objects.count(), 1)
         account.refresh_from_db()
@@ -109,8 +132,8 @@ class RegistrationAPITests(TestCase):
         self.assertTrue(account.is_active)
 
     def test_duplicate_school_id_never_creates_second_account(self):
-        self.post()
-        self.assertEqual(self.post().status_code, 202)
+        self.assertEqual(self.complete().status_code, 200)
+        self.assertEqual(self.post().status_code, 409)
         self.assertEqual(Account.objects.count(), 1)
 
     def test_invalid_email(self):
@@ -120,7 +143,7 @@ class RegistrationAPITests(TestCase):
     def test_optional_profile_fields_can_be_omitted(self):
         for key in ("middle_name", "suffix"):
             self.data.pop(key)
-        self.assertEqual(self.post().status_code, 202)
+        self.assertEqual(self.complete().status_code, 200)
         account = Account.objects.get()
         self.assertEqual(account.email, "registrant@example.edu")
         self.assertIsNone(account.profile.middle_name)
@@ -132,7 +155,7 @@ class RegistrationAPITests(TestCase):
                 cache.clear()
                 self.assert_rejected(self.post({**self.data, "school_id": invalid}), "school_id")
         self.data["school_id"] = "0000001"
-        self.assertEqual(self.post().status_code, 202)
+        self.assertEqual(self.complete().status_code, 200)
         self.assertEqual(Account.objects.get().school_id, "0000001")
 
     def test_email_is_required(self):
@@ -214,16 +237,18 @@ class RegistrationAPITests(TestCase):
         self.assertNotIn(settings.SESSION_COOKIE_NAME, response.cookies)
 
     def test_profile_integrity_failure_rolls_back_account(self):
-        with patch("apps.accounts.services.UserProfile.objects.create", side_effect=IntegrityError(1048, "sensitive database detail")):
-            response = self.post()
+        self.assertEqual(self.post().status_code, 202)
+        with patch("apps.accounts.registration_staging.UserProfile.objects.create", side_effect=IntegrityError(1048, "sensitive database detail")):
+            response = self.verify()
         self.assert_rejected(response, status=503)
         self.assertNotIn("sensitive", response.content.decode())
         self.assertEqual(response.json()["error"]["code"], "registration_unavailable")
 
     def test_unexpected_profile_failure_is_safe_and_atomic(self):
-        with patch("apps.accounts.services.UserProfile.objects.create", side_effect=RuntimeError("sensitive internal detail")):
+        self.assertEqual(self.post().status_code, 202)
+        with patch("apps.accounts.registration_staging.UserProfile.objects.create", side_effect=RuntimeError("sensitive internal detail")):
             with self.assertLogs("apps.accounts.views", level="ERROR") as captured:
-                response = self.post()
+                response = self.verify()
         self.assert_rejected(response, status=503)
         self.assertNotIn("sensitive", response.content.decode())
         self.assertNotIn("sensitive", " ".join(captured.output))

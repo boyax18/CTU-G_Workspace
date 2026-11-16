@@ -36,6 +36,13 @@ class RegistrationSerializer(serializers.Serializer):
         if not isinstance(data, Mapping):
             raise serializers.ValidationError({"non_field_errors": ["Provide a JSON object."]})
         if set(data) - set(self.fields):
+            if data.get("requested_role") == "Instructor" and set(data) & {"course", "year_level", "section"}:
+                raise serializers.ValidationError({
+                    "non_field_errors": [serializers.ErrorDetail(
+                        "Student-only school information is not accepted for Instructor registration.",
+                        code="student_only_fields",
+                    )],
+                })
             raise serializers.ValidationError({"non_field_errors": ["The request contains unsupported fields."]})
         return super().to_internal_value(data)
 

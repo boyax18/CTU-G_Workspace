@@ -27,6 +27,8 @@ export const API_MESSAGES: Record<string, string> = {
   review_unavailable: 'Registration review is unavailable.',
   recovery_disabled: 'Password recovery is unavailable.',
 };
+const STAFF_ID_ERROR = 'Staff ID must contain 1 to 7 digits only.';
+const INSTRUCTOR_FIELDS_ERROR = 'Student-only school information is not accepted for Instructor registration.';
 const FIELD_MESSAGES: Record<string, string> = {
   school_id: 'School ID must contain 1 to 7 digits only.', email: 'Enter a valid email address.',
   first_name: 'Enter a valid first name.', middle_name: 'Enter a valid middle name.',
@@ -35,13 +37,22 @@ const FIELD_MESSAGES: Record<string, string> = {
   password_confirmation: 'Passwords do not match.', code: 'Enter a six-digit verification code.',
   non_field_errors: 'Check the submitted registration details.',
 };
-const SAFE_FIELDS = new Set([...Object.values(FIELD_MESSAGES), 'This field is required.', 'This value is too long.']);
+const SAFE_FIELDS = new Set([...Object.values(FIELD_MESSAGES), STAFF_ID_ERROR, INSTRUCTOR_FIELDS_ERROR, 'This field is required.', 'This value is too long.']);
 const STATUS_CODES: Record<number, string> = { 400: 'validation_error', 401: 'authentication_required', 403: 'csrf_failed', 409: 'conflict', 410: 'expired', 429: 'throttled', 500: 'server_error', 503: 'registration_unavailable' };
 const own = (object: object, key: string) => Object.prototype.hasOwnProperty.call(object, key);
 const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
 const identifier = (value: unknown): string => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value) ? value : '';
 const bounded = (value: unknown): number | undefined => typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 86400 ? value : undefined;
 const responseHeader = (response: Response, name: string): string | null => response.headers?.get?.(name) ?? null;
+const REQUEST_TIMEOUT_MS = 15_000;
+
+/** AbortSignal.timeout is missing on Safari < 16 and older WebViews; fall back safely. */
+export function timeoutSignal(ms: number = REQUEST_TIMEOUT_MS): AbortSignal {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') return AbortSignal.timeout(ms);
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
 
 interface ErrorOptions {
   requestId?: string;
@@ -91,7 +102,9 @@ async function readResponse(response: Response, mutation = false): Promise<unkno
     if (response.status === 400) {
       for (const [key, value] of Object.entries(record(error.fields))) {
         if (own(FIELD_MESSAGES, key) && Array.isArray(value) && value.length) {
-          fields[key] = value.slice(0, 1).map(item => typeof item === 'string' && SAFE_FIELDS.has(item) ? item : FIELD_MESSAGES[key]);
+          fields[key] = value.slice(0, 1).map(item => {
+            return typeof item === 'string' && SAFE_FIELDS.has(item) ? item : FIELD_MESSAGES[key];
+          });
         }
       }
     }
@@ -122,7 +135,7 @@ async function readResponse(response: Response, mutation = false): Promise<unkno
 export async function initializeCSRF(): Promise<string> {
   try {
     const bootstrap = await fetch('/api/v1/auth/csrf/', {
-      credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000),
+      credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' }, signal: timeoutSignal(),
     });
     const tokenBody = record(await readResponse(bootstrap));
     if (typeof tokenBody.csrfToken !== 'string' || !tokenBody.csrfToken) {
@@ -145,7 +158,7 @@ export async function postJSON(path: string, body: unknown): Promise<unknown> {
     return await readResponse(await fetch(path, {
       method: 'POST', credentials: 'same-origin', cache: 'no-store',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-      body: JSON.stringify(body), signal: AbortSignal.timeout(15_000),
+      body: JSON.stringify(body), signal: timeoutSignal(),
     }), true);
   } catch (error) {
     if (error instanceof ApiError) throw error;
@@ -158,7 +171,7 @@ export async function getJSON(path: string): Promise<unknown> {
   try {
     return await readResponse(await fetch(path, {
       credentials: 'same-origin', cache: 'no-store', headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(15_000),
+      signal: timeoutSignal(),
     }));
   } catch (error) {
     if (error instanceof ApiError) throw error;

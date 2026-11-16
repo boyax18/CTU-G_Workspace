@@ -1,0 +1,3140 @@
+SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
+
+# CTU-G Workspace
+System Workflow Catalogue
+
+Draft version 0.3.1  |  15 November 2026  |  For stakeholder review
+
+## 1. Purpose and scope
+
+This catalogue organizes the proposed CTU-G Workspace processes into 13 functional workflow categories. It is intended to support the Software Requirements Specification (SRS), use-case descriptions, acceptance criteria, and test-case planning.
+
+These entries are proposed workflow definitions, not a statement that each function is implemented or approved. Detailed steps, business rules, permission codes, exception handling, and integration contracts must be reconciled with the approved SRS and actual system design.
+
+## 2. Workflow classification
+
+| ID | Category | Group | Subflows |
+| --- | --- | --- | --- |
+| WF-01 | Registration & Authentication | Group A | 6 |
+| WF-02 | Account Management | Group A | 6 |
+| WF-03 | Access Control Management | Group A | 6 |
+| WF-04 | Profile Management | Group A | 5 |
+| WF-05 | Academic Information | Group B | 4 |
+| WF-06 | Clearance Management | Group B | 5 |
+| WF-07 | SSG Financial Management | Group B | 8 |
+| WF-13 | Group Rating | Group B | To be defined |
+| WF-08 | Announcements & Notifications | Group B | 5 |
+| WF-09 | Account Concerns & Support | Group B | 4 |
+| WF-10 | System Administration & Configuration | Group C | 4 |
+| WF-11 | Audit, Security & Monitoring | Group C | 5 |
+| WF-12 | Reporting & Document Generation | Group C | 4 |
+
+## 3. Workflow register
+
+Index only. Actor and status are documented here; detailed specifications are in Section 4. The original workflow IDs and titles are retained except the user-supplied cleaned WF-01.01 title.
+
+### Group A - Core System Workflows
+
+#### WF-01  Registration & Authentication
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-01.01 | Register Student Account | Student Applicant (public) | Implemented and locally verified; Human Approval pending |
+| WF-01.02 | Register Instructor Account | Instructor Applicant (public) | Instructor OTP implemented and development-verified; Ready for approval |
+| WF-01.03 | Login and session establishment | Not yet inspected | Draft |
+| WF-01.04 | Logout and session termination | Not yet inspected | Draft |
+| WF-01.05 | Forgot-password request and reset | Not yet inspected | Draft |
+| WF-01.06 | Session expiry and CSRF handling | Not yet inspected | Draft |
+
+#### WF-02  Account Management
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-02.01 | View pending applications | Not yet inspected | Draft |
+| WF-02.02 | Verify and review applicant information | Not yet inspected | Draft |
+| WF-02.03 | Approve applicant account | Not yet inspected | Draft |
+| WF-02.04 | Reject applicant, notify by email, and delete rejected registration data | Not yet inspected | Draft |
+| WF-02.05 | Activate or deactivate an existing account | Not yet inspected | Draft |
+| WF-02.06 | View account status and permitted history | Not yet inspected | Draft |
+
+#### WF-03  Access Control Management
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-03.01 | Assign or revoke account roles | Not yet inspected | Draft |
+| WF-03.02 | Manage role-based permission assignments | Not yet inspected | Draft |
+| WF-03.03 | Grant account-specific permission | Not yet inspected | Draft |
+| WF-03.04 | Deny or revoke account-specific permission | Not yet inspected | Draft |
+| WF-03.05 | Evaluate effective permissions and service state | Not yet inspected | Draft |
+| WF-03.06 | Record and review access-control changes | Not yet inspected | Draft |
+
+#### WF-04  Profile Management
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-04.01 | View own profile | Not yet inspected | Draft |
+| WF-04.02 | Request or update profile information | Not yet inspected | Draft |
+| WF-04.03 | Change account password | Not yet inspected | Draft |
+| WF-04.04 | Update email address | Not yet inspected | Draft |
+| WF-04.05 | Upload or replace profile picture | Not yet inspected | Draft |
+
+### Group B - Campus Service Workflows
+
+#### WF-05  Academic Information
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-05.01 | View authorized academic information | Not yet inspected | Draft |
+| WF-05.02 | View assigned subjects (instructor) | Not yet inspected | Draft |
+| WF-05.03 | View enrolled students where authorized | Not yet inspected | Draft |
+| WF-05.04 | Obtain or verify academic status from CTU main system | Not yet inspected | Draft |
+
+#### WF-06  Clearance Management
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-06.01 | Request clearance | Not yet inspected | Draft |
+| WF-06.02 | Verify clearance eligibility and requirements | Not yet inspected | Draft |
+| WF-06.03 | Review and decide assigned clearance items | Not yet inspected | Draft |
+| WF-06.04 | Track clearance progress and decisions | Not yet inspected | Draft |
+| WF-06.05 | Generate an authorized clearance PDF | Not yet inspected | Draft |
+
+#### WF-07  SSG Financial Management
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-07.01 | Verify academic-period fee eligibility | Not yet inspected | Draft |
+| WF-07.02 | Assess organizational fee obligation | Not yet inspected | Draft |
+| WF-07.03 | Record and validate payments | Not yet inspected | Draft |
+| WF-07.04 | Generate and view authorized receipts | Not yet inspected | Draft |
+| WF-07.05 | Record and categorize expenses | Not yet inspected | Draft |
+| WF-07.06 | View balances, payment status, and history | Not yet inspected | Draft |
+| WF-07.07 | Prepare authorized financial reports | Not yet inspected | Draft |
+| WF-07.08 | Process returning, transferee, and newcomer scenarios | Not yet inspected | Draft |
+
+#### WF-13  Group Rating
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| Not assigned | Group Rating subflows — owner review required | Student / Instructor (SRS scope only) | Draft — not yet inspected |
+
+No WF-13.xx IDs or detailed workflow behaviors assigned. Group Rating is included as a draft campus-service category only; the project owner will approve its workflow breakdown before specifications are written.
+
+#### WF-08  Announcements & Notifications
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-08.01 | Create and publish announcements | Not yet inspected | Draft |
+| WF-08.02 | View announcements | Not yet inspected | Draft |
+| WF-08.03 | Generate event-based in-app notifications | Not yet inspected | Draft |
+| WF-08.04 | Send eligible email notifications | Not yet inspected | Draft |
+| WF-08.05 | View notification history and delivery status | Not yet inspected | Draft |
+
+#### WF-09  Account Concerns & Support
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-09.01 | Submit account concern | Not yet inspected | Draft |
+| WF-09.02 | Assign or review concern | Not yet inspected | Draft |
+| WF-09.03 | Respond to concern | Not yet inspected | Draft |
+| WF-09.04 | Track concern status and resolution | Not yet inspected | Draft |
+
+### Group C - System Operations & Maintenance
+
+#### WF-10  System Administration & Configuration
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-10.01 | Manage authorized academic-period settings | Not yet inspected | Draft |
+| WF-10.02 | Manage system operational settings | Not yet inspected | Draft |
+| WF-10.03 | Configure services within authorized boundaries | Not yet inspected | Draft |
+| WF-10.04 | Review operational configuration changes | Not yet inspected | Draft |
+
+#### WF-11  Audit, Security & Monitoring
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-11.01 | Record security-relevant events | Not yet inspected | Draft |
+| WF-11.02 | Review authorized audit records | Not yet inspected | Draft |
+| WF-11.03 | Detect and respond to unauthorized attempts | Not yet inspected | Draft |
+| WF-11.04 | Monitor system health and error conditions | Not yet inspected | Draft |
+| WF-11.05 | Apply data retention, backup, and recovery controls | Not yet inspected | Draft |
+
+#### WF-12  Reporting & Document Generation
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-12.01 | Generate authorized operational reports | Not yet inspected | Draft |
+| WF-12.02 | Export permitted records | Not yet inspected | Draft |
+| WF-12.03 | Generate official system documents | Not yet inspected | Draft |
+| WF-12.04 | Check report accuracy and access scope | Not yet inspected | Draft |
+
+## 4. Detailed workflow specifications
+
+Each flow has a consistent header, main flow, alternative flow, errors, links and approval checklist. Uninspected flows are placeholders only: no behavior has been invented.
+
+### 4.0 Reusable workflow template (moved from former Section 6)
+
+| Template element | What to record |
+| --- | --- |
+| Workflow ID and title | Stable ID and title (unchanged until approved) |
+| Header table | Actor and required permission; Trigger; Preconditions; Result; Status |
+| Main flow | Numbered actions; Not yet inspected until reconciled |
+| Alternative flows | Numbered alternatives; Not yet inspected until reconciled |
+| Errors | Step \| Problem \| What happens |
+| Links | Depends on; Feeds |
+| Checklist footer | Guidelines; AI Agent Checklist; Blocked by; Evidence level; Human Approval; Next flow |
+| Evidence and approval | Record verification level; do not tick Approved without the project owner |
+
+Original reusable-template intent retained: purpose/scope, actors/permissions, trigger/preconditions, postconditions, requirement/data traceability, acceptance/testing, approval and version must be confirmed during each flow’s inspection.
+
+### Group A - Core System Workflows
+
+### WF-01  Registration & Authentication
+
+#### WF-01.01 — Register Student Account
+
+| Field | Definition |
+| --- | --- |
+| Actor | Student Applicant (public registration, no permission needed) |
+| Trigger | Applicant submits the Student registration form |
+| Preconditions | Registration is available and the OTP email service is working |
+| Result | A verified Pending/inactive account is created and waits for School Admin review (WF-02) |
+| Status | Implemented in the development system and verified by automated checks; 16 November 2026 UI wording update complete. OTP precedes account/profile creation. Defaults are configurable; policy decisions and Human Approval remain unapproved. |
+
+**Implementation basis:** The user's subsequent instruction authorized making WF-01.01 follow its main flow and then completing the AI checklist. Student registration now stages encrypted data, sends/verifies an OTP and only then creates the Pending/inactive account/profile with durable email proof. WF-01.02 later reused this mechanism for Instructor (see WF-01.02). The owner-approved 16 November 2026 audit corrections (mail sent only after the staging write commits, per-identity limits for both roles, status rate limits, resumed-attempt notice and code-lifetime/spam-folder guidance) are recorded in the [WF-01 audit corrections record](group_a/WF-01_Audit_Corrections_2026-11-16.md); Student conflict wording and main flow are unchanged. See the [current implementation and verification record](group_a/WF-01.01_Student_Registration_Implementation.md); the [earlier inspection record](group_a/WF-01.01_Student_Registration_Review.md) preserves pre-implementation findings. No policy decision or Human Approval was approved by the agent. Per the 16 November instruction, the Student form button reads “Proceed Email Verification” and has no separate resume verification control.
+
+#### Main flow
+
+1. Applicant opens the public registration page and chooses Student.
+
+2. Applicant completes the form: School ID, email, first name, last name, password, confirm password, and optional profile info.
+
+3. Applicant submits the form to request email verification.
+
+4. System validates the request and fields, and confirms that Student is an available requested base role. Academic eligibility is reviewed by the School Admin under WF-02; email verification alone does not establish enrollment or eligibility.
+
+5. System checks that the School ID and email are not already used. (email rule: D-06)
+
+6. System securely stages the information. The password is hashed first. (D-04)
+
+7. System creates an OTP and emails it to the applicant.
+
+8. System shows the OTP entry screen.
+
+9. Applicant enters the OTP.
+
+10. System checks the attempt limit (D-03), then validates the OTP (D-01).
+
+11. System marks the temporary registration as email-verified.
+
+12. System runs one all-or-nothing transaction. It rechecks School ID and email, creates the Pending/inactive account, creates the linked profile, saves the email-verification proof, and commits.
+
+13. System shows a confirmation, and the Pending account becomes visible to the School Admin (WF-02.01).
+
+Rule: Before step 12, no account or profile exists, and no role is assigned. A role is assigned only on School Admin approval (WF-02.03).
+
+#### Alternative A – Resend OTP (D-02)
+
+1. Applicant requests a new code.
+
+2. System checks the resend interval and limit.
+
+3. System cancels the old OTP, creates a new one, and emails it.
+
+4. System shows a generic "code sent" message.
+
+#### Alternative B – Applicant already has a staged registration (D-04b)
+
+1. Applicant submits again with the same School ID or email.
+
+2. System does not overwrite the first attempt and shows the generic message.
+
+3. The original browser's scoped HttpOnly cookie proves possession and continues the earlier verification attempt without overwriting its details. The applicant can cancel from the OTP screen. Another browser knowing only School ID/email cannot resume or cancel. There is no separate resume verification button/link. [D-04b: implemented mechanism; policy sign-off OPEN.]
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Step 4 | Invalid form or request | Reject and show what to fix |
+| Steps 5, 12 | School ID or email conflict | Stop; show the same generic message: "We could not complete this registration. Please check your information or contact support." Student initial/final conflict checks now return HTTP 409 with this message (D-07). |
+| Step 6 | Staging fails | Stop; show "registration unavailable" |
+| Step 7 | OTP email fails | Return a delivery failure, invalidate the uncertain code and retain encrypted staging for bounded resend within the original deadline. No account/profile is created and no delivery success is claimed. [D-08: implemented recovery default; policy sign-off OPEN.] |
+| Step 10 | OTP expired, wrong, or too many attempts | Show the matching message (D-01, D-03) |
+| Steps 6–11 | Applicant abandons registration | Staged data purged (D-05) |
+| Step 12 | Transaction fails | Roll back; show "registration not completed" |
+
+#### Links
+
+Depends on: WF-01.06 (session and CSRF) and the OTP email service. WF-08.04 is related, not a proven dependency.
+
+Public support cross-reference: Official support contact – needs owner input. See Appendix A/B and WF-01.02 D-13 for the configured support/fallback decision. This adds the owner's requested open-item reference; WF-01.01's approved error wording and behavior are unchanged.
+
+Feeds: WF-02.01, WF-02.02, WF-02.03, and WF-02.04 if the applicant is rejected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Cleaned   ☒ Verified
+
+Checklist scope: Completed for this local implementation: source/DB inspection, reconciliation to the main flow, cleanup of staged secrets/data and automated verification. Verified means 122 focused backend checks (23 OTP tests), 75 related backend regressions, 34 frontend checks, successful frontend build, schema installation and safe HTTP/SMTP smoke checks. It does not assert actual recipient inbox delivery, full interactive browser testing, production readiness or human approval.
+
+Blocked by: No remaining implementation blocker for the main flow in the current local configuration. Human sign-off and policy review D-01–D-09 remain OPEN; official support details, actual inbox/full browser acceptance and a supervised production cleanup/executor deployment require separate completion. Protected executor mode deliberately refuses Student OTP until its writer/credential/trigger contract is reviewed. Do not start WF-01.02.
+
+Evidence level: Code-verified and automated-test verified for the Student OTP sequence; DB-verified for installed development staging/proof schema and accounts migration ledger through 0005. Existing account/profile values preserved. SMTP connection/authentication succeeded without sending a real test message. React component initial server rendering/build and live route/proxy responses verified; actual inbox/full interactive browser acceptance unverified. This is not production verification.
+
+Human Approval: ☐ Approved by: Ronald Arias  Date: 11/16/2026
+
+Next flow: WF-01.02. Do not start until Approved is ticked.
+
+#### WF-01.02 — Register Instructor Account
+
+| Field | Definition |
+| --- | --- |
+| Actor | Instructor Applicant (public registration; no permission needed) |
+| Trigger | Applicant submits the Instructor registration form |
+| Preconditions | Registration and OTP email service are available; requested Instructor role is active; existing CSRF, rate and permitted-writer checks pass |
+| Result | After OTP, one email-verified Pending/inactive Instructor account and linked profile await School Admin review; no role or authenticated session is created |
+| Status | Implemented and verified in development against the owner-stated OTP target on 16 November 2026, with the owner's later instruction to adopt Student error feedback/response ([consistency report](group_a/WF-01.02_Feedback_Consistency.md)) and the owner-approved audit corrections ([WF-01 audit corrections record](group_a/WF-01_Audit_Corrections_2026-11-16.md)). Ready for approval; Human Approval remains unchecked. |
+
+**Owner-stated basis:** Ronald Arias authorized reuse of WF-01.01 staging/OTP/proof for Instructor in development and confirmed Staff ID (1–7 digits), School Admin review only, the conflict sentence below, configured public support with neutral fallback, and the existing password-reset feature gate. These requirements supersede the historical direct-to-Pending/neutral-202 Instructor baseline. D-01–D-09 remain OPEN; owner statements are recorded without agent policy approval. See the [current implementation/acceptance report](group_a/WF-01.02_Instructor_OTP_Implementation.md), [reconciliation table and owner answers](group_a/WF-01.02_Instructor_OTP_Reconciliation.md), and [historical direct-registration record](group_a/WF-01.02_Instructor_Registration_Implementation.md).
+
+#### Main flow
+
+1. Applicant opens /register and selects Instructor.
+2. Applicant supplies Staff ID, email, first name, last name, password and confirmation; middle name and suffix are optional.
+3. Applicant activates Proceed Email Verification.
+4. System validates the allowlisted input and active Instructor requested role, with existing CSRF/Origin, JSON and request-limit protections.
+5. System checks the Staff ID and normalized email against existing accounts and active staged reservations.
+6. System creates the protected temporary registration with a password hash and immutable Instructor role inside the encrypted payload.
+7. System generates a six-digit OTP and sends it through the existing email mechanism.
+8. System displays the shared OTP screen for the original browser: the configured code lifetime and a spam/junk-folder hint (OD-3, owner-approved 16 November 2026). The recipient address is not displayed.
+9. Applicant enters the OTP.
+10. System checks cumulative attempts and code/stage expiry, then validates the OTP.
+11. System marks the temporary registration email-verified inside the completion transaction.
+12. System atomically rechecks uniqueness and the active Instructor role, creates the Pending/inactive account and linked profile, saves durable email proof, and consumes the stage.
+13. System displays confirmation that School Admin review is next.
+
+Rules:
+- Before step 12, no account/profile exists. No AccountRole, privilege, approval or login is created by registration.
+- Staff ID is the Instructor label for existing accounts.school_id; it accepts 1–7 ASCII digits, preserving leading zeroes. No employee entity/column or migration was introduced (D-11, owner-stated).
+- Instructor has no School Information section and no course/year-level/section fields. Submitted Student-only fields are rejected with a clear safe error and are not staged/stored.
+- OTP proves email access, not employment. Eligibility is checked by School Admin review only, as owner-stated (D-12). Existing review authorization, role assignment and activation gates are unchanged.
+- Hashing, encryption, cookie ownership, code generation, attempt/resend limits, fixed expiry and atomic proof use the same mechanism as WF-01.01 (D-01–D-09). Legacy Student stages retain Student interpretation; a role is never changed by resubmitting or by a query parameter.
+- Step 5 reservation checks are backed by unique keyed Staff ID/email digests in the existing staging table; a competing insert is refused before an OTP is generated/sent. Permanent identity uniqueness is also backed by the existing account indexes.
+- Same-browser resume continues the original immutable attempt, with its original role/recipient, and sends no new OTP. It is not a conflict and does not show the conflict message.
+- No automatic retry of registration or OTP mutations. Passwords clear on conflict/security/delivery/uncertain outcomes; OTP input clears after failed verification. Safe form values remain available for correction.
+
+#### Alternative A — Resend OTP (D-02, D-08; same mechanism as WF-01.01)
+
+1. Applicant requests Resend code or Send a new code after code expiry.
+2. System enforces the countdown, resend limit, cumulative attempts and original stage deadline.
+3. System invalidates the old code before issuing/sending a different code.
+4. System reports success only when the mail backend accepts the message; uncertain failure invalidates the new code and retains encrypted staging for bounded resend.
+
+#### Alternative B — Existing attempt / original-browser resume (D-04b)
+
+1. Original scoped HttpOnly cookie proves possession of the earlier staged attempt.
+2. System returns existing_verification without overwriting its details or sending a new code.
+3. Applicant continues the original attempt or uses Cancel registration to invalidate it before starting over. When a resubmission resumes the saved attempt, the OTP screen states that the newly entered details were not used and that a wrong email address requires Cancel registration (R-05).
+4. Another browser knowing only Staff ID/email receives generic HTTP 409 and cannot resume or cancel; missing/expired ownership returns HTTP 410.
+
+#### Alternative C — Uncertain result
+
+1. System clears sensitive inputs and states that completion could not be confirmed.
+2. Applicant explicitly checks the cookie-bound registration status using GET.
+3. System never interprets a missing session alone as proof that the earlier write failed or succeeded.
+4. An explicit restart performs no automatic registration write.
+
+#### Errors
+
+| Step | Problem | What the user sees / recovery |
+| --- | --- | --- |
+| 4 | Invalid fields/password/request | HTTP 400 with safe correction errors; Staff ID is labelled correctly. Student-only fields: "Student-only school information is not accepted for Instructor registration." |
+| 4, 9–10 | CSRF/Origin, JSON/method/media or request limits | Existing 403/400/405/415/406/429 semantics and safe request reference; explicit security refresh or wait/countdown. No automatic POST retry. |
+| 5, 12 | Existing account or another staged reservation | HTTP 409 and the shared generic message below (identical to WF-01.01); keep safe form values, clear passwords and send no verification code for this blocked request. |
+| 6 | Staging/writer unavailable | Safe HTTP 503 registration_unavailable; no permanent record and no writer-boundary bypass. |
+| 7 | OTP email delivery fails | Honest HTTP 503 delivery_failed; original cookie retains encrypted staging, uncertain code is invalidated, and bounded resend stays within the original deadline (D-08). |
+| 10 | Wrong OTP | HTTP 400 otp_invalid; code clears, remaining attempts are displayed and correction is accessible. |
+| 10 | OTP expired | HTTP 400 otp_expired; Send a new code remains on the same screen, subject to resend countdown/limit. |
+| 10 | Attempts exhausted | HTTP 400 attempts_exhausted; verification/resend are refused. Explain remaining stage-expiry time and that explicit cancellation permits a fresh start. Resends do not reset attempts. |
+| 6–11 | Stage missing/expired/abandoned | HTTP 410 for missing/expired ownership; offer a new registration. Existing cleanup deletes only expired stages under D-05. |
+| 12 | Profile/database/unrelated integrity failure | Roll back account/profile/proof together; genuine safe HTTP 503. An unrelated profile duplicate-key failure is not mislabeled as an identity conflict for Instructor. |
+| 3–12 | Network/gateway/invalid success body/unexpected server result | Accessible safe uncertainty/error message; clear secrets and explicitly read status before another write. HTTP 200 error envelopes are not accepted as success. |
+
+Conflict message (shared with WF-01.01; identical before and after OTP):
+"We could not complete this registration. Please check your information or contact support."
+
+Per the owner's 16 November 2026 instruction ("make it consistent, adopt the student error feedback/response"), confirmed as OD-1(a) during the 16 November audit, Instructor uses the Student conflict feedback: the same accessible notice and request reference, "Check both your Staff ID and email" guidance, wait-for-review guidance and a Sign in link to /. The earlier Instructor-only sentence and the Log in / Reset your password / Continue your registration / Contact support action panel are superseded and not implemented. Password recovery is neither enabled nor bypassed by registration.
+
+Accepted abuse controls/risks: existing registration IP limits 5/minute and 30/day; Instructor OTP/status IP limits 30/minute and 200/day. Admission and owned OTP/status operations for both roles also enforce those respective budgets per keyed ID and normalized email, shared across roles, using existing DRF/cache infrastructure; no raw identities are cache keys (Student coverage added by owner-approved audit item R-03). The status endpoint is IP-throttled for both roles before any database work (R-04). Verification mail is sent only after the staging write commits; a failed send invalidates only that same code (R-02). Unique stage constraints cap concurrent attempts at one per ID and one per email across roles. Inherited fixed 30-minute staging expiry (D-05), 10-minute OTP, five cumulative wrong codes, 60-second resend interval and three resends remain configurable inherited defaults, not agent-approved policy. Resends do not extend expiry. A local 60-second cleanup worker is running; immediate expiry refusal does not depend on it. Cache throttles are best effort within the configured cache backend; distributed/shared-cache enforcement and supervised production cleanup remain deployment work. Temporary first-claim blocking until cancellation/expiry is an accepted risk; no cross-browser bypass is provided (D-14).
+
+#### Links
+
+Depends on: WF-01.06/session/CSRF; existing /register and OTP routes; active Instructor requested role; shared staging/proof/mail and permitted writer.
+Feeds: Existing School Admin listing/detail/review in WF-02.01–WF-02.03, and WF-02.04 if rejected. No review route/permission/activation gate was enabled by this task.
+Traceability: Owner-stated Instructor OTP target; existing SRS UC-01 / FR-REG-01–03 validation/security/atomicity (direct-creation sequence is superseded for Instructor); accounts, users, roles and existing student_registration_staging. Existing exact accounts.registration_requests.read/approve/reject permissions remain separate from public registration.
+Official support contact – needs owner input. Registration feedback uses the shared generic "contact support" wording; the earlier configured support action was retired by the consistency decision. WORKSPACE_REGISTRATION_SUPPORT_CONTACT is currently unused by the application and is kept only pending the owner's official contact decision. Not a local implementation blocker.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Cleaned   ☒ Verified
+
+Checklist scope: Owner decisions reconciled; spec/implementation follow the Instructor OTP target; legacy direct creation removed; Instructor fields/actions/errors and shared secure completion verified. All eleven requested verification checklist items are recorded with evidence in the implementation report. Human Approval is not included in agent verification.
+
+Blocked by: No remaining development implementation blocker. Official support contact – needs owner input; the accepted neutral fallback is active. Human Approval and policy sign-off remain separate; D-01–D-09 stay OPEN. Actual recipient inbox delivery, full human/browser acceptance and protected-production deployment are unverified. Do not start WF-01.03.
+
+Evidence level: Code-verified, DB-verified (read-only SHOW CREATE TABLE accounts/staging, zero duplicate groups and ledger through 0005), automated-test verified. Final 164 focused backend checks (including 30 unchanged Student OTP and 20 Instructor OTP cases), 93 related backend regressions, 51 focused frontend checks, 29 browser checks, one real browser/CSRF/staging/OTP/MySQL/permission-protected Pending-read scenario, build and scoped lint passed. Full frontend: 139/140 passed, with one known unrelated dashboard/mock-isolation failure. Disposable test databases were destroyed. No new migration, ERD change, production operation, real development applicant or real OTP email send was performed. Development backend/frontend and cleanup worker are running; cookie-less Instructor status returned the expected 410 with matching request references through the real proxy.
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-01.03. Do not start until Approved is ticked.
+
+#### WF-01.03 — Login and session establishment
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-01.04. Do not start until Approved is ticked.
+
+#### WF-01.04 — Logout and session termination
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-01.05. Do not start until Approved is ticked.
+
+#### WF-01.05 — Forgot-password request and reset
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-01.06. Do not start until Approved is ticked.
+
+#### WF-01.06 — Session expiry and CSRF handling
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-02.01. Do not start until Approved is ticked.
+
+### WF-02  Account Management
+
+#### WF-02.01 — View pending applications
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-02.02. Do not start until Approved is ticked.
+
+#### WF-02.02 — Verify and review applicant information
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-02.03. Do not start until Approved is ticked.
+
+#### WF-02.03 — Approve applicant account
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-02.04. Do not start until Approved is ticked.
+
+#### WF-02.04 — Reject applicant, notify by email, and delete rejected registration data
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+#### Pending detail — preserved from v0.1 sample; not inspected or approved
+
+The following content is retained verbatim from the original sample use case for later reconciliation. It is not a validated WF-02.04 specification.
+
+| Original sample field | Original sample wording |
+| --- | --- |
+| Primary actor | School Admin with approved account-review permission |
+| Trigger | School Admin selects Reject for a pending applicant |
+| Preconditions | Application is pending; actor is authenticated and authorized |
+| Main flow | 1. Display applicant and validation details.<br>2. Collect an authorized rejection decision and reason as required.<br>3. Validate the decision and process the rejection safely.<br>4. Trigger a rejection email notification to the applicant.<br>5. Delete rejected registration account/data from application records under the approved retention policy.<br>6. Return a clear outcome to the School Admin. |
+| Alternative / exception flows | If authorization fails, reject without changing the record. If notification or deletion fails, follow a documented recovery path without reporting unsupported completion. |
+| Postcondition | Rejected applicant cannot use the rejected registration; normal fresh registration is possible, including reuse of the School ID/email when permitted by the approved deletion workflow. |
+| Verification | Tests cover authorized rejection, denial to unauthorized actors, notification behavior, deletion, and fresh registration; privacy/audit handling requires explicit approval. |
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-02.05. Do not start until Approved is ticked.
+
+#### WF-02.05 — Activate or deactivate an existing account
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-02.06. Do not start until Approved is ticked.
+
+#### WF-02.06 — View account status and permitted history
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-03.01. Do not start until Approved is ticked.
+
+### WF-03  Access Control Management
+
+#### WF-03.01 — Assign or revoke account roles
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-03.02. Do not start until Approved is ticked.
+
+#### WF-03.02 — Manage role-based permission assignments
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-03.03. Do not start until Approved is ticked.
+
+#### WF-03.03 — Grant account-specific permission
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-03.04. Do not start until Approved is ticked.
+
+#### WF-03.04 — Deny or revoke account-specific permission
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-03.05. Do not start until Approved is ticked.
+
+#### WF-03.05 — Evaluate effective permissions and service state
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-03.06. Do not start until Approved is ticked.
+
+#### WF-03.06 — Record and review access-control changes
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-04.01. Do not start until Approved is ticked.
+
+### WF-04  Profile Management
+
+#### WF-04.01 — View own profile
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-04.02. Do not start until Approved is ticked.
+
+#### WF-04.02 — Request or update profile information
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-04.03. Do not start until Approved is ticked.
+
+#### WF-04.03 — Change account password
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-04.04. Do not start until Approved is ticked.
+
+#### WF-04.04 — Update email address
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-04.05. Do not start until Approved is ticked.
+
+#### WF-04.05 — Upload or replace profile picture
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-05.01. Do not start until Approved is ticked.
+
+### Group B - Campus Service Workflows
+
+### WF-05  Academic Information
+
+#### WF-05.01 — View authorized academic information
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-05.02. Do not start until Approved is ticked.
+
+#### WF-05.02 — View assigned subjects (instructor)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-05.03. Do not start until Approved is ticked.
+
+#### WF-05.03 — View enrolled students where authorized
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-05.04. Do not start until Approved is ticked.
+
+#### WF-05.04 — Obtain or verify academic status from CTU main system
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-06.01. Do not start until Approved is ticked.
+
+### WF-06  Clearance Management
+
+#### WF-06.01 — Request clearance
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-06.02. Do not start until Approved is ticked.
+
+#### WF-06.02 — Verify clearance eligibility and requirements
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-06.03. Do not start until Approved is ticked.
+
+#### WF-06.03 — Review and decide assigned clearance items
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-06.04. Do not start until Approved is ticked.
+
+#### WF-06.04 — Track clearance progress and decisions
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-06.05. Do not start until Approved is ticked.
+
+#### WF-06.05 — Generate an authorized clearance PDF
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.01. Do not start until Approved is ticked.
+
+### WF-07  SSG Financial Management
+
+#### WF-07.01 — Verify academic-period fee eligibility
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.02. Do not start until Approved is ticked.
+
+#### WF-07.02 — Assess organizational fee obligation
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.03. Do not start until Approved is ticked.
+
+#### WF-07.03 — Record and validate payments
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.04. Do not start until Approved is ticked.
+
+#### WF-07.04 — Generate and view authorized receipts
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.05. Do not start until Approved is ticked.
+
+#### WF-07.05 — Record and categorize expenses
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.06. Do not start until Approved is ticked.
+
+#### WF-07.06 — View balances, payment status, and history
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.07. Do not start until Approved is ticked.
+
+#### WF-07.07 — Prepare authorized financial reports
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-07.08. Do not start until Approved is ticked.
+
+#### WF-07.08 — Process returning, transferee, and newcomer scenarios
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-08.01. Do not start until Approved is ticked.
+
+### WF-13  Group Rating
+
+Not yet inspected. Scope evidenced in SRS v0.5, FR-RAT-01–FR-RAT-04: assigned-class rating sheets, student group invitations, safeguards for group ratings, and privacy-scoped results. These are requirements for later reconciliation, not implementation claims or approved workflow definitions.
+
+Workflow IDs: Not assigned. Actor(s) and exact permissions: Unknown – needs confirmation. Main flow, alternatives, errors, links, and checklist footer will be added when the project owner defines the individual Group Rating workflows. No WF-13 subflow has been approved.
+
+### WF-08  Announcements & Notifications
+
+#### WF-08.01 — Create and publish announcements
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-08.02. Do not start until Approved is ticked.
+
+#### WF-08.02 — View announcements
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-08.03. Do not start until Approved is ticked.
+
+#### WF-08.03 — Generate event-based in-app notifications
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-08.04. Do not start until Approved is ticked.
+
+#### WF-08.04 — Send eligible email notifications
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-08.05. Do not start until Approved is ticked.
+
+#### WF-08.05 — View notification history and delivery status
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-09.01. Do not start until Approved is ticked.
+
+### WF-09  Account Concerns & Support
+
+#### WF-09.01 — Submit account concern
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-09.02. Do not start until Approved is ticked.
+
+#### WF-09.02 — Assign or review concern
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-09.03. Do not start until Approved is ticked.
+
+#### WF-09.03 — Respond to concern
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-09.04. Do not start until Approved is ticked.
+
+#### WF-09.04 — Track concern status and resolution
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-10.01. Do not start until Approved is ticked.
+
+### Group C - System Operations & Maintenance
+
+### WF-10  System Administration & Configuration
+
+#### WF-10.01 — Manage authorized academic-period settings
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-10.02. Do not start until Approved is ticked.
+
+#### WF-10.02 — Manage system operational settings
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-10.03. Do not start until Approved is ticked.
+
+#### WF-10.03 — Configure services within authorized boundaries
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-10.04. Do not start until Approved is ticked.
+
+#### WF-10.04 — Review operational configuration changes
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-11.01. Do not start until Approved is ticked.
+
+### WF-11  Audit, Security & Monitoring
+
+#### WF-11.01 — Record security-relevant events
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-11.02. Do not start until Approved is ticked.
+
+#### WF-11.02 — Review authorized audit records
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-11.03. Do not start until Approved is ticked.
+
+#### WF-11.03 — Detect and respond to unauthorized attempts
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-11.04. Do not start until Approved is ticked.
+
+#### WF-11.04 — Monitor system health and error conditions
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-11.05. Do not start until Approved is ticked.
+
+#### WF-11.05 — Apply data retention, backup, and recovery controls
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-12.01. Do not start until Approved is ticked.
+
+### WF-12  Reporting & Document Generation
+
+#### WF-12.01 — Generate authorized operational reports
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-12.02. Do not start until Approved is ticked.
+
+#### WF-12.02 — Export permitted records
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-12.03. Do not start until Approved is ticked.
+
+#### WF-12.03 — Generate official system documents
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-12.04. Do not start until Approved is ticked.
+
+#### WF-12.04 — Check report accuracy and access scope
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Final pass / owner approval. Do not start until Approved is ticked.
+
+## 5. Cross-cutting rules
+
+### 5.1 Existing workflow-documentation rules (retained)
+
+- Use functional modules as the primary classification; user roles may participate in multiple modules.
+- Give every workflow a stable ID, actor, trigger, preconditions, main flow, alternative/error flows, postconditions, business rules, and acceptance criteria.
+- Link each workflow to functional requirement IDs, relevant permission codes, API endpoints, data entities, and test cases only after those are verified.
+- Keep School Admin operational account approval separate from Super Admin access-control governance. Do not assume School Admin can assign role permissions.
+- Do not create an authoritative enrollment module in CTU-G Workspace. Fee eligibility uses verified enrollment information from the CTU main system or authorized verification.
+- Permissions determine which existing features and actions are available. A permission grant does not create a new implemented feature or bypass record-level privacy checks.
+- Treat reports, auditing, backups, retention, and security as cross-cutting concerns, not substitutes for module-specific controls.
+
+### 5.2 Additional cross-cutting rules
+
+- Hash passwords before any temporary or permanent storage.
+- Use the same generic conflict message before and after OTP so existing IDs/emails are not revealed.
+- Account creation is all-or-nothing, backed by database-level concurrency protection.
+- Roles and permissions attach to the account ID, never to the email.
+- No ERD, migration, or code change is authorized by this document.
+
+## 6. Appendix A – Decision Register
+
+D-01–D-09 remain OPEN. The owner-stated Instructor OTP target and follow-up Staff ID/review/conflict/support/recovery answers are recorded for WF-01.02; implementation and test success do not approve policy or Human Approval. Shared rules now list WF-01.02 as affected; Student's approved main flow, conflict wording and runtime behavior are retained. The historical direct-Instructor baseline is superseded.
+
+| ID | Decision | Suggested | Alternative | Status | Owner | Flows affected |
+| --- | --- | --- | --- | --- | --- | --- |
+| D-01 | OTP expiry | 10 minutes | 5 minutes | IMPLEMENTED configurable default — Code/test-verified; policy OPEN | Project owner |WF-01.01; WF-01.02 |
+| D-02 | Resend interval and limit | 60 s, 3 resends | 120 s, 2 resends | IMPLEMENTED configurable default — Code/test-verified, row-locked counters; counters commit before mail is sent (R-02); policy OPEN | Project owner |WF-01.01; WF-01.02 |
+| D-03 | Failed attempts | 5 cumulative per stage, then invalidate/refuse until cancel/expiry; resends do not reset attempts | 3, then cooldown | IMPLEMENTED configurable default — Code/test-verified; policy OPEN | Project owner |WF-01.01; WF-01.02 |
+| D-04a | Staging storage | Encrypted DB staging; password hash inside AES-GCM envelope; keyed identity/OTP/token digests | protected Redis staging | IMPLEMENTED mechanism — Code/DB/test-verified; policy OPEN | Project owner |WF-01.01; WF-01.02 |
+| D-04b | Duplicate staged attempt | Reject other-browser duplicates; original HttpOnly cookie resumes/cancels the immutable original role/recipient. Student has no separate resume control; Instructor owned resume continues directly without a conflict | Overwrite or cross-browser identity-only resume (not allowed) | IMPLEMENTED shared ownership; Instructor action states in D-13; policy OPEN | Project owner | WF-01.01; WF-01.02 |
+| D-05 | Abandoned cleanup | Fixed 30-minute TTL; resends do not extend it; immediate expiry refusal plus local 60-second purge worker | 1 hour | IMPLEMENTED configurable default — Code/DB/test-verified; supervised production scheduling/policy OPEN | Project owner |WF-01.01; WF-01.02 |
+| D-06 | Email uniqueness | Unique normalized non-null email across accounts; new Student/Instructor public accounts save durable verified address/time after OTP; legacy proof remains NULL | Original active-account-only wording or shared addresses need a separately reviewed policy change | Code/DB/test-verified; fresh SHOW CREATE TABLE confirms email unique key and ledger through 0005; zero normalized duplicate groups, none merged/deleted; historical exact 0004 reconciliation/0005 release preserved values; policy OPEN | Project owner |WF-01.01; WF-01.05; WF-04.04; WF-02.04; WF-03; WF-01.02 |
+| D-07 | Duplicate-registration response | Generic HTTP 409 before/after OTP with the same approved Student wording for both roles (owner consistency instruction, 16 Nov; OD-1(a)) | Historical direct Instructor neutral 202 and the Instructor-only sentence are superseded; no field-specific identity disclosure | IMPLEMENTED shared contract — Code/test-verified; anti-enumeration policy (SRS FR-REG-03) OPEN | Project owner |WF-01.01; WF-01.02 |
+| D-08 | OTP delivery failure and recovery | Retain encrypted stage; send only after the staging write commits; invalidate the uncertain code, never a newer one; bounded resend within original deadline; no account or success claim | Purge staging and require a new attempt | IMPLEMENTED mechanism — Code/test-verified with failed/zero-send and concurrent-newer-code cases; policy OPEN | Project owner |WF-01.01; WF-08.04; WF-01.02 |
+| D-09 | Review eligibility and existing unverified Pending accounts | New Student/Instructor public registrations save proof atomically after OTP; legacy proof remains NULL | WF-02 eligibility/legacy transition remains separately reviewed; no WF-02 code/gates changed | Registration proof IMPLEMENTED — Code/DB/test-verified; existing shared review gates unchanged; legacy/cross-flow policy OPEN | Project owner |WF-01.01; WF-02.01; WF-02.03; WF-01.02 |
+| D-10 | Instructor registration sequence | Owner-stated OTP before Pending account/profile, sharing protected staging and proof with Student; role stored in existing encrypted payload | Historical direct-to-Pending/neutral-202 baseline, now superseded by owner instruction | IMPLEMENTED/test-verified in development; owner-stated requirement recorded, no agent approval; Human Approval pending | Project owner | WF-01.02 |
+| D-11 | Instructor identity | Owner-stated Staff ID, 1–7 ASCII digits, mapped to unique existing accounts.school_id; leading zeroes retained | Separate employee identity/format would require new owner/schema review | Owner answer recorded; Code/DB/test-verified; no migration or agent policy approval | Project owner | WF-01.02 |
+| D-12 | Instructor eligibility verification | Owner-stated School Admin review only; OTP proves email access, not employment | Separate authoritative HR/verification process would require specified source/contract | Owner answer recorded; shared review service/gates retained; no agent policy approval | Project owner | WF-01.02; WF-02.01; WF-02.03 |
+| D-13 | Instructor conflict/recovery actions and support | SUPERSEDED by the owner's 16 Nov instruction to adopt Student feedback, confirmed as OD-1(a): shared conflict wording, no Instructor-only action panel or configured support action. Owned resume is not a conflict | Earlier Instructor sentence and four gated actions (historical, not implemented) | SUPERSEDED — shared feedback Code/test-verified; official support contact – needs owner input; no agent policy approval | Project owner | WF-01.02; WF-01.01 (support open-item cross-reference only) |
+| D-14 | Registration identity abuse limits / staging cap | Reuse existing IP budgets additionally per keyed ID/email for both roles (Student added by OD-2, 16 Nov), shared across roles: admission 5/min and 30/day, OTP/status 30/min and 200/day; one live stage per unique ID/email; inherited D-05 fixed expiry | Tighter identity budgets or a separately reviewed global-cap/shared-cache deployment | IMPLEMENTED/test-verified local controls; accepted first-claim/cache deployment risks documented; inherited/default policy review OPEN | Project owner | WF-01.01; WF-01.02 |
+
+### Other open items
+
+- WF-01.02 owner-stated OTP target IMPLEMENTED and locally verified: Staff ID and no school information; staged ownership/OTP before proof-backed Pending creation; shared Student-style generic 409 and feedback (consistency decision, OD-1(a)). Earlier direct-registration acceptance is historical. 16 Nov audit corrections: [WF-01 audit corrections record](group_a/WF-01_Audit_Corrections_2026-11-16.md). Current evidence: 164 focused backend, 93 related regressions, 51 focused frontend, 29 browser checks and one real OTP/browser/MySQL/protected-read scenario; build/lint passed. Human Approval remains pending. [Current report](group_a/WF-01.02_Instructor_OTP_Implementation.md).
+- Official support contact – needs owner input (WF-01.01 and WF-01.02). No official office/email/phone/address was invented. Both roles show the shared generic contact-support wording; the earlier configured Instructor support action was retired by the consistency decision. Home contact details remain placeholders pending owner data. Password-reset link follows the existing backend feature flag; registration does not enable it.
+- D-04b evidence CLOSED: 256-bit opaque browser challenge is held in a scoped HttpOnly cookie; DB stores only its keyed digest. Identity knowledge alone cannot continue/cancel; stages are never overwritten; fixed TTL survives resends. Configurable mechanism awaits policy sign-off.
+- Staging/proof/atomicity implementation gap CLOSED for local WF-01.01: AES-GCM staging, keyed OTP digest, stage-row locks, atomic proof/account/profile creation and consumed-stage deletion implemented and tested. No role/login is created. Protected executor rollout remains separate and fails closed.
+- Duplicate-count evidence gap CLOSED (DB-verified, configured development DB, 15 November 2026): 3 accounts, 1 NULL email, 0 blank/noncanonical emails, 0 normalized duplicate groups under both actual MySQL collation and Python normalization. Counts disclose no identities. Repeat preflight at any future release.
+- Normalization evidence gap CLOSED (Code-verified): email_identity.py uses strip().lower() over the entire address without provider-specific rewriting. D-06 policy reconciliation remains OPEN.
+- Development index/ledger discrepancy RECONCILED during the authorized implementation: exact index/column/collation and original 0004 canonical-data preflight verified; encrypted recovery snapshot saved; 0004 explicitly recorded as reconciled with --fake, then additive 0005 applied normally. Every legacy accounts/users column value remained unchanged. Historical index-creation provenance is not inferred; no additional owner file is needed to establish the current local schema.
+- React source, component initial server rendering, build and route/proxy smoke checks verified; full interactive browser and real recipient inbox acceptance remain unverified. Earlier browser automation was blocked by safe URL determination. Local frontend/backend and purge worker are now running; no real test recipient was used.
+
+## 7. Appendix B – Evidence Log
+
+Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automated-test evidence. The earlier read-only inspection was followed by the user's authorization to implement WF-01.01. Local source, actual development schema (ctug_workspace, MySQL 8.4.13), applied migration/ledger reconciliation and automated OTP checks now establish the implemented state. Before/after checks preserved existing account/profile values. Earlier absence findings remain in the historical inspection record; they are not current implementation claims. No production environment or real recipient inbox was verified.
+
+| Item | Evidence level | Evidence / gap |
+| --- | --- | --- |
+| WF-01.02 Instructor registration OTP | Code/DB/automated-test verified | Owner target implemented: Staff ID 1–7, no school information, protected staging/OTP, shared HTTP 409/no new code on conflicts, original-browser resume, atomic Pending/profile/proof and no role. 164 focused backend (30 unchanged Student OTP, 20 Instructor OTP), 93 related regressions, 51 focused frontend, 29 browser and one real OTP/CSRF/MySQL/protected-read scenario passed; build/lint passed. New schema/migrations absent. Actual inbox/full human-browser/production acceptance unverified; official support contact needs owner input with accepted fallback active. |
+| Public Student registration | Code/test-verified; behavior retained | Approved Student OTP sequence, existing payloads, cookie ownership and conflict wording retained. All 30 unchanged Student OTP tests passed standalone and within the final focused suite. Instructor reuse is separately documented under WF-01.02; historical Student release evidence remains in its implementation record. |
+| /register route | Code/test/HTTP-verified | App routes /register and /register/verify; VerifyEmailPage implements code entry, resend, cancel, errors and confirmation. Student button is Proceed Email Verification; separate resume control removed. Initial component server rendering and live route HTTP 200 verified. |
+| Pending/inactive state | Code/DB/test-verified | Correct OTP atomically creates account/profile with Pending/inactive state and verified address/time; no AccountRole/login. Wrong/expired/replayed codes and transaction failure create no partial permanent records. Existing development records preserved; no real applicant created by verification work. |
+| School ID uniqueness | Code/DB-verified | Account field and DBML specify uniqueness; public serializer accepts 1–7 ASCII digits. SHOW CREATE TABLE accounts confirms unique school_id index. Evidence gap closed for development DB. |
+| Email uniqueness | Code/DB/test-verified | Fresh read-only SHOW CREATE TABLE accounts confirms unique nullable email key accounts_email_200aa879_uniq and unique school_id; ledger includes 0004_account_email_unique and 0005_student_registration_otp. SQL normalized duplicate groups: 0. Historical preflight also found 0; no records merged/deleted. Existing index effect was verified/reconciled into the 0004 ledger before 0005; all legacy values preserved. Current Student/Instructor OTP paths recheck uniqueness and rely on DB constraints. D-06 OPEN. |
+| School Admin review lacks OTP-proof check | Code-verified | Current registration_review.py eligibility checks Pending/inactive state and requested base role, but no email-verification proof. D-09 records the transition gap. |
+| Registration OTP | Code/test-verified implementation | Six-digit CSPRNG code, keyed challenge-bound digest, fixed code/stage expiry, cumulative attempts, bounded resend and replay protection implemented. Simultaneous verify and staged-identity reservation tests passed. Protected executor mode refuses new local Student writes. |
+| Staging | Code/DB/test-verified implementation | student_registration_staging installed by 0005. AES-GCM ciphertext holds form data and password hash only; identity/token/OTP digests reserve attempts; no pre-OTP account/profile exists. Ownership/duplicate/cancel tests passed. |
+| Abandoned-registration cleanup | Code/DB/test-verified implementation | Expired stages immediately unusable; purge command deletes only expired staging. Local --watch worker started at 60-second intervals; cleanup tests preserve accounts and active stages. Supervised production scheduling remains separate. |
+| Email-verification field | Code/DB/test-verified implementation | Installed accounts.email_verified_address and email_verified_at. New Student proof created atomically; legacy values remain NULL. Model, generated migration, SQL review and DB release verified. |
+| Registration OTP mail path | Code/test-verified; SMTP connection verified | Registration sender wired; in-memory tests verify code path and failure/zero-send recovery without success claims. Real SMTP connection/authentication succeeded, without sending a real test message. Recipient inbox delivery remains unverified. |
+| React rendered page | Code/test/build/HTTP-verified; interactive browser unverified | 34 focused frontend checks passed, including actual component initial server rendering and OTP transport contracts; build passed. HTTP 200 pages and expected cookie-less 410 through real proxy verified. Earlier browser safety blocker remains a limit on interactive/inbox acceptance only. |
+| Public applicant support | Code-verified; owner input outstanding | Official support contact – needs owner input in WF-01.01/WF-01.02 and Appendix A/B. Both roles use the shared generic contact-support wording; no configured support action or support metadata is exposed (tests assert retired metadata is absent). No hard-coded official contact; password recovery neither enabled nor bypassed. |
+| SRS alignment | Source-reconciled | Local SRS UC-01 and FR-REG-01–03 describe direct Pending/inactive account creation and password protection; no registration OTP requirement was found in that Markdown SRS. OTP staging/proof are workflow additions pending requirements change control. |
+
+### Evidence needed from project owner — remaining only
+
+- WF-01.02 identity, eligibility and conflict/recovery questions are resolved by owner answers. No additional local source/schema file is needed. Official support contact – needs owner input (supply the public email/URL); accepted neutral fallback is active. Human Approval, actual recipient inbox/full human-browser acceptance and protected deployment remain separate.
+- No local React/backend source, accounts/users schema output or duplicate-count file is needed: those were inspected directly. This closes the original file requests for the configured development system.
+- No additional local schema/index file is required: current development schema/ledger were reconciled and verified during the implementation. Historical index-creation provenance has not been fabricated.
+- Need actual recipient-inbox/full interactive browser acceptance before claiming those verification levels. Earlier browser URL determination was the specific UI-access failure. Local frontend/backend and cleanup worker are running for this session.
+- Need owner policy sign-off for implemented defaults/mechanisms D-01–D-09 and official public support details. No decision is approved by implementation/test success.
+- Protected executor/production deployment requires a reviewed writer/credential/trigger contract, supervised cleanup, independent staging key and environment-specific acceptance. Development findings are not production claims. Human Approval remains unchecked.
+
+## 8. Appendix C – Document control
+
+| Control | Value |
+| --- | --- |
+| Document | CTU-G Workspace System Workflow Catalogue |
+| Version | 0.3.2 |
+| Date | 16 November 2026 |
+| Status | Working Draft — owner approval pending |
+| Scope | WF-01.01 main flow and conflict wording retained; WF-01.02 reconciled to the shared Student feedback (OD-1(a)); owner-approved WF-01 audit corrections recorded; other 60 flow specifications unchanged |
+| Approval | No workflow Human Approval recorded; all boxes remain unchecked. Owner-stated implementation requirements/answers are documented without agent policy approval |
+
+### Change log
+
+| Version | Date | Changes | Approval |
+| --- | --- | --- | --- |
+| 0.1 | 14 November 2026 | Original classification, 62-entry register, WF-02.04 sample, rules and reusable template. | Not recorded |
+| 0.2 | 15 November 2026 | Added Actor/Status to register; WF-01.01 detailed specification; 61 placeholders; preserved WF-02.04 as Pending detail; cross-cutting rules; Decisions/Evidence/Document Control appendices; updated template and checklist. | Pending owner approval |
+| 0.3 | 15 November 2026 | Added draft WF-13 Group Rating category to classification, register, and detailed-spec section. No new subflow IDs assigned. All 62 existing workflows, WF-01.01 wording, open decisions, and unchecked approvals preserved. | Pending owner approval |
+| 0.3.1 | 15 November 2026 | Moved existing WF-13 Group Rating category immediately after WF-07 SSG Financial Management in Section 2 classification, Section 3 workflow register, and Section 4 detailed specifications. Preserved all original 62 flow IDs and the unassigned draft Group Rating scope; no implementation decisions or approvals added. | Pending owner approval |
+| 0.3.1 WF-01.01 review | 15 November 2026 | Inspected current registration UI/API/service/model/migration, executor dispatch and approval eligibility; retained owner-confirmed OTP target; corrected stale email evidence; added source/target traceability, acceptance record and decisions D-07–D-09. Documentation only. | OTP sequence confirmed; settings, implementation and final workflow approval pending |
+| 0.3.1 WF-01.01 evidence closure | 15 November 2026 | Re-inspected only WF-01.01 references; SELECT/SHOW development DB inspection closed accounts/users schema, unique-index and duplicate-count evidence requests; recorded email-index/0004-ledger discrepancy; confirmed missing OTP/staging/cleanup/proof/mail paths and placeholder public support; mapped inline OPEN items to decisions; repaired moved review links; recorded blocked rendered-page inspection and 11 passing frontend tests; cleared Verified for incomplete target verification. No code, ERD, migration, decision approval or Human Approval changes. | All decisions remain unapproved; WF-01.02 not started |
+| 0.3.1 WF-01.01 implementation | 15 November 2026 | Subsequent user instruction authorized implementation: added encrypted Student staging, OTP mail/verify/resend/cancel, atomic account/profile/proof creation, fixed-expiry cleanup, migration 0005 and ERD additions; guarded local release saved encrypted recovery snapshot, verified/reconciled existing 0004 index and applied 0005 preserving legacy values. Initial 121 focused backend checks (22 OTP) and 75 related regressions passed. SMTP connection authenticated; no real recipient test message sent. | Implementation verified locally; policy/Human Approval remain pending; WF-01.02 unchanged |
+| 0.3.1 WF-01.01 UI follow-up | 16 November 2026 | Per user instruction removed separate resume verification control and changed Student form action to Proceed Email Verification; Instructor path retained. Final lock-wait expiry regression included: 122 focused backend checks (23 OTP), 34 frontend checks and production build passed; real local routes/proxy smoke-checked. AI checklist completed for documented local verification scope; actual inbox/full browser and protected production rollout remain explicitly unverified. | No decisions or Human Approval approved |
+| 0.3.1 WF-01.02 inspection | 16 November 2026 | Owner authorized starting Instructor registration. Inspected catalogue/SRS/UI/API/service/models/writer dispatch/tests; found no defined main flow in the available catalogue and requested the actual steps/version. Recorded direct-registration baseline, neutral duplicates and uncertain recovery concern; 119 backend and 47 frontend checks passed. Checked Inspected only; documented the source blocker. No application code, ERD, migrations or service changes; WF-01.03 untouched. | Main-flow source required; no decisions or Human Approval approved |
+| 0.3.1 WF-01.02 completion | 16 November 2026 | Renewed owner instruction authorized completing the AI checklist. Filled placeholder sequence from existing SRS/code/tests; retained direct Instructor creation and neutral HTTP 202; fixed Student-status misuse after uncertain Instructor writes and success-summary focus timing. Final 119 backend, 47 focused frontend and 15 browser checks plus build/lint passed; existing unrelated full-frontend failure reported (135/136 pass). Recorded D-10, completion evidence and all four AI checks within local scope. No ERD, migration, writer/review-gate or production changes; WF-01.03 untouched. | D-10 and Human Approval remain pending; no decision approved |
+| 0.3.1 WF-01.02 full-flow acceptance | 16 November 2026 | Followed every current main step, alternative and error row. Added guarded real React/CSRF/API/MySQL/review-read acceptance (1 passed), concurrent HTTP regression and expanded browser recovery/overlap/429 checks (20 passed); expanded backend suite including review/routing boundaries: 147 passed. Eight read-only development DB prerequisite checks passed. Real duplicate responses preserve one original applicant/profile; protected visibility/denial exercised only in isolated tests. Updated evidence/report/checklist scope. Application behavior, ERD, migrations, deployment gates and other flows unchanged in this pass. | Human Approval/D-10 remain pending; no production or human acceptance claim |
+| 0.3.1 WF-01.02 owner-target OTP implementation | 16 November 2026 | Owner explicitly authorized Instructor OTP reuse and confirmed Staff ID 1–7, School Admin review only, exact conflict sentence and configured/gated support/recovery. Replaced historical direct sequence with protected staging/OTP/proof; removed school section; retained Student behavior/wording. Reconciled shared rules and fresh SHOW CREATE TABLE/ledger/zero duplicates; no migration/ERD change. Final 164 focused backend, 93 related, 51 focused frontend, 29 browser and one real OTP/CSRF/MySQL/read-handoff scenario passed; build/lint passed. Full frontend 139/140, one known unrelated failure. Updated eleven verification items, footer, register and Appendices A/B/C. Development services/cleanup started and safe proxy 410 checked. | Ready for approval; no agent policy/Human Approval; official support contact needs owner input; WF-01.03 not started |
+| 0.3.2 WF-01 audit corrections | 16 November 2026 | Phase 1-2 audit, then owner approval of OD-1(a), OD-2, OD-3 and packages P1-P4 (Human Approval line handling deferred by owner). Reconciled WF-01.02 to the implemented shared Student feedback (retired Instructor sentence/action panel/support configuration), replacing stale D-07/D-13 text and Appendix A/B rows. Code: verification mail sent only after the staging commit with digest-guarded invalidation (R-02); per-identity limits for Student (R-03); status endpoint IP-throttled for both roles (R-04); resumed-attempt notice (R-05); neutral no-session wording (R-06); dead direct-registration branch removed (R-07); accessible Resend label and single error announcement (R-08); pasted-code handling (R-09); request-timeout fallback (R-10); configured code lifetime and spam-folder guidance (OD-3). No ERD, migration, permission or Human Approval change. Evidence in [WF-01 audit corrections record](group_a/WF-01_Audit_Corrections_2026-11-16.md). | Scope owner-approved 16 Nov 2026; Human Approval and D-01-D-09/D-14 policy remain pending |
+
+### Workflow ID mapping (old → new)
+
+No existing workflow IDs changed in version 0.3.1. WF-13 is a newly added draft category, not a numbered subflow; its subflow IDs remain unassigned. WF-01.01 and WF-01.02 title cleanups are recorded; the remaining original titles are preserved.
+
+| Old ID (v0.1) | Current ID (v0.3.1) | Change |
+| --- | --- | --- |
+| WF-01.01 | WF-01.01 | Title cleaned to “Register Student Account” |
+| WF-01.02 | WF-01.02 | Title clarified to Register Instructor Account per owner task; ID unchanged |
+| WF-01.03 | WF-01.03 | ID and title unchanged |
+| WF-01.04 | WF-01.04 | ID and title unchanged |
+| WF-01.05 | WF-01.05 | ID and title unchanged |
+| WF-01.06 | WF-01.06 | ID and title unchanged |
+| WF-02.01 | WF-02.01 | ID and title unchanged |
+| WF-02.02 | WF-02.02 | ID and title unchanged |
+| WF-02.03 | WF-02.03 | ID and title unchanged |
+| WF-02.04 | WF-02.04 | ID and title unchanged |
+| WF-02.05 | WF-02.05 | ID and title unchanged |
+| WF-02.06 | WF-02.06 | ID and title unchanged |
+| WF-03.01 | WF-03.01 | ID and title unchanged |
+| WF-03.02 | WF-03.02 | ID and title unchanged |
+| WF-03.03 | WF-03.03 | ID and title unchanged |
+| WF-03.04 | WF-03.04 | ID and title unchanged |
+| WF-03.05 | WF-03.05 | ID and title unchanged |
+| WF-03.06 | WF-03.06 | ID and title unchanged |
+| WF-04.01 | WF-04.01 | ID and title unchanged |
+| WF-04.02 | WF-04.02 | ID and title unchanged |
+| WF-04.03 | WF-04.03 | ID and title unchanged |
+| WF-04.04 | WF-04.04 | ID and title unchanged |
+| WF-04.05 | WF-04.05 | ID and title unchanged |
+| WF-05.01 | WF-05.01 | ID and title unchanged |
+| WF-05.02 | WF-05.02 | ID and title unchanged |
+| WF-05.03 | WF-05.03 | ID and title unchanged |
+| WF-05.04 | WF-05.04 | ID and title unchanged |
+| WF-06.01 | WF-06.01 | ID and title unchanged |
+| WF-06.02 | WF-06.02 | ID and title unchanged |
+| WF-06.03 | WF-06.03 | ID and title unchanged |
+| WF-06.04 | WF-06.04 | ID and title unchanged |
+| WF-06.05 | WF-06.05 | ID and title unchanged |
+| WF-07.01 | WF-07.01 | ID and title unchanged |
+| WF-07.02 | WF-07.02 | ID and title unchanged |
+| WF-07.03 | WF-07.03 | ID and title unchanged |
+| WF-07.04 | WF-07.04 | ID and title unchanged |
+| WF-07.05 | WF-07.05 | ID and title unchanged |
+| WF-07.06 | WF-07.06 | ID and title unchanged |
+| WF-07.07 | WF-07.07 | ID and title unchanged |
+| WF-07.08 | WF-07.08 | ID and title unchanged |
+| WF-08.01 | WF-08.01 | ID and title unchanged |
+| WF-08.02 | WF-08.02 | ID and title unchanged |
+| WF-08.03 | WF-08.03 | ID and title unchanged |
+| WF-08.04 | WF-08.04 | ID and title unchanged |
+| WF-08.05 | WF-08.05 | ID and title unchanged |
+| WF-09.01 | WF-09.01 | ID and title unchanged |
+| WF-09.02 | WF-09.02 | ID and title unchanged |
+| WF-09.03 | WF-09.03 | ID and title unchanged |
+| WF-09.04 | WF-09.04 | ID and title unchanged |
+| WF-10.01 | WF-10.01 | ID and title unchanged |
+| WF-10.02 | WF-10.02 | ID and title unchanged |
+| WF-10.03 | WF-10.03 | ID and title unchanged |
+| WF-10.04 | WF-10.04 | ID and title unchanged |
+| WF-11.01 | WF-11.01 | ID and title unchanged |
+| WF-11.02 | WF-11.02 | ID and title unchanged |
+| WF-11.03 | WF-11.03 | ID and title unchanged |
+| WF-11.04 | WF-11.04 | ID and title unchanged |
+| WF-11.05 | WF-11.05 | ID and title unchanged |
+| WF-12.01 | WF-12.01 | ID and title unchanged |
+| WF-12.02 | WF-12.02 | ID and title unchanged |
+| WF-12.03 | WF-12.03 | ID and title unchanged |
+| WF-12.04 | WF-12.04 | ID and title unchanged |
+
+Document control note: Proposed structure only. Review with project stakeholders before designating workflow definitions as approved requirements.

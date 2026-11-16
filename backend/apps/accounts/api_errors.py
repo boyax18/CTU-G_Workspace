@@ -10,6 +10,8 @@ from rest_framework.views import exception_handler
 from apps.access_control.writer_boundary import WriterBoundaryUnavailable
 from .services import RegistrationUnavailable
 
+INSTRUCTOR_STAFF_ID_ERROR = "Staff ID must contain 1 to 7 digits only."
+INSTRUCTOR_SCHOOL_FIELDS_ERROR = "Student-only school information is not accepted for Instructor registration."
 ERRORS = {
     "validation_error": (400, "Check the submitted registration details."),
     "otp_invalid": (400, "The verification code is incorrect. Please try again."),
@@ -48,7 +50,7 @@ FIELDS = {
 }
 
 
-def public_fields(detail):
+def public_fields(detail, *, instructor=False):
     """Translate validator codes to fixed text; never echo input/detail strings."""
     if not isinstance(detail, dict):
         return {}
@@ -58,12 +60,14 @@ def public_fields(detail):
             continue
         values = value if isinstance(value, (list, tuple)) else [value]
         codes = {getattr(item, "code", "invalid") for item in values}
-        if codes & {"required", "blank", "null"}:
+        if instructor and "student_only_fields" in codes:
+            text = INSTRUCTOR_SCHOOL_FIELDS_ERROR
+        elif codes & {"required", "blank", "null"}:
             text = "This field is required."
         elif "max_length" in codes:
             text = "This value is too long."
         else:
-            text = FIELDS[name]
+            text = INSTRUCTOR_STAFF_ID_ERROR if instructor and name == "school_id" else FIELDS[name]
         fields[name] = [text]
     return fields
 
@@ -98,7 +102,7 @@ def response_for_exception(exc, view):
     code = STATUS_CODES.get(response.status_code, "request_failed")
     response.data = {"error": {"code": code, "message": ERRORS[code][1]}}
     if isinstance(exc, exceptions.ValidationError):
-        fields = public_fields(exc.detail)
+        fields = public_fields(exc.detail, instructor=getattr(view, "public_registration_role", None) == "Instructor")
         if fields:
             response.data["error"]["fields"] = fields
     return response
@@ -108,6 +112,7 @@ def normalize_error(response, request):
     """Also covers explicit OTP errors and strips all unrecognized error data."""
     status = response.status_code
     original = response.data if isinstance(response.data, dict) else {}
+    instructor = original.get("requested_role") == "Instructor"
     detail = original.get("error") if isinstance(original.get("error"), dict) else {}
     code = detail.get("code")
     if not isinstance(code, str) or code not in ERRORS or ERRORS[code][0] != status:
@@ -116,6 +121,8 @@ def normalize_error(response, request):
     if code == "validation_error" and isinstance(detail.get("fields"), dict):
         fields = {}
         safe_messages = set(FIELDS.values()) | {"This field is required.", "This value is too long."}
+        if instructor:
+            safe_messages |= {INSTRUCTOR_STAFF_ID_ERROR, INSTRUCTOR_SCHOOL_FIELDS_ERROR}
         for name, values in detail["fields"].items():
             if name in FIELDS and isinstance(values, list):
                 fields[name] = [text if text in safe_messages else FIELDS[name] for text in values[:1] if isinstance(text, str)] or [FIELDS[name]]

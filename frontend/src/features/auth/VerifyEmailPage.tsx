@@ -4,11 +4,12 @@ import { ApiError, initializeCSRF } from '../../api/client';
 import ApiErrorNotice from '../../components/common/ApiErrorNotice';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { cancelRegistrationVerification, getRegistrationVerification, resendRegistrationCode, verifyRegistrationCode } from './registration';
+import { cancelRegistrationVerification, getRegistrationVerification, resendRegistrationCode, takeRegistrationResumed, verifyRegistrationCode } from './registration';
 import type { RegistrationVerification } from './registration';
-import { asApiError, registrationRecovery } from './registrationFeedback';
+import { asApiError, codeGuidance, NO_SAVED_ATTEMPT, normalizeCode, registrationRecovery } from './registrationFeedback';
 
 export default function VerifyEmailPage() {
+  const [role, setRole] = useState<'Student' | 'Instructor'>(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('requested_role') === 'Instructor' ? 'Instructor' : 'Student');
   const [verification, setVerification] = useState<RegistrationVerification | null>(null);
   const [code, setCode] = useState('');
   const [failure, setFailure] = useState<ApiError | null>(null);
@@ -19,17 +20,32 @@ export default function VerifyEmailPage() {
   const [needsStatus, setNeedsStatus] = useState(false);
   const [uncertainWrite, setUncertainWrite] = useState(false);
   const [requestWait, setRequestWait] = useState(0);
+  const [noSavedAttempt, setNoSavedAttempt] = useState(false);
+  const [resumed] = useState(() => typeof window !== 'undefined' && takeRegistrationResumed());
   const inFlight = useRef(false);
   const result = useRef<HTMLDivElement>(null);
   const codeInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let active = true;
-    getRegistrationVerification().then(state => { if (active) setVerification(state); })
-      .catch((error: unknown) => { if (active) { setCode(''); setFailure(asApiError(error)); } })
+    getRegistrationVerification(role).then(state => { if (active) { setVerification(state); if (state.requested_role) setRole(state.requested_role); } })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setCode('');
+        const problem = asApiError(error, role);
+        if (problem.code === 'expired') {
+          // A missing session on first load is not proof the attempt expired.
+          setNoSavedAttempt(true);
+          setFailure(new ApiError(NO_SAVED_ATTEMPT, 410, 'expired', {}, { requestId: problem.requestId }));
+        } else {
+          setFailure(problem);
+        }
+      })
       .finally(() => { if (active) setChecking(false); });
     return () => { active = false; };
-  }, []);
+  }, [role]);
+
+  useEffect(() => { if (complete && role === 'Instructor') result.current?.focus(); }, [complete, role]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -40,10 +56,11 @@ export default function VerifyEmailPage() {
       } : state);
     }, 1000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [role]);
 
   const showFailure = (error: unknown) => {
-    const next = asApiError(error);
+    const next = asApiError(error, role);
+    setNoSavedAttempt(false);
     setCode('');
     setFailure(next);
     setNotice('');
@@ -60,7 +77,7 @@ export default function VerifyEmailPage() {
     inFlight.current = true;
     setBusy(true);
     try {
-      const state = await getRegistrationVerification();
+      const state = await getRegistrationVerification(role);
       setVerification(state);
       setFailure(null);
       setNeedsStatus(false);
@@ -97,17 +114,17 @@ export default function VerifyEmailPage() {
     setFailure(null);
     try {
       if (action === 'cancel') {
-        await cancelRegistrationVerification();
+        await cancelRegistrationVerification(role);
         setCode('');
-        window.location.assign('/register');
+        window.location.assign('/register' + (role === 'Instructor' ? '?requested_role=Instructor' : ''));
         return;
       }
-      const state = action === 'verify' ? await verifyRegistrationCode(code) : await resendRegistrationCode();
+      const state = action === 'verify' ? await verifyRegistrationCode(code, role) : await resendRegistrationCode(role);
       setCode('');
       if (state.status === 'completed') {
         setVerification(null);
         setComplete(true);
-        window.setTimeout(() => result.current?.focus(), 0);
+        if (role === 'Student') window.setTimeout(() => result.current?.focus(), 0);
       } else {
         setVerification(state);
         setNotice('A new code was sent. The earlier code is no longer valid.');
@@ -148,30 +165,36 @@ export default function VerifyEmailPage() {
               <>
                 <p className="fg-body mt-4 text-sm">{exhausted
                   ? 'This verification attempt has reached the failed-code limit.' : verification.delivery_sent
-                  ? 'Enter the six-digit code sent to the email address in your saved Student registration.'
+                  ? 'Enter the six-digit code sent to the email address in your saved ' + role + ' registration.'
                   : 'Your registration is saved temporarily, but we could not send a code. Use Resend code after the waiting period.'}</p>
+                {verification.delivery_sent && !exhausted && <p className="fg-muted mt-2 text-xs">{codeGuidance(verification.code_valid_seconds)}</p>}
+                {resumed && <p role="status" className="notice mt-3 rounded-lg p-3 text-sm">You already have a registration in progress in this browser, so the details you just submitted were not used. Your original details are unchanged. If your email address was wrong, choose Cancel registration and register again.</p>}
                 <p className="fg-muted mt-2 text-xs">No account has been created yet. Your saved details remain unchanged.</p>
                 <form onSubmit={submit} noValidate className="mt-6 space-y-4" aria-busy={busy}>
+                  {/* No maxLength: it would truncate a pasted "123-456" before digits are kept. */}
                   <Input ref={codeInput} id="registration-otp" name="code" label="Verification code" type="text"
-                    inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} error={codeError}
-                    value={code} onChange={event => { setCode(event.target.value.replace(/[^0-9]/g, '')); setFailure(null); }}
+                    inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" error={codeError} announceError={false}
+                    value={code} onChange={event => { setCode(normalizeCode(event.target.value)); setFailure(null); }}
                     disabled={blocked || exhausted} required />
                   <Button type="submit" loading={busy} disabled={blocked || exhausted || !verification.delivery_sent} fullWidth>Verify and submit registration</Button>
                 </form>
                 {exhausted && <p className="fg-body mt-4 text-sm">The attempt limit was reached. Cancel this attempt to start again.</p>}
                 <p className="fg-muted mt-3 text-xs">{verification.attempts_remaining} attempts remaining.</p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <Button type="button" onClick={() => void perform('resend')} aria-label="Resend code"
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  {/* Visible text equals the accessible name (WCAG 2.5.3); the countdown is a linked description. */}
+                  <Button type="button" onClick={() => void perform('resend')}
+                    aria-describedby={(verification.retry_after ?? 0) > 0 ? 'registration-resend-wait' : undefined}
                     disabled={blocked || exhausted || (verification.retry_after ?? 0) > 0 || verification.resends_remaining === 0}>
-                    {(verification.retry_after ?? 0) > 0 ? 'Resend in ' + verification.retry_after + 's' : 'Resend code'}
+                    Resend code
                   </Button>
                   <Button type="button" onClick={() => void perform('cancel')} disabled={blocked}>Cancel registration</Button>
+                  {(verification.retry_after ?? 0) > 0 && <span id="registration-resend-wait" className="fg-muted text-xs">Resend available in {verification.retry_after}s</span>}
                 </div>
               </>
             )}
             {requestWait > 0 && <p className="fg-muted mt-3 text-sm">Try again in {requestWait} seconds.</p>}
-            {(expired || needsStatus) && <a href="/register" className="link-accent mt-5 inline-block text-sm">Start new registration</a>}
-            {expired && !uncertainWrite && <p role="status" className="fg-body mt-4 text-sm">Your saved verification session is unavailable. Start a new registration.</p>}
+            {(expired || needsStatus) && <a href={'/register' + (role === 'Instructor' ? '?requested_role=Instructor' : '')} className="link-accent mt-5 inline-block text-sm">Start new registration</a>}
+            {expired && !uncertainWrite && !noSavedAttempt && <p role="status" className="fg-body mt-4 text-sm">Your saved verification session is unavailable. Start a new registration.</p>}
           </>
         )}
       </div>

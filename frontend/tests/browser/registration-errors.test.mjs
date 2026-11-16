@@ -1,69 +1,23 @@
-// Repository UI tests: fresh headless browser profile, localhost-only, all API mocked.
-// Uses the existing node:test runner and installed Edge; no real credentials/mail/DB.
 import assert from 'node:assert/strict';
-import { before, after, test } from 'node:test';
-import { spawn } from 'node:child_process';
-import { createServer } from 'node:net';
-import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
+import { test } from 'node:test';
+import { scene, summary, failure, reference, privateText, submitCode, fillRegistration } from './registrationHarness.mjs';
 
-const frontend = fileURLToPath(new URL('../../', import.meta.url));
-const reference = 'a'.repeat(32);
-const privateText = 'PRIVATE-SMTP-OTP-654321-ENCRYPTION-KEY';
-const summary = { status: 'verification_required', delivery_sent: true, expires_in: 1800, retry_after: 0, resends_remaining: 3, attempts_remaining: 5 };
-const failure = (code, extra = {}) => ({ status: code, ...extra, error: { code, message: privateText, request_id: reference, ...(code === 'resend_cooldown' ? { retry_after: 30 } : {}) } });
-let browser, server, origin;
-
-before(async () => {
-  const probe = createServer();
-  await new Promise(resolve => probe.listen(0, '127.0.0.1', resolve));
-  const port = probe.address().port;
-  await new Promise(resolve => probe.close(resolve));
-  origin = `http://127.0.0.1:${port}`;
-  server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', String(port), '--strictPort'], {
-    cwd: frontend, windowsHide: true, stdio: 'ignore',
-  });
-  const deadline = Date.now() + 30000;
-  while (true) {
-    try { if ((await fetch(origin)).ok) break; } catch { /* Startup observation only. */ }
-    if (Date.now() >= deadline || server.exitCode !== null) throw new Error('Isolated UI test server did not start.');
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  browser = await chromium.launch({ headless: true,
-    ...(process.env.PLAYWRIGHT_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_EXECUTABLE_PATH }
-      : { channel: process.env.CTUG_TEST_BROWSER_CHANNEL || (process.platform === 'win32' ? 'msedge' : 'chromium') }),
-  });
-}, { timeout: 45000 });
-
-after(async () => { await browser?.close(); server?.kill(); });
-
-async function scene(handler, check, pathname = '/register/verify') {
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  const seen = { mutations: [], statusReads: 0, csrfReads: 0 };
-  await page.route('**/*', async route => {
-    const request = route.request();
-    const url = new URL(request.url());
-    if (url.origin !== origin) return route.abort();
-    if (!url.pathname.startsWith('/api/')) return route.continue();
-    const respond = (body, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json',
-      headers: { 'X-Request-ID': reference, ...headers }, body: JSON.stringify(body) });
-    if (url.pathname.endsWith('/csrf/')) {
-      seen.csrfReads++;
-      return respond({ csrfToken: 'test-csrf-' + seen.csrfReads });
-    }
-    if (request.method() === 'POST') seen.mutations.push({ path: url.pathname, body: request.postDataJSON(), csrf: request.headers()['x-csrftoken'] });
-    if (url.pathname.endsWith('/verification/')) seen.statusReads++;
-    return handler({ path: url.pathname, request, route, respond, seen });
-  });
-  try { await page.goto(origin + pathname); await check(page, seen); }
-  finally { await context.close(); }
-}
-
-async function submitCode(page) {
-  await page.getByLabel('Verification code', { exact: true }).fill('123456');
-  await page.getByLabel('Verification code', { exact: true }).press('Enter');
-}
+test('uncertain Student submission retains explicit cookie-bound status recovery', async () => {
+  await scene(({ path, route, respond }) => path.endsWith('/verification/') ? respond(summary, 202) : route.abort('failed'), async (page, seen) => {
+    await fillRegistration(page, 'Student');
+    await page.getByRole('button', { name: 'Proceed Email Verification', exact: true }).press('Enter');
+    const check = page.getByRole('button', { name: 'Check registration status' });
+    await check.waitFor();
+    assert.equal(await page.getByLabel('Register as', { exact: true }).isDisabled(), true);
+    assert.equal(seen.mutations.length, 1);
+    assert.equal(seen.statusReads, 0);
+    await check.press('Enter');
+    await page.waitForURL('**/register/verify');
+    await page.getByLabel('Verification code', { exact: true }).waitFor();
+    assert.ok(seen.statusReads >= 1);
+    assert.equal(seen.mutations.length, 1);
+  }, '/register');
+});
 
 test('incorrect OTP announces one safe summary, clears code and supports keyboard correction', async () => {
   await scene(({ path, respond }) => path.endsWith('/verification/') ? respond(summary, 202)
@@ -94,7 +48,9 @@ test('missing or expired session shows restart with no code input or automatic w
     await page.getByRole('link', { name: 'Start new registration' }).waitFor();
     assert.equal(await page.getByLabel('Verification code', { exact: true }).count(), 0);
     assert.equal(seen.mutations.length, 0);
-    assert.match(await page.getByRole('alert').first().innerText(), /registration has expired/);
+    // R-06: a missing session on first load is described neutrally, not as expiry.
+    assert.match(await page.getByRole('alert').first().innerText(), /No registration is waiting for email verification in this browser/);
+    assert.doesNotMatch(await page.getByRole('alert').first().innerText(), /has expired/);
     await page.waitForFunction(() => document.activeElement?.getAttribute('role') === 'alert');
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.textContent), 'Start new registration');
@@ -145,7 +101,11 @@ test('resend cooldown uses a disabled native button and keeps countdown outside 
     await page.getByRole('button', { name: 'Resend code', exact: true }).press('Enter');
     await page.getByRole('alert').first().waitFor();
     assert.equal(await page.getByRole('button', { name: 'Resend code', exact: true }).isDisabled(), true);
-    assert.match(await page.getByRole('button', { name: 'Resend code', exact: true }).innerText(), /Resend in [0-9]+s/);
+    // R-08: visible text equals the accessible name; the countdown is a linked description.
+    const resend = page.getByRole('button', { name: 'Resend code', exact: true });
+    assert.equal((await resend.innerText()).trim(), 'Resend code');
+    assert.equal(await resend.getAttribute('aria-describedby'), 'registration-resend-wait');
+    assert.match(await page.locator('#registration-resend-wait').innerText(), /Resend available in [0-9]+s/);
     assert.doesNotMatch(await page.getByRole('alert').first().innerText(), /[0-9]+s/);
     assert.equal(seen.mutations.length, 1);
   });
@@ -202,4 +162,78 @@ test('HTML server failure is safe and offers status checking without repeating v
     assert.equal(seen.mutations.length, 1);
     assert.ok(!(await page.locator('body').innerText()).includes(privateText));
   });
+});
+
+// ---- WF-01 audit corrections (owner-approved 16 Nov 2026) ----
+
+const resumedNotice = /details you just submitted were not used/;
+
+for (const role of ['Student', 'Instructor']) {
+  test(`R-05: ${role} resubmission that resumes a saved attempt explains the new details were not applied`, async () => {
+    await scene(({ path, respond }) => respond({ ...summary, ...(role === 'Instructor' ? { requested_role: 'Instructor' } : {}),
+      status: path.endsWith('/register/') ? 'existing_verification' : 'verification_required' }, 202), async (page, seen) => {
+      await fillRegistration(page, role);
+      await page.getByRole('button', { name: 'Proceed Email Verification', exact: true }).press('Enter');
+      await page.waitForURL('**/register/verify**');
+      await page.getByLabel('Verification code', { exact: true }).waitFor();
+      const body = await page.locator('body').innerText();
+      assert.match(body, resumedNotice);
+      assert.match(body, /choose Cancel registration and register again/);
+      assert.ok(!body.includes('fictional@example.edu'), 'no identity is displayed');
+      assert.equal(seen.mutations.length, 1);
+      // One-shot: a refresh does not repeat the notice.
+      await page.reload();
+      await page.getByLabel('Verification code', { exact: true }).waitFor();
+      assert.doesNotMatch(await page.locator('body').innerText(), resumedNotice);
+    }, '/register');
+  });
+}
+
+test('R-05: a fresh submission shows no resumed notice', async () => {
+  await scene(({ respond }) => respond(summary, 202), async (page) => {
+    await fillRegistration(page, 'Student');
+    await page.getByRole('button', { name: 'Proceed Email Verification', exact: true }).press('Enter');
+    await page.getByLabel('Verification code', { exact: true }).waitFor();
+    assert.doesNotMatch(await page.locator('body').innerText(), resumedNotice);
+  }, '/register');
+});
+
+test('OD-3: code screen shows the configured lifetime and spam-folder hint', async () => {
+  await scene(({ respond }) => respond({ ...summary, code_valid_seconds: 600 }, 202), async (page) => {
+    await page.getByLabel('Verification code', { exact: true }).waitFor();
+    assert.match(await page.locator('body').innerText(), /The code is valid for 10 minutes\. If you don't see the email, check your spam or junk folder\./);
+  });
+});
+
+test('OD-3: guidance is hidden when no code was delivered', async () => {
+  await scene(({ respond }) => respond({ ...summary, delivery_sent: false, code_valid_seconds: 600 }, 202), async (page) => {
+    await page.getByLabel('Verification code', { exact: true }).waitFor();
+    assert.doesNotMatch(await page.locator('body').innerText(), /check your spam or junk folder/);
+  });
+});
+
+test('R-09: pasting a formatted code keeps all six digits and submits them', async () => {
+  await scene(({ path, respond }) => path.endsWith('/verification/') ? respond(summary, 202) : respond({ status: 'completed' }), async (page, seen) => {
+    const input = page.getByLabel('Verification code', { exact: true });
+    await input.waitFor();
+    // fill() inserts the whole string as one edit, like a paste; a maxlength=6
+    // input would have cut "123-456" to "123-45" before digits were kept.
+    await input.fill('123-456');
+    assert.equal(await input.inputValue(), '123456');
+    await input.press('Enter');
+    await page.getByRole('status').filter({ hasText: 'Registration submitted' }).waitFor();
+    assert.deepEqual(seen.mutations.at(-1).body, { code: '123456' });
+  });
+});
+
+test('R-08: registration validation is announced once by the summary, with field errors still linked', async () => {
+  await scene(() => { throw new Error('no request expected'); }, async (page, seen) => {
+    await page.getByRole('button', { name: 'Proceed Email Verification', exact: true }).press('Enter');
+    await page.getByRole('alert').first().waitFor();
+    assert.equal(await page.getByRole('alert').count(), 1);
+    const id = page.getByLabel('School ID *', { exact: true });
+    assert.equal(await id.getAttribute('aria-invalid'), 'true');
+    assert.equal(await id.getAttribute('aria-describedby'), 'register-credentials-hint register-school_id-error');
+    assert.equal(seen.mutations.length, 0);
+  }, '/register');
 });

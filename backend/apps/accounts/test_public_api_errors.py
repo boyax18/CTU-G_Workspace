@@ -8,7 +8,7 @@ from unittest.mock import patch
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
-from django.db import connections
+from django.db import IntegrityError, connections
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 from rest_framework import exceptions
@@ -56,6 +56,24 @@ class PublicErrorContractTests(TestCase):
     def start(self):
         self.assertEqual(self.post().status_code, 202)
         return last_code()
+
+    def test_unrelated_profile_duplicate_key_is_safe_503_for_both_registration_roles(self):
+        Role.objects.get_or_create(role_name="Instructor")
+        for n, role in enumerate(("Student", "Instructor"), 1):
+            with self.subTest(role=role):
+                client = APIClient(enforce_csrf_checks=True)
+                csrf = client.get("/api/v1/auth/csrf/").json()["csrfToken"]
+                submitted = {**data(n), "requested_role": role}
+                started = client.post("/api/v1/auth/register/", submitted, format="json", HTTP_X_CSRFTOKEN=csrf)
+                self.assertEqual(started.status_code, 202, started.content)
+                code = last_code()
+                with patch("apps.accounts.registration_staging.UserProfile.objects.create", side_effect=IntegrityError(1062, PRIVATE)):
+                    response = client.post("/api/v1/auth/register/verify/", {"code": code}, format="json", HTTP_X_CSRFTOKEN=csrf)
+                self.assert_error(response, "registration_unavailable")
+                self.assertFalse(Account.objects.exists())
+                self.assertFalse(UserProfile.objects.exists())
+                self.assertFalse(AccountRole.objects.exists())
+                self.assertFalse(StudentRegistrationStage.objects.filter(email_verified_at__isnull=False).exists())
 
     def test_validation_fields_are_safe_and_correlated(self):
         body = data()

@@ -95,10 +95,9 @@ test('Student school information is a non-interactive preview without fabricated
   assert.match(html, /aria-live="polite"/);
 });
 
-test('Instructor school information shows only the after-approval assignment message', () => {
+test('Instructor has no school information section', () => {
   const html = renderToStaticMarkup(createElement(SchoolInformation, { role: 'Instructor' }));
-  assert.ok(html.includes('Instructor academic and teaching assignments will be configured after account approval.'));
-  assert.doesNotMatch(html, /<dt>|<(input|select|textarea)\b|Configured later/);
+  assert.equal(html, '');
 });
 
 test('verification page initially checks the server-held attempt without claiming an account exists', () => {

@@ -56,7 +56,7 @@ test('Student and Instructor selections preserve the same public payload contrac
     await withFetch(async (path, options) => {
       if (path.endsWith('/csrf/')) return json({ csrfToken: 'token' });
       posted = JSON.parse(options.body);
-      return json(role === 'Student' ? verification : { message: 'accepted' }, 202);
+      return json(role === 'Student' ? verification : { ...verification, requested_role: 'Instructor', email: valid.email, otp_expires_in: 600 }, 202);
     }, () => submitRegistration({ ...valid, requested_role: role, middle_name: ' Cruz ', suffix: ' Jr. ' }));
     assert.equal(posted.requested_role, role);
     assert.equal(posted.middle_name, 'Cruz');

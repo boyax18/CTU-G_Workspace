@@ -1,5 +1,8 @@
 """AR-5A HTTP session tests; run ONLY with --settings=config.test_settings."""
 
+import re
+from unittest import mock
+
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
@@ -180,3 +183,49 @@ class WorkspaceSessionTests(TestCase):
         self.assertEqual(response.json(), {"authenticated": False})
         self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(self.client.get(self.base_path + "logout/").status_code, 405)
+
+    # WF-01.03 P-05 / D-16: per-identity login budget (owner-approved 16 Nov 2026).
+    def test_identity_budget_applies_across_ip_addresses_and_normalized_ids(self):
+        variants = ["2026-STUDENT-001", " 2026-student-001 ", "2026-Student-001"]
+        responses = [
+            self.login(school_id=variants[i % 3], password="Incorrect!9274", REMOTE_ADDR=f"10.0.0.{i + 1}")
+            for i in range(8)
+        ]
+        self.assertTrue(all(response.status_code == 401 for response in responses), [r.status_code for r in responses])
+        blocked = self.login(REMOTE_ADDR="10.0.1.1")  # correct password, fresh IP
+        self.assertEqual(blocked.status_code, 429)
+        self.assertEqual(blocked.json()["error"]["code"], "too_many_attempts")
+        self.assertTrue(blocked["Retry-After"].isdigit())
+        self.assertNotIn(settings.SESSION_COOKIE_NAME, self.client.cookies)
+        # Another identity keeps its own budget.
+        other = self.login(school_id="2026-STUDENT-999", password="Incorrect!9274", REMOTE_ADDR="10.0.1.2")
+        self.assertEqual(other.status_code, 401)
+
+    def test_identity_budget_is_checked_before_authentication(self):
+        for i in range(8):
+            self.login(password="Incorrect!9274", REMOTE_ADDR=f"10.0.2.{i + 1}")
+        with mock.patch("apps.accounts.session_auth.authenticate") as authenticate:
+            response = self.login(REMOTE_ADDR="10.0.3.1")
+        self.assertEqual(response.status_code, 429)
+        authenticate.assert_not_called()
+
+    def test_identity_budget_cache_keys_never_contain_raw_identifier(self):
+        self.login(password="Incorrect!9274")
+        keys = [str(key).lower() for key in getattr(cache, "_cache", {})]
+        self.assertTrue(any("login:school_id" in key for key in keys), keys)
+        self.assertFalse(any("2026-student-001" in key for key in keys), keys)
+
+    # WF-01.03 P-04: every authentication response carries a safe request reference.
+    def test_auth_responses_carry_distinct_request_reference(self):
+        responses = [
+            self.login(password="Incorrect!9274"),
+            self.client.post(self.base_path + "login/", {}, format="json"),  # CSRF failure
+            self.login(),
+            self.client.get(self.base_path + "session/"),
+        ]
+        responses.append(self.client.post(self.base_path + "logout/", {}, format="json",
+                                          HTTP_X_CSRFTOKEN=self.current_csrf()))
+        self.assertEqual([r.status_code for r in responses], [401, 403, 200, 200, 200])
+        references = [r["X-Request-ID"] for r in responses]
+        self.assertTrue(all(re.fullmatch(r"[a-f0-9]{32}", value) for value in references), references)
+        self.assertEqual(len(set(references)), len(references))

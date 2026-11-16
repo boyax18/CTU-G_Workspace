@@ -40,6 +40,27 @@ class LoginHourlyThrottle(LoginBurstThrottle):
     rate = "40/hour"
 
 
+# WF-01.03 P-05 / D-16 (owner-approved 16 Nov 2026): a per-identity budget in
+# addition to the per-IP throttles above, so guessing spread across many IP
+# addresses is still bounded per School ID / Staff ID. Defaults equal the IP
+# budgets; the values remain an open policy decision. No account lockout.
+LOGIN_IDENTITY_RATES = ("8/min", "40/hour")
+
+
+def _enforce_login_identity_budget(school_id):
+    """Raise Throttled when this normalized identifier exceeds its budget.
+
+    The cache key holds only a keyed digest (D-14 mechanism), never the raw ID.
+    """
+    from .registration_staging import _IdentityThrottle, _digest
+
+    digest = _digest("login-school-id", school_id.strip().lower())
+    for period, rate in enumerate(LOGIN_IDENTITY_RATES):
+        throttle = _IdentityThrottle(digest, f"login:school_id:{period}", rate)
+        if not throttle.allow_request(None, None):
+            raise exceptions.Throttled(wait=throttle.wait())
+
+
 class LoginSerializer(serializers.Serializer):
     school_id = serializers.CharField(max_length=50, trim_whitespace=True)
     password = serializers.CharField(max_length=256, trim_whitespace=False, write_only=True)
@@ -65,7 +86,12 @@ class WorkspaceSessionAPI(APIView):
         super().initial(request, *args, **kwargs)
 
     def finalize_response(self, request, response, *args, **kwargs):
+        from .api_errors import request_id
+
         response = super().finalize_response(request, response, *args, **kwargs)
+        # WF-01.03 P-04: a safe opaque reference the UI may show ("Request
+        # reference"), the same helper the public registration API uses.
+        response["X-Request-ID"] = request_id(request)
         patch_cache_control(response, no_store=True)
         return response
 
@@ -139,6 +165,8 @@ class LoginView(WorkspaceSessionAPI):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         values = serializer.validated_data
+        # Before any password hashing or executor call.
+        _enforce_login_identity_budget(values["school_id"])
         from apps.access_control.executor.client import enabled, authenticate_actor
         proof = None
         if enabled():

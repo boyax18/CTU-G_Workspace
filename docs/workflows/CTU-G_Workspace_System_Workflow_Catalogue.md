@@ -22,12 +22,12 @@ These entries are proposed workflow definitions, not a statement that each funct
 | WF-05 | Academic Information | Group B | 4 |
 | WF-06 | Clearance Management | Group B | 5 |
 | WF-07 | SSG Financial Management | Group B | 8 |
-| WF-13 | Group Rating | Group B | To be defined |
-| WF-08 | Announcements & Notifications | Group B | 5 |
-| WF-09 | Account Concerns & Support | Group B | 4 |
-| WF-10 | System Administration & Configuration | Group C | 4 |
-| WF-11 | Audit, Security & Monitoring | Group C | 5 |
-| WF-12 | Reporting & Document Generation | Group C | 4 |
+| WF-08 | Group Rating | Group B | To be defined |
+| WF-09 | Announcements & Notifications | Group B | 5 |
+| WF-10 | Account Concerns & Support | Group B | 4 |
+| WF-11 | System Administration & Configuration | Group C | 4 |
+| WF-12 | Audit, Security & Monitoring | Group C | 5 |
+| WF-13 | Reporting & Document Generation | Group C | 4 |
 
 ## 3. Workflow register
 
@@ -41,7 +41,7 @@ Index only. Actor and status are documented here; detailed specifications are in
 | --- | --- | --- | --- |
 | WF-01.01 | Register Student Account | Student Applicant (public) | Implemented and locally verified; Human Approval pending |
 | WF-01.02 | Register Instructor Account | Instructor Applicant (public) | Instructor OTP implemented and development-verified; Ready for approval |
-| WF-01.03 | Login and session establishment | Not yet inspected | Draft |
+| WF-01.03 | Login and session establishment | Approved Workspace account holder (public endpoint) | Owner-approved; P-01 to P-05 implemented and tested; Human Approval pending |
 | WF-01.04 | Logout and session termination | Not yet inspected | Draft |
 | WF-01.05 | Forgot-password request and reset | Not yet inspected | Draft |
 | WF-01.06 | Session expiry and CSRF handling | Not yet inspected | Draft |
@@ -112,62 +112,62 @@ Index only. Actor and status are documented here; detailed specifications are in
 | WF-07.07 | Prepare authorized financial reports | Not yet inspected | Draft |
 | WF-07.08 | Process returning, transferee, and newcomer scenarios | Not yet inspected | Draft |
 
-#### WF-13  Group Rating
+#### WF-08  Group Rating
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
 | Not assigned | Group Rating subflows — owner review required | Student / Instructor (SRS scope only) | Draft — not yet inspected |
 
-No WF-13.xx IDs or detailed workflow behaviors assigned. Group Rating is included as a draft campus-service category only; the project owner will approve its workflow breakdown before specifications are written.
+No WF-08.xx IDs or detailed workflow behaviors assigned. Group Rating is included as a draft campus-service category only; the project owner will approve its workflow breakdown before specifications are written.
 
-#### WF-08  Announcements & Notifications
-
-| Workflow ID | Proposed workflow | Actor | Status |
-| --- | --- | --- | --- |
-| WF-08.01 | Create and publish announcements | Not yet inspected | Draft |
-| WF-08.02 | View announcements | Not yet inspected | Draft |
-| WF-08.03 | Generate event-based in-app notifications | Not yet inspected | Draft |
-| WF-08.04 | Send eligible email notifications | Not yet inspected | Draft |
-| WF-08.05 | View notification history and delivery status | Not yet inspected | Draft |
-
-#### WF-09  Account Concerns & Support
+#### WF-09  Announcements & Notifications
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-09.01 | Submit account concern | Not yet inspected | Draft |
-| WF-09.02 | Assign or review concern | Not yet inspected | Draft |
-| WF-09.03 | Respond to concern | Not yet inspected | Draft |
-| WF-09.04 | Track concern status and resolution | Not yet inspected | Draft |
+| WF-09.01 | Create and publish announcements | Not yet inspected | Draft |
+| WF-09.02 | View announcements | Not yet inspected | Draft |
+| WF-09.03 | Generate event-based in-app notifications | Not yet inspected | Draft |
+| WF-09.04 | Send eligible email notifications | Not yet inspected | Draft |
+| WF-09.05 | View notification history and delivery status | Not yet inspected | Draft |
+
+#### WF-10  Account Concerns & Support
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-10.01 | Submit account concern | Not yet inspected | Draft |
+| WF-10.02 | Assign or review concern | Not yet inspected | Draft |
+| WF-10.03 | Respond to concern | Not yet inspected | Draft |
+| WF-10.04 | Track concern status and resolution | Not yet inspected | Draft |
 
 ### Group C - System Operations & Maintenance
 
-#### WF-10  System Administration & Configuration
+#### WF-11  System Administration & Configuration
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-10.01 | Manage authorized academic-period settings | Not yet inspected | Draft |
-| WF-10.02 | Manage system operational settings | Not yet inspected | Draft |
-| WF-10.03 | Configure services within authorized boundaries | Not yet inspected | Draft |
-| WF-10.04 | Review operational configuration changes | Not yet inspected | Draft |
+| WF-11.01 | Manage authorized academic-period settings | Not yet inspected | Draft |
+| WF-11.02 | Manage system operational settings | Not yet inspected | Draft |
+| WF-11.03 | Configure services within authorized boundaries | Not yet inspected | Draft |
+| WF-11.04 | Review operational configuration changes | Not yet inspected | Draft |
 
-#### WF-11  Audit, Security & Monitoring
-
-| Workflow ID | Proposed workflow | Actor | Status |
-| --- | --- | --- | --- |
-| WF-11.01 | Record security-relevant events | Not yet inspected | Draft |
-| WF-11.02 | Review authorized audit records | Not yet inspected | Draft |
-| WF-11.03 | Detect and respond to unauthorized attempts | Not yet inspected | Draft |
-| WF-11.04 | Monitor system health and error conditions | Not yet inspected | Draft |
-| WF-11.05 | Apply data retention, backup, and recovery controls | Not yet inspected | Draft |
-
-#### WF-12  Reporting & Document Generation
+#### WF-12  Audit, Security & Monitoring
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-12.01 | Generate authorized operational reports | Not yet inspected | Draft |
-| WF-12.02 | Export permitted records | Not yet inspected | Draft |
-| WF-12.03 | Generate official system documents | Not yet inspected | Draft |
-| WF-12.04 | Check report accuracy and access scope | Not yet inspected | Draft |
+| WF-12.01 | Record security-relevant events | Not yet inspected | Draft |
+| WF-12.02 | Review authorized audit records | Not yet inspected | Draft |
+| WF-12.03 | Detect and respond to unauthorized attempts | Not yet inspected | Draft |
+| WF-12.04 | Monitor system health and error conditions | Not yet inspected | Draft |
+| WF-12.05 | Apply data retention, backup, and recovery controls | Not yet inspected | Draft |
+
+#### WF-13  Reporting & Document Generation
+
+| Workflow ID | Proposed workflow | Actor | Status |
+| --- | --- | --- | --- |
+| WF-13.01 | Generate authorized operational reports | Not yet inspected | Draft |
+| WF-13.02 | Export permitted records | Not yet inspected | Draft |
+| WF-13.03 | Generate official system documents | Not yet inspected | Draft |
+| WF-13.04 | Check report accuracy and access scope | Not yet inspected | Draft |
 
 ## 4. Detailed workflow specifications
 
@@ -266,7 +266,7 @@ Rule: Before step 12, no account or profile exists, and no role is assigned. A r
 
 #### Links
 
-Depends on: WF-01.06 (session and CSRF) and the OTP email service. WF-08.04 is related, not a proven dependency.
+Depends on: WF-01.06 (session and CSRF) and the OTP email service. WF-09.04 is related, not a proven dependency.
 
 Public support cross-reference: Official support contact – needs owner input. See Appendix A/B and WF-01.02 D-13 for the configured support/fallback decision. This adds the owner's requested open-item reference; WF-01.01's approved error wording and behavior are unchanged.
 
@@ -274,7 +274,7 @@ Feeds: WF-02.01, WF-02.02, WF-02.03, and WF-02.04 if the applicant is rejected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Cleaned   ☒ Verified
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☐ Tested   ☒ Cleaned   ☒ Verified
 
 Checklist scope: Completed for this local implementation: source/DB inspection, reconciliation to the main flow, cleanup of staged secrets/data and automated verification. Verified means 122 focused backend checks (23 OTP tests), 75 related backend regressions, 34 frontend checks, successful frontend build, schema installation and safe HTTP/SMTP smoke checks. It does not assert actual recipient inbox delivery, full interactive browser testing, production readiness or human approval.
 
@@ -377,7 +377,7 @@ Official support contact – needs owner input. Registration feedback uses the s
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Cleaned   ☒ Verified
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☐ Tested   ☒ Cleaned   ☒ Verified
 
 Checklist scope: Owner decisions reconciled; spec/implementation follow the Instructor OTP target; legacy direct creation removed; Instructor fields/actions/errors and shared secure completion verified. All eleven requested verification checklist items are recorded with evidence in the implementation report. Human Approval is not included in agent verification.
 
@@ -393,39 +393,94 @@ Next flow: WF-01.03. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | Approved Workspace account holder: Student, Instructor, or any account with at least one active assigned role. The login endpoint is public, so no permission code is needed to attempt it. Django framework staff and superuser accounts are refused here and use /admin/ only (ADR-001). |
+| Trigger | The user submits School ID (Staff ID for Instructors, the same field; D-11) and password on the home-page sign-in card (/#login), which sends POST /api/v1/auth/login/. |
+| Preconditions | The account exists with request_status Approved and is_active true, and holds at least one AccountRole whose role is active. It is not is_staff or is_superuser. The browser has a CSRF token from GET /api/v1/auth/csrf/ and the request comes from a trusted origin. The per-IP login throttle has not been exceeded. |
+| Result | Django creates a server-side session (HttpOnly session cookie) for the account. The response returns school_id, the sorted active role names and the current effective permission codes as UI hints only. The browser opens /dashboard, which reads GET /api/v1/auth/session/ again. Login creates no role, permission or approval, and stores no grants in the session. |
+| Status | Inspected and reconciled 16 November 2026, then approved by the owner the same day ("I approve the wf-01.03"). P-01 to P-05 are implemented and verified by automated backend, frontend and browser tests. P-06 (authentication events, D-17) stays blocked pending an approved contract. D-18 is deferred to WF-01.06 and D-19 is recorded without code change. Human Approval of the finished flow remains unchecked. |
+
+**Inspection basis:** On 16 November 2026 the owner instructed: continue WF-01 with WF-01.03, read-only inspection and reconciliation first, then stop for approval. Inspected: backend/apps/accounts/session_auth.py (LoginView, SessionView, LogoutView and the shared WorkspaceSessionAPI), accounts/urls.py, accounts/views.py (CSRFView and the JSON parser), the Account model, access_control.services.get_effective_permissions, the executor client, config/settings.py, frontend/src/features/auth/session.ts, api/client.ts, home/components/HomeLoginForm.tsx, HeroSection.tsx, layouts/DashboardLayout.tsx, and the existing session tests. Also inspected: SRS v0.3 (UC-04, FR-AUTH-01 to 07, FR-AUD-02, NFR-SEC-02, OD-13; read from git HEAD because the working-tree copy is deleted and was not restored), docs/api/AUTH_ENDPOINT_INVENTORY.md and the ERD (read-only). WF-01.01 and WF-01.02 share the CSRF bootstrap, the JSON parser and the error envelope with this flow; their pending approvals and policy decisions are unchanged.
+
+**Implementation basis:** Owner approval on 16 November 2026 covered the reconciled WF-01.03 specification, including the proposed label "School ID or Staff ID" and the approval hint. Changed: backend/apps/accounts/session_auth.py (per-identity login budget before authentication; X-Request-ID on every WorkspaceSessionAPI response, which includes the registration review API); frontend/src/features/auth/loginFeedback.ts (new failure-to-feedback mapping); frontend/src/features/home/components/HomeLoginForm.tsx (feedback, countdown, security refresh, session confirmation, signed-in view, label and maxLength). Tests added: backend/apps/accounts/test_session_auth.py (4 cases), frontend/tests/login-feedback.test.mjs (6) and frontend/tests/browser/login-errors.test.mjs (7). No ERD, migration, permission, role, feature-gate or settings change.
+
+**Reconciliation findings and proposals (P-01 to P-05 implemented 16 Nov 2026; P-06 not implemented):**
+- P-01 Login feedback (D-15) — IMPLEMENTED. Before this change, the frontend replaced every failure with "Sign-in could not be completed. Please try again." (role=status, amber notice). That covered 401 invalid credentials, 403 CSRF, 429 throttle and 503/network errors alike. The password was not cleared, no wait time was shown, there was no recovery action and no request reference. Approved and implemented: reuse the WF-01.01 feedback patterns (ApiErrorNotice: role=alert, focus, request reference). Show the server's own messages: 401 "Unable to sign in with these credentials." plus a non-revealing hint shown on every 401, "If you registered recently, your account may still be awaiting School Admin approval."; 429 with a Retry-After countdown; 403 with a "Refresh security check" action; 503 or network failure as "Sign-in could not be confirmed", followed by a GET session re-read before claiming failure. Clear the password after any failed attempt.
+- P-02 Identifier label (D-15) — IMPLEMENTED. The login field was labelled "School ID" for everyone, but Instructors register with a Staff ID stored in the same school_id field (D-11). Implemented: label, placeholder and empty-field error now say "School ID or Staff ID"; maxLength 50/256 matches the backend serializer. The other Title Case copy on the card is unchanged.
+- P-03 Existing session — IMPLEMENTED. The home page did not check the current session, so a signed-in user saw the sign-in form again. Signing in with other credentials replaces the session (Django flushes the earlier one). Implemented: the card reads GET /api/v1/auth/session/ on load and, when authenticated, shows "You’re signed in as {school_id}." with Continue to Dashboard and Sign Out (existing CSRF-protected logout). A failed check keeps the form.
+- P-04 Request reference — IMPLEMENTED. WorkspaceSessionAPI responses carried no X-Request-ID (registration responses did). Implemented: reuse api_errors.request_id so authentication errors show a safe "Request reference".
+- P-05 Abuse controls (D-16) — IMPLEMENTED in code; deployment items open. Throttling was per REMOTE_ADDR only (8/minute, 40/hour) in Django's default per-process LocMem cache. Behind a reverse proxy, every user would share the proxy's address, and there is no per-identity budget against distributed guessing. Implemented: a per-identity budget (8/minute and 40/hour, code defaults equal to the IP budgets) keyed by an HMAC digest of the trimmed, lower-cased school_id (the D-14 mechanism), checked before any password hashing or executor call, with no account lockout. Still open deployment work: a shared cache and trusted-proxy configuration. The values remain a policy decision.
+- P-06 Authentication events (D-17). No login success or failure event is recorded. Account has no last_login field (removed by design, so Django does not update it). FR-AUTH-07 and FR-AUD-02 require an approved event contract, and the SRS forbids using access_audit_logs for login events or adding a login-event table without separate ERD approval. Proposal: owner decides the contract. Meanwhile no storage is added.
+- Dependencies recorded for WF-01.06, not fixed here (D-18). config/settings.py sets no session or CSRF cookie options: Django defaults apply (14-day persistent session cookie, no idle timeout, Secure off, SameSite Lax, HttpOnly session cookie). DEBUG is hard-coded to True. Only the protected executor runtime settings enable Secure cookies and the HTTPS redirect.
+- Session revocation (D-19). Implemented: every session read and protected review request rechecks account, approval and role eligibility from the database, so a revoked role, revoked approval or deactivation takes effect at the next request. Existing session rows are not deleted, and there is no limit on concurrent sessions per account (SRS OD-13).
 
 #### Main flow
 
-Not yet inspected.
+1. User opens / and reaches the sign-in card (HomeLoginForm, anchor #login), either directly, through the header Sign In button, or through "Return to sign-in" on /dashboard (/#login focuses the form).
+2. User enters "School ID or Staff ID" and password. Instructors enter their Staff ID in the same field (P-02). If the browser already holds a valid session, the card instead shows "You’re signed in as {school_id}." with Continue to Dashboard and Sign Out (P-03).
+3. User activates Sign In.
+4. Frontend checks that both fields are filled (School ID trimmed), shows inline errors otherwise, and blocks a second submit while one is in flight.
+5. Frontend gets a fresh CSRF token (GET /api/v1/auth/csrf/) and sends POST JSON {school_id, password} with X-CSRFToken: same-origin cookies, 15-second timeout, no automatic retry.
+6. Backend enforces CSRF and the trusted origin before parsing anything, even for anonymous requests. It then applies the per-IP throttles (8/minute, 40/hour) and accepts only a JSON object (16 KiB or less, duplicate keys refused, no extra fields), with school_id up to 50 characters (trimmed) and password up to 256 characters (not trimmed). It then applies the per-identity budget (8/minute, 40/hour per normalized school_id digest; P-05) before any password hashing.
+7. Backend authenticates with Django ModelBackend, which hashes the password even for unknown IDs and refuses inactive accounts. When protected executor mode is enabled, the verified-writer executor (authenticate_actor) authenticates instead and its proof is stored in the session.
+8. Backend rechecks Workspace eligibility against the database: the account is not framework staff or superuser, is active and Approved, and has at least one active assigned role.
+9. Backend builds the response (school_id, active role names, effective permission codes) before creating the session, so a database failure never leaves an orphaned signed-in session.
+10. Backend calls Django login(): the session key and CSRF token are rotated, the HttpOnly session cookie is set, and the response is Cache-Control: no-store with an X-Request-ID reference (P-04).
+11. Frontend validates the response shape and navigates to /dashboard.
+12. The dashboard reads GET /api/v1/auth/session/, which rechecks eligibility on every call, and renders the shared shell. Navigation follows exact permission codes.
+
+Rules:
+- Login never approves, activates or assigns roles. Permission codes are point-in-time UI hints, never stored in the session. Every protected API re-authorizes on the backend (FR-AUTH-05/06).
+- Unknown ID, wrong password, Pending, Rejected (rejected accounts are deleted), inactive, no active role, inactive role, and framework staff or superuser all return the same HTTP 401 invalid_credentials. No session is created and no account state is revealed (FR-AUTH-02/03).
+- One account has one session with the union of its roles. There are no separate per-role logins (FR-UI-04).
 
 #### Alternative flows
 
-Not yet inspected.
+Alternative A — Invalid credentials or ineligible account (implemented): 1. The backend returns HTTP 401 "Unable to sign in with these credentials." 2. No session is created. 3. The form shows that message in an alert with "If you registered recently, your account may still be awaiting School Admin approval." and the request reference, clears the password and keeps the ID (P-01).
+
+Alternative B — Already signed in (implemented, P-03): 1. The card reads the session on load. 2. When authenticated, it shows "You’re signed in as {school_id}." with Continue to Dashboard. 3. Sign Out ends the session through the existing logout and returns to the form, focused on the ID field. A different account can then sign in.
+
+Alternative C — Eligibility lost after login (implemented): 1. An administrator removes a role, revokes approval or deactivates the account. 2. The next session read returns authenticated: false, or ModelBackend refuses an inactive user. 3. The dashboard shows "Sign in required" with Return to sign-in, and protected review APIs deny the request.
+
+Alternative D — Rate limited (implemented): 1. The backend returns 429 too_many_attempts with Retry-After, per IP or per identity (P-05). 2. The form shows "Too many attempts. Please try again later." and "Try again in N seconds.", and disables Sign In until the countdown ends (P-01). Nothing is retried automatically.
+
+Alternative E — Security check failed (implemented): 1. A missing or invalid CSRF token, or an untrusted Origin, returns 403 csrf_failed before credentials are read. 2. The form offers "Refresh security check", which only fetches a new token (no POST), then asks the user to enter the password and sign in again (P-01).
+
+Alternative G — Unknown outcome (implemented, P-01): 1. A network failure, timeout, 5xx or malformed response follows the login POST. 2. The form reads GET /api/v1/auth/session/ before claiming failure. 3. If a session exists it opens /dashboard; otherwise it shows "Sign-in did not complete. Check your connection and try again." (or the safe 503 message). If the session read also fails, it says sign-in could not be confirmed and suggests reloading.
+
+Alternative F — Forgot password: 1. The form links to /forgot-password. 2. That behavior belongs to WF-01.05 and is gated by WORKSPACE_PASSWORD_RESET_ENABLED (off by default).
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 4 | School ID or password empty | Inline errors "Please enter your School ID." / "Please enter your password."; no request sent |
+| 5–6 | CSRF missing or invalid, or untrusted Origin | HTTP 403 csrf_failed before parsing or throttling; no session. Form: alert with "Refresh security check" (no automatic POST) |
+| 6 | Throttle exceeded (8/minute or 40/hour per IP, or per normalized identity) | HTTP 429 too_many_attempts + Retry-After, before any password hashing. Form: alert + "Try again in N seconds."; Sign In disabled until it ends |
+| 6 | Non-object JSON, extra or duplicate fields, oversized body, wrong method or media type | HTTP 400 invalid_request / 405 / 406 / 415; no session |
+| 7–8 | Wrong credentials or ineligible account | HTTP 401 invalid_credentials (same for every cause). Form: shared message + approval hint + request reference; password cleared, ID kept |
+| 7 | Executor refuses or is unavailable (protected mode only) | HTTP 401 invalid_credentials, or HTTP 503 auth_unavailable; no session |
+| 9 | Database error while computing roles or permissions | HTTP 503 auth_unavailable; no session, because the payload is built before login() |
+| 11 | Malformed or negative success body | Frontend treats it as failure (invalid_session); test-verified |
+| 5–11 | Network failure, timeout or 5xx after the POST | Form reads the session (GET) first: opens /dashboard if a session exists, otherwise "Sign-in did not complete. Check your connection and try again." (or the safe 503 message) |
+| 12 | Session read fails or returns anonymous | Dashboard shows "Session unavailable" with Try again, or "Sign in required" with Return to sign-in |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-02.03, the only path that makes an account Approved, active and role-assigned. WF-03.05, effective permissions and role state. WF-01.06, CSRF bootstrap and session cookie/expiry configuration (D-18). ADR-001, framework-administrator separation.
 
-Feeds: Not yet inspected.
+Feeds: WF-01.04 (logout), the shared dashboard (FR-UI-01 to 08) and every protected module. WF-12.01 (authentication events, once D-17 is approved). The form links to WF-01.05.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Traceability: SRS v0.3 UC-04. FR-AUTH-01/02/03/05/06 are met in code and tests. FR-AUTH-04 belongs to WF-01.04 and WF-01.06. FR-AUTH-07 and FR-AUD-02 are not met (no approved event contract). NFR-SEC-02 is partially met (HTTPS and Secure cookies only in the executor runtime settings). See docs/api/AUTH_ENDPOINT_INVENTORY.md.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Approved   ☒ Implemented   ☒ Tested   ☐ Committed
 
-Evidence level: Unknown – needs confirmation
+Checklist scope: Approved records the owner's 16 November 2026 approval of the reconciled specification; it is not Human Approval of the finished flow. Implemented covers P-01 to P-05. Tested covers the automated evidence below. P-06 and D-17 are not implemented; D-18 belongs to WF-01.06; D-19 is unchanged.
+
+Blocked by: No remaining development implementation blocker for P-01 to P-05. Open: D-17 authentication-event contract (P-06; plus ERD review if storage is required); production cookie, HTTPS and DEBUG settings (D-18, WF-01.06); shared cache and trusted-proxy deployment for the throttles (D-16); session deletion and limits (D-19); policy sign-off of the D-16 values. WF-01.02 Human Approval is still unchecked; the owner proceeded with WF-01.03 by explicit instruction and approval on 16 November 2026. Actual interactive sign-in against a real development account is unverified.
+
+Evidence level: Code-verified and automated-test verified, 16 November 2026 (Django 6.1.2). Inspection baseline: 14/14 backend session tests and 9/9 frontend session tests. After implementation: `manage.py test apps.accounts.test_session_auth --settings=config.test_settings` 18/18 passed (14 existing + 4 new: identity budget across IPs and normalized IDs, budget checked before authentication, no raw ID in cache keys, distinct request reference on every auth response). All 23 accounts test modules: 380 tests, 377 passed; the 3 failures are in test_registration_review_notifications and fail identically with the original session_auth.py, so they belong to pre-existing uncommitted outbox work, not this flow. Frontend `npm test`: 154 tests, 153 passed; the 1 failure is the known unrelated dashboard/mock-isolation test. `npm run test:registration-ui`: 43/43 passed, including 7 new real-browser login scenarios on the actual home page with mocked APIs (wrong credentials, rate limit, CSRF refresh, unknown outcome with and without a session, existing session and sign-out, success). `npm run build` passed. `npm run lint`: the new and changed files are clean; 1 pre-existing error (ThemeToggle.tsx) and 1 pre-existing warning (RegistrationReviewLivePanel.tsx) in untouched files. Disposable test databases were created and destroyed. Not verified: interactive sign-in with a real development account, production configuration and HTTPS deployment. access_control suites were not re-run (no access_control code changed).
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
@@ -463,7 +518,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -505,7 +560,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -547,7 +602,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -591,7 +646,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -633,7 +688,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -675,7 +730,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -731,7 +786,7 @@ The following content is retained verbatim from the original sample use case for
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -773,7 +828,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -815,7 +870,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -859,7 +914,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -901,7 +956,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -943,7 +998,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -985,7 +1040,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1027,7 +1082,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1069,7 +1124,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1113,7 +1168,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1155,7 +1210,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1197,7 +1252,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1239,7 +1294,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1281,7 +1336,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1327,7 +1382,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1369,7 +1424,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1411,7 +1466,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1453,7 +1508,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1497,7 +1552,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1539,7 +1594,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1581,7 +1636,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1623,7 +1678,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1665,7 +1720,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1709,7 +1764,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1751,7 +1806,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1793,7 +1848,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1835,7 +1890,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1877,7 +1932,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1919,7 +1974,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -1961,7 +2016,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2003,225 +2058,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
-
-Blocked by: Unknown – needs confirmation
-
-Evidence level: Unknown – needs confirmation
-
-Human Approval: ☐ Approved by: ______  Date: ______
-
-Next flow: WF-08.01. Do not start until Approved is ticked.
-
-### WF-13  Group Rating
-
-Not yet inspected. Scope evidenced in SRS v0.5, FR-RAT-01–FR-RAT-04: assigned-class rating sheets, student group invitations, safeguards for group ratings, and privacy-scoped results. These are requirements for later reconciliation, not implementation claims or approved workflow definitions.
-
-Workflow IDs: Not assigned. Actor(s) and exact permissions: Unknown – needs confirmation. Main flow, alternatives, errors, links, and checklist footer will be added when the project owner defines the individual Group Rating workflows. No WF-13 subflow has been approved.
-
-### WF-08  Announcements & Notifications
-
-#### WF-08.01 — Create and publish announcements
-
-| Field | Definition |
-| --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
-
-#### Main flow
-
-Not yet inspected.
-
-#### Alternative flows
-
-Not yet inspected.
-
-#### Errors
-
-| Step | Problem | What happens |
-| --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
-
-#### Links
-
-Depends on: Not yet inspected.
-
-Feeds: Not yet inspected.
-
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
-
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
-
-Blocked by: Unknown – needs confirmation
-
-Evidence level: Unknown – needs confirmation
-
-Human Approval: ☐ Approved by: ______  Date: ______
-
-Next flow: WF-08.02. Do not start until Approved is ticked.
-
-#### WF-08.02 — View announcements
-
-| Field | Definition |
-| --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
-
-#### Main flow
-
-Not yet inspected.
-
-#### Alternative flows
-
-Not yet inspected.
-
-#### Errors
-
-| Step | Problem | What happens |
-| --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
-
-#### Links
-
-Depends on: Not yet inspected.
-
-Feeds: Not yet inspected.
-
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
-
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
-
-Blocked by: Unknown – needs confirmation
-
-Evidence level: Unknown – needs confirmation
-
-Human Approval: ☐ Approved by: ______  Date: ______
-
-Next flow: WF-08.03. Do not start until Approved is ticked.
-
-#### WF-08.03 — Generate event-based in-app notifications
-
-| Field | Definition |
-| --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
-
-#### Main flow
-
-Not yet inspected.
-
-#### Alternative flows
-
-Not yet inspected.
-
-#### Errors
-
-| Step | Problem | What happens |
-| --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
-
-#### Links
-
-Depends on: Not yet inspected.
-
-Feeds: Not yet inspected.
-
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
-
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
-
-Blocked by: Unknown – needs confirmation
-
-Evidence level: Unknown – needs confirmation
-
-Human Approval: ☐ Approved by: ______  Date: ______
-
-Next flow: WF-08.04. Do not start until Approved is ticked.
-
-#### WF-08.04 — Send eligible email notifications
-
-| Field | Definition |
-| --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
-
-#### Main flow
-
-Not yet inspected.
-
-#### Alternative flows
-
-Not yet inspected.
-
-#### Errors
-
-| Step | Problem | What happens |
-| --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
-
-#### Links
-
-Depends on: Not yet inspected.
-
-Feeds: Not yet inspected.
-
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
-
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
-
-Blocked by: Unknown – needs confirmation
-
-Evidence level: Unknown – needs confirmation
-
-Human Approval: ☐ Approved by: ______  Date: ______
-
-Next flow: WF-08.05. Do not start until Approved is ticked.
-
-#### WF-08.05 — View notification history and delivery status
-
-| Field | Definition |
-| --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
-
-#### Main flow
-
-Not yet inspected.
-
-#### Alternative flows
-
-Not yet inspected.
-
-#### Errors
-
-| Step | Problem | What happens |
-| --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
-
-#### Links
-
-Depends on: Not yet inspected.
-
-Feeds: Not yet inspected.
-
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
-
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2231,9 +2068,15 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-09.01. Do not start until Approved is ticked.
 
-### WF-09  Account Concerns & Support
+### WF-08  Group Rating
 
-#### WF-09.01 — Submit account concern
+Not yet inspected. Scope evidenced in SRS v0.5, FR-RAT-01–FR-RAT-04: assigned-class rating sheets, student group invitations, safeguards for group ratings, and privacy-scoped results. These are requirements for later reconciliation, not implementation claims or approved workflow definitions.
+
+Workflow IDs: Not assigned. Actor(s) and exact permissions: Unknown – needs confirmation. Main flow, alternatives, errors, links, and checklist footer will be added when the project owner defines the individual Group Rating workflows. No WF-08 subflow has been approved.
+
+### WF-09  Announcements & Notifications
+
+#### WF-09.01 — Create and publish announcements
 
 | Field | Definition |
 | --- | --- |
@@ -2265,7 +2108,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2275,7 +2118,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-09.02. Do not start until Approved is ticked.
 
-#### WF-09.02 — Assign or review concern
+#### WF-09.02 — View announcements
 
 | Field | Definition |
 | --- | --- |
@@ -2307,7 +2150,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2317,7 +2160,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-09.03. Do not start until Approved is ticked.
 
-#### WF-09.03 — Respond to concern
+#### WF-09.03 — Generate event-based in-app notifications
 
 | Field | Definition |
 | --- | --- |
@@ -2349,7 +2192,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2359,7 +2202,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-09.04. Do not start until Approved is ticked.
 
-#### WF-09.04 — Track concern status and resolution
+#### WF-09.04 — Send eligible email notifications
 
 | Field | Definition |
 | --- | --- |
@@ -2391,7 +2234,49 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-09.05. Do not start until Approved is ticked.
+
+#### WF-09.05 — View notification history and delivery status
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2401,11 +2286,9 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-10.01. Do not start until Approved is ticked.
 
-### Group C - System Operations & Maintenance
+### WF-10  Account Concerns & Support
 
-### WF-10  System Administration & Configuration
-
-#### WF-10.01 — Manage authorized academic-period settings
+#### WF-10.01 — Submit account concern
 
 | Field | Definition |
 | --- | --- |
@@ -2437,7 +2320,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2447,7 +2330,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-10.02. Do not start until Approved is ticked.
 
-#### WF-10.02 — Manage system operational settings
+#### WF-10.02 — Assign or review concern
 
 | Field | Definition |
 | --- | --- |
@@ -2479,7 +2362,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2489,7 +2372,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-10.03. Do not start until Approved is ticked.
 
-#### WF-10.03 — Configure services within authorized boundaries
+#### WF-10.03 — Respond to concern
 
 | Field | Definition |
 | --- | --- |
@@ -2521,7 +2404,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2531,7 +2414,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-10.04. Do not start until Approved is ticked.
 
-#### WF-10.04 — Review operational configuration changes
+#### WF-10.04 — Track concern status and resolution
 
 | Field | Definition |
 | --- | --- |
@@ -2563,7 +2446,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2573,9 +2456,11 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-11.01. Do not start until Approved is ticked.
 
-### WF-11  Audit, Security & Monitoring
+### Group C - System Operations & Maintenance
 
-#### WF-11.01 — Record security-relevant events
+### WF-11  System Administration & Configuration
+
+#### WF-11.01 — Manage authorized academic-period settings
 
 | Field | Definition |
 | --- | --- |
@@ -2607,7 +2492,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2617,7 +2502,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-11.02. Do not start until Approved is ticked.
 
-#### WF-11.02 — Review authorized audit records
+#### WF-11.02 — Manage system operational settings
 
 | Field | Definition |
 | --- | --- |
@@ -2649,7 +2534,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2659,7 +2544,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-11.03. Do not start until Approved is ticked.
 
-#### WF-11.03 — Detect and respond to unauthorized attempts
+#### WF-11.03 — Configure services within authorized boundaries
 
 | Field | Definition |
 | --- | --- |
@@ -2691,7 +2576,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2701,7 +2586,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-11.04. Do not start until Approved is ticked.
 
-#### WF-11.04 — Monitor system health and error conditions
+#### WF-11.04 — Review operational configuration changes
 
 | Field | Definition |
 | --- | --- |
@@ -2733,49 +2618,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
-
-Blocked by: Unknown – needs confirmation
-
-Evidence level: Unknown – needs confirmation
-
-Human Approval: ☐ Approved by: ______  Date: ______
-
-Next flow: WF-11.05. Do not start until Approved is ticked.
-
-#### WF-11.05 — Apply data retention, backup, and recovery controls
-
-| Field | Definition |
-| --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
-
-#### Main flow
-
-Not yet inspected.
-
-#### Alternative flows
-
-Not yet inspected.
-
-#### Errors
-
-| Step | Problem | What happens |
-| --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
-
-#### Links
-
-Depends on: Not yet inspected.
-
-Feeds: Not yet inspected.
-
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
-
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2785,9 +2628,9 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-12.01. Do not start until Approved is ticked.
 
-### WF-12  Reporting & Document Generation
+### WF-12  Audit, Security & Monitoring
 
-#### WF-12.01 — Generate authorized operational reports
+#### WF-12.01 — Record security-relevant events
 
 | Field | Definition |
 | --- | --- |
@@ -2819,7 +2662,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2829,7 +2672,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-12.02. Do not start until Approved is ticked.
 
-#### WF-12.02 — Export permitted records
+#### WF-12.02 — Review authorized audit records
 
 | Field | Definition |
 | --- | --- |
@@ -2861,7 +2704,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2871,7 +2714,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-12.03. Do not start until Approved is ticked.
 
-#### WF-12.03 — Generate official system documents
+#### WF-12.03 — Detect and respond to unauthorized attempts
 
 | Field | Definition |
 | --- | --- |
@@ -2903,7 +2746,7 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2913,7 +2756,7 @@ Human Approval: ☐ Approved by: ______  Date: ______
 
 Next flow: WF-12.04. Do not start until Approved is ticked.
 
-#### WF-12.04 — Check report accuracy and access scope
+#### WF-12.04 — Monitor system health and error conditions
 
 | Field | Definition |
 | --- | --- |
@@ -2945,7 +2788,219 @@ Feeds: Not yet inspected.
 
 Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Cleaned   ☐ Verified
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-12.05. Do not start until Approved is ticked.
+
+#### WF-12.05 — Apply data retention, backup, and recovery controls
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-13.01. Do not start until Approved is ticked.
+
+### WF-13  Reporting & Document Generation
+
+#### WF-13.01 — Generate authorized operational reports
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-13.02. Do not start until Approved is ticked.
+
+#### WF-13.02 — Export permitted records
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-13.03. Do not start until Approved is ticked.
+
+#### WF-13.03 — Generate official system documents
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+
+Blocked by: Unknown – needs confirmation
+
+Evidence level: Unknown – needs confirmation
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-13.04. Do not start until Approved is ticked.
+
+#### WF-13.04 — Check report accuracy and access scope
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | Not yet inspected |
+| Trigger | Not yet inspected |
+| Preconditions | Not yet inspected |
+| Result | Not yet inspected |
+| Status | Not yet inspected |
+
+#### Main flow
+
+Not yet inspected.
+
+#### Alternative flows
+
+Not yet inspected.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Not yet inspected | Not yet inspected | Not yet inspected |
+
+#### Links
+
+Depends on: Not yet inspected.
+
+Feeds: Not yet inspected.
+
+Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+
+AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
 
 Blocked by: Unknown – needs confirmation
 
@@ -2989,13 +3044,18 @@ D-01–D-09 remain OPEN. The owner-stated Instructor OTP target and follow-up St
 | D-05 | Abandoned cleanup | Fixed 30-minute TTL; resends do not extend it; immediate expiry refusal plus local 60-second purge worker | 1 hour | IMPLEMENTED configurable default — Code/DB/test-verified; supervised production scheduling/policy OPEN | Project owner |WF-01.01; WF-01.02 |
 | D-06 | Email uniqueness | Unique normalized non-null email across accounts; new Student/Instructor public accounts save durable verified address/time after OTP; legacy proof remains NULL | Original active-account-only wording or shared addresses need a separately reviewed policy change | Code/DB/test-verified; fresh SHOW CREATE TABLE confirms email unique key and ledger through 0005; zero normalized duplicate groups, none merged/deleted; historical exact 0004 reconciliation/0005 release preserved values; policy OPEN | Project owner |WF-01.01; WF-01.05; WF-04.04; WF-02.04; WF-03; WF-01.02 |
 | D-07 | Duplicate-registration response | Generic HTTP 409 before/after OTP with the same approved Student wording for both roles (owner consistency instruction, 16 Nov; OD-1(a)) | Historical direct Instructor neutral 202 and the Instructor-only sentence are superseded; no field-specific identity disclosure | IMPLEMENTED shared contract — Code/test-verified; anti-enumeration policy (SRS FR-REG-03) OPEN | Project owner |WF-01.01; WF-01.02 |
-| D-08 | OTP delivery failure and recovery | Retain encrypted stage; send only after the staging write commits; invalidate the uncertain code, never a newer one; bounded resend within original deadline; no account or success claim | Purge staging and require a new attempt | IMPLEMENTED mechanism — Code/test-verified with failed/zero-send and concurrent-newer-code cases; policy OPEN | Project owner |WF-01.01; WF-08.04; WF-01.02 |
+| D-08 | OTP delivery failure and recovery | Retain encrypted stage; send only after the staging write commits; invalidate the uncertain code, never a newer one; bounded resend within original deadline; no account or success claim | Purge staging and require a new attempt | IMPLEMENTED mechanism — Code/test-verified with failed/zero-send and concurrent-newer-code cases; policy OPEN | Project owner |WF-01.01; WF-09.04; WF-01.02 |
 | D-09 | Review eligibility and existing unverified Pending accounts | New Student/Instructor public registrations save proof atomically after OTP; legacy proof remains NULL | WF-02 eligibility/legacy transition remains separately reviewed; no WF-02 code/gates changed | Registration proof IMPLEMENTED — Code/DB/test-verified; existing shared review gates unchanged; legacy/cross-flow policy OPEN | Project owner |WF-01.01; WF-02.01; WF-02.03; WF-01.02 |
 | D-10 | Instructor registration sequence | Owner-stated OTP before Pending account/profile, sharing protected staging and proof with Student; role stored in existing encrypted payload | Historical direct-to-Pending/neutral-202 baseline, now superseded by owner instruction | IMPLEMENTED/test-verified in development; owner-stated requirement recorded, no agent approval; Human Approval pending | Project owner | WF-01.02 |
 | D-11 | Instructor identity | Owner-stated Staff ID, 1–7 ASCII digits, mapped to unique existing accounts.school_id; leading zeroes retained | Separate employee identity/format would require new owner/schema review | Owner answer recorded; Code/DB/test-verified; no migration or agent policy approval | Project owner | WF-01.02 |
 | D-12 | Instructor eligibility verification | Owner-stated School Admin review only; OTP proves email access, not employment | Separate authoritative HR/verification process would require specified source/contract | Owner answer recorded; shared review service/gates retained; no agent policy approval | Project owner | WF-01.02; WF-02.01; WF-02.03 |
 | D-13 | Instructor conflict/recovery actions and support | SUPERSEDED by the owner's 16 Nov instruction to adopt Student feedback, confirmed as OD-1(a): shared conflict wording, no Instructor-only action panel or configured support action. Owned resume is not a conflict | Earlier Instructor sentence and four gated actions (historical, not implemented) | SUPERSEDED — shared feedback Code/test-verified; official support contact – needs owner input; no agent policy approval | Project owner | WF-01.02; WF-01.01 (support open-item cross-reference only) |
 | D-14 | Registration identity abuse limits / staging cap | Reuse existing IP budgets additionally per keyed ID/email for both roles (Student added by OD-2, 16 Nov), shared across roles: admission 5/min and 30/day, OTP/status 30/min and 200/day; one live stage per unique ID/email; inherited D-05 fixed expiry | Tighter identity budgets or a separately reviewed global-cap/shared-cache deployment | IMPLEMENTED/test-verified local controls; accepted first-claim/cache deployment risks documented; inherited/default policy review OPEN | Project owner | WF-01.01; WF-01.02 |
+| D-15 | Login feedback and identifier label | Show server messages (401 credentials, 429 countdown, 403 refresh action, 503 or network then session re-read); non-revealing approval hint on every 401; clear the password; label "School ID or Staff ID" | Keep the current single generic message and the "School ID" label | Owner-approved 16 Nov 2026; IMPLEMENTED and test-verified (WF-01.03 P-01, P-02) | Project owner | WF-01.03 |
+| D-16 | Login abuse controls | Keep per-IP 8/minute and 40/hour; add a per-identity budget keyed by a keyed school_id digest; shared cache and trusted-proxy settings in deployment; no account lockout | Account lockout after N failures (lets anyone lock out a known School ID), or IP-only throttling | Per-identity budget owner-approved and IMPLEMENTED, test-verified (8/min, 40/hour code defaults); value policy, shared cache and trusted proxy OPEN | Project owner | WF-01.03; WF-01.05 |
+| D-17 | Authentication-event contract | Owner-approved event source, fields (no credentials or secrets), redaction, retention and access (FR-AUTH-07, FR-AUD-02) before any login event is stored | Server log only, or no events | OPEN; nothing recorded today; access_audit_logs must not be used; ERD read-only | Project owner | WF-01.03; WF-01.04; WF-12.01 |
+| D-18 | Session lifetime and cookie flags | Explicit production settings: Secure session and CSRF cookies, HTTPS, DEBUG off, an approved absolute and idle session lifetime | Django defaults (14-day persistent cookie, no idle timeout, Secure off) | OPEN; defaults active in config/settings.py; decide in WF-01.06 | Project owner | WF-01.03; WF-01.06 |
+| D-19 | Session revocation timing and concurrent sessions | Keep the per-request database eligibility recheck; decide whether to delete sessions on deactivation or role change and whether to limit sessions per account (SRS OD-13) | Revoke only at expiry | Recheck IMPLEMENTED and test-verified; deletion and limits OPEN | Project owner | WF-01.03; WF-01.04; WF-01.06; WF-02.05; WF-03.01 |
 
 ### Other open items
 
@@ -3015,6 +3075,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | Item | Evidence level | Evidence / gap |
 | --- | --- | --- |
 | WF-01.02 Instructor registration OTP | Code/DB/automated-test verified | Owner target implemented: Staff ID 1–7, no school information, protected staging/OTP, shared HTTP 409/no new code on conflicts, original-browser resume, atomic Pending/profile/proof and no role. 164 focused backend (30 unchanged Student OTP, 20 Instructor OTP), 93 related regressions, 51 focused frontend, 29 browser and one real OTP/CSRF/MySQL/protected-read scenario passed; build/lint passed. New schema/migrations absent. Actual inbox/full human-browser/production acceptance unverified; official support contact needs owner input with accepted fallback active. |
+| WF-01.03 Login and session establishment | Code/automated-test verified | Owner-approved P-01 to P-05 implemented 16 Nov 2026: specific sign-in feedback, Staff ID label, existing-session view, request references, per-identity budget. 18/18 backend session tests, 6/6 feedback unit tests, 43/43 browser tests (7 new login scenarios), build passed. Pre-existing unrelated failures recorded under WF-01.03. P-06/D-17 blocked; interactive real-account sign-in and production configuration unverified. |
 | Public Student registration | Code/test-verified; behavior retained | Approved Student OTP sequence, existing payloads, cookie ownership and conflict wording retained. All 30 unchanged Student OTP tests passed standalone and within the final focused suite. Instructor reuse is separately documented under WF-01.02; historical Student release evidence remains in its implementation record. |
 | /register route | Code/test/HTTP-verified | App routes /register and /register/verify; VerifyEmailPage implements code entry, resend, cancel, errors and confirmation. Student button is Proceed Email Verification; separate resume control removed. Initial component server rendering and live route HTTP 200 verified. |
 | Pending/inactive state | Code/DB/test-verified | Correct OTP atomically creates account/profile with Pending/inactive state and verified address/time; no AccountRole/login. Wrong/expired/replayed codes and transaction failure create no partial permanent records. Existing development records preserved; no real applicant created by verification work. |
@@ -3044,7 +3105,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | Control | Value |
 | --- | --- |
 | Document | CTU-G Workspace System Workflow Catalogue |
-| Version | 0.3.2 |
+| Version | 0.3.3 |
 | Date | 16 November 2026 |
 | Status | Working Draft — owner approval pending |
 | Scope | WF-01.01 main flow and conflict wording retained; WF-01.02 reconciled to the shared Student feedback (OD-1(a)); owner-approved WF-01 audit corrections recorded; other 60 flow specifications unchanged |
@@ -3067,12 +3128,15 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.1 WF-01.02 full-flow acceptance | 16 November 2026 | Followed every current main step, alternative and error row. Added guarded real React/CSRF/API/MySQL/review-read acceptance (1 passed), concurrent HTTP regression and expanded browser recovery/overlap/429 checks (20 passed); expanded backend suite including review/routing boundaries: 147 passed. Eight read-only development DB prerequisite checks passed. Real duplicate responses preserve one original applicant/profile; protected visibility/denial exercised only in isolated tests. Updated evidence/report/checklist scope. Application behavior, ERD, migrations, deployment gates and other flows unchanged in this pass. | Human Approval/D-10 remain pending; no production or human acceptance claim |
 | 0.3.1 WF-01.02 owner-target OTP implementation | 16 November 2026 | Owner explicitly authorized Instructor OTP reuse and confirmed Staff ID 1–7, School Admin review only, exact conflict sentence and configured/gated support/recovery. Replaced historical direct sequence with protected staging/OTP/proof; removed school section; retained Student behavior/wording. Reconciled shared rules and fresh SHOW CREATE TABLE/ledger/zero duplicates; no migration/ERD change. Final 164 focused backend, 93 related, 51 focused frontend, 29 browser and one real OTP/CSRF/MySQL/read-handoff scenario passed; build/lint passed. Full frontend 139/140, one known unrelated failure. Updated eleven verification items, footer, register and Appendices A/B/C. Development services/cleanup started and safe proxy 410 checked. | Ready for approval; no agent policy/Human Approval; official support contact needs owner input; WF-01.03 not started |
 | 0.3.2 WF-01 audit corrections | 16 November 2026 | Phase 1-2 audit, then owner approval of OD-1(a), OD-2, OD-3 and packages P1-P4 (Human Approval line handling deferred by owner). Reconciled WF-01.02 to the implemented shared Student feedback (retired Instructor sentence/action panel/support configuration), replacing stale D-07/D-13 text and Appendix A/B rows. Code: verification mail sent only after the staging commit with digest-guarded invalidation (R-02); per-identity limits for Student (R-03); status endpoint IP-throttled for both roles (R-04); resumed-attempt notice (R-05); neutral no-session wording (R-06); dead direct-registration branch removed (R-07); accessible Resend label and single error announcement (R-08); pasted-code handling (R-09); request-timeout fallback (R-10); configured code lifetime and spam-folder guidance (OD-3). No ERD, migration, permission or Human Approval change. Evidence in [WF-01 audit corrections record](group_a/WF-01_Audit_Corrections_2026-11-16.md). | Scope owner-approved 16 Nov 2026; Human Approval and D-01-D-09/D-14 policy remain pending |
+| 0.3.3 Workflow renumbering | 16 November 2026 | Per owner instruction, renumbered Group Rating from WF-13 to WF-08 (its position after WF-07) and shifted the following categories by one: Announcements & Notifications WF-08→WF-09, Account Concerns & Support WF-09→WF-10, System Administration & Configuration WF-10→WF-11, Audit, Security & Monitoring WF-11→WF-12, Reporting & Document Generation WF-12→WF-13, including all subflow IDs, Next-flow links and cross-references (e.g. D-08 and WF-01.01 Links now cite WF-09.04). Titles, content, statuses and checklists unchanged; Group Rating subflow IDs remain unassigned. Historical change-log rows keep the IDs used at the time. | Pending owner approval |
+| 0.3.3 WF-01.03 inspection | 16 November 2026 | Owner instructed continuing WF-01 with read-only inspection and reconciliation of WF-01.03 using the existing Section 4 layout and the six-stage checklist (Inspect → Reconcile → Approve → Implement → Test → Commit). Filled the WF-01.03 specification from code, tests and the SRS (git HEAD); recorded proposals P-01 to P-06, decisions D-15 to D-19 and baseline test evidence (14 backend, 9 frontend, all passed). WF-01.03 Guidelines and checklist use the six-stage sequence; other flows unchanged. No application code, ERD or migration changes. | Approval of WF-01.03 pending; Human Approval unchecked |
+| 0.3.3 WF-01.03 implementation | 16 November 2026 | Owner approved WF-01.03 ("I approve the wf-01.03"). Implemented P-01 (specific sign-in feedback, approval hint, countdown, security refresh, session confirmation after unknown outcomes, password cleared), P-02 ("School ID or Staff ID" label, maxLength), P-03 (signed-in view with Continue to Dashboard and Sign Out), P-04 (X-Request-ID on authentication responses) and P-05 (per-identity login budget before authentication, no lockout). Added 4 backend, 6 unit and 7 browser tests. Updated WF-01.03 status, flows, errors, checklist and evidence, D-15/D-16 and Appendix B. No ERD, migration, permission or settings change. P-06/D-17 still blocked. | Specification owner-approved; Human Approval unchecked |
 
 ### Workflow ID mapping (old → new)
 
-No existing workflow IDs changed in version 0.3.1. WF-13 is a newly added draft category, not a numbered subflow; its subflow IDs remain unassigned. WF-01.01 and WF-01.02 title cleanups are recorded; the remaining original titles are preserved.
+Version 0.3.3 renumbered categories WF-08 to WF-13: Group Rating (formerly WF-13, a draft category with no subflow IDs) is now WF-08, and the former WF-08 to WF-12 subflows each moved up one category number. WF-01 to WF-07 IDs are unchanged. WF-01.01 and WF-01.02 title cleanups are recorded; the remaining original titles are preserved.
 
-| Old ID (v0.1) | Current ID (v0.3.1) | Change |
+| Old ID (v0.1) | Current ID (v0.3.3) | Change |
 | --- | --- | --- |
 | WF-01.01 | WF-01.01 | Title cleaned to “Register Student Account” |
 | WF-01.02 | WF-01.02 | Title clarified to Register Instructor Account per owner task; ID unchanged |
@@ -3114,27 +3178,28 @@ No existing workflow IDs changed in version 0.3.1. WF-13 is a newly added draft 
 | WF-07.06 | WF-07.06 | ID and title unchanged |
 | WF-07.07 | WF-07.07 | ID and title unchanged |
 | WF-07.08 | WF-07.08 | ID and title unchanged |
-| WF-08.01 | WF-08.01 | ID and title unchanged |
-| WF-08.02 | WF-08.02 | ID and title unchanged |
-| WF-08.03 | WF-08.03 | ID and title unchanged |
-| WF-08.04 | WF-08.04 | ID and title unchanged |
-| WF-08.05 | WF-08.05 | ID and title unchanged |
-| WF-09.01 | WF-09.01 | ID and title unchanged |
-| WF-09.02 | WF-09.02 | ID and title unchanged |
-| WF-09.03 | WF-09.03 | ID and title unchanged |
-| WF-09.04 | WF-09.04 | ID and title unchanged |
-| WF-10.01 | WF-10.01 | ID and title unchanged |
-| WF-10.02 | WF-10.02 | ID and title unchanged |
-| WF-10.03 | WF-10.03 | ID and title unchanged |
-| WF-10.04 | WF-10.04 | ID and title unchanged |
-| WF-11.01 | WF-11.01 | ID and title unchanged |
-| WF-11.02 | WF-11.02 | ID and title unchanged |
-| WF-11.03 | WF-11.03 | ID and title unchanged |
-| WF-11.04 | WF-11.04 | ID and title unchanged |
-| WF-11.05 | WF-11.05 | ID and title unchanged |
-| WF-12.01 | WF-12.01 | ID and title unchanged |
-| WF-12.02 | WF-12.02 | ID and title unchanged |
-| WF-12.03 | WF-12.03 | ID and title unchanged |
-| WF-12.04 | WF-12.04 | ID and title unchanged |
+| WF-08.01 | WF-09.01 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-08.02 | WF-09.02 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-08.03 | WF-09.03 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-08.04 | WF-09.04 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-08.05 | WF-09.05 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-09.01 | WF-10.01 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-09.02 | WF-10.02 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-09.03 | WF-10.03 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-09.04 | WF-10.04 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-10.01 | WF-11.01 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-10.02 | WF-11.02 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-10.03 | WF-11.03 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-10.04 | WF-11.04 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-11.01 | WF-12.01 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-11.02 | WF-12.02 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-11.03 | WF-12.03 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-11.04 | WF-12.04 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-11.05 | WF-12.05 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-12.01 | WF-13.01 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-12.02 | WF-13.02 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-12.03 | WF-13.03 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-12.04 | WF-13.04 | Renumbered (Group Rating became WF-08); title unchanged |
+| WF-13 (category added v0.3) | WF-08 | Group Rating category renumbered; no subflow IDs assigned |
 
 Document control note: Proposed structure only. Review with project stakeholders before designating workflow definitions as approved requirements.

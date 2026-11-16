@@ -42,7 +42,7 @@ Index only. Actor and status are documented here; detailed specifications are in
 | WF-01.01 | Register Student Account | Student Applicant (public) | Implemented and locally verified; Human Approval pending |
 | WF-01.02 | Register Instructor Account | Instructor Applicant (public) | Instructor OTP implemented and development-verified; Ready for approval |
 | WF-01.03 | Login and session establishment | Approved Workspace account holder (public endpoint) | Owner-approved; P-01 to P-05 implemented and tested; Human Approval pending |
-| WF-01.04 | Logout and session termination | Not yet inspected | Draft |
+| WF-01.04 | Logout and session termination | Any account holder with a valid Workspace session | Owner-approved; P-01 to P-05 implemented and tested; Human Approval pending |
 | WF-01.05 | Forgot-password request and reset | Not yet inspected | Draft |
 | WF-01.06 | Session expiry and CSRF handling | Not yet inspected | Draft |
 
@@ -490,39 +490,93 @@ Next flow: WF-01.04. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | Any account holder with a valid Workspace session, whatever its active assigned roles. Signing out needs no feature-permission grant: the endpoint requires only a CSRF-verified browser request. Django framework staff and superusers never hold a Workspace session (WF-01.03), so they sign out of /admin/ separately. |
+| Trigger | The user selects **Sign out** in the dashboard sidebar (DashboardShell), or **Sign Out** on the home-page signed-in card (WF-01.03 P-03). Both call POST /api/v1/auth/logout/. |
+| Preconditions | The browser can obtain a CSRF token (GET /api/v1/auth/csrf/) and the request comes from a trusted origin. A session normally exists; an expired or already-terminated session is handled the same way (see Alternatives A and B). |
+| Result | Django deletes the current server-side session row and expires the session cookie. The response is {"authenticated": false} with no-store caching and a request reference. The browser loads the public page /, which discards all in-memory account state. Any later request carrying the old session cookie is anonymous. Other devices' sessions are unaffected. |
+| Status | Inspected and reconciled 16 November 2026 from the owner-supplied draft, then approved by the owner the same day with five safeguards (S-1 to S-5 below). P-01 to P-05 are implemented and verified by automated backend, unit and browser tests. The server-side logout needed no code change; its behavior is now covered by tests. D-17 and D-19 stay open. Human Approval of the finished flow remains unchecked. |
+
+**Inspection basis:** On 16 November 2026 the owner instructed "proceed with wf-01.04" and supplied a draft specification; it was reconciled against the code, and its unverified items were replaced with findings. Inspected: backend/apps/accounts/session_auth.py (LogoutView and WorkspaceSessionAPI, as committed in 66c1301), Django 6.1.2 django.contrib.auth.logout, SessionBase.flush and SessionMiddleware cookie deletion, registration_review_api.py (require_actor), frontend/src/features/auth/session.ts (logoutWorkspace), layouts/DashboardLayout.tsx, components/dashboard/DashboardShell.tsx, features/home/components/HomeLoginForm.tsx, features/admin/RegistrationReviewLivePanel.tsx, and the existing session and review tests. Draft corrections: the draft named roles (Treasurer, School Admin, Super Admin) that are not verified Workspace role names, so the actor is defined by session validity instead. The draft linked security events to WF-11.01; after the 0.3.3 renumbering that flow is WF-12.01. WF-01.03 Human Approval is still unchecked; this inspection started on the owner's explicit instruction.
+
+**Implementation basis:** On 16 November 2026 the owner approved P-01 to P-05 and added safeguards. S-1: a failed session check is never treated as confirmed logout; the outcome stays uncertain with an explicit retry. S-2: location.replace() alone does not keep cached pages away, so the restored-page check stays. S-3: tabs also recheck when they become visible, including where BroadcastChannel is unsupported. S-4: 401 (not signed in) is distinguished from 403 (permission denied); a 403 never signs anyone out. S-5: tests cover old-cookie replay, anonymous logout, session-store failure, other tabs and dashboard restoration. Changed: frontend/src/utils/sessionSignals.ts (new: BroadcastChannel notice, visibility, pageshow and 401 signals), hooks/useSessionRevalidation.ts (new), features/auth/signOut.ts (new: confirmed sign-out outcome), api/client.ts and features/admin/registrationReviewApi.ts (401 authentication_required signal only), layouts/DashboardLayout.tsx (session recheck on signals; sign-out via signOutWorkspace and location.replace), features/home/components/HomeLoginForm.tsx (same sign-out confirmation; card rechecks). Tests added: backend/apps/accounts/test_session_auth.py (4 logout cases), frontend/tests/sign-out.test.mjs (5) and frontend/tests/browser/logout-errors.test.mjs (8). No backend application code, ERD, migration, permission, role, gate or settings change.
+
+**Reconciliation findings and proposals (P-01 to P-05 implemented 16 Nov 2026 with safeguards S-1 to S-5):**
+- Implemented and verified by code: LogoutView accepts POST only (GET returns 405), enforces CSRF and the trusted origin before anything else, and calls Django logout() for every request, authenticated or not. logout() flushes the session: it clears the data, deletes the session row and drops the key, which also removes any executor proof stored by WF-01.03. SessionMiddleware then expires the session cookie because the session is empty. The response is {"authenticated": false}, Cache-Control: no-store, plus X-Request-ID. It reveals no account data. Logout does not change the account, its roles or its permissions. The CSRF cookie is not rotated at logout; that is acceptable because login rotates it (WF-01.03). The frontend stores no session or account data in the browser (only the theme preference), and the full-page navigation to / discards React state. logoutWorkspace() fails closed: it reports success only when the server returns authenticated: false.
+- P-01 Uncertain result — IMPLEMENTED (S-1). Before this change, a 403, 503, network failure or timeout leaves the dashboard showing "Sign-out could not be confirmed. Please try again." without checking whether the session still exists; the home signed-in card behaved the same way. Implemented: after any failed or uncertain logout, read GET /api/v1/auth/session/ (never repeat the POST automatically). If the session is anonymous, continue to / as signed out. If it is still authenticated, show "Sign-out did not complete. Please try again." and keep Sign out enabled. If the read fails too, show "Sign-out could not be confirmed. Check your connection and try again."
+- P-02 Browser history — IMPLEMENTED (S-2). Sign-out used window.location.assign('/'), so /dashboard stays in history, and Back may restore a cached dashboard (back/forward cache) that still shows account details until it reloads. Implemented: the dashboard signs out with window.location.replace('/'), and still re-reads the session on pageshow when a page is restored from the back/forward cache.
+- P-03 Other tabs — IMPLEMENTED (S-3). The dashboard read the session only on load, so another open tab keeps showing the shell, school_id, roles and permission hints after sign-out until it reloads; its protected API calls are denied server-side. Implemented: after a confirmed sign-out, post a data-free "signed-out" message on BroadcastChannel('ctug-session') (no storage). Dashboard tabs re-read the session on that message and whenever the tab becomes visible again, and switch to the existing "Sign in required" panel when the session is anonymous. The visibility recheck also covers browsers without BroadcastChannel. The home signed-in card rechecks the same way. A message never changes state by itself; only the server's session answer does.
+- P-04 Protected-API 401 — IMPLEMENTED (S-4). When a module call returned 401 authentication_required (for example, the registration review list), the panel showed its own error and the shell still showed the account. Implemented: a 401 authentication_required from the shared client or the review API GET triggers a session re-read, and the dashboard switches to "Sign in required" only if the session is anonymous. 403 access_denied and the login's own 401 invalid_credentials never trigger it.
+- P-05 Missing tests — IMPLEMENTED (S-5). No test replayed the old session cookie after logout, signs out an already-anonymous session, or simulates a session-store failure during logout, and no browser test covered dashboard sign-out. Added backend tests: the old cookie is anonymous for /session/ and is refused by the review API; anonymous logout with CSRF returns 200 {"authenticated": false} without creating a session; the logout response expires the session cookie; a session-store failure returns 503 auth_unavailable and the session is still reported as authenticated (logout is never claimed). Browser tests: dashboard sign-out success, uncertain result then anonymous, uncertain result still signed in, other-tab notification, and Back after sign-out.
+- Recorded without change: there is no "Sign out from all devices" (the draft's Alternative E; D-19 stays open). Logout events are not recorded; Django's user_logged_out signal has no receivers (D-17).
 
 #### Main flow
 
-Not yet inspected.
+1. User is on /dashboard (or on / with the signed-in card from WF-01.03 P-03).
+2. User selects Sign out (sidebar; on small screens inside the opened navigation drawer) or Sign Out (home card). The button shows "Signing out…" and blocks a second click.
+3. Frontend gets a fresh CSRF token (GET /api/v1/auth/csrf/) and sends POST /api/v1/auth/logout/ with {} and X-CSRFToken: same-origin cookies, 15-second timeout, no automatic retry.
+4. Backend enforces the method (POST only), CSRF and trusted origin before any other work.
+5. Backend uses only the server-side session from the request cookie; the frontend sends no account identifier, role or permission.
+6. Backend calls Django logout(): the session data is cleared, its database row deleted and its key dropped (this also discards any executor proof).
+7. SessionMiddleware expires the session cookie because the session is now empty; the response is Cache-Control: no-store.
+8. Backend returns {"authenticated": false} with an X-Request-ID reference and no account data.
+9. Frontend accepts the result only if authenticated is false. Otherwise it reads GET /api/v1/auth/session/ once (never repeating the POST): anonymous counts as signed out; an active session or a failed read keeps the user on the page with an explicit retry (P-01).
+10. Frontend tells other tabs through a data-free BroadcastChannel notice and replaces the history entry with / (location.replace). The full page load discards in-memory account state; nothing else is stored in the browser (P-02, P-03).
+11. Opening /dashboard again reads GET /api/v1/auth/session/, which returns authenticated: false.
+12. The dashboard shows "Sign in required" with Return to sign-in, and protected APIs refuse the old session (401). Any open dashboard tab rechecks on the notice, on becoming visible, on a back/forward-cache restore or on a protected 401, and shows the same panel (P-02 to P-04).
+
+Rules:
+- Logout ends only the current session. It never deactivates the account, removes roles or changes permissions.
+- Logout is enforced server-side; clearing frontend state alone is never treated as signed out.
+- No feature permission is needed; GET never signs out; CSRF and trusted-origin checks stay enforced.
+- Other devices' sessions are not ended. A "sign out from all devices" feature needs separate approval (D-19).
+- No session identifier, credential, CSRF secret or account detail appears in the response.
+- A network failure is never treated as a confirmed sign-out, and the POST is never repeated automatically.
 
 #### Alternative flows
 
-Not yet inspected.
+Alternative A — Session already expired (implemented): 1. The user selects Sign out after the session has expired. 2. The request is anonymous; CSRF still applies. 3. logout() flushes the empty session and returns {"authenticated": false}; no session is created or restored. 4. The frontend continues to /.
+
+Alternative B — Already signed out (implemented): 1. A second sign-out (for example, from another tab) sends the same request. 2. The response is the same {"authenticated": false}; account state does not change. 3. The frontend stays public.
+
+Alternative C — Other tabs in the same browser (implemented, P-03): 1. The user signs out in one tab, which ends the shared session. 2. Other tabs' protected requests are refused. 3. Other tabs re-read the session on the BroadcastChannel notice or when they become visible (also without BroadcastChannel), and show "Sign in required".
+
+Alternative D — Uncertain result (implemented, P-01): 1. The logout POST fails, times out or returns an unexpected body. 2. The frontend reads the session once. 3. Anonymous: continue to / as signed out. Still active: "Sign-out did not complete. Please try again." Read failed: "Sign-out could not be confirmed. Check your connection and try again." In both of the last two cases Sign out stays enabled for an explicit retry.
+
+Alternative E — Other devices (implemented by design): 1. Signing out ends only this browser's session. 2. Sessions on other devices continue under the existing session policy (D-18, D-19).
+
+Alternative F — Back button after sign-out (implemented, P-02): 1. The dashboard history entry was replaced, so Back does not return to it. 2. If a cached dashboard is still restored, it re-reads the session on pageshow and shows "Sign in required"; the backend refuses its requests.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 3 | CSRF bootstrap or POST cannot be sent (network) | No sign-out is claimed. One session read follows: anonymous continues to /; otherwise "Sign-out did not complete. Please try again." or "Sign-out could not be confirmed. Check your connection and try again.", and Sign out stays enabled |
+| 4 | CSRF missing or invalid, or untrusted Origin | HTTP 403 csrf_failed; the session is unchanged. The session read reports it still active, so "Sign-out did not complete. Please try again."; a retry fetches a new token |
+| 4 | GET or another method | HTTP 405; nothing changes (test-verified) |
+| 5 | Session missing, expired or already ended | HTTP 200 {"authenticated": false}; no session is created (Alternatives A and B; test-verified) |
+| 6 | Session-store (database) failure during flush | HTTP 503 auth_unavailable; Django does not save sessions on 5xx, so the session stays active and logout is not claimed (test-verified). The session read then shows "Sign-out did not complete. Please try again." |
+| 7–8 | Response lost or malformed | Treated as uncertain: one session read decides, as in step 3 |
+| 10–11 | Back restores a cached dashboard | History entry replaced; a restored page rechecks on pageshow and shows "Sign in required" (P-02) |
+| 12 | Protected API called with the old session | HTTP 401 authentication_required; the dashboard rechecks and shows "Sign in required". A 403 access_denied leaves the user signed in |
+| 3–12 | Another tab still open | It rechecks on the BroadcastChannel notice or when shown again, then shows "Sign in required"; its protected requests are refused meanwhile |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-01.03 (session establishment and the shared WorkspaceSessionAPI). WF-01.06 (CSRF bootstrap, cookie and session configuration; D-18). Django session authentication. The shared dashboard and GET /api/v1/auth/session/. WF-03.05 (effective permissions checked on every later protected request).
 
-Feeds: Not yet inspected.
+Feeds: WF-01.03 (signing in again). WF-01.06 (session expiry and revocation behavior; D-19). WF-12.01 (logout events, once D-17 is approved; the draft's WF-11.01 is the pre-renumbering ID).
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Traceability: SRS v0.3 UC-04 and FR-AUTH-01 are met for logout (server session, HttpOnly cookie, CSRF and trusted origin). FR-AUTH-04 is met for "logout SHALL invalidate the authenticated session"; its expiry and revocation part belongs to WF-01.06 and D-19. FR-AUTH-05 is met (protected APIs re-authorize every request). FR-AUD-02 and FR-AUTH-07 logout events are not met (D-17). docs/api/AUTH_ENDPOINT_INVENTORY.md lists the endpoint as "CSRF protected; server confirmation required", which matches.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Approved   ☒ Implemented   ☒ Tested   ☐ Committed
 
-Evidence level: Unknown – needs confirmation
+Checklist scope: Approved records the owner's 16 November 2026 approval of P-01 to P-05 with safeguards S-1 to S-5; it is not Human Approval of the finished flow. Implemented and Tested cover P-01 to P-05 as described above. D-17 and D-19 are unchanged.
+
+Blocked by: No remaining development implementation blocker for P-01 to P-05. Open: D-17 (logout events), D-19 (session deletion, limits and sign-out from all devices), and cookie and session lifetime settings (D-18, WF-01.06). WF-01.03 Human Approval is still unchecked; the owner proceeded with WF-01.04 by explicit instruction and approval on 16 November 2026. A real back/forward-cache restore and sign-out with a real development account are unverified.
+
+Evidence level: Code-verified and automated-test verified, 16 November 2026. Backend: `manage.py test apps.accounts.test_session_auth --settings=config.test_settings` 22/22 passed (18 existing + 4 new: the replayed old cookie is anonymous for /session/ and refused with 401 by the review API, and its session row is deleted; the logout response expires the session cookie with no-store and no account data; anonymous and repeated logout return 200 {"authenticated": false} and create no session; a session-store failure returns 503 auth_unavailable and the session honestly stays active). All 23 accounts test modules: 384 tests, 381 passed; the same 3 test_registration_review_notifications failures as in WF-01.03, which belong to pre-existing uncommitted outbox work. Frontend: tests/sign-out.test.mjs 5/5 (confirmed sign-out; uncertain then anonymous; still active; failed status read stays unconfirmed; only 401 authentication_required signals, not 403 or login 401), with the POST sent exactly once in every case. `npm test`: 159 tests, 158 passed; the 1 failure is the known unrelated dashboard/mock-isolation test. `npm run test:registration-ui`: 51/51 passed, including 8 new real-browser scenarios on the actual dashboard with mocked APIs (sign-out then Back stays on /; uncertain then anonymous; still active; failed status read; other tab via BroadcastChannel; other tab without BroadcastChannel on visibility; restored-page recheck via a simulated persisted pageshow; protected 401 versus 403). `npm run build` passed; `npm run lint` is clean for changed files, with the same 2 pre-existing problems in untouched files. Not verified: a genuine browser back/forward-cache restore (simulated with a persisted pageshow event), sign-out with a real development account, and production configuration.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
@@ -3076,6 +3130,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | --- | --- | --- |
 | WF-01.02 Instructor registration OTP | Code/DB/automated-test verified | Owner target implemented: Staff ID 1–7, no school information, protected staging/OTP, shared HTTP 409/no new code on conflicts, original-browser resume, atomic Pending/profile/proof and no role. 164 focused backend (30 unchanged Student OTP, 20 Instructor OTP), 93 related regressions, 51 focused frontend, 29 browser and one real OTP/CSRF/MySQL/protected-read scenario passed; build/lint passed. New schema/migrations absent. Actual inbox/full human-browser/production acceptance unverified; official support contact needs owner input with accepted fallback active. |
 | WF-01.03 Login and session establishment | Code/automated-test verified | Owner-approved P-01 to P-05 implemented 16 Nov 2026: specific sign-in feedback, Staff ID label, existing-session view, request references, per-identity budget. 18/18 backend session tests, 6/6 feedback unit tests, 43/43 browser tests (7 new login scenarios), build passed. Pre-existing unrelated failures recorded under WF-01.03. P-06/D-17 blocked; interactive real-account sign-in and production configuration unverified. |
+| WF-01.04 Logout and session termination | Code/automated-test verified | Owner-approved P-01 to P-05 with safeguards S-1 to S-5 implemented 16 Nov 2026: confirmed sign-out outcome, history replacement and restored-page recheck, cross-tab notice and visibility recheck, 401-only session recheck, logout boundary tests. 22/22 backend session tests, 5/5 sign-out unit tests, 51/51 browser tests (8 new), build passed. Genuine back/forward-cache restore and real-account sign-out unverified. |
 | Public Student registration | Code/test-verified; behavior retained | Approved Student OTP sequence, existing payloads, cookie ownership and conflict wording retained. All 30 unchanged Student OTP tests passed standalone and within the final focused suite. Instructor reuse is separately documented under WF-01.02; historical Student release evidence remains in its implementation record. |
 | /register route | Code/test/HTTP-verified | App routes /register and /register/verify; VerifyEmailPage implements code entry, resend, cancel, errors and confirmation. Student button is Proceed Email Verification; separate resume control removed. Initial component server rendering and live route HTTP 200 verified. |
 | Pending/inactive state | Code/DB/test-verified | Correct OTP atomically creates account/profile with Pending/inactive state and verified address/time; no AccountRole/login. Wrong/expired/replayed codes and transaction failure create no partial permanent records. Existing development records preserved; no real applicant created by verification work. |
@@ -3132,6 +3187,8 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.3 WF-01.03 inspection | 16 November 2026 | Owner instructed continuing WF-01 with read-only inspection and reconciliation of WF-01.03 using the existing Section 4 layout and the six-stage checklist (Inspect → Reconcile → Approve → Implement → Test → Commit). Filled the WF-01.03 specification from code, tests and the SRS (git HEAD); recorded proposals P-01 to P-06, decisions D-15 to D-19 and baseline test evidence (14 backend, 9 frontend, all passed). WF-01.03 Guidelines and checklist use the six-stage sequence; other flows unchanged. No application code, ERD or migration changes. | Approval of WF-01.03 pending; Human Approval unchecked |
 | 0.3.3 WF-01.03 implementation | 16 November 2026 | Owner approved WF-01.03 ("I approve the wf-01.03"). Implemented P-01 (specific sign-in feedback, approval hint, countdown, security refresh, session confirmation after unknown outcomes, password cleared), P-02 ("School ID or Staff ID" label, maxLength), P-03 (signed-in view with Continue to Dashboard and Sign Out), P-04 (X-Request-ID on authentication responses) and P-05 (per-identity login budget before authentication, no lockout). Added 4 backend, 6 unit and 7 browser tests. Updated WF-01.03 status, flows, errors, checklist and evidence, D-15/D-16 and Appendix B. No ERD, migration, permission or settings change. P-06/D-17 still blocked. | Specification owner-approved; Human Approval unchecked |
 | 0.3.3 WF-01.03 commit receipt | 16 November 2026 | Recorded implementation commit 66c1301 and ticked Committed in the WF-01.03 checklist. | Human Approval unchecked |
+| 0.3.3 WF-01.04 inspection | 16 November 2026 | Owner instructed "proceed with wf-01.04" and supplied a draft. Reconciled the draft against the code read-only: kept its intent, replaced unverified items with findings, corrected the security-event link to WF-12.01 (renumbered) and the unverified role names. Recorded proposals P-01 to P-05 and existing test evidence. No application code, ERD or migration changes. | Approval of WF-01.04 pending; WF-01.03 Human Approval unchecked |
+| 0.3.3 WF-01.04 implementation | 16 November 2026 | Owner approved P-01 to P-05 with safeguards S-1 to S-5. Implemented confirmed sign-out (session read after uncertain results; a failed read stays uncertain), history replacement plus restored-page recheck, data-free BroadcastChannel notice plus visibility recheck, and a 401-only session recheck (403 never signs out). Added 4 backend, 5 unit and 8 browser tests; server-side logout behavior needed no code change. Updated WF-01.04 status, flows, errors, checklist, evidence and Appendix B. No backend application code, ERD, migration, permission or settings change. | Specification owner-approved; Human Approval unchecked |
 
 ### Workflow ID mapping (old → new)
 

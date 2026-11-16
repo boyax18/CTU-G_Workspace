@@ -1,3 +1,5 @@
+import { notifyAuthenticationRequired } from '../utils/sessionSignals.ts';
+
 export const API_MESSAGES: Record<string, string> = {
   validation_error: 'Check the submitted registration details.',
   otp_invalid: 'The verification code is incorrect. Please try again.',
@@ -98,6 +100,9 @@ async function readResponse(response: Response, mutation = false): Promise<unkno
     const error = record(data.error);
     const code = response.status === 409 ? 'conflict' : response.status === 410 ? 'expired'
       : typeof error.code === 'string' && own(API_MESSAGES, error.code) ? error.code : STATUS_CODES[response.status] ?? 'request_failed';
+    // WF-01.04 P-04: only "not signed in" asks pages to re-read the session.
+    // 403 access_denied and the login's own 401 invalid_credentials never do.
+    if (response.status === 401 && code === 'authentication_required') notifyAuthenticationRequired();
     const fields: Record<string, string[]> = {};
     if (response.status === 400) {
       for (const [key, value] of Object.entries(record(error.fields))) {

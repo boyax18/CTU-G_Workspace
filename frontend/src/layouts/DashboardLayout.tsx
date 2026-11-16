@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import '../css/theme.css';
 import '../css/dashboard.css';
 import ThemeProvider from '../contexts/ThemeProvider';
 import { DashboardContext } from '../contexts/DashboardContext';
 import DashboardShell from '../components/dashboard/DashboardShell';
-import { getWorkspaceSession, logoutWorkspace } from '../features/auth/session';
+import { getWorkspaceSession } from '../features/auth/session';
+import { signOutMessage, signOutWorkspace } from '../features/auth/signOut';
+import { useSessionRevalidation } from '../hooks/useSessionRevalidation';
 import type { AuthenticatedWorkspaceSession } from '../features/auth/session';
 import {
   canOpenDashboardView,
@@ -52,17 +54,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [state]);
 
+  // WF-01.04 P-02/P-03/P-04: re-read the server session when another tab signs
+  // out, this tab becomes visible, a cached page is restored, or a protected API
+  // answers 401. Only an anonymous answer replaces the shell; a failed read keeps
+  // the current view (the backend still refuses every protected request).
+  const rechecking = useRef(false);
+  const recheckSession = useCallback(() => {
+    if (rechecking.current) return;
+    rechecking.current = true;
+    getWorkspaceSession()
+      .then((session) => setState(session.authenticated ? { status: 'ready', session } : { status: 'anonymous' }))
+      .catch(() => { /* keep the current view */ })
+      .finally(() => { rechecking.current = false; });
+  }, []);
+  useSessionRevalidation(recheckSession);
+
   const signOut = useCallback(async () => {
     if (signingOut) return;
     setSigningOut(true);
     setSignOutError('');
-    try {
-      await logoutWorkspace();
-      window.location.assign('/');
-    } catch {
-      setSignOutError('Sign-out could not be confirmed. Please try again.');
-      setSigningOut(false);
+    const outcome = await signOutWorkspace();
+    if (outcome === 'signed_out') {
+      // Replace the history entry so Back does not return to the dashboard.
+      window.location.replace('/');
+      return;
     }
+    setSignOutError(signOutMessage(outcome));
+    setSigningOut(false);
   }, [signingOut]);
 
   const session = state.status === 'ready' ? state.session : null;

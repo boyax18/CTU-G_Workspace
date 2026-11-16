@@ -6,8 +6,10 @@ import Reveal from '../../../components/common/Reveal';
 import ApiErrorNotice from '../../../components/common/ApiErrorNotice';
 import { EyeIcon, EyeOffIcon } from '../../../components/common/Icons';
 import { ApiError, initializeCSRF } from '../../../api/client';
-import { getWorkspaceSession, logoutWorkspace } from '../../auth/session';
+import { getWorkspaceSession } from '../../auth/session';
 import type { AuthenticatedWorkspaceSession } from '../../auth/session';
+import { signOutMessage, signOutWorkspace } from '../../auth/signOut';
+import { useSessionRevalidation } from '../../../hooks/useSessionRevalidation';
 import { describeLoginFailure, LOGIN_APPROVAL_HINT, LOGIN_UNCONFIRMED, notCompletedMessage } from '../../auth/loginFeedback';
 import type { LoginRecovery } from '../../auth/loginFeedback';
 import { REGISTER_PATH } from '../../../utils/constants';
@@ -54,6 +56,15 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
       .catch(() => { /* keep the sign-in form */ });
     return () => { cancelled = true; };
   }, [onSubmit]);
+
+  // WF-01.04 P-03: keep the signed-in card truthful when another tab signs out
+  // (or signs in) or this tab is shown again. A failed read changes nothing.
+  useSessionRevalidation(() => {
+    if (!onSubmit || submitting.current) return;
+    getWorkspaceSession()
+      .then((session) => setSignedIn(session.authenticated ? session : null))
+      .catch(() => { /* keep the current card */ });
+  });
 
   useEffect(() => {
     if (retryWait <= 0) return;
@@ -143,17 +154,20 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
     }
   };
 
+  // WF-01.04 P-01: confirm uncertain results with a session read; never guess.
   const signOut = async () => {
     if (submitting.current) return;
     submitting.current = true;
     setLoading(true);
     resetFeedback();
     try {
-      await logoutWorkspace();
-      setSignedIn(null);
-      window.setTimeout(() => document.getElementById('school-id')?.focus(), 0);
-    } catch (problem) {
-      setFailure(problem instanceof ApiError ? problem : new ApiError('Could not confirm sign-out. Please try again.'));
+      const outcome = await signOutWorkspace();
+      if (outcome === 'signed_out') {
+        setSignedIn(null);
+        window.setTimeout(() => document.getElementById('school-id')?.focus(), 0);
+      } else {
+        setFailure(new ApiError(signOutMessage(outcome)));
+      }
     } finally {
       submitting.current = false;
       setLoading(false);

@@ -15,6 +15,7 @@ import type {
   RegistrationReviewRejectionCode,
 } from './registrationReviewApiContract.ts';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from './registrationReviewApiGate.ts';
+import { notifyAuthenticationRequired } from '../../utils/sessionSignals.ts';
 
 function requireApprovedActivation(): void {
   if (!REGISTRATION_REVIEW_LIVE_API_ENABLED) {
@@ -43,6 +44,8 @@ async function getReviewJSON(path: string): Promise<unknown> {
   }
   if (!response.ok) {
     const { code, message } = parseRegistrationReviewError(response.status, value);
+    // WF-01.04 P-04: 401 means the session is gone; 403 is a permission denial and never signs anyone out.
+    if (response.status === 401) notifyAuthenticationRequired();
     throw new ApiError(message, response.status, code);
   }
   return value;

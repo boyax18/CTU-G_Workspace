@@ -5,8 +5,10 @@ from unittest import mock
 
 from django.conf import settings
 from django.core.cache import cache
+from django.contrib.sessions.models import Session
 from django.core.exceptions import ImproperlyConfigured
-from django.test import TestCase
+from django.db import DatabaseError
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.access_control.models import AccountRole, Role
@@ -229,3 +231,57 @@ class WorkspaceSessionTests(TestCase):
         references = [r["X-Request-ID"] for r in responses]
         self.assertTrue(all(re.fullmatch(r"[a-f0-9]{32}", value) for value in references), references)
         self.assertEqual(len(set(references)), len(references))
+
+    # WF-01.04 P-05 (owner-approved 16 Nov 2026): logout boundary tests.
+    def logout(self):
+        return self.client.post(self.base_path + "logout/", {}, format="json",
+                                HTTP_X_CSRFTOKEN=self.current_csrf())
+
+    def test_old_session_cookie_is_anonymous_after_logout(self):
+        self.assertEqual(self.login().status_code, 200)
+        old_key = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+        self.assertTrue(Session.objects.filter(session_key=old_key).exists())
+        self.assertEqual(self.logout().status_code, 200)
+        self.assertFalse(Session.objects.filter(session_key=old_key).exists())
+        # Replay the captured cookie: the server-side session no longer exists.
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = old_key
+        self.assertEqual(self.client.get(self.base_path + "session/").json(), {"authenticated": False})
+        with override_settings(
+            ROOT_URLCONF="apps.accounts.registration_review_urls",
+            WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=True,
+            WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
+        ):
+            self.client.cookies[settings.SESSION_COOKIE_NAME] = old_key
+            review = self.client.get("/")
+        self.assertEqual(review.status_code, 401)
+        self.assertEqual(review.json()["error"]["code"], "authentication_required")
+
+    def test_logout_response_expires_the_session_cookie(self):
+        self.assertEqual(self.login().status_code, 200)
+        response = self.logout()
+        cookie = response.cookies[settings.SESSION_COOKIE_NAME]
+        self.assertEqual(cookie.value, "")
+        self.assertEqual(str(cookie["max-age"]), "0")
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotIn("school_id", response.content.decode())
+
+    def test_anonymous_logout_is_safe_and_creates_no_session(self):
+        sessions_before = Session.objects.count()
+        first, second = self.logout(), self.logout()
+        for response in (first, second):
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"authenticated": False})
+        self.assertEqual(Session.objects.count(), sessions_before)
+        self.assertEqual(self.client.get(self.base_path + "session/").json(), {"authenticated": False})
+
+    def test_session_store_failure_never_claims_logout(self):
+        self.assertEqual(self.login().status_code, 200)
+        csrf = self.current_csrf()
+        with mock.patch("django.contrib.sessions.backends.db.SessionStore.delete",
+                        side_effect=DatabaseError("session store unavailable")):
+            response = self.client.post(self.base_path + "logout/", {}, format="json", HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["error"]["code"], "auth_unavailable")
+        self.assertNotIn("authenticated", response.json())
+        # Django does not save sessions on 5xx responses: the session is honestly still active.
+        self.assertTrue(self.client.get(self.base_path + "session/").json()["authenticated"])

@@ -163,9 +163,33 @@ WORKSPACE_PASSWORD_RESET_ENABLED = os.environ.get("WORKSPACE_PASSWORD_RESET_ENAB
 WORKSPACE_EMAIL_SMTP_ENABLED = os.environ.get("WORKSPACE_EMAIL_SMTP_ENABLED", "0") == "1"
 WORKSPACE_PUBLIC_BASE_URL = os.environ.get("WORKSPACE_PUBLIC_BASE_URL", "http://localhost:5173").rstrip("/")
 PASSWORD_RESET_TIMEOUT = 1800  # 30 minutes
-DEFAULT_FROM_EMAIL = os.environ.get(
-    "WORKSPACE_EMAIL_FROM", "ctuginatilanextensioncampus@gmail.com"
+from email.utils import formataddr, parseaddr
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as SenderValidationError
+
+_sender_raw = os.environ.get("WORKSPACE_EMAIL_FROM", "ctuginatilanextensioncampus@gmail.com")
+if any(ch in _sender_raw for ch in "\r\n"):
+    raise ImproperlyConfigured("Invalid WORKSPACE_EMAIL_FROM address.")
+_sender_address = parseaddr(_sender_raw)[1]
+try:
+    validate_email(_sender_address)
+except SenderValidationError as exc:
+    raise ImproperlyConfigured("Invalid WORKSPACE_EMAIL_FROM address.") from exc
+DEFAULT_FROM_EMAIL = formataddr(("CTU-G Workspace", _sender_address))
+# An explicit deployment hostname allowlist is mandatory for production email links.
+WORKSPACE_EMAIL_PUBLIC_HOSTS = frozenset(
+    host.strip().lower() for host in
+    os.environ.get("WORKSPACE_EMAIL_PUBLIC_HOSTS", "").split(",") if host.strip()
 )
+WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", "0"
+) == "1"
+WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED", "0"
+) == "1"
+WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED", "0"
+) == "1"
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
     if WORKSPACE_EMAIL_SMTP_ENABLED

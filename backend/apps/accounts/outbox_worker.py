@@ -21,6 +21,10 @@ from django.db.models import Q
 from django.utils import timezone
 
 from .outbox_crypto import OutboxCryptoUnavailable, decrypt_recipient
+from .registration_email_templates import (
+    REJECTION_LABELS, branded_sender_address, render_decision_email,
+    _public_url,
+)
 from .outbox_models import RegistrationNotificationOutbox
 
 MAX_ATTEMPTS = 5
@@ -63,6 +67,13 @@ def _require_delivery_enabled():
         if not (getattr(settings, "WORKSPACE_EMAIL_SMTP_ENABLED", False)
                 and os.environ.get("WORKSPACE_OUTBOX_SMTP_DELIVERY_APPROVED", "0") == "1"):
             raise OutboxWorkerUnavailable("SMTP delivery is not approved.")
+        # Never allow externally delivered decision email to contain localhost
+        # URLs, an unapproved redirect target, or an invalid From address.
+        try:
+            _public_url("/register")
+            branded_sender_address()
+        except ValueError as exc:
+            raise OutboxWorkerUnavailable("Public email configuration is not approved.") from exc
         return
     raise OutboxWorkerUnavailable("Unapproved email backend.")
 
@@ -168,6 +179,24 @@ def _finish(claim, *, failure_code=None, permanent=False):
 
 
 def _message_for(row):
+    if row.template_version == 2:
+        # Immutable audit snapshot belongs to THIS outbox decision, not the
+        # mutable account row. Legacy v1 rendering stays exactly as before.
+        audit = row.decision_audit_log
+        expected = (
+            "account.registration.approve" if row.template_code == "registration.approved"
+            else "account.registration.reject" if row.template_code == "registration.rejected"
+            else None
+        )
+        if not expected or audit.action != expected:
+            return None
+        snapshot = audit.new_value if type(audit.new_value) is dict else {}
+        if row.template_code == "registration.rejected":
+            code = snapshot.get("rejection_code")
+            if code not in REJECTION_LABELS:
+                return None
+            return render_decision_email(approved=False, rejection_code=code)
+        return render_decision_email(approved=True)
     if row.template_version != 1:
         return None
     if row.template_code == "registration.approved":
@@ -238,9 +267,10 @@ def process_one():
             connection = get_connection(timeout=15)
             accepted = send_mail(
                 subject=message[0], message=message[1],
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=branded_sender_address(),
                 recipient_list=[address], fail_silently=False,
                 connection=connection,
+                **({"html_message": message[2]} if len(message) == 3 else {}),
             )
         except smtplib.SMTPRecipientsRefused:
             return _finish(claim, failure_code="recipient_rejected", permanent=True)

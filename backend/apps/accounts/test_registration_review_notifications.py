@@ -104,7 +104,7 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertEqual(len(callbacks), 1)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["applicant@example.edu"])
-        self.assertIn("not approved", mail.outbox[0].subject.lower())
+        self.assertIn("rejected", mail.outbox[0].subject.lower())
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Rejected")
         self.assertFalse(self.target.is_active)

@@ -570,9 +570,9 @@ Traceability: SRS v0.3 UC-04 and FR-AUTH-01 are met for logout (server session, 
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Approved   ☒ Implemented   ☒ Tested   ☐ Committed
+AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Approved   ☒ Implemented   ☒ Tested   ☒ Committed
 
-Checklist scope: Approved records the owner's 16 November 2026 approval of P-01 to P-05 with safeguards S-1 to S-5; it is not Human Approval of the finished flow. Implemented and Tested cover P-01 to P-05 as described above. D-17 and D-19 are unchanged.
+Checklist scope: Approved records the owner's 16 November 2026 approval of P-01 to P-05 with safeguards S-1 to S-5; it is not Human Approval of the finished flow. Implemented and Tested cover P-01 to P-05 as described above. Committed: f5eaace on branch ronald (11 files: the source and test changes listed under Implementation basis and this catalogue); unrelated uncommitted work was left unstaged. D-17 and D-19 are unchanged.
 
 Blocked by: No remaining development implementation blocker for P-01 to P-05. Open: D-17 (logout events), D-19 (session deletion, limits and sign-out from all devices), and cookie and session lifetime settings (D-18, WF-01.06). WF-01.03 Human Approval is still unchecked; the owner proceeded with WF-01.04 by explicit instruction and approval on 16 November 2026. A real back/forward-cache restore and sign-out with a real development account are unverified.
 
@@ -3189,6 +3189,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.3 WF-01.03 commit receipt | 16 November 2026 | Recorded implementation commit 66c1301 and ticked Committed in the WF-01.03 checklist. | Human Approval unchecked |
 | 0.3.3 WF-01.04 inspection | 16 November 2026 | Owner instructed "proceed with wf-01.04" and supplied a draft. Reconciled the draft against the code read-only: kept its intent, replaced unverified items with findings, corrected the security-event link to WF-12.01 (renumbered) and the unverified role names. Recorded proposals P-01 to P-05 and existing test evidence. No application code, ERD or migration changes. | Approval of WF-01.04 pending; WF-01.03 Human Approval unchecked |
 | 0.3.3 WF-01.04 implementation | 16 November 2026 | Owner approved P-01 to P-05 with safeguards S-1 to S-5. Implemented confirmed sign-out (session read after uncertain results; a failed read stays uncertain), history replacement plus restored-page recheck, data-free BroadcastChannel notice plus visibility recheck, and a 401-only session recheck (403 never signs out). Added 4 backend, 5 unit and 8 browser tests; server-side logout behavior needed no code change. Updated WF-01.04 status, flows, errors, checklist, evidence and Appendix B. No backend application code, ERD, migration, permission or settings change. | Specification owner-approved; Human Approval unchecked |
+| 0.3.3 WF-01.04 commit receipt | 16 November 2026 | Recorded implementation commit f5eaace and ticked Committed in the WF-01.04 checklist. | Human Approval unchecked |
 
 ### Workflow ID mapping (old → new)
 

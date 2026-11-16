@@ -8,7 +8,7 @@ from .student_registration_api import (
 )
 from .reapplication_api import ReapplicationLinkView, ReapplicationCompleteView
 from .session_auth import LoginView, LogoutView, SessionView
-from .password_reset import PasswordResetRequestView, PasswordResetConfirmView
+from .password_reset import PasswordResetRequestView, PasswordResetVerifyView, PasswordResetConfirmView
 
 urlpatterns = [
   path("csrf/", CSRFView.as_view(), name="registration-csrf"),
@@ -24,5 +24,6 @@ urlpatterns = [
   path("logout/", LogoutView.as_view(), name="workspace-logout"),
   path("session/", SessionView.as_view(), name="workspace-session"),
   path("forgot-password/", PasswordResetRequestView.as_view(), name="workspace-forgot-password"),
+  path("forgot-password/verify/", PasswordResetVerifyView.as_view(), name="workspace-forgot-password-verify"),
   path("reset-password/", PasswordResetConfirmView.as_view(), name="workspace-reset-password"),
 ]

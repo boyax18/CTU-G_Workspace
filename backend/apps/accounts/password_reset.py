@@ -1,40 +1,73 @@
-"""Opt-in Workspace password recovery. Distinct from Django /admin/ recovery.
+"""Opt-in Workspace password recovery by email OTP. Distinct from Django /admin/ recovery.
 
-WF-01.05 (owner-approved 16 Nov 2026): verified-email eligibility (D-21),
-background delivery (D-20, development only), password-changed notice after
-commit (D-22), Django's stateless token (D-23), and the feature gate stays off
-(D-24). Protected executor mode refuses recovery: there is no reviewed
-executor operation for it, and the permitted-writer boundary is never bypassed.
+WF-01.05 CR-01 (owner-approved 16-17 Nov 2026): email-only request (D-25), a
+6-digit code with 10-minute validity, 5 cumulative wrong attempts per 30-minute
+window and a 60-second resend interval (D-26), storage in the existing
+accounts.password_reset_token / password_reset_token_expires columns with a
+single-use reset ticket in an HttpOnly cookie (D-27), and no reset links (D-28).
+
+Carried over: verified-email eligibility (D-21), background delivery (D-20,
+development only), password-changed notice after commit (D-22), the gate stays
+off (D-24), and protected executor mode refuses recovery: the fencing DDL blocks
+credential-state writes on Approved accounts, password_reset_token is part of the
+executor's protected-state hash, and the permitted-writer boundary is never bypassed.
 """
 
+import hmac
 import logging
-from urllib.parse import urlencode, urlsplit
+import secrets
+from datetime import datetime, timezone as dt_timezone
 
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import DatabaseError, transaction
 from django.db.models import F
-from django.utils.encoding import force_bytes, force_str
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils import timezone
 from rest_framework import exceptions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
-from apps.access_control.models import AccountRole
 from . import recovery_mail
+from .email_identity import normalize_account_email
 from .models import Account
 from .session_auth import WorkspaceSessionAPI
 
 logger = logging.getLogger(__name__)
-GENERIC_ACK = "If the account details match an eligible account, a password reset email will be sent."
-LINK_INVALID = "This reset link is invalid or expired. Request a new reset link."
+
+NEUTRAL_REQUEST = "If an eligible account uses this email, we sent a 6-digit code. It expires in 10 minutes."
+CODE_INVALID = "The code is incorrect or has expired."
+TICKET_INVALID = "Your verification has expired. Request a new code."
 PASSWORD_FIELD_TEXT = "Choose a stronger password using the requirements shown."
 CONFIRMATION_FIELD_TEXT = "Passwords do not match."
-# P-03 / D-16: per-identity budget for reset requests, before any lookup or mail.
-RESET_IDENTITY_RATES = ("3/hour", "6/day")
 
+TICKET_COOKIE = "ctug_password_reset_ticket"
+TICKET_COOKIE_PATH = "/api/v1/auth/reset-password/"
+TICKET_SECONDS = 600
+RECORD_VERSION = "rv1"
+# P-03 / D-16 / D-26: per-email budgets keyed by an HMAC digest of the normalized email.
+REQUEST_IDENTITY_RATES = ("3/hour", "6/day")
+VERIFY_IDENTITY_RATES = ("10/hour",)
+
+
+def _policy():
+    """D-26 reuses the WF-01.01 OTP defaults: 600 s code, 60 s resend, 5 attempts, 1800 s window."""
+    from .registration_staging import policy
+    p = policy()
+    return {"code": p["otp_seconds"], "resend": p["resend_seconds"],
+            "attempts": p["max_attempts"], "window": p["stage_seconds"]}
+
+
+def _now():
+    return int(timezone.now().timestamp())
+
+
+def _digest(purpose, value):
+    from .registration_staging import _digest as keyed_digest
+    return keyed_digest(purpose, value)
+
+
+# ---------- throttles ----------
 
 class ResetThrottle(SimpleRateThrottle):
     scope = "workspace_password_reset"
@@ -49,7 +82,17 @@ class ResetDailyThrottle(ResetThrottle):
     rate = "20/day"
 
 
-# P-03: the reset step has its own counters, so a burst of requests cannot block it.
+class VerifyThrottle(ResetThrottle):
+    scope = "workspace_password_reset_verify"
+    rate = "4/min"
+
+
+class VerifyDailyThrottle(ResetThrottle):
+    scope = "workspace_password_reset_verify_daily"
+    rate = "20/day"
+
+
+# The reset step has its own counters, so requests and verifications cannot block it.
 class ResetConfirmThrottle(ResetThrottle):
     scope = "workspace_password_reset_confirm"
     rate = "4/min"
@@ -60,43 +103,47 @@ class ResetConfirmDailyThrottle(ResetThrottle):
     rate = "20/day"
 
 
-def _enforce_reset_identity_budget(school_id):
-    from .registration_staging import _IdentityThrottle, _digest
+def _enforce_identity_budget(email, kind, rates):
+    from .registration_staging import _IdentityThrottle
 
-    digest = _digest("password-reset-school-id", school_id.strip().lower())
-    for period, rate in enumerate(RESET_IDENTITY_RATES):
-        throttle = _IdentityThrottle(digest, f"password-reset:school_id:{period}", rate)
+    digest = _digest("password-recovery-email", email)
+    for period, rate in enumerate(rates):
+        throttle = _IdentityThrottle(digest, f"password-recovery:{kind}:{period}", rate)
         if not throttle.allow_request(None, None):
             raise exceptions.Throttled(wait=throttle.wait())
 
 
-class PasswordResetRequestSerializer(serializers.Serializer):
-    # Retain School ID (Staff ID for Instructors) plus registered email as the recovery contract.
-    school_id = serializers.CharField(max_length=50, trim_whitespace=True)
-    email = serializers.EmailField(max_length=150)
+# ---------- serializers ----------
 
-    def to_internal_value(self, data):
-        if not isinstance(data, dict) or set(data) != {"school_id", "email"}:
-            raise serializers.ValidationError("Provide School ID and registered email.")
-        return super().to_internal_value(data)
-
-
-class PasswordResetConfirmSerializer(serializers.Serializer):
-    uid = serializers.CharField(max_length=40)
-    token = serializers.CharField(max_length=150)
-    password = serializers.CharField(max_length=128, trim_whitespace=False, write_only=True)
-    password_confirmation = serializers.CharField(max_length=128, trim_whitespace=False, write_only=True)
-
+class _ExactFields(serializers.Serializer):
     def to_internal_value(self, data):
         if not isinstance(data, dict) or set(data) != set(self.fields):
-            raise serializers.ValidationError("Provide the reset link details and new password.")
+            # DRF requires a dict here; a bare string crashes error rendering (found by test).
+            raise serializers.ValidationError({"non_field_errors": ["Unsupported recovery fields."]})
         return super().to_internal_value(data)
+
+
+class PasswordResetRequestSerializer(_ExactFields):
+    email = serializers.EmailField(max_length=150)
+
+
+class PasswordResetVerifySerializer(_ExactFields):
+    email = serializers.EmailField(max_length=150)
+    code = serializers.RegexField(r"\A[0-9]{6}\Z", max_length=6, trim_whitespace=False)
+
+
+class PasswordResetConfirmSerializer(_ExactFields):
+    email = serializers.EmailField(max_length=150)
+    password = serializers.CharField(max_length=128, trim_whitespace=False, write_only=True)
+    password_confirmation = serializers.CharField(max_length=128, trim_whitespace=False, write_only=True)
 
     def validate(self, data):
         if data["password"] != data["password_confirmation"]:
             raise serializers.ValidationError({"password_confirmation": [CONFIRMATION_FIELD_TEXT]})
         return data
 
+
+# ---------- eligibility and the stored record ----------
 
 def eligible_account_queryset():
     # D-21: only accounts whose current email carries verification proof.
@@ -111,6 +158,57 @@ def eligible_account_queryset():
         email_verified_at__isnull=False,
         email_verified_address__iexact=F("email"),
     ).distinct()
+
+
+def _lock_eligible(email):
+    """Inside a transaction: lock and return the one eligible account using `email`, or None."""
+    ids = list(eligible_account_queryset().filter(email__iexact=email).values_list("pk", flat=True)[:2])
+    if len(ids) != 1:
+        if len(ids) > 1:
+            logger.warning("Workspace password recovery lookup was ambiguous.")
+        return None
+    account = Account.objects.select_for_update().filter(pk=ids[0]).first()
+    # Recheck under the lock: approval, activity, role or proof may have changed.
+    if account is None or not eligible_account_queryset().filter(pk=account.pk).exists():
+        return None
+    return account
+
+
+class _Record:
+    """password_reset_token = rv1:{state}:{attempts}:{window_start}:{issued_at}:{digest}."""
+
+    def __init__(self, state, attempts, window_start, issued_at, digest):
+        self.state, self.attempts, self.window_start, self.issued_at, self.digest = state, attempts, window_start, issued_at, digest
+
+    @classmethod
+    def load(cls, value):
+        try:
+            version, state, attempts, window_start, issued_at, digest = (value or "").split(":")
+            if version != RECORD_VERSION or state not in {"otp", "ticket", "locked"}:
+                return None
+            return cls(state, int(attempts), int(window_start), int(issued_at), digest)
+        except ValueError:
+            return None
+
+    def dump(self):
+        return ":".join([RECORD_VERSION, self.state, str(self.attempts), str(self.window_start), str(self.issued_at), self.digest])
+
+
+def _code_digest(account, record, code):
+    return _digest("password-recovery-otp",
+                   f"{account.pk}:{record.window_start}:{record.issued_at}:{account.password}:{account.email.lower()}:{code}")
+
+
+def _ticket_digest(account, record, ticket):
+    return _digest("password-recovery-ticket",
+                   f"{account.pk}:{record.issued_at}:{account.password}:{account.email.lower()}:{ticket}")
+
+
+def _save(account, record, expires_at):
+    account.password_reset_token = record.dump() if record else None
+    account.password_reset_token_expires = (
+        datetime.fromtimestamp(expires_at, tz=dt_timezone.utc) if record and expires_at else None)
+    account.save(update_fields=["password_reset_token", "password_reset_token_expires"])
 
 
 def _recovery_unavailable():
@@ -128,7 +226,21 @@ def _refusal():
     return None
 
 
+def _code_invalid():
+    return Response({"error": {"code": "recovery_code_invalid", "message": CODE_INVALID}}, status=400)
+
+
+def _ticket_invalid():
+    response = Response({"error": {"code": "reset_session_invalid", "message": TICKET_INVALID}}, status=400)
+    response.delete_cookie(TICKET_COOKIE, path=TICKET_COOKIE_PATH, samesite="Strict")
+    return response
+
+
+# ---------- views ----------
+
 class PasswordResetRequestView(WorkspaceSessionAPI):
+    """Step 1: email in, neutral 202 out; an eligible account gets a code by email."""
+
     http_method_names = ["post", "options"]
     throttle_classes = [ResetThrottle, ResetDailyThrottle]
 
@@ -138,46 +250,105 @@ class PasswordResetRequestView(WorkspaceSessionAPI):
             return refusal
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        _enforce_reset_identity_budget(data["school_id"])
+        email = normalize_account_email(serializer.validated_data["email"])
+        _enforce_identity_budget(email, "request", REQUEST_IDENTITY_RATES)
+        p = _policy()
         try:
-            account = eligible_account_queryset().filter(
-                school_id=data["school_id"], email__iexact=data["email"]
-            ).first()
-            if account:
-                base = settings.WORKSPACE_PUBLIC_BASE_URL
-                parts = urlsplit(base)
-                if parts.scheme not in ("https", "http") or not parts.netloc or parts.username or parts.password or parts.fragment or parts.query:
-                    raise ValueError("Invalid public application base URL")
-                uid = urlsafe_base64_encode(force_bytes(account.pk))
-                token = default_token_generator.make_token(account)
-                # Fragment is not sent in HTTP requests or Referer headers.
-                link = f"{base}/reset-password#{urlencode({'uid': uid, 'token': token})}"
-                # D-20: delivered in the background so response time is the same
-                # whether or not an account matched.
-                recovery_mail.enqueue(
-                    "reset_link",
-                    "CTU-G Workspace password reset",
-                    "A password reset was requested for your CTU-G Workspace account.\n\n"
-                    f"Use this link within 30 minutes:\n{link}\n\n"
-                    "If this wasn't you, ignore this email.",
-                    account.email,
-                )
+            with transaction.atomic():
+                account = _lock_eligible(email)
+                if account is not None:
+                    now = _now()
+                    record = _Record.load(account.password_reset_token)
+                    if record is None or now >= record.window_start + p["window"]:
+                        record = _Record("otp", 0, now, 0, "")
+                    window_end = record.window_start + p["window"]
+                    # D-26: locked windows stay locked; resends need 60 s and keep the attempt count.
+                    if record.state != "locked" and now - record.issued_at >= p["resend"]:
+                        code = f"{secrets.randbelow(1_000_000):06d}"
+                        record.state, record.issued_at = "otp", now
+                        record.digest = _code_digest(account, record, code)
+                        _save(account, record, min(now + p["code"], window_end))
+                        recipient, minutes = account.email, max(1, p["code"] // 60)
+                        transaction.on_commit(lambda: recovery_mail.enqueue(
+                            "reset_code",
+                            "CTU-G Workspace password reset code",
+                            f"Your CTU-G Workspace password reset code is {code}.\n\n"
+                            f"It expires in {minutes} minutes. Do not share it with anyone.\n\n"
+                            "If you did not request this, ignore this email.",
+                            recipient,
+                        ))
         except Exception as exc:
-            # Never reveal the target identity or reset token to API callers or logs.
-            logger.warning("Workspace password reset request could not be completed (%s).", type(exc).__name__)
-        return Response({"message": GENERIC_ACK}, status=status.HTTP_202_ACCEPTED)
+            # Never reveal the target identity or code to API callers or logs.
+            logger.warning("Workspace password recovery request could not be completed (%s).", type(exc).__name__)
+        return Response({"status": "code_requested", "message": NEUTRAL_REQUEST,
+                         "resend_after": p["resend"], "code_valid_seconds": p["code"]},
+                        status=status.HTTP_202_ACCEPTED)
+
+
+class PasswordResetVerifyView(WorkspaceSessionAPI):
+    """Step 2: email + code in; a correct live code becomes a single-use ticket cookie."""
+
+    http_method_names = ["post", "options"]
+    throttle_classes = [VerifyThrottle, VerifyDailyThrottle]
+
+    def handle_exception(self, exc):
+        # A malformed code is just another wrong code to the user.
+        if isinstance(exc, exceptions.ValidationError) and isinstance(exc.detail, dict) and "code" in exc.detail:
+            return _code_invalid()
+        return super().handle_exception(exc)
+
+    def post(self, request):
+        refusal = _refusal()
+        if refusal is not None:
+            return refusal
+        serializer = PasswordResetVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = normalize_account_email(serializer.validated_data["email"])
+        code = serializer.validated_data["code"]
+        _enforce_identity_budget(email, "verify", VERIFY_IDENTITY_RATES)
+        p = _policy()
+        try:
+            with transaction.atomic():
+                account = _lock_eligible(email)
+                if account is None:
+                    _digest("password-recovery-otp", code)  # similar work for unknown emails
+                    return _code_invalid()
+                now = _now()
+                record = _Record.load(account.password_reset_token)
+                live = (record is not None and record.state == "otp" and record.attempts < p["attempts"]
+                        and now < min(record.issued_at + p["code"], record.window_start + p["window"]))
+                if not live:
+                    return _code_invalid()
+                if not hmac.compare_digest(record.digest, _code_digest(account, record, code)):
+                    # Counted and committed before replying (the response does not raise).
+                    record.attempts += 1
+                    if record.attempts >= p["attempts"]:
+                        record.state, record.digest = "locked", ""
+                    _save(account, record, record.window_start + p["window"] if record.state == "locked"
+                          else min(record.issued_at + p["code"], record.window_start + p["window"]))
+                    return _code_invalid()
+                ticket = secrets.token_urlsafe(32)
+                record.state, record.issued_at = "ticket", now
+                record.digest = _ticket_digest(account, record, ticket)
+                _save(account, record, now + TICKET_SECONDS)
+        except DatabaseError:
+            logger.warning("Workspace password recovery verification database error.")
+            return _recovery_unavailable()
+        response = Response({"status": "verified"})
+        response.set_cookie(TICKET_COOKIE, ticket, max_age=TICKET_SECONDS, httponly=True,
+                            secure=settings.SESSION_COOKIE_SECURE, samesite="Strict", path=TICKET_COOKIE_PATH)
+        return response
 
 
 class PasswordResetConfirmView(WorkspaceSessionAPI):
+    """Step 3: email + new password in; the ticket cookie authorizes exactly one change."""
+
     http_method_names = ["post", "options"]
     throttle_classes = [ResetConfirmThrottle, ResetConfirmDailyThrottle]
 
     def handle_exception(self, exc):
-        # P-01: return allowlisted field feedback instead of the generic 400 body.
+        # P-01: allowlisted field feedback instead of the generic 400 body.
         if isinstance(exc, exceptions.ValidationError) and isinstance(exc.detail, dict):
-            if {"uid", "token"} & set(exc.detail):
-                return Response({"error": {"code": "reset_link_invalid", "message": LINK_INVALID}}, status=400)
             fields = {}
             if "password" in exc.detail:
                 fields["password"] = [PASSWORD_FIELD_TEXT]
@@ -193,29 +364,26 @@ class PasswordResetConfirmView(WorkspaceSessionAPI):
             return refusal
         serializer = PasswordResetConfirmSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-        try:
-            account_id = force_str(urlsafe_base64_decode(data["uid"]))
-            if not account_id.isascii() or not account_id.isdecimal():
-                raise ValueError("Invalid uid")
-        except (ValueError, TypeError, UnicodeError, OverflowError):
-            raise exceptions.ValidationError({"token": ["invalid"]})
+        email = normalize_account_email(serializer.validated_data["email"])
+        ticket = request.COOKIES.get(TICKET_COOKIE, "")
         try:
             with transaction.atomic():
-                account = Account.objects.select_for_update().filter(pk=int(account_id)).first()
-                eligible = (
-                    account is not None
-                    and eligible_account_queryset().filter(pk=account.pk).exists()
-                    and AccountRole.objects.filter(account=account, role__is_active=True).exists()
-                )
-                if not eligible or not default_token_generator.check_token(account, data["token"]):
-                    raise exceptions.ValidationError({"token": ["invalid"]})
+                account = _lock_eligible(email) if ticket else None
+                record = _Record.load(account.password_reset_token) if account else None
+                valid = (record is not None and record.state == "ticket"
+                         and _now() < record.issued_at + TICKET_SECONDS
+                         and hmac.compare_digest(record.digest, _ticket_digest(account, record, ticket)))
+                if not valid:
+                    return _ticket_invalid()
                 try:
-                    validate_password(data["password"], user=account)
+                    validate_password(serializer.validated_data["password"], user=account)
                 except DjangoValidationError as exc:
+                    # Nothing was written; the ticket stays usable until it expires.
                     raise exceptions.ValidationError({"password": ["invalid"]}) from exc
-                account.set_password(data["password"])
-                account.save(update_fields=["password"])
+                account.set_password(serializer.validated_data["password"])
+                account.password_reset_token = None
+                account.password_reset_token_expires = None
+                account.save(update_fields=["password", "password_reset_token", "password_reset_token_expires"])
                 recipient = account.email
                 # D-22: queued only if the password update commits.
                 transaction.on_commit(lambda: recovery_mail.enqueue(
@@ -227,6 +395,8 @@ class PasswordResetConfirmView(WorkspaceSessionAPI):
                     recipient,
                 ))
         except DatabaseError:
-            logger.warning("Workspace password reset confirmation database error.")
+            logger.warning("Workspace password recovery confirmation database error.")
             return _recovery_unavailable()
-        return Response({"message": "Password changed. You can now sign in."})
+        response = Response({"message": "Password changed. You can now sign in."})
+        response.delete_cookie(TICKET_COOKIE, path=TICKET_COOKIE_PATH, samesite="Strict")
+        return response

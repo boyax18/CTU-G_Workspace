@@ -1,35 +1,50 @@
+/**
+ * WF-01.05 CR-01 (owner-approved 16-17 Nov 2026): email → 6-digit code → new password.
+ * The reset ticket travels only as an HttpOnly cookie; page scripts never see it.
+ */
 import { ApiError, postJSON } from '../../api/client.ts';
 
-export async function requestPasswordReset(schoolId: string, email: string): Promise<void> {
-  await postJSON('/api/v1/auth/forgot-password/', {
-    school_id: schoolId.trim(), email: email.trim(),
-  });
+const record = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const seconds = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 86400 ? value : fallback;
+
+export interface RecoveryCodeRequest {
+  resendAfter: number;
+  codeValidSeconds: number;
 }
 
-export async function confirmPasswordReset(uid: string, token: string, password: string, confirmation: string): Promise<void> {
-  await postJSON('/api/v1/auth/reset-password/', {
-    uid, token, password, password_confirmation: confirmation,
-  });
+/** Step 1. The response is the same whether or not the email belongs to an eligible account. */
+export async function requestPasswordReset(email: string): Promise<RecoveryCodeRequest> {
+  const body = record(await postJSON('/api/v1/auth/forgot-password/', { email: email.trim() }));
+  return { resendAfter: seconds(body.resend_after, 60), codeValidSeconds: seconds(body.code_valid_seconds, 600) };
 }
 
-export function readResetLink(hash: string): { uid: string; token: string } | null {
-  if (!hash.startsWith('#')) return null;
-  const fields = new URLSearchParams(hash.slice(1));
-  const uid = fields.get('uid');
-  const token = fields.get('token');
-  if (!uid || !token || !/^[a-zA-Z0-9_-]{1,40}$/.test(uid) || !/^[a-zA-Z0-9-]{1,150}$/.test(token)) return null;
-  return { uid, token };
+/** Step 2. Success sets the HttpOnly reset-ticket cookie; nothing is returned to scripts. */
+export async function verifyPasswordResetCode(email: string, code: string): Promise<void> {
+  const body = record(await postJSON('/api/v1/auth/forgot-password/verify/', { email: email.trim(), code }));
+  if (body.status !== 'verified') {
+    throw new ApiError(RECOVERY_VERIFY_UNCERTAIN, 0, 'invalid_response', {}, { outcomeUnknown: true });
+  }
 }
 
-// WF-01.05 P-01/P-02 (owner-approved 16 Nov 2026): specific, safe recovery feedback.
-export const RECOVERY_REQUEST_UNCERTAIN = 'We could not confirm that your request was received. You can send it again.';
-export const RECOVERY_RESET_UNCERTAIN = 'We could not confirm whether your password was changed. Try signing in with your new password. If that does not work, request a new reset link.';
+/** Step 3. The browser sends the ticket cookie automatically. */
+export async function confirmPasswordReset(email: string, password: string, confirmation: string): Promise<void> {
+  await postJSON('/api/v1/auth/reset-password/', { email: email.trim(), password, password_confirmation: confirmation });
+}
+
+export const RECOVERY_REQUEST_UNCERTAIN = 'We could not confirm that your code was sent. You can send it again.';
+export const RECOVERY_VERIFY_UNCERTAIN = 'We could not confirm the code check. Enter the code again.';
+export const RECOVERY_RESET_UNCERTAIN = 'We could not confirm whether your password was changed. Try signing in with your new password. If that does not work, start again.';
+export const RECOVERY_CODE_SENT = 'If an eligible account uses this email, we sent a 6-digit code.';
 export const RECOVERY_ASSISTED_HINT = 'If no email arrives, your account may need assisted recovery. Contact support.';
 export const RECOVERY_PASSWORD_HINT = 'Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your School ID, Staff ID or email.';
 
+// recovery_disabled and recovery_unavailable are definite refusals with nothing changed.
 const KNOWN_REFUSALS = new Set(['recovery_disabled', 'recovery_unavailable']);
 
-export type RecoveryFailureKind = 'link_invalid' | 'fields' | 'wait' | 'security' | 'uncertain' | 'other';
+export type RecoveryStep = 'request' | 'verify' | 'reset';
+export type RecoveryFailureKind = 'code_invalid' | 'session_invalid' | 'fields' | 'wait' | 'security' | 'uncertain' | 'other';
 
 export interface RecoveryFailure {
   kind: RecoveryFailureKind;
@@ -38,17 +53,20 @@ export interface RecoveryFailure {
   wait: number;
 }
 
-export function describeRecoveryFailure(problem: unknown, step: 'request' | 'reset'): RecoveryFailure {
+const UNCERTAIN: Record<RecoveryStep, string> = {
+  request: RECOVERY_REQUEST_UNCERTAIN, verify: RECOVERY_VERIFY_UNCERTAIN, reset: RECOVERY_RESET_UNCERTAIN,
+};
+
+export function describeRecoveryFailure(problem: unknown, step: RecoveryStep): RecoveryFailure {
   const error = problem instanceof ApiError ? problem : new ApiError('', 0, 'network_error', {}, { outcomeUnknown: true });
-  if (error.code === 'reset_link_invalid') return { kind: 'link_invalid', error, wait: 0 };
+  if (error.code === 'recovery_code_invalid') return { kind: 'code_invalid', error, wait: 0 };
+  if (error.code === 'reset_session_invalid') return { kind: 'session_invalid', error, wait: 0 };
   if (error.status === 429) return { kind: 'wait', error, wait: error.retryAfter ?? 60 };
   if (error.status === 403 || error.code === 'csrf_failed') return { kind: 'security', error, wait: 0 };
   if (error.status === 400 && Object.keys(error.fields).length) return { kind: 'fields', error, wait: 0 };
   // A POST was sent but its result is unknown. Never repeat it automatically.
-  // recovery_disabled and recovery_unavailable are definite refusals with nothing changed.
   if (error.outcomeUnknown && !KNOWN_REFUSALS.has(error.code)) {
-    const message = step === 'reset' ? RECOVERY_RESET_UNCERTAIN : RECOVERY_REQUEST_UNCERTAIN;
-    return { kind: 'uncertain', error: new ApiError(message, error.status, error.code, {}, { requestId: error.requestId }), wait: 0 };
+    return { kind: 'uncertain', error: new ApiError(UNCERTAIN[step], error.status, error.code, {}, { requestId: error.requestId }), wait: 0 };
   }
   return { kind: 'other', error, wait: 0 };
 }

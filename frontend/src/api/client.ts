@@ -29,7 +29,8 @@ export const API_MESSAGES: Record<string, string> = {
   review_unavailable: 'Registration review is unavailable.',
   recovery_disabled: 'Password recovery is unavailable.',
   recovery_unavailable: 'Password recovery is temporarily unavailable. Please try again later.',
-  reset_link_invalid: 'This reset link is invalid or expired. Request a new reset link.',
+  recovery_code_invalid: 'The code is incorrect or has expired.',
+  reset_session_invalid: 'Your verification has expired. Request a new code.',
 };
 const STAFF_ID_ERROR = 'Staff ID must contain 1 to 7 digits only.';
 const INSTRUCTOR_FIELDS_ERROR = 'Student-only school information is not accepted for Instructor registration.';

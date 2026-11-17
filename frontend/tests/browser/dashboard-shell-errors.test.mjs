@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { scene } from './registrationHarness.mjs';
+import { contrastReport, DASHBOARD_TEXT, HERO_RING } from './contrastProbe.mjs';
 
 process.env.VITE_WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = '1';
 
@@ -152,12 +153,19 @@ test('desktop sidebar collapses to an icon rail and keeps accessible names', asy
   }, '/dashboard');
 });
 
-test('responsive 360–1440px in Light, System-dark and Dark: no page overflow, AA text in header and sidebar', async () => {
+const THEMES = [['light', 'light'], ['system', 'dark'], ['dark', 'dark']];
+const WIDTHS = [360, 768, 1024, 1440];
+
+async function useTheme(page, preference, scheme) {
+  await page.emulateMedia({ colorScheme: scheme });
+  await page.evaluate((value) => localStorage.setItem('ctug-theme', value), preference);
+}
+
+test('responsive 360–1440px in Light, System-dark and Dark: no overflow, composited AA text everywhere', async () => {
   await scene(server(superAdmin), async (page) => {
-    for (const [preference, scheme] of [['light', 'light'], ['system', 'dark'], ['dark', 'dark']]) {
-      await page.emulateMedia({ colorScheme: scheme });
-      await page.evaluate((value) => localStorage.setItem('ctug-theme', value), preference);
-      for (const width of [360, 768, 1024, 1440]) {
+    for (const [preference, scheme] of THEMES) {
+      await useTheme(page, preference, scheme);
+      for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 900 });
         await page.reload();
         await page.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
@@ -165,35 +173,122 @@ test('responsive 360–1440px in Light, System-dark and Dark: no page overflow, 
         assert.ok(layout.scroll <= layout.width, `${preference} ${width}px: overflow ${layout.scroll}`);
         const sidebarShown = await page.locator('#workspace-sidebar').evaluate((element) => element.getBoundingClientRect().left >= 0);
         assert.equal(sidebarShown, width >= 1024, `${preference} ${width}px sidebar`);
-        if (width < 1024) await page.getByRole('button', { name: 'Open navigation' }).click();
-        const ratios = await page.evaluate(() => {
-          const rgb = (value) => value.match(/[\d.]+/g).slice(0, 4).map(Number);
-          const lum = ([r, g, b]) => {
-            const c = [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
-            return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-          };
-          // Solid background behind an element; the sidebar uses a gradient, so use its darkest/lightest stop.
-          const background = (element) => {
-            for (let node = element; node; node = node.parentElement) {
-              const style = getComputedStyle(node);
-              if (style.backgroundImage.includes('gradient')) {
-                const stops = style.backgroundImage.match(/rgba?\([^)]+\)/g).map(rgb);
-                return stops.reduce((best, stop) => (lum(stop) > lum(best) ? stop : best));
-              }
-              const color = rgb(style.backgroundColor);
-              if (color.length < 4 || color[3] > 0.5) return color;
-            }
-            return [255, 255, 255];
-          };
-          const nodes = [...document.querySelectorAll('header p, header span, #workspace-sidebar p, #workspace-sidebar a span, nav[aria-label="Breadcrumb"] li, main h1')]
-            .filter((element) => element.getClientRects().length && element.textContent.trim() && !element.closest('.sr-only'));
-          return nodes.map((element) => {
-            const a = lum(rgb(getComputedStyle(element).color)); const b = lum(background(element));
-            return { text: element.textContent.trim().slice(0, 30), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
+        const checks = [await contrastReport(page, DASHBOARD_TEXT, HERO_RING)];
+        if (width < 1024) {
+          await page.getByRole('button', { name: 'Open navigation' }).click();
+          checks.push(await contrastReport(page, '#workspace-sidebar p, #workspace-sidebar a span, #workspace-sidebar button span'));
+          await page.keyboard.press('Escape'); // the open drawer makes the header inert
+        }
+        await page.getByRole('button', { name: /Account menu/ }).click();
+        checks.push(await contrastReport(page, '[role="menu"] button'));
+        await page.keyboard.press('Escape');
+        for (const { text, ratio } of checks.flat()) assert.ok(ratio >= 4.5, `${preference} ${width}px "${text}" ${ratio.toFixed(2)}`);
+      }
+    }
+  }, '/dashboard');
+});
+
+test('three distinct appearances: light, forest-green System-dark and black Dark', async () => {
+  await scene(server(schoolAdmin), async (page) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const sample = () => page.evaluate(() => {
+      const app = getComputedStyle(document.querySelector('.dashboard-app'));
+      const css = (name) => app.getPropertyValue(name).trim();
+      const rgb = (value) => value.match(/[\d.]+/g).slice(0, 3).map(Number);
+      return {
+        html: document.documentElement.className,
+        background: getComputedStyle(document.querySelector('.dashboard-app')).backgroundImage,
+        sidebar: rgb(getComputedStyle(document.querySelector('#workspace-sidebar')).backgroundColor),
+        panel: css('--db-panel'),
+        blur: getComputedStyle(document.querySelector('#workspace-sidebar')).backdropFilter,
+      };
+    });
+    const seen = {};
+    for (const [preference, scheme] of THEMES) {
+      await useTheme(page, preference, scheme);
+      await page.reload();
+      await page.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
+      seen[preference] = await sample();
+    }
+    const greenness = ([r, g, b]) => g - Math.max(r, b);
+    // Light: light frosted sidebar on the public mint gradient.
+    assert.ok(seen.light.sidebar.every((v) => v > 200), `light sidebar ${seen.light.sidebar}`);
+    assert.ok(seen.light.background.includes('gradient'));
+    // System-dark: forest-green sidebar and gradient, not near-black.
+    assert.ok(seen.system.html.includes('dark') && !seen.system.html.includes('theme-black'));
+    assert.ok(greenness(seen.system.sidebar) >= 20 && seen.system.sidebar[1] >= 45, `green sidebar ${seen.system.sidebar}`);
+    assert.ok(seen.system.background.includes('rgb(20, 56, 35)'), seen.system.background);
+    // Dark: black, distinct from System-dark.
+    assert.ok(seen.dark.html.includes('theme-black'));
+    assert.ok(seen.dark.sidebar.every((v) => v <= 15), `black sidebar ${seen.dark.sidebar}`);
+    assert.ok(seen.dark.background.includes('rgb(0, 0, 0)'), seen.dark.background);
+    assert.notEqual(seen.system.panel, seen.dark.panel);
+    // Desktop sidebar is frosted in every theme.
+    for (const theme of Object.values(seen)) assert.match(theme.blur, /blur/);
+  }, '/dashboard');
+});
+
+test('mobile drawer is opaque (no backdrop blur) and the welcome banner stays AA over any photo crop', async () => {
+  await scene(server(schoolAdmin), async (page) => {
+    for (const [preference, scheme] of THEMES) {
+      await useTheme(page, preference, scheme);
+      for (const width of [360, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.reload();
+        await page.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
+        const banner = await page.locator('.dashboard-hero').evaluate((element) => getComputedStyle(element).backgroundImage);
+        assert.match(banner, /url\(/, 'campus photo present');
+        const hero = await contrastReport(page, '.dashboard-hero p, .dashboard-hero h2, .dashboard-hero button', HERO_RING);
+        assert.equal(hero.length, 4);
+        for (const { text, ratio } of hero) assert.ok(ratio >= 4.5, `${preference} ${width}px hero "${text}" ${ratio.toFixed(2)}`);
+        if (width === 360) {
+          const drawer = await page.locator('#workspace-sidebar').evaluate((element) => {
+            const style = getComputedStyle(element);
+            return { alpha: Number((style.backgroundColor.match(/[\d.]+/g) ?? [])[3] ?? 1), blur: style.backdropFilter };
           });
+          assert.equal(drawer.alpha, 1, `${preference} drawer opaque`);
+          assert.equal(drawer.blur, 'none');
+        }
+      }
+    }
+  }, '/dashboard');
+});
+
+test('keyboard focus rings are visible (3:1) on the sidebar, header and content in every theme', async () => {
+  await scene(server(schoolAdmin), async (page) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    for (const [preference, scheme] of THEMES) {
+      await useTheme(page, preference, scheme);
+      await page.reload();
+      await page.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
+      for (const target of [
+        page.getByRole('link', { name: 'Applicant reviews' }),
+        page.getByRole('button', { name: 'Collapse sidebar' }),
+        page.getByRole('button', { name: 'Open applicant reviews' }),
+      ]) {
+        await target.focus();
+        await page.keyboard.press('Shift+Tab');
+        await page.keyboard.press('Tab');
+        await page.waitForTimeout(250); // outline-color is part of transition-colors (150ms)
+        const ring = await target.evaluate((element) => {
+          const style = getComputedStyle(element);
+          return { width: style.outlineWidth, color: style.outlineColor, style: style.outlineStyle };
         });
-        for (const { text, ratio } of ratios) assert.ok(ratio >= 4.5, `${preference} ${width}px "${text}" ${ratio.toFixed(2)}`);
-        if (width < 1024) await page.keyboard.press('Escape');
+        assert.equal(ring.style, 'solid', `${preference} ${ring.style}`);
+        assert.equal(ring.width, '2px');
+        const report = await page.evaluate((color) => {
+          const rgb = color.match(/[\d.]+/g).slice(0, 3).map(Number);
+          return rgb;
+        }, ring.color);
+        const lum = ([r, g, b]) => {
+          const c = [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+          return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+        };
+        // Against the lightest (light theme) or darkest (dark themes) surface the ring can sit on.
+        const surface = preference === 'light' ? [255, 255, 255] : preference === 'system' ? [20, 56, 35] : [0, 0, 0];
+        const a = lum(report); const b = lum(surface);
+        const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        assert.ok(ratio >= 3, `${preference} focus ring ${ring.color} ${ratio.toFixed(2)}`);
       }
     }
   }, '/dashboard');

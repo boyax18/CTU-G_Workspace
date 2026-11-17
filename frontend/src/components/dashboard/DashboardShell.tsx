@@ -39,7 +39,7 @@ interface Props {
 
 const DESKTOP = '(min-width: 1024px)';
 const PERIOD_HINT = 'The active school year and semester appear here once academic periods are configured.';
-const iconButton = 'dashboard-topbar-icon rounded-lg p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600';
+const iconButton = 'dashboard-topbar-icon rounded-lg p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 
 function AcademicPeriod({ className }: { className: string }) {
   return (
@@ -165,7 +165,7 @@ export default function DashboardShell({
         <button
           type="button"
           tabIndex={-1}
-          className="fixed inset-0 z-40 bg-[#09271b]/70 lg:hidden"
+          className="dashboard-scrim fixed inset-0 z-40 lg:hidden"
           aria-label="Close navigation overlay"
           onClick={() => closeDrawer(true)}
         />
@@ -182,13 +182,13 @@ export default function DashboardShell({
         <div className="mb-6 flex items-center gap-3 px-2 lg:hidden">
           <img src={logo} alt="" className="h-10 w-10 shrink-0 rounded-xl bg-white object-contain p-1" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-bold text-white">CTU-G Workspace</p>
+            <p className="dashboard-sidebar-strong truncate text-base font-bold">CTU-G Workspace</p>
             <p className="dashboard-nav-group text-xs">Ginatilan Campus</p>
           </div>
           <button
             ref={closeButton}
             type="button"
-            className="rounded-md p-2 text-emerald-100 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="dashboard-nav-link rounded-md p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--db-focus)]"
             onClick={() => closeDrawer(true)}
             aria-label="Close navigation"
           >
@@ -198,19 +198,19 @@ export default function DashboardShell({
 
         <DashboardNavigation permissions={session.permissions} active={view} navigate={goTo} collapsed={rail} />
 
-        <div className="mt-auto border-t border-white/15 pt-4">
+        <div className="dashboard-sidebar-divider mt-auto border-t pt-4">
           <div role="group" aria-label="Account" className="mb-3 space-y-1">
             {utilities.map((entry) => (
               <DashboardNavLink key={entry.id} item={entry} active={view} navigate={goTo} collapsed={rail} />
             ))}
           </div>
-          <div className={`mb-3 rounded-xl border border-white/15 bg-white/8 px-3 py-3 ${rail ? 'lg:hidden' : ''}`}>
-            <p className="truncate text-sm font-semibold text-white">{session.account.school_id}</p>
+          <div className={`dashboard-sidebar-card mb-3 rounded-xl px-3 py-3 ${rail ? 'lg:hidden' : ''}`}>
+            <p className="dashboard-sidebar-strong truncate text-sm font-semibold">{session.account.school_id}</p>
             <p className="dashboard-nav-group mt-1 text-xs">{roles}</p>
           </div>
           <button
             type="button"
-            className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-emerald-50 transition-colors hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:opacity-60 ${rail ? 'lg:justify-center' : ''}`}
+            className={`dashboard-nav-link flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--db-focus)] disabled:opacity-50 ${rail ? 'lg:justify-center' : ''}`}
             onClick={() => { void signOut(); }}
             disabled={signingOut}
             title={rail ? 'Sign out' : undefined}
@@ -218,7 +218,7 @@ export default function DashboardShell({
             <DashboardIcon name="signout" />
             <span className={rail ? 'lg:sr-only' : ''}>{signingOut ? 'Signing out…' : 'Sign out'}</span>
           </button>
-          {signOutError && <p role="alert" className="mt-2 px-3 text-xs text-red-100">{signOutError}</p>}
+          {signOutError && <p role="alert" className="dashboard-error mt-2 px-3 text-xs">{signOutError}</p>}
         </div>
       </aside>
 

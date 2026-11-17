@@ -30,6 +30,8 @@ Each section is `screen-section scroll-mt-16` (fills the viewport under the 64px
   </section>
 </div>
 ```
+**Surfaces:** the dashboard sits on the public mint / forest-green / black gradient. Use `.dashboard-panel` (nearly solid) for every data surface: tables, forms, filters, financial and administrative screens, menus and states. Use `.dashboard-glass` only on the overview (welcome widgets and module cards). Text never sits directly on raw transparency without a verified composited contrast check, and blur falls back to solid colours where it is unsupported.
+
 The shell (Dashboard Shell v0.1) supplies the global header, the breadcrumb/context row and the page `h1` from the navigation registry (label and description), plus the `<main>`. Views never render their own page title: they start at `h2` for their sections. Use `.dashboard-eyebrow` only for small group labels inside a view (for example the module groups on the dashboard).
 
 ## 2. Responsive rules

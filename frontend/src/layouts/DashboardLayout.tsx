@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <ThemeProvider>
         <div className="dashboard-app flex min-h-screen items-center justify-center px-6">
           <section className="dashboard-panel w-full max-w-md rounded-2xl border p-7 shadow-lg" aria-live="polite">
-            <p className="mb-2 text-sm font-bold text-emerald-700">CTU-G Workspace</p>
+            <p className="dashboard-accent mb-2 text-sm font-bold">CTU-G Workspace</p>
             {state.status === 'loading' && (
               <><h1 className="dashboard-heading text-xl font-semibold">Checking your session…</h1>
                 <p className="dashboard-muted mt-2 text-sm">Your workspace will appear after verification.</p></>

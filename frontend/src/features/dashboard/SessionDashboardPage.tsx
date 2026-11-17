@@ -4,6 +4,8 @@
 import { useDashboardContext } from '../../hooks/useDashboardContext';
 import { canOpenDashboardView, getDashboardItem, getVisibleNavGroups } from './navigation';
 import type { DashboardNavItem, DashboardView } from './navigation';
+import type { CSSProperties } from 'react';
+import campusPhoto from '../../assets/campus-building.jpg';
 import DashboardIcon from '../../components/dashboard/DashboardIcon';
 import { AccessDenied, ModuleUnavailable, NoModules } from '../../components/dashboard/DashboardStates';
 import RegistrationReviewLivePanel from '../admin/RegistrationReviewLivePanel';
@@ -13,7 +15,7 @@ import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsC
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
-const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600';
+const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 
 interface Widget {
   id: string;
@@ -42,7 +44,7 @@ function ModuleCard({ item, onOpen }: { item: DashboardNavItem; onOpen: () => vo
   return (
     <button
       type="button"
-      className="dashboard-panel dashboard-module-card group flex h-full flex-col rounded-2xl border p-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+      className="dashboard-glass dashboard-module-card group flex h-full flex-col rounded-2xl p-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]"
       onClick={onOpen}
     >
       <span className="flex w-full items-start justify-between gap-3">
@@ -67,14 +69,15 @@ function Overview() {
 
   return (
     <div className="space-y-8">
-      <section aria-labelledby="dashboard-welcome" className="dashboard-hero relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10">
+      <section aria-labelledby="dashboard-welcome" className="dashboard-hero relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10"
+        style={{ '--db-hero-photo': `url(${campusPhoto})` } as CSSProperties}>
         <div className="relative z-10 max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">Cebu Technological University · Ginatilan</p>
+          <p className="dashboard-hero-eyebrow text-xs font-semibold uppercase tracking-[0.18em]">Cebu Technological University · Ginatilan</p>
           <h2 id="dashboard-welcome" className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Welcome to your workspace</h2>
-          <p className="mt-3 text-sm leading-relaxed text-emerald-50/90">
+          <p className="dashboard-hero-text mt-3 text-sm leading-relaxed">
             One shared campus dashboard. The modules below follow your current access, and every request is verified by the server.
           </p>
-          <button className="mt-6 inline-flex min-h-11 items-center rounded-xl border border-white/35 bg-white/15 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          <button className="dashboard-hero-button mt-6 inline-flex min-h-11 items-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             onClick={() => navigate('account')}>
             View my profile
           </button>
@@ -87,7 +90,7 @@ function Overview() {
           <h2 id="dashboard-glance" className="dashboard-heading mb-4 text-xl font-bold">At a glance</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {widgets.map((widget) => (
-              <article key={widget.id} className="dashboard-panel flex flex-col rounded-2xl border p-5">
+              <article key={widget.id} className="dashboard-glass flex flex-col rounded-2xl p-5">
                 <h3 className="dashboard-heading font-semibold">{widget.title}</h3>
                 <p className="dashboard-muted mt-1 flex-1 text-sm leading-relaxed">{widget.body}</p>
                 <button type="button" className={`${primaryLink} mt-4 self-start`} onClick={() => navigate(widget.view)}>

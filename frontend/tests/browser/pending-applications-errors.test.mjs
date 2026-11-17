@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { scene } from './registrationHarness.mjs';
+import { contrastReport } from './contrastProbe.mjs';
 
 process.env.VITE_WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = '1';
 
@@ -246,27 +247,8 @@ test('responsive at 360, 768, 1024 and 1440px in Light, System-dark and Dark the
         assert.ok(layout.scroll <= layout.width, `${preference} ${width}px: horizontal page scroll ${layout.scroll}`);
         assert.equal(layout.table === 'none', width < 768, `${preference} ${width}px table display ${layout.table}`);
         assert.equal(layout.cards === 'none', width >= 768, `${preference} ${width}px card display ${layout.cards}`);
-        // WCAG AA for the proof badges and muted text on the panel surface.
-        const ratios = await page.evaluate(() => {
-          const rgb = (value) => value.match(/[\d.]+/g).slice(0, 3).map(Number);
-          const lum = ([r, g, b]) => {
-            const c = [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
-            return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
-          };
-          const background = (element) => {
-            for (let node = element; node; node = node.parentElement) {
-              const color = getComputedStyle(node).backgroundColor;
-              if (!/rgba\(0, 0, 0, 0\)|transparent/.test(color)) return rgb(color);
-            }
-            return [255, 255, 255];
-          };
-          const visible = [...document.querySelectorAll('section [class*="rounded-full"], section .dashboard-muted, section .dashboard-heading')]
-            .filter((element) => element.offsetParent !== null && element.textContent.trim());
-          return visible.map((element) => {
-            const a = lum(rgb(getComputedStyle(element).color)); const b = lum(background(element));
-            return { text: element.textContent.trim().slice(0, 30), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) };
-          });
-        });
+        // WCAG AA (composited through every translucent layer) for badges, muted text and the table.
+        const ratios = await contrastReport(page, 'main [class*="rounded-full"], main .dashboard-muted, main .dashboard-heading, main td, main th, main label');
         for (const { text, ratio } of ratios) assert.ok(ratio >= 4.5, `${preference} ${width}px "${text}" contrast ${ratio.toFixed(2)}`);
       }
     }

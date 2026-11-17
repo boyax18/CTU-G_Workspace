@@ -74,7 +74,7 @@ export default function UserMenu({ schoolId, roles, items, navigate, signOut, si
         aria-label={`Account menu for ${schoolId}`}
         onClick={() => { firstFocus.current = 'first'; setOpen((value) => !value); }}
         onKeyDown={onButtonKey}
-        className="dashboard-topbar-icon flex min-h-11 items-center gap-2 rounded-xl px-2 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+        className="dashboard-topbar-icon flex min-h-11 items-center gap-2 rounded-xl px-2 py-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]"
       >
         <span aria-hidden="true" className="dashboard-placeholder-icon flex h-8 w-8 items-center justify-center rounded-full"><DashboardIcon name="user" width={16} height={16} /></span>
         <span className="hidden min-w-0 md:block">
@@ -99,7 +99,7 @@ export default function UserMenu({ schoolId, roles, items, navigate, signOut, si
           {items.map((item) => (
             <button key={item.id} type="button" role="menuitem" tabIndex={-1}
               onClick={() => choose(item.id)}
-              className="dashboard-heading flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--db-edge)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600">
+              className="dashboard-heading flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--db-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--db-focus)]">
               <DashboardIcon name={item.icon} />
               <span className="flex-1">{item.label}</span>
               {item.integration === 'planned' && <span className="dashboard-muted text-xs">Soon</span>}
@@ -108,7 +108,7 @@ export default function UserMenu({ schoolId, roles, items, navigate, signOut, si
           <div role="separator" className="my-1 border-t border-[var(--db-edge)]" />
           <button type="button" role="menuitem" tabIndex={-1} disabled={signingOut}
             onClick={() => { close(false); signOut(); }}
-            className="dashboard-heading flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--db-edge)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50">
+            className="dashboard-heading flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm hover:bg-[var(--db-accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[color:var(--db-focus)] disabled:cursor-not-allowed disabled:opacity-50">
             <DashboardIcon name="signout" />
             {signingOut ? 'Signing out…' : 'Sign out of Workspace'}
           </button>

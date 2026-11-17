@@ -12,7 +12,7 @@ Sources: `frontend/src/css/theme.css` (public surface and shared tokens) and `fr
 
 - The preference is stored in `localStorage['ctug-theme']`. Nothing else is stored.
 - While switching, `html.theme-transition` fades colors for 350ms. Don't add your own theme transitions.
-- The dashboard has only light and dark token sets: `.dark .dashboard-app` applies to both dark themes. `theme-black` does not change dashboard tokens.
+- The dashboard has **three** token sets that mirror the public themes: `.dashboard-app` (Light), `.dark .dashboard-app` (forest-green System-dark) and `.dark.theme-black .dashboard-app` (black Dark). Where a value matches the public site, the `--db-*` token aliases the public variable (for example `--db-text: var(--fg-strong)`), so both surfaces stay one palette.
 - Dark mode is a hand-mapped token set. Never invert colors or use `filter: invert`.
 
 ## 1. Color
@@ -22,7 +22,7 @@ Sources: `frontend/src/css/theme.css` (public surface and shared tokens) and `fr
 | Family | Values in use |
 | --- | --- |
 | Green (brand) | `#14532d` green-900 · `#166534` green-800 · `#15803d` green-700 (**primary**) · `#16a34a` green-600 · `#4ade80` green-400 · `#86efac` green-300 |
-| Dashboard green | `#062e24` · `#093c2d` · `#0b5039` · `#0e543a` · `#116d48` · `#147647` (**dashboard primary**) · `#146a43` · `#228a5b` · `#78ba96` · `#87e9ad` · `#a3e0b7` · `#d3f9de` · `#e3f3e8` · `#244e35` |
+| Dashboard green | Since 17 Nov 2026 the dashboard uses the public greens through `--db-*` aliases (primary = `--accent` `#15803d`). Remaining dashboard-only greens: banner overlay `#0e543a` with rgba stops of `#083424`, `#0b4831` and `#0e563a`; dark text accents `#86efac` · `#dcfce7` · `#d3f9de`; light chip text `#14532d`; sidebar solids `#f4faf6` · `#123321` |
 | Neutral (light) | `#111827` gray-900 · `#374151` gray-700 · `#4b5563` gray-600 · `#9ca3af` gray-400 |
 | Neutral (green-dark) | `#f3faf5` · `#c5d6ca` · `#9fb6a6` · `#86a08f` |
 | Neutral (black) | `#fafafa` · `#b8b8b8` · `#8c8c8c` · `#707070` · `#0e0e0e` · `#000000` |
@@ -39,22 +39,22 @@ Use the **class** column in JSX and the **variable** column in CSS.
 | Text primary (headings, values) | `--fg-strong` | `.fg-strong` | `--db-text` / `.dashboard-heading` |
 | Text secondary (body copy) | `--fg-body` | `.fg-body` | `--db-text` (body inherits) |
 | Text muted (helper text, captions, meta) | `--fg-muted` | `.fg-muted` | `--db-muted` / `.dashboard-muted` |
-| Accent text and links | `--fg-accent` | `.fg-accent`, `.link-accent` | `.dashboard-eyebrow` color (`#147647` / dark `#a3e0b7`) |
-| Primary action background | `--accent` | `.btn-primary` | `.dashboard-primary-link` (`#147647`, hover `#0b5039`) |
+| Accent text and links | `--fg-accent` | `.fg-accent`, `.link-accent` | `--db-accent` / `.dashboard-accent`, `.dashboard-eyebrow` |
+| Primary action background | `--accent` | `.btn-primary` | `--db-button` / `.dashboard-primary-link` (= `--accent`, hover `--accent-hover`) |
 | Primary hover | `--accent-hover` | (built into `.btn-primary`) | (built in) |
 | Text on primary | `--on-accent` (`#fff`) | — | `#fff` |
-| Accent tint (chips, active nav) | `--accent-soft` | `.chip-accent`, `.nav-link[aria-current]` | `.dashboard-placeholder-icon` |
-| Surface (card, panel) | `--glass-bg` + `--glass-border` | `.surface-glass` | `--db-panel` + `--db-edge` / `.dashboard-panel` |
-| Page background | `--bg-from` (under photo) | `.app-bg` + `.site-bg` | `--db-background` / `.dashboard-app` |
+| Accent tint (chips, active nav) | `--accent-soft` | `.chip-accent`, `.nav-link[aria-current]` | `--db-chip` / `.dashboard-placeholder-icon`, `--db-sidebar-active` / `.dashboard-nav-active` |
+| Surface (card, panel) | `--glass-bg` + `--glass-border` | `.surface-glass` | Data: `--db-panel` + `--db-edge` / `.dashboard-panel`. Overview only: `--db-glass` / `.dashboard-glass` (dashboard-specific; never use `.surface-glass` in the dashboard) |
+| Page background | `--bg-from` (under photo) | `.app-bg` + `.site-bg` | `--db-background` (the public `--bg-from → --bg-via → --bg-to` gradient, no photo) / `.dashboard-app` |
 | Header or topbar | `--header-bg` | `.surface-header`, `.surface-footer` | `--db-topbar` / `.dashboard-topbar` |
-| Border, divider | `--glass-border`, `--field-border` | — | `--db-edge` (Tailwind `border` inside `.dashboard-app` takes the current color; set `border-color` with `.dashboard-panel`) |
+| Border, divider | `--glass-border`, `--field-border` | — | `--db-edge` (a base-layer rule makes every plain `border` inside `.dashboard-app` use it; explicit border-color utilities still win) |
 | Field | `--field-bg`, `--field-border`, `--field-focus`, `--field-ring`, `--placeholder` | `.field`, `.field-error` | `.dashboard-panel` on the input + `border` |
-| Error text | `--fg-error` | `.fg-error` | **Proposed** `--db-error` (AUDIT A-02) |
+| Error text | `--fg-error` | `.fg-error` | `--db-error` / `.dashboard-error` (Current) |
 | Warning or notice block | `--notice-bg`, `--notice-fg` | `.notice` | current: `border-amber-300 bg-amber-50 text-amber-950` (preview banner only) |
-| Success | **none**: see 1.4 | — | current: `text-emerald-700` (fails in dark mode, AUDIT A-01) |
+| Success | **none**: see 1.4 | — | `--db-accent` text + an icon (AUDIT A-01 fixed) |
 | Info | **none**: see 1.4 | — | — |
-| Focus ring | `--accent-bright` outline | `.btn:focus-visible`, `.field:focus` | `focus-visible:outline-emerald-700` (cards); `outline-white` (sidebar) |
-| Overlay scrim | — | — | `bg-[#09271b]/70` (mobile sidebar) |
+| Focus ring | `--accent-bright` outline | `.btn:focus-visible`, `.field:focus` | `--db-focus` via `focus-visible:outline-[color:var(--db-focus)]` (the `color:` hint is required) everywhere, including the sidebar; `outline-white` only on the always-dark welcome banner |
+| Overlay scrim | — | — | `--db-scrim` / `.dashboard-scrim` (mobile drawer) |
 
 ### 1.3 Token values per theme (public, `theme.css`)
 
@@ -83,24 +83,38 @@ Other tokens (`--header-*`, `--pill-*`, `--secondary-*`, `--outline-*`, `--toggl
 
 ### 1.4 Dashboard tokens (`dashboard.css`)
 
-| Token | Light | Dark (both dark themes) |
-| --- | --- | --- |
-| `--db-background` | `#f2f6f3` | `#101c17` |
-| `--db-panel` | `#ffffff` | `#182820` |
-| `--db-edge` | `#dae6dd` | `#345044` |
-| `--db-text` | `#1a3025` | `#e9f5ec` |
-| `--db-muted` | `#62746a` | `#b3c8ba` |
-| `--db-topbar` | `rgba(255,255,255,.92)` | `rgba(24,40,32,.94)` |
-| Sidebar | `linear-gradient(175deg,#0b5039 0%,#093c2d 58%,#062e24 100%)`, white text, in both themes | same |
-| Hero | `linear-gradient(115deg,#0e543a 0%,#116d48 65%,#228a5b 100%)`, white text | same |
+Current values (visual refinement, 17 Nov 2026). `var(--x)` means the public token of the same theme.
+
+| Token | Light | System-dark (green) | Dark (black) |
+| --- | --- | --- | --- |
+| `--db-background` | `linear-gradient(160deg, var(--bg-from), var(--bg-via), var(--bg-to))` (mint) | same expression (forest green `#143823 → #215b39`) | same expression (`#000`) |
+| `--db-panel` (data surfaces) | `rgba(255,255,255,.92)` | `rgba(14,42,27,.94)` | `rgba(16,16,16,.94)` |
+| `--db-glass` / `--db-glass-border` (overview only) | `rgba(255,255,255,.62)` / `rgba(255,255,255,.78)` | `rgba(12,40,25,.55)` / `rgba(255,255,255,.14)` | `rgba(255,255,255,.05)` / `rgba(255,255,255,.10)` |
+| `--db-edge` | `rgba(21,128,61,.18)` | `rgba(255,255,255,.14)` | `rgba(255,255,255,.12)` |
+| `--db-text` | `var(--fg-strong)` `#111827` | `var(--fg-strong)` `#f3faf5` | `var(--fg-strong)` `#fafafa` |
+| `--db-muted` | `var(--fg-muted)` `#4b5563` | `var(--fg-body)` `#c5d6ca` | `var(--fg-body)` `#b8b8b8` |
+| `--db-topbar` / `--db-topbar-border` | `var(--header-bg)` / `var(--header-border)` | same | same |
+| `--db-accent` | `var(--fg-accent)` `#15803d` | `#86efac` | `#86efac` |
+| `--db-button` / hover | `var(--accent)` / `var(--accent-hover)` | same | same |
+| `--db-focus` | `#15803d` | `#86efac` | `#86efac` |
+| `--db-error` | `#b91c1c` | `#fca5a5` | `#fca5a5` |
+| `--db-chip` / `--db-chip-fg` | `rgba(21,128,61,.12)` / `#14532d` | `rgba(74,222,128,.16)` / `#d3f9de` | `rgba(74,222,128,.14)` / `#d3f9de` |
+| `--db-sidebar` (frosted, ≥1024px) | `rgba(255,255,255,.62)` | `rgba(20,56,35,.74)` | `rgba(10,10,10,.78)` |
+| `--db-sidebar-solid` (drawer, no-blur fallback) | `#f4faf6` | `#123321` | `#0b0b0b` |
+| `--db-sidebar-text` / `-strong` / `-muted` | `var(--fg-body)` / `var(--fg-strong)` / `var(--fg-muted)` | `var(--fg-body)` / `var(--fg-strong)` / `var(--fg-body)` | same as green |
+| `--db-sidebar-active` / `-active-fg` / `-bar` | `rgba(21,128,61,.13)` / `#14532d` / `var(--accent)` | `rgba(74,222,128,.16)` / `#dcfce7` / `#86efac` | `rgba(74,222,128,.14)` / `#dcfce7` / `#86efac` |
+| `--db-scrim` | `rgba(9,39,27,.55)` | `rgba(3,18,10,.62)` | `rgba(0,0,0,.70)` |
+| Welcome banner (`.dashboard-hero`) | campus photo under `linear-gradient(115deg, rgba(8,52,36,.94), rgba(11,72,49,.90), rgba(14,86,58,.88))`, white text | same | same |
+
+Blur: header 18px, frosted sidebar 18px, `.dashboard-glass` 16px. Without `backdrop-filter` support, `--db-glass`, `--db-sidebar` and `--db-topbar` fall back to the solid values. The mobile drawer never blurs.
 
 **Proposed** feedback tokens. Add them to `dashboard.css` under `.dashboard-app` and `.dark .dashboard-app` the first time a task needs them. Every text pair below passes AA (ratios measured 16 Nov 2026: error on its block 5.91 light and 8.12 dark on the panel; warning text 8.75 light and 10.68 dark; success text on its block 4.92 light and 6.75 dark).
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--db-accent` | `#147647` (5.66:1) | `#86efac` (10.97:1) | Accent text, success text, "Open module space" link |
+| `--db-accent` | **Current**, see the table above | | Accent text, success text, eyebrows |
 | `--db-success-bg` / `--db-success-edge` | `#e3f3e8` / `#78ba96` | `#244e35` / `#3f7a58` | Success block |
-| `--db-error` | `#b91c1c` (6.47:1) | `#fca5a5` (8.12:1) | Error text |
+| `--db-error` | **Current**, see the table above | | Error text |
 | `--db-error-bg` / `--db-error-edge` | `#fef2f2` / `#fca5a5` | `rgba(248,113,113,.12)` / `rgba(248,113,113,.45)` | Error block |
 | `--db-warning-bg` / `--db-warning-edge` / `--db-warning-fg` | `#fffbeb` / `#fcd34d` / `#78350f` | `rgba(251,191,36,.12)` / `rgba(251,191,36,.45)` / `#fcd34d` | Warning or preview block |
 | `--db-info-bg` / `--db-info-edge` | `#f2f6f3` / `#dae6dd` | `#101c17` / `#345044` | Neutral info block (text in `--db-text`) |
@@ -121,12 +135,12 @@ Public backgrounds are really photo + overlay + glass, so these ratios are appro
 | `--placeholder` | 2.54 ❌ | 3.61 ❌ | 4.24 ❌ |
 | White on `--accent` (primary button) | 5.02 ✅ | 5.02 ✅ | 5.02 ✅ |
 | `--notice-fg` on `--notice-bg` | 6.84 ✅ | 7.06 ✅ | ✅ |
-| `--db-text` / `--db-muted` on `--db-panel` | 14.06 / 4.97 ✅ | 13.74 / 8.72 ✅ | — |
-| `--db-muted` on `--db-background` | 4.56 ✅ (borderline) | ✅ | — |
-| `text-emerald-700` on `--db-panel` | 5.48 ✅ | **2.81 ❌** | — |
-| White on `.dashboard-primary-link` | 5.66 ✅ | 5.66 ✅ | — |
-| Sidebar text on the sidebar gradient | 11.83 ✅ | same | — |
-| Sidebar group labels (`.dashboard-nav-group`, `rgba(220,252,231,.82)`) and "Soon" badge (`.dashboard-nav-soon`, `#dcfce7` on a 14% white tint) on the gradient | ≥ 4.5 ✅ (browser-tested at its lightest stop) | same | — |
+| Every dashboard text pair: header, frosted sidebar and drawer, breadcrumbs, headings, muted text, badges, table cells, labels, buttons, user menu | ≥ 4.5 ✅ | ≥ 4.5 ✅ | ≥ 4.5 ✅ |
+| Welcome banner text and button over **any** photo crop (worst case: a pure-white or pure-black pixel under the overlay, plus the ring) | ≥ 4.5 ✅ | ≥ 4.5 ✅ | ≥ 4.5 ✅ |
+| `--db-focus` outline against the surfaces it sits on | ≥ 3 ✅ | ≥ 3 ✅ | ≥ 3 ✅ |
+| White on `.dashboard-primary-link` (`--accent`) | 5.02 ✅ | 5.02 ✅ | 5.02 ✅ |
+
+Dashboard rows are browser-verified 17 Nov 2026: composited through every translucent layer, 360/768/1024/1440 px, all three themes (`tests/browser/contrastProbe.mjs`). The previous dashboard failure (`text-emerald-700` at 2.81:1 on dark panels, AUDIT A-01) no longer occurs.
 
 Placeholders are allowed to be low-contrast only because a visible label always exists. Never put required information in a placeholder.
 

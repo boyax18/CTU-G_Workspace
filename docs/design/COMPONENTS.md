@@ -37,24 +37,24 @@ There is no dashboard button component yet. Copy these strings exactly. They are
 
 ```tsx
 // Primary
-className="dashboard-primary-link inline-flex min-h-10 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-// Secondary (bordered)
-className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors hover:bg-[var(--db-edge)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+className="dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)] disabled:cursor-not-allowed disabled:opacity-50"
+// Secondary (outline, matches the public .btn-outline)
+className="dashboard-outline-button inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)] disabled:cursor-not-allowed disabled:opacity-50"
 // Compact (table row actions): replace px-4 py-2 text-sm with px-3 py-2 text-xs
 ```
 
 | State | Primary | Secondary |
 | --- | --- | --- |
-| Default | bg `#147647`, white | `border` in `--db-edge`, `--db-text` |
-| Hover | bg `#0b5039` | bg `--db-edge` |
+| Default | bg `--db-button` (= public `--accent` `#15803d`), white | `--db-accent` text, `--db-outline-border` border |
+| Hover | bg `--db-button-hover` (= `--accent-hover`) | bg `--db-accent-soft` |
 | Active | none today. You may add `active:scale-[0.98]` | same |
-| Focus-visible | 2px `emerald-600` outline, offset 2px (white outline inside the sidebar) | same |
+| Focus-visible | 2px `--db-focus` outline, offset 2px, in every theme and in the sidebar. Write it as `outline-[color:var(--db-focus)]`; without the `color:` hint Tailwind does not apply it | same |
 | Disabled | `opacity-50` + `cursor-not-allowed`. Current code varies (40%/50%/60%); use 50% for new code | same |
 | Loading | disable the button and change its label ("Approving…"). Optionally add `<LoadingSpinner />` before the text | same |
 
 **Destructive (Proposed):** `bg-[#b91c1c] text-white hover:bg-[#991b1b]` + the same focus and disabled classes. Use it for the confirm button of reject, delete and deactivate actions, never for the button that opens the dialog.
 
-**On-hero button (Current):** `rounded-xl border border-white/35 bg-white/15 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/25`. Use it only on `.dashboard-hero`.
+**On-hero button (Current):** `dashboard-hero-button rounded-xl border px-4 py-2.5 text-sm font-semibold` (6% white fill; hover darkens, so contrast never drops over the photo) + a white focus outline. Use it only on `.dashboard-hero`.
 
 ## 3. Text input (`components/common/Input.tsx`) — Current
 
@@ -81,7 +81,7 @@ className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bor
 
 **Select (Current):** a native `<select>` with the same `field w-full rounded-lg px-3 py-2.5 text-sm`, a separate `<label>` and the same error pattern (see the "Register as" select in `features/auth/RegisterPage.tsx`).
 
-**Dashboard field (Current):** `<label className="dashboard-muted flex flex-col gap-1 text-xs">Search<input className="dashboard-panel w-52 rounded-lg border px-3 py-2 text-sm" … /></label>`. **Standard addition:** `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600`.
+**Dashboard field (Current):** `<label className="dashboard-muted flex flex-col gap-1 text-xs">Search<input className="dashboard-panel w-52 rounded-lg border px-3 py-2 text-sm" … /></label>`. **Standard addition:** `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]`.
 
 **OTP code field (Current, `VerifyEmailPage.tsx`):** `inputMode="numeric"`, `autoComplete="one-time-code"`, `pattern="[0-9]{6}"`, **no `maxLength`** (so pasted "123-456" still works). Normalize to digits in `onChange`.
 
@@ -91,10 +91,11 @@ className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bor
 | --- | --- | --- |
 | Glass card (public) | `surface-glass rounded-2xl p-5` (feature), `p-6 sm:p-8` (form) | Service cards, login, registration, verification |
 | Lift card (public) | add `lift` | Clickable or showcase cards only |
-| Dashboard panel | `dashboard-panel rounded-2xl border p-5` / `p-4 sm:p-6` / `p-6 sm:p-8` | All dashboard content containers |
-| Module card (dashboard) | `dashboard-panel dashboard-module-card group rounded-2xl border p-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-700` on a `<button>` | Clickable navigation card |
+| Dashboard panel | `dashboard-panel rounded-2xl border p-5` / `p-4 sm:p-6` / `p-6 sm:p-8` | Every **data** surface: tables, forms, filters, financial and administrative screens, menus, states. Nearly solid (`--db-panel`, 92–94%) |
+| Dashboard glass | `dashboard-glass rounded-2xl p-5` (border, shadow and 16px blur are built in) | **Overview only**: the "At a glance" widgets and module cards. Never for data. Dashboard-specific; don't use the public `.surface-glass` in the dashboard |
+| Module card (dashboard) | `dashboard-glass dashboard-module-card group rounded-2xl p-5 text-left transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]` on a `<button>` | Clickable navigation card on the dashboard overview |
 | Stat card | `dashboard-panel rounded-2xl border p-5` → label `dashboard-muted text-xs font-semibold uppercase tracking-wide`, value `dashboard-heading mt-3 text-xl font-bold`, note `dashboard-muted mt-1 text-xs` | Overview metrics |
-| Dashboard hero | `dashboard-hero relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10` + the decorative `dashboard-hero-ring` | Overview only. One per app |
+| Dashboard hero | `dashboard-hero relative overflow-hidden rounded-3xl p-6 sm:p-8 lg:p-10` with `style={{ '--db-hero-photo': url(campus-building.jpg) }}` + the decorative `dashboard-hero-ring`. Text uses `.dashboard-hero-eyebrow`, white `h2`, `.dashboard-hero-text` | Overview only. One per app. The forest-green overlay keeps white text ≥ 4.5:1 over any crop of the photo |
 | Icon chip | Public `chip-accent flex h-10 w-10 items-center justify-center rounded-lg`. Dashboard `dashboard-placeholder-icon flex h-11 w-11 items-center justify-center rounded-xl` | Leading icon on a card |
 
 Hover is never the only affordance. Clickable cards are `<button>` or `<a>` elements with a visible text cue ("Open module space ›").
@@ -115,7 +116,7 @@ Hover is never the only affordance. Clickable cards are `<button>` or `<a>` elem
 
 **Proposed `Modal` spec** (implement in `Modal.tsx` the first time a task needs a true modal):
 - Native `<dialog>` opened with `showModal()` (it provides inert background, Escape and top-layer stacking). Otherwise use z-index `70` with a focus trap.
-- Scrim: `rgba(9,39,27,.70)` (same as the mobile sidebar). Panel: `dashboard-panel rounded-2xl border p-5 sm:p-6 w-[min(32rem,calc(100vw-2rem))]` with a level-4 shadow.
+- Scrim: `.dashboard-scrim` (`--db-scrim`, the same as the mobile drawer). Panel: `dashboard-panel rounded-2xl border p-5 sm:p-6 w-[min(32rem,calc(100vw-2rem))]` with a level-4 shadow.
 - Enter: opacity 0 → 1 and `translateY(8px) scale(.97)` → none, 200ms `--ease-out`. Exit: 150ms `ease-in`. Reduced motion: opacity only.
 - Structure: H3 title phrased as a question ("Confirm rejection?"), a consequence sentence ("This is a real account action and will be audited."), any required inputs, then actions right-aligned with `gap-3`: **Cancel (secondary, first in DOM)**, then confirm. The confirm button uses the destructive style for destructive actions and primary otherwise.
 - Focus goes to the first field, or to Cancel for destructive actions. Escape and Cancel close it. Focus returns to the trigger.
@@ -129,7 +130,7 @@ Hover is never the only affordance. Clickable cards are `<button>` or `<a>` elem
 | Dashboard shell layout (`components/dashboard/DashboardShell.tsx`, Dashboard Shell v0.1) | One shell for every role: a **full-width global header** on top, the sidebar below it on the left, and the main column (breadcrumb/context row, page header, module outlet, footer) on the right |
 | Global header | `dashboard-topbar sticky top-0 z-30 h-16 border-b`: drawer button (<1024px) or collapse toggle (≥1024px, `aria-expanded`, `aria-controls="workspace-sidebar"`), logo + "CTU-G Workspace" / "Ginatilan Campus", academic-period context (≥768px in the header, in the breadcrumb row below; "not yet configured" until academic periods exist), theme toggle (≥640px), user menu. Search and Alerts from the v0.1 wireframe are **not shown** until their workflows exist |
 | User menu (`components/dashboard/UserMenu.tsx`) | Menu button (`aria-haspopup="menu"`, `aria-expanded`) with a user icon, School ID and roles (≥768px). `role="menu"` panel at `z-[60]`: the Account utility links (My profile, Account settings when permitted) and "Sign out of Workspace". Enter/Space/ArrowDown open on the first item, ArrowUp on the last; arrows, Home and End move; Escape closes and returns focus; Tab or an outside click closes |
-| Dashboard sidebar (`components/dashboard/DashboardNavigation.tsx`) | 272px, `top-16` under the header and pinned at ≥1024px; collapses to an 80px icon rail (labels become `sr-only` plus a `title`); an off-canvas drawer below 1024px. Groups come from the registry and render as `role="group"` with a `.dashboard-nav-group` label (`text-xs font-semibold uppercase tracking-[0.16em]`); a group with no permitted link is not rendered. Links use `dashboard-nav-link min-h-11 rounded-xl px-3 py-2.5 text-sm font-medium`; the active one gets `.dashboard-nav-active` (white tint + 3px inset bar `#87e9ad`) and `aria-current="page"`. Unfinished modules carry a `.dashboard-nav-soon` "Soon" badge. The footer holds the Account utility links, the identity card and Sign out |
+| Dashboard sidebar (`components/dashboard/DashboardNavigation.tsx`) | 272px, `top-16` under the header and pinned at ≥1024px; collapses to an 80px icon rail (labels become `sr-only` plus a `title`); an off-canvas drawer below 1024px. Groups come from the registry and render as `role="group"` with a `.dashboard-nav-group` label (`text-xs font-semibold uppercase tracking-[0.16em]`); a group with no permitted link is not rendered. Links use `dashboard-nav-link min-h-11 rounded-xl px-3 py-2.5 text-sm font-medium`; the active one gets `.dashboard-nav-active` (`--db-sidebar-active` tint, `--db-sidebar-active-fg` text, 3px inset bar `--db-sidebar-bar`) and `aria-current="page"`. The sidebar is frosted (`--db-sidebar`, 18px blur) at ≥1024px and opaque (`--db-sidebar-solid`, no blur) as the mobile drawer; its text uses `--db-sidebar-text`, `.dashboard-sidebar-strong` and `.dashboard-nav-group`. Unfinished modules carry a `.dashboard-nav-soon` "Soon" badge. The footer holds the Account utility links, the identity card and Sign out |
 | Dashboard drawer behavior | Opening focuses the close button ("Close navigation"). Tab and Shift+Tab are trapped inside the drawer; the header and main column are `inert`. Escape, the close button or the scrim closes it and focus returns to "Open navigation"; choosing a link closes it; widening to ≥1024px closes it. The scrim is a `<button aria-label="Close navigation overlay">` |
 | Breadcrumbs and page header (`components/dashboard/PageHeader.tsx`) | `<nav aria-label="Breadcrumb">` with an `<ol>`: Dashboard (link) / group label (text) / page (`aria-current="page"`). `PageHeader` renders the view's **only `h1`** (`text-2xl sm:text-3xl font-bold`), the registry description (`dashboard-muted text-sm`), an optional status badge ("Soon") and an optional quick-action slot |
 | Shared states (`components/dashboard/DashboardStates.tsx`) | `DashboardState` (panel + icon chip + `h2` + muted text + optional secondary button) and its presets: `AccessDenied` ("This section is unavailable"), `ModuleUnavailable` ("This module is not available yet", for "Soon" modules) and `NoModules` ("No modules are available to your account yet") |
@@ -148,7 +149,7 @@ Add new dashboard views only through the registry in `features/dashboard/navigat
 | Pill | `pill w-fit rounded-full px-3.5 py-1.5 text-xs font-medium` (hero campus label) |
 | Step badge | `step-badge` (accent bg, white text) for numbered steps (How it works) |
 | Back to top | `ScrollToTop` (`.to-top`, a 44px circle with a progress ring). Public layout only |
-| Links | `link-accent` (accent, underline on hover), `link-muted` (muted → accent on hover). Dashboard inline links use `text-emerald-700 font-semibold` today; use `--db-accent` once it is added (AUDIT A-01) |
+| Links | `link-accent` (accent, underline on hover), `link-muted` (muted → accent on hover). Dashboard inline links use `.dashboard-accent` (`--db-accent`) with `font-semibold` |
 
 ## 9. Proposed components (don't exist yet)
 

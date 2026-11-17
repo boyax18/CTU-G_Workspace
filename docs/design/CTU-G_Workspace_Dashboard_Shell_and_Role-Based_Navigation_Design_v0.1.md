@@ -165,7 +165,9 @@ User opens a module -> frontend route guard -> backend permission check
 | Tablet (medium) | Collapsible sidebar or rail; preserve active page and readable content widths. |
 | Mobile (small) | Accessible menu drawer with focus trap and close behavior; clear page heading and essential shortcuts. |
 
-Use a clean institutional appearance: forest-green accents, white/light-gray surfaces, legible typography, strong focus indicators, predictable hover/selected states, and no color-only status messages. Ensure keyboard navigation, descriptive labels, contrast, screen-reader announcements, visible loading/empty/error states, and responsive tables/forms.
+Use a clean institutional appearance: forest-green accents, white/light-gray surfaces, legible typography, strong focus indicators, predictable hover/selected states, and no color-only status messages.
+
+**Visual direction (implemented 17 November 2026, owner-approved):** the dashboard shares the public website's palette through dashboard-scoped `--db-*` tokens that alias the public tokens (`docs/design/TOKENS.md` §1.4). Three distinct appearances follow the existing theme preference: **Light** (public mint gradient, frosted light header and sidebar, forest-green accents), **System default on a dark OS** (the public forest-green gradient, green-glass header and sidebar) and **Dark** (black, black-glass header and sidebar). Data surfaces (tables, forms, financial and administrative screens) stay nearly solid; frosted glass is limited to the header, the desktop sidebar and overview cards. The welcome banner reuses the campus photo under a forest-green overlay that keeps text at AA over any crop. The mobile drawer is opaque and unblurred, and every blur falls back to a solid colour where unsupported. Ensure keyboard navigation, descriptive labels, contrast, screen-reader announcements, visible loading/empty/error states, and responsive tables/forms.
 
 ## 7. Navigation States and Error Handling
 | Situation | Expected behavior |
@@ -208,6 +210,7 @@ Use a clean institutional appearance: forest-green accents, white/light-gray sur
 | Scope of approval | UI shell and navigation information architecture only, not new workflow privileges |
 | Change policy | Revise after reconciliation; preserve the workflow catalogue and ERD as separate sources of truth |
 | Revision | 17 November 2026: navigation and widget labels converted to sentence case to remove the conflict with PATTERNS.md §9 (owner instruction). No structural, permission or workflow change. |
+| Revision | 17 November 2026: §6 visual direction added after the approved dashboard visual refinement (three themes aligned with the public site). No structural, permission or workflow change. |
 
 ---
 *End of design proposal.*

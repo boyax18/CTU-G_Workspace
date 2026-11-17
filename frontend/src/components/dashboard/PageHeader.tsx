@@ -25,7 +25,7 @@ export function Breadcrumbs({ view, navigate }: BreadcrumbsProps) {
           <>
             <li>
               <a href={getDashboardHref('overview')} onClick={follow}
-                className="rounded underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600">
+                className="rounded underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]">
                 Dashboard
               </a>
             </li>

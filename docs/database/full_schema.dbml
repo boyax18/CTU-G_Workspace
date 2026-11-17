@@ -1,3 +1,7 @@
+// CTU-G Workspace application schema.
+// Django framework-managed tables (auth_* and django_*) are intentionally excluded.
+// Includes application design tables that may not yet be deployed.
+
 // 1. ACCOUNTS & USERS
 
 Table accounts {
@@ -39,6 +43,10 @@ Table student_registration_staging {
   expires_at datetime(6) [not null, note: 'Fixed staging deadline; resends do not extend it; indexed for cleanup']
   last_sent_at datetime(6) [not null]
   email_verified_at datetime(6)
+
+  indexes {
+    expires_at [name: 'student_registration_staging_expires_at_7cc152de']
+  }
 }
 
 Table users {

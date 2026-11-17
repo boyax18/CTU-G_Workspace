@@ -14,7 +14,7 @@ from django.urls import URLPattern, URLResolver, get_resolver, get_urlconf
 
 from apps.accounts.models import Account
 from apps.accounts.registration_review_api import (
-    PendingRegistrationRequestsView, RegistrationReviewAPI,
+    PendingRegistrationDetailView, PendingRegistrationRequestsView, RegistrationReviewAPI,
 )
 from apps.access_control.audit import record_access_audit_receipt
 from apps.access_control.models import (
@@ -43,13 +43,23 @@ class MetadataRefused(RuntimeError):
     pass
 
 
-# WF-02.01 (owner-authorized 17 Nov 2026, Option A). Before the review release, exactly ONE
-# registration-review route may be mounted: the GET-only pending list, bound directly to
-# PendingRegistrationRequestsView with no as_view() overrides. Approve, reject, bulk, a moved
-# or renamed list, a second list mount, or any other review route is refused (fail closed).
+# WF-02.01 (owner-authorized 17 Nov 2026, Option A) and WF-02.02 (D-41, owner-authorized
+# 17 Nov 2026). Before the review release, exactly TWO read-only registration-review routes may be
+# mounted, each at most once, each bound directly to its exact view class with no as_view()
+# overrides, GET/HEAD/OPTIONS only and no write handler:
+#   1. WF-02.01 pending list   api/v1/admin/registration-requests/                  (PendingRegistrationRequestsView)
+#   2. WF-02.02 applicant detail api/v1/admin/registration-requests/<int:account_id>/ (PendingRegistrationDetailView)
+# The detail is tolerated only alongside the list. Approve, reject, bulk, a moved, renamed,
+# re-typed or subclassed route, a second mount, or any other review route is refused (fail closed).
 READ_ONLY_LIST_ROUTE = "api/v1/admin/registration-requests/"
 READ_ONLY_LIST_NAME = "registration-review-pending"
+READ_ONLY_DETAIL_ROUTE = "api/v1/admin/registration-requests/<int:account_id>/"
+READ_ONLY_DETAIL_NAME = "registration-review-detail"
 READ_ONLY_LIST_METHODS = ("get", "head", "options")
+_APPROVED_READ_ROUTES = (
+    ("list", READ_ONLY_LIST_ROUTE, READ_ONLY_LIST_NAME, PendingRegistrationRequestsView),
+    ("detail", READ_ONLY_DETAIL_ROUTE, READ_ONLY_DETAIL_NAME, PendingRegistrationDetailView),
+)
 _WRITE_HANDLERS = ("post", "put", "patch", "delete")
 _REVIEW_NAME_PREFIXES = ("registration-review", "bulk-review", "bulk-registration-review")
 _REVIEW_ROUTE_MARKER = "registration-requests"
@@ -66,29 +76,34 @@ def _walk_url_patterns(patterns, prefix=""):
             yield prefix + "<uninspectable>", None
 
 
-def _is_read_only_list(route, entry, view_class):
-    return (
-        route == READ_ONLY_LIST_ROUTE
-        and entry.name == READ_ONLY_LIST_NAME
-        and view_class is PendingRegistrationRequestsView
-        and tuple(view_class.http_method_names) == READ_ONLY_LIST_METHODS
-        and not any(hasattr(view_class, handler) for handler in _WRITE_HANDLERS)
-        and not getattr(entry.callback, "initkwargs", None)
-    )
+def _approved_read_route(route, entry, view_class):
+    """Return 'list' or 'detail' when this entry is exactly an approved read route, else None."""
+    for kind, approved_route, approved_name, approved_class in _APPROVED_READ_ROUTES:
+        if (
+            route == approved_route
+            and entry.name == approved_name
+            and view_class is approved_class
+            and tuple(view_class.http_method_names) == READ_ONLY_LIST_METHODS
+            and not any(hasattr(view_class, handler) for handler in _WRITE_HANDLERS)
+            and not getattr(entry.callback, "initkwargs", None)
+        ):
+            return kind
+    return None
 
 
 def unexpected_review_routes(urlconf=None):
-    """Return a description of every mounted review route except the approved WF-02.01 list.
+    """Return a description of every mounted review route except the two approved read routes.
 
-    An empty list means only the read-only list (or nothing) is mounted. Inspection
-    errors and unknown entries are reported as unexpected, never ignored.
+    An empty list means only the read-only list, optionally with the read-only detail (or
+    nothing), is mounted. Inspection errors and unknown entries are reported as unexpected,
+    never ignored.
     """
     try:
         patterns = get_resolver(urlconf if urlconf is not None else get_urlconf()).url_patterns
         entries = list(_walk_url_patterns(patterns))
     except Exception as exc:  # fail closed: an unreadable URLconf is not "nothing mounted"
         return [f"URLconf could not be inspected ({type(exc).__name__})"]
-    unexpected, allowed = [], 0
+    unexpected, seen = [], {"list": 0, "detail": 0}
     for route, entry in entries:
         if entry is None:
             unexpected.append(route)
@@ -105,16 +120,19 @@ def unexpected_review_routes(urlconf=None):
         )
         if not is_review:
             continue
-        if _is_read_only_list(route, entry, view_class):
-            allowed += 1
-            if allowed == 1:
+        kind = _approved_read_route(route, entry, view_class)
+        if kind is not None:
+            seen[kind] += 1
+            if seen[kind] == 1:
                 continue
         unexpected.append(f"{route} ({name or 'unnamed'})")
+    if seen["detail"] and not seen["list"]:
+        unexpected.append(f"{READ_ONLY_DETAIL_ROUTE} (detail without the approved list)")
     return unexpected
 
 
 def refuse_unless_only_read_only_list(error_class, message):
-    """Shared P1/P3C guard: the WF-02.01 list alone is tolerated, and only while switched off."""
+    """Shared P1/P3C guard: only the two read routes are tolerated, and only while their switch is off."""
     if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", False) is not False:
         raise error_class("The WF-02.01 pending-list switch must remain off before release.")
     if unexpected_review_routes():

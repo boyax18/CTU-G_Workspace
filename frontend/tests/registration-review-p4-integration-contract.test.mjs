@@ -157,12 +157,14 @@ test('disabled client refuses list/approve/reject without ANY browser network ca
   assert.equal(calls, 0);
 });
 
-test('backend URLconf mounts only the WF-02.01 read-only list, never the decision routes', () => {
+test('backend URLconf mounts only the WF-02.01 list and WF-02.02 detail, never the decision routes', () => {
   const djangoUrls = readFileSync(new URL('../../backend/config/urls.py', import.meta.url), 'utf8');
   // D-31: exactly one review path, bound directly to the GET-only list view.
   assert.doesNotMatch(djangoUrls,
     /registration_review_urls|registration_bulk|ApproveRegistration|RejectRegistration|BulkRegistration|\/approve\/|\/reject\/|\/bulk\//);
-  assert.equal(djangoUrls.match(/registration-requests/g)?.length, 1);
+  // D-31 + D-37: exactly two review paths, each bound directly to its GET-only read view.
+  assert.equal(djangoUrls.match(/registration-requests/g)?.length, 2);
+  assert.match(djangoUrls, /'api\/v1\/admin\/registration-requests\/<int:account_id>\/',\s*PendingRegistrationDetailView\.as_view\(\)/);
   assert.match(djangoUrls, /'api\/v1\/admin\/registration-requests\/',\s*PendingRegistrationRequestsView\.as_view\(\)/);
   const dashboard = readFileSync(new URL('../src/features/dashboard/SessionDashboardPage.tsx', import.meta.url), 'utf8');
   assert.match(dashboard, /REGISTRATION_REVIEW_LIVE_API_ENABLED/);

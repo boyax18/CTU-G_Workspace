@@ -312,3 +312,80 @@ test('WF-02.01 list client, when enabled, issues exactly one GET and never a wri
     path: `${LIST_ROOT}?page=2&status=Pending&role=Student`, method: 'GET', credentials: 'same-origin', cache: 'no-store',
   }]);
 });
+
+// ---- WF-02.02 Verify and review applicant information (P-07) ----
+const detailExample = (overrides = {}) => ({
+  account_id: 910001, school_id: '7240001', id_label: 'School ID',
+  name: { first: 'Maria', middle: null, last: 'Santos', suffix: null }, full_name: 'Maria Santos',
+  email: 'maria@example.edu', requested_role: 'Student', request_status: 'Pending',
+  created_at: '2026-11-10T09:15:00+08:00',
+  email_evidence: { state: 'verified', verified_at: '2026-11-10T09:20:00+08:00' },
+  institutional_check: { subject: 'enrollment', verified_by_workspace: false },
+  data_notes: [],
+  ...overrides,
+});
+
+test('WF-02.02 applicant query value is validated before any request', () => {
+  assert.equal(contract.parseApplicantId('910001'), 910001);
+  for (const raw of [null, '', '0', '-1', '01', '1.5', 'abc', '1e3', ' 1', '2147483648', '99999999999']) {
+    assert.equal(contract.parseApplicantId(raw), null, String(raw));
+  }
+  assert.deepEqual(contract.buildApplicantDetailRequest(LIST_ROOT, 12), { method: 'GET', path: `${LIST_ROOT}12/` });
+  assert.throws(() => contract.buildApplicantDetailRequest(LIST_ROOT, 0));
+  assert.throws(() => contract.buildApplicantDetailRequest('//evil.invalid/api/', 12));
+});
+
+test('WF-02.02 parser accepts the four evidence states and both roles', () => {
+  assert.equal(contract.parseApplicantDetail(detailExample(), 910001).email_evidence.state, 'verified');
+  for (const state of ['no_proof', 'address_changed']) {
+    assert.equal(contract.parseApplicantDetail(detailExample({ email_evidence: { state, verified_at: null } }), 910001).email_evidence.state, state);
+  }
+  const noEmail = detailExample({ email: null, email_evidence: { state: 'no_email', verified_at: null } });
+  assert.equal(contract.parseApplicantDetail(noEmail, 910001).email, null);
+  const instructor = detailExample({
+    school_id: '0012345', id_label: 'Staff ID', requested_role: 'Instructor',
+    institutional_check: { subject: 'employment', verified_by_workspace: false }, data_notes: ['missing_profile'],
+  });
+  assert.equal(contract.parseApplicantDetail(instructor, 910001).id_label, 'Staff ID');
+});
+
+test('WF-02.02 parser refuses extra, inconsistent or sensitive fields', () => {
+  const bad = [
+    detailExample({ password_hash: 'x' }),
+    detailExample({ token: 'x' }),
+    detailExample({ account_id: 910002 }),
+    detailExample({ id_label: 'Staff ID' }),
+    detailExample({ request_status: 'Approved' }),
+    detailExample({ requested_role: 'Admin' }),
+    detailExample({ email_evidence: { state: 'verified', verified_at: null } }),
+    detailExample({ email_evidence: { state: 'no_proof', verified_at: '2026-11-10T09:20:00+08:00' } }),
+    detailExample({ email_evidence: { state: 'confirmed', verified_at: null } }),
+    detailExample({ email: null }),
+    detailExample({ email_evidence: { state: 'no_email', verified_at: null } }),
+    detailExample({ institutional_check: { subject: 'enrollment', verified_by_workspace: true } }),
+    detailExample({ institutional_check: { subject: 'employment', verified_by_workspace: false } }),
+    detailExample({ name: { first: 'A', middle: null, last: 'B' } }),
+    detailExample({ data_notes: ['unknown'] }),
+    detailExample({ data_notes: ['missing_profile', 'missing_profile'] }),
+    detailExample({ email: 'not-an-email' }),
+  ];
+  for (const payload of bad) assert.throws(() => contract.parseApplicantDetail(payload, 910001), undefined, JSON.stringify(payload).slice(0, 80));
+});
+
+test('WF-02.02 client refuses without any request while the read switch is off, and only GETs when on', async () => {
+  const calls = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (path, init) => {
+    calls.push({ path, method: init.method });
+    return { ok: true, status: 200, json: async () => detailExample({ account_id: 12 }) };
+  };
+  try {
+    await assert.rejects(api.getPendingApplication(12), (error) => error.code === 'review_unavailable');
+    assert.equal(calls.length, 0);
+    const detail = await api.getPendingApplication(12, true);
+    assert.equal(detail.account_id, 12);
+  } finally {
+    globalThis.fetch = before;
+  }
+  assert.deepEqual(calls, [{ path: `${LIST_ROOT}12/`, method: 'GET' }]);
+});

@@ -1,8 +1,9 @@
-"""WF-02.01 Option A: narrowed registration-review release safeguard (P1 and P3C).
+"""WF-02.01 Option A and WF-02.02 D-41: narrowed registration-review release safeguard (P1 and P3C).
 
 Run: python manage.py test apps.access_control.test_wf0201_release_safeguard --settings=config.test_settings
-Owner-authorized 17 Nov 2026. The approved GET-only pending list may be mounted before the
-review release; approve, reject, bulk and any unexpected review route must still refuse.
+Owner-authorized 17 Nov 2026. The approved GET-only pending list and GET-only applicant detail may
+be mounted before the review release; approve, reject, bulk and any unexpected review route must
+still refuse.
 """
 
 from contextlib import contextmanager
@@ -22,7 +23,8 @@ from django.views import View
 from apps.accounts.models import Account
 from apps.accounts.registration_bulk_api import BulkRegistrationReviewView
 from apps.accounts.registration_review_api import (
-    ApproveRegistrationRequestView, PendingRegistrationRequestsView, RejectRegistrationRequestView,
+    ApproveRegistrationRequestView, PendingRegistrationDetailView, PendingRegistrationRequestsView,
+    RejectRegistrationRequestView,
 )
 from apps.access_control.management.commands import (
     init_registration_review_inactive_bindings_local_dev as p2,
@@ -54,6 +56,20 @@ def urlconf(*patterns):
     module = ModuleType("wf0201_test_urlconf")
     module.urlpatterns = list(patterns)
     return module
+
+
+DETAIL = LIST + "<int:account_id>/"
+
+
+class WritableDetailView(PendingRegistrationDetailView):
+    http_method_names = ["get", "head", "options", "post"]
+
+    def post(self, request, account_id):  # pragma: no cover - never dispatched in these tests
+        return HttpResponse(status=405)
+
+
+def approved_detail():
+    return path(DETAIL, PendingRegistrationDetailView.as_view(), name="registration-review-detail")
 
 
 def approved_list():
@@ -92,8 +108,55 @@ class UnexpectedReviewRoutesTests(SimpleTestCase):
         found = p1.unexpected_review_routes(conf)
         self.assertEqual(len(found), count, found)
 
-    def test_real_application_urlconf_mounts_only_the_read_only_list(self):
+    def test_real_application_urlconf_mounts_only_the_two_read_only_routes(self):
         self.assert_allowed("config.urls")
+
+    # ---- WF-02.02 (D-41): the read-only applicant detail ----
+
+    def test_exact_detail_with_the_list_is_allowed(self):
+        self.assert_allowed(urlconf(approved_list(), approved_detail()))
+        nested = urlconf(
+            path("admin/registration-requests/", PendingRegistrationRequestsView.as_view(), name="registration-review-pending"),
+            path("admin/registration-requests/<int:account_id>/", PendingRegistrationDetailView.as_view(),
+                 name="registration-review-detail"),
+        )
+        self.assert_allowed(urlconf(path("api/v1/", include(nested))))
+
+    def test_detail_without_the_list_is_refused(self):
+        self.assert_refused(urlconf(approved_detail()))
+
+    def test_altered_detail_mounts_are_refused(self):
+        cases = {
+            "moved": path("api/v1/registration-requests/<int:account_id>/", PendingRegistrationDetailView.as_view(),
+                          name="registration-review-detail"),
+            "re-typed converter": path(LIST + "<str:account_id>/", PendingRegistrationDetailView.as_view(),
+                                       name="registration-review-detail"),
+            "renamed": path(DETAIL, PendingRegistrationDetailView.as_view(), name="applicant-detail"),
+            "unnamed": path(DETAIL, PendingRegistrationDetailView.as_view()),
+            "method override": path(DETAIL, PendingRegistrationDetailView.as_view(http_method_names=["get", "post"]),
+                                    name="registration-review-detail"),
+            "writable subclass": path(DETAIL, WritableDetailView.as_view(), name="registration-review-detail"),
+            "list view at the detail path": path(DETAIL, PendingRegistrationRequestsView.as_view(),
+                                                 name="registration-review-detail"),
+            "detail view at the list path": path(LIST, PendingRegistrationDetailView.as_view(),
+                                                 name="registration-review-pending"),
+        }
+        for label, pattern in cases.items():
+            with self.subTest(case=label):
+                found = p1.unexpected_review_routes(urlconf(approved_list(), pattern))
+                self.assertGreaterEqual(len(found), 1, found)
+
+    def test_a_second_detail_mount_is_refused(self):
+        self.assert_refused(urlconf(approved_list(), approved_detail(), approved_detail()))
+
+    def test_decision_routes_are_still_refused_next_to_list_and_detail(self):
+        for pattern in (
+            path(LIST + "<int:account_id>/approve/", ApproveRegistrationRequestView.as_view(), name="registration-review-approve"),
+            path(LIST + "<int:account_id>/reject/", RejectRegistrationRequestView.as_view(), name="registration-review-reject"),
+            path(LIST + "bulk/", BulkRegistrationReviewView.as_view(), name="bulk-registration-review"),
+        ):
+            with self.subTest(route=str(pattern.pattern)):
+                self.assert_refused(urlconf(approved_list(), approved_detail(), pattern))
 
     def test_nothing_mounted_and_non_review_routes_are_allowed(self):
         self.assert_allowed(urlconf())
@@ -199,7 +262,7 @@ class ReleaseToolingWithReadOnlyListTests(TransactionTestCase):
         self.assertFalse(AccessAuditLog.objects.exists())
 
     def test_p1_and_p3c_pass_with_only_the_read_only_list_mounted(self):
-        # The default ROOT_URLCONF is config.urls, which now mounts the WF-02.01 list.
+        # The default ROOT_URLCONF is config.urls, which mounts the WF-02.01 list and WF-02.02 detail.
         self.assertEqual(settings.ROOT_URLCONF, "config.urls")
         self.p1()
         self.p2()

@@ -5,17 +5,28 @@ import { getDashboardGroup, getDashboardHref, getDashboardItem } from '../../fea
 interface BreadcrumbsProps {
   view: DashboardView;
   navigate: (view: DashboardView) => void;
+  /** Optional fourth crumb for a page inside the view; the view crumb then links back. */
+  subpage?: string | null;
+  onViewCrumb?: () => void;
 }
 
 /** Dashboard › Group › Page. The group is context text, not a link (groups have no page). */
-export function Breadcrumbs({ view, navigate }: BreadcrumbsProps) {
+export function Breadcrumbs({ view, navigate, subpage = null, onViewCrumb }: BreadcrumbsProps) {
   const item = getDashboardItem(view);
   const group = getDashboardGroup(view);
+  const plainClick = (event: MouseEvent<HTMLAnchorElement>) =>
+    event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
   const follow = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (!plainClick(event)) return;
     event.preventDefault();
     navigate('overview');
   };
+  const backToView = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!plainClick(event)) return;
+    event.preventDefault();
+    onViewCrumb?.();
+  };
+  const linkClass = 'rounded underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
   return (
     <nav aria-label="Breadcrumb">
       <ol className="dashboard-muted flex flex-wrap items-center gap-1.5 text-xs">
@@ -32,9 +43,21 @@ export function Breadcrumbs({ view, navigate }: BreadcrumbsProps) {
             {group.id !== 'overview' && (
               <li className="flex items-center gap-1.5"><span aria-hidden="true">/</span>{group.label}</li>
             )}
-            <li aria-current="page" className="dashboard-heading flex items-center gap-1.5 font-medium">
-              <span aria-hidden="true" className="dashboard-muted font-normal">/</span>{item.label}
-            </li>
+            {subpage ? (
+              <>
+                <li className="flex items-center gap-1.5">
+                  <span aria-hidden="true">/</span>
+                  <a href={getDashboardHref(view)} onClick={backToView} className={linkClass}>{item.label}</a>
+                </li>
+                <li aria-current="page" className="dashboard-heading flex items-center gap-1.5 font-medium">
+                  <span aria-hidden="true" className="dashboard-muted font-normal">/</span>{subpage}
+                </li>
+              </>
+            ) : (
+              <li aria-current="page" className="dashboard-heading flex items-center gap-1.5 font-medium">
+                <span aria-hidden="true" className="dashboard-muted font-normal">/</span>{item.label}
+              </li>
+            )}
           </>
         )}
       </ol>

@@ -182,6 +182,30 @@ def _search_terms(raw):
     return tuple(terms)
 
 
+def _read_gate_open():
+    """D-31/D-37: the independent read switch, or the isolated review configs' existing pair."""
+    return bool(getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", False)) or _decision_gates_open()
+
+
+def _reviewable_pending(actor):
+    """Applications a reviewer may read (WF-02.01 list and WF-02.02 detail share this filter).
+
+    Current ERD is single-campus; do not invent tenant/campus scope. Excludes assigned,
+    previously reviewed and privileged accounts (D-35) and the reviewer's own account.
+    """
+    assigned = AccountRole.objects.filter(account_id=OuterRef("pk"))
+    return (Account.objects
+        .filter(
+            request_status="Pending", is_active=False,
+            is_staff=False, is_superuser=False,
+            requested_role__role_name__in=tuple(LIST_ROLES),
+            requested_role__is_active=True,
+            reviewed_by__isnull=True, reviewed_at__isnull=True,
+        )
+        .exclude(pk=actor.pk)
+        .filter(~Exists(assigned)))
+
+
 def _full_name(account):
     try:
         profile = account.profile
@@ -199,8 +223,7 @@ class PendingRegistrationRequestsView(RegistrationReviewAPI):
     throttle_classes = [ReviewListThrottle]
 
     def review_gate_open(self):
-        # D-31: the independent list gate, or the isolated review configs' existing pair.
-        return bool(getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", False)) or _decision_gates_open()
+        return _read_gate_open()
 
     def get(self, request):
         actor = self.require_actor(request, READ_CODE)
@@ -226,19 +249,7 @@ class PendingRegistrationRequestsView(RegistrationReviewAPI):
         if sort not in LIST_SORTS:
             raise exceptions.ValidationError("Invalid sort.")
 
-        # Current ERD is single-campus; do not invent tenant/campus scope.
-        # Exclude assigned, previously reviewed and privileged accounts (D-35).
-        assigned = AccountRole.objects.filter(account_id=OuterRef("pk"))
-        qs = (Account.objects
-            .filter(
-                request_status="Pending", is_active=False,
-                is_staff=False, is_superuser=False,
-                requested_role__role_name__in=tuple(LIST_ROLES),
-                requested_role__is_active=True,
-                reviewed_by__isnull=True, reviewed_at__isnull=True,
-            )
-            .exclude(pk=actor.pk)
-            .filter(~Exists(assigned)))
+        qs = _reviewable_pending(actor)
         if role is not None:
             qs = qs.filter(requested_role__role_name=role)
         for term in terms:
@@ -310,3 +321,91 @@ class RejectRegistrationRequestView(RegistrationReviewAPI):
             raise exceptions.NotFound()
         decided_id = reject_registration(actor=actor, target_id=account_id, rejection_code=rejection_code)
         return Response({"account_id": decided_id, "status": "Rejected"})
+
+
+ID_LABELS = {"Student": "School ID", "Instructor": "Staff ID"}
+INSTITUTIONAL_SUBJECT = {"Student": "enrollment", "Instructor": "employment"}
+MAX_ACCOUNT_ID = 2_147_483_647
+
+
+def _profile_or_none(account):
+    try:
+        return account.profile
+    except ObjectDoesNotExist:
+        return None
+
+
+def _clean(value):
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _email_evidence(account):
+    """D-43: four distinct states; only the first is evidence, and only of mailbox control."""
+    email = _clean(account.email)
+    proof = _clean(account.email_verified_address)
+    if email is None:
+        return {"state": "no_email", "verified_at": None}
+    if account.email_verified_at is None or proof is None:
+        return {"state": "no_proof", "verified_at": None}
+    if proof.lower() != email.lower():
+        return {"state": "address_changed", "verified_at": None}
+    return {"state": "verified", "verified_at": account.email_verified_at.isoformat()}
+
+
+class PendingRegistrationDetailView(RegistrationReviewAPI):
+    """WF-02.02: read-only detail of ONE application that WF-02.01 would list.
+
+    Strictly read-only (D-39): no write of reviewed_by, reviewed_at, request_status,
+    is_active, roles or registration data, and no read audit (D-40). Unknown, ineligible
+    and no-longer-Pending identifiers share one 404 so nothing can be enumerated.
+    """
+
+    http_method_names = ["get", "head", "options"]
+    throttle_classes = [ReviewListThrottle]  # one read budget with the list (D-36)
+
+    def review_gate_open(self):
+        return _read_gate_open()
+
+    def get(self, request, account_id):
+        actor = self.require_actor(request, READ_CODE)
+        if request.query_params:
+            raise exceptions.ValidationError("Unsupported query fields.")
+        if not 1 <= account_id <= MAX_ACCOUNT_ID:
+            raise exceptions.NotFound()
+        account = (_reviewable_pending(actor)
+            .select_related("requested_role", "profile")
+            .filter(pk=account_id)
+            .first())
+        if account is None:
+            raise exceptions.NotFound()
+        role = account.requested_role.role_name
+        profile = _profile_or_none(account)
+        name = {
+            "first": _clean(getattr(profile, "first_name", None)),
+            "middle": _clean(getattr(profile, "middle_name", None)),
+            "last": _clean(getattr(profile, "last_name", None)),
+            "suffix": _clean(getattr(profile, "suffix", None)),
+        }
+        notes = []
+        if profile is None:
+            notes.append("missing_profile")
+        else:
+            if name["first"] is None:
+                notes.append("missing_first_name")
+            if name["last"] is None:
+                notes.append("missing_last_name")
+        # D-38: the full email only here, never in the list, never in logs or errors.
+        return Response({
+            "account_id": account.pk,
+            "school_id": account.school_id,
+            "id_label": ID_LABELS[role],
+            "name": name,
+            "full_name": _full_name(account),
+            "email": _clean(account.email),
+            "requested_role": role,
+            "request_status": "Pending",
+            "created_at": account.created_at.isoformat(),
+            "email_evidence": _email_evidence(account),
+            "institutional_check": {"subject": INSTITUTIONAL_SUBJECT[role], "verified_by_workspace": False},
+            "data_notes": notes,
+        })

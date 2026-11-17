@@ -248,3 +248,96 @@ export function parseRegistrationReviewError(status: number, value: unknown): { 
   if (!isRecord(value) || !isRecord(value.error) || typeof value.error.code !== 'string') return chosen;
   return value.error.code === chosen.code ? chosen : fallback;
 }
+
+// ---- WF-02.02 Verify and review applicant information (read-only detail) ----
+
+export type EmailEvidenceState = 'verified' | 'no_proof' | 'address_changed' | 'no_email';
+export type ApplicantDataNote = 'missing_profile' | 'missing_first_name' | 'missing_last_name';
+
+export interface ApplicantDetail {
+  account_id: number;
+  school_id: string;
+  id_label: 'School ID' | 'Staff ID';
+  name: { first: string | null; middle: string | null; last: string | null; suffix: string | null };
+  full_name: string | null;
+  /** D-38: the full address, shown only in this authorized detail. */
+  email: string | null;
+  requested_role: RegistrationReviewRole;
+  request_status: 'Pending';
+  created_at: string;
+  email_evidence: { state: EmailEvidenceState; verified_at: string | null };
+  institutional_check: { subject: 'enrollment' | 'employment'; verified_by_workspace: false };
+  data_notes: ApplicantDataNote[];
+}
+
+const EVIDENCE_STATES: readonly EmailEvidenceState[] = ['verified', 'no_proof', 'address_changed', 'no_email'];
+const DATA_NOTES: readonly ApplicantDataNote[] = ['missing_profile', 'missing_first_name', 'missing_last_name'];
+const ID_LABEL: Record<RegistrationReviewRole, ApplicantDetail['id_label']> = { Student: 'School ID', Instructor: 'Staff ID' };
+const SUBJECT: Record<RegistrationReviewRole, ApplicantDetail['institutional_check']['subject']> = {
+  Student: 'enrollment', Instructor: 'employment',
+};
+
+/** The `applicant` query value as an account ID, or null when it is not a valid ID. */
+export function parseApplicantId(raw: string | null): number | null {
+  if (typeof raw !== 'string' || !/^[1-9][0-9]{0,9}$/.test(raw)) return null;
+  const id = Number(raw);
+  return isAccountId(id) ? id : null;
+}
+
+/** GET-only plan for one application. The ID is validated before any request. */
+export function buildApplicantDetailRequest(root: string, accountId: number): PendingReviewRequestPlan {
+  const base = validateRoot(root);
+  assertAccountId(accountId);
+  return { method: 'GET', path: `${base}${accountId}/` };
+}
+
+const optionalText = (value: unknown, max: number): value is string | null =>
+  value === null || (typeof value === 'string' && value.length >= 1 && value.length <= max);
+
+/** Strict parser: exact keys and consistent values; any extra field (password, token…) is refused. */
+export function parseApplicantDetail(value: unknown, expectedId: number): ApplicantDetail {
+  assertAccountId(expectedId);
+  const fail = () => { throw new Error(INVALID_RESPONSE); };
+  if (!isRecord(value) || !hasExactKeys(value, ['account_id', 'school_id', 'id_label', 'name', 'full_name', 'email',
+    'requested_role', 'request_status', 'created_at', 'email_evidence', 'institutional_check', 'data_notes'])) fail();
+  const v = value as Record<string, unknown>;
+  const role = v.requested_role;
+  if (v.account_id !== expectedId || role !== 'Student' && role !== 'Instructor') fail();
+  const r = role as RegistrationReviewRole;
+  if (typeof v.school_id !== 'string' || v.school_id.length < 1 || v.school_id.length > 50
+    || v.id_label !== ID_LABEL[r] || v.request_status !== 'Pending' || !isServerTimestamp(v.created_at)
+    || !optionalText(v.full_name, 400) || !optionalText(v.email, 150)
+    || (typeof v.email === 'string' && !v.email.includes('@'))) fail();
+  const name = v.name;
+  if (!isRecord(name) || !hasExactKeys(name, ['first', 'middle', 'last', 'suffix'])
+    || !optionalText(name.first, 100) || !optionalText(name.middle, 100)
+    || !optionalText(name.last, 100) || !optionalText(name.suffix, 20)) fail();
+  const evidence = v.email_evidence;
+  if (!isRecord(evidence) || !hasExactKeys(evidence, ['state', 'verified_at'])
+    || typeof evidence.state !== 'string' || !EVIDENCE_STATES.includes(evidence.state as EmailEvidenceState)) fail();
+  const state = (evidence as Record<string, unknown>).state as EmailEvidenceState;
+  const verifiedAt = (evidence as Record<string, unknown>).verified_at;
+  if (state === 'verified' ? !isServerTimestamp(verifiedAt) : verifiedAt !== null) fail();
+  if ((state === 'no_email') !== (v.email === null)) fail();
+  const check = v.institutional_check;
+  if (!isRecord(check) || !hasExactKeys(check, ['subject', 'verified_by_workspace'])
+    || check.subject !== SUBJECT[r] || check.verified_by_workspace !== false) fail();
+  const notes = v.data_notes;
+  if (!Array.isArray(notes) || new Set(notes).size !== notes.length
+    || notes.some((note) => !DATA_NOTES.includes(note as ApplicantDataNote))) fail();
+  const n = name as Record<string, string | null>;
+  return {
+    account_id: expectedId,
+    school_id: v.school_id as string,
+    id_label: ID_LABEL[r],
+    name: { first: n.first, middle: n.middle, last: n.last, suffix: n.suffix },
+    full_name: v.full_name as string | null,
+    email: v.email as string | null,
+    requested_role: r,
+    request_status: 'Pending',
+    created_at: v.created_at as string,
+    email_evidence: { state, verified_at: verifiedAt as string | null },
+    institutional_check: { subject: SUBJECT[r], verified_by_workspace: false },
+    data_notes: notes as ApplicantDataNote[],
+  };
+}

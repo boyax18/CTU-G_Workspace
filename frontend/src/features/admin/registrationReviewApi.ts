@@ -3,13 +3,16 @@
  */
 import { ApiError, postJSON } from '../../api/client.ts';
 import {
+  buildApplicantDetailRequest,
   buildPendingReviewRequest,
   buildReviewDecisionRequest,
+  parseApplicantDetail,
   parsePendingRegistrationPage,
   parseRegistrationReviewDecision,
   parseRegistrationReviewError,
 } from './registrationReviewApiContract.ts';
 import type {
+  ApplicantDetail,
   PendingApplicationsQuery,
   PendingRegistrationPage,
   RegistrationReviewDecisionResult,
@@ -73,6 +76,17 @@ export async function listPendingApplications(
   if (!enabled) throw new ApiError('Pending applications are not activated.', 503, 'review_unavailable');
   const plan = buildPendingReviewRequest(PENDING_APPLICATIONS_ROUTE_ROOT, page, query);
   return parsePendingRegistrationPage(await getReviewJSON(plan.path));
+}
+
+/** WF-02.02: one application, read-only, behind the same read switch (D-37). GET only. */
+export async function getPendingApplication(
+  accountId: number,
+  enabled: boolean = PENDING_APPLICATIONS_LIST_ENABLED,
+): Promise<ApplicantDetail> {
+  // MUST remain first: no fetch or path access while the read switch is off.
+  if (!enabled) throw new ApiError('Pending applications are not activated.', 503, 'review_unavailable');
+  const plan = buildApplicantDetailRequest(PENDING_APPLICATIONS_ROUTE_ROOT, accountId);
+  return parseApplicantDetail(await getReviewJSON(plan.path), accountId);
 }
 
 export async function approveRegistrationRequest(

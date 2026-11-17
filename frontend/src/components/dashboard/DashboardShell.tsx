@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { AuthenticatedWorkspaceSession } from '../../features/auth/session';
+import type { DashboardSubpage } from '../../contexts/DashboardContext';
 import type { DashboardView } from '../../features/dashboard/navigation';
 import { getDashboardItem, getVisibleNavGroups } from '../../features/dashboard/navigation';
 import ThemeToggle from '../common/ThemeToggle';
@@ -31,6 +32,9 @@ interface Props {
   view: DashboardView;
   /** Whether the session may open `view`; a denied view gets a neutral title. */
   viewPermitted: boolean;
+  /** A page inside the view (fourth breadcrumb and description), or null. */
+  subpage: DashboardSubpage | null;
+  openSubpage: (params: Record<string, string> | null) => void;
   navigate: (next: DashboardView) => void;
   signOut: () => Promise<void>;
   signingOut: boolean;
@@ -51,7 +55,7 @@ function AcademicPeriod({ className }: { className: string }) {
 }
 
 export default function DashboardShell({
-  children, session, view, viewPermitted, navigate, signOut, signingOut, signOutError,
+  children, session, view, viewPermitted, subpage, openSubpage, navigate, signOut, signingOut, signOutError,
 }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   // Desktop expand/collapse lives in memory only (only the theme may use localStorage).
@@ -227,12 +231,13 @@ export default function DashboardShell({
           <div className="space-y-3">
             {/* Breadcrumb / context row (v0.1 §2): location plus the academic-period context. */}
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <Breadcrumbs view={viewPermitted ? view : 'overview'} navigate={goTo} />
+              <Breadcrumbs view={viewPermitted ? view : 'overview'} navigate={goTo}
+                subpage={viewPermitted ? subpage?.label ?? null : null} onViewCrumb={() => openSubpage(null)} />
               <AcademicPeriod className="flex md:hidden" />
             </div>
             <PageHeader
               title={title}
-              description={viewPermitted ? item.description : undefined}
+              description={viewPermitted ? subpage?.description ?? item.description : undefined}
               status={viewPermitted && item.integration === 'planned'
                 ? <span className="dashboard-muted rounded-full border px-2 py-0.5 text-xs font-medium">Soon</span> : undefined}
             />

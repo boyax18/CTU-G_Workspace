@@ -1,11 +1,16 @@
-/** WF-02.01 View pending applications: strictly read-only.
+/** WF-02.01 View pending applications (and the WF-02.02 entry point): strictly read-only.
+ *
+ * `?applicant={id}` opens the WF-02.02 detail inside this same view; the list state (filters,
+ * sort, page and loaded rows) stays in memory, so Back to pending applications restores it.
  *
  * No approve, reject or delete controls exist here (WF-02.03/02.04 are separate, unmounted flows).
  * The session permission hint only decides navigation; Django checks the Admin assignment and the
  * exact effective permission on every request, and this view shows only what the server returns.
  */
 import { useEffect, useId, useRef, useState } from 'react';
-import type { FormEvent } from 'react';
+import type { FormEvent, MouseEvent } from 'react';
+import { useDashboardContext } from '../../hooks/useDashboardContext';
+import ApplicantDetailPanel from './ApplicantDetailPanel';
 import { listPendingApplications } from './registrationReviewApi.ts';
 import { normalizePendingSearch, PENDING_APPLICATION_SEARCH_MAX } from './registrationReviewApiContract.ts';
 import type {
@@ -98,8 +103,31 @@ function Submitted({ value }: { value: string }) {
   return <time dateTime={value} title={formatTimestamp(value)}>{formatDate(value)}</time>;
 }
 
+const reviewLinkClass = 'dashboard-accent inline-flex min-h-11 items-center gap-1 rounded-lg px-1 text-sm font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
+
+/** A real link (new tab works); a plain click opens the detail inside this view. */
+function ReviewLink({ item, onOpen }: { item: PendingRegistrationItem; onOpen: (id: number) => void }) {
+  const label = item.requested_role === 'Instructor' ? 'Staff ID' : 'School ID';
+  const follow = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    onOpen(item.account_id);
+  };
+  return (
+    <a href={`/dashboard?view=registration-review&applicant=${item.account_id}`} data-review-link={item.account_id}
+      onClick={follow} className={reviewLinkClass}>
+      Review application<span className="sr-only"> for {label} {item.school_id}</span>
+    </a>
+  );
+}
+
 export default function PendingApplicationsPanel() {
   const ids = useId();
+  const { search, openSubpage } = useDashboardContext();
+  const applicant = new URLSearchParams(search).get('applicant');
+  const lastOpened = useRef<number | null>(null);
+  // True while the open detail was reached from this list in this tab, so Back can pop history.
+  const openedFromList = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
   const [applied, setApplied] = useState<Filters>(DEFAULT_FILTERS);
@@ -119,6 +147,33 @@ export default function PendingApplicationsPanel() {
       });
     return () => { cancelled = true; };
   }, [applied, page, version]);
+
+  // Returning from a detail: put keyboard focus back on the link that opened it.
+  useEffect(() => {
+    if (applicant !== null) return;
+    openedFromList.current = false;
+    if (lastOpened.current === null) return;
+    const links = document.querySelectorAll<HTMLElement>(`[data-review-link="${lastOpened.current}"]`);
+    [...links].find((link) => link.offsetParent !== null)?.focus();
+    lastOpened.current = null;
+  }, [applicant, listing.status]);
+
+  function openApplicant(id: number) {
+    lastOpened.current = id;
+    openedFromList.current = true;
+    openSubpage({ applicant: String(id) });
+  }
+
+  function backToList() {
+    // Reached from the list: go back in history so Forward keeps working and no duplicate
+    // entries pile up. Opened directly (bookmark, new tab): push the list instead.
+    if (openedFromList.current) {
+      openedFromList.current = false;
+      window.history.back();
+    } else {
+      openSubpage(null);
+    }
+  }
 
   function load(next: { filters?: Filters; page?: number }) {
     setListing({ status: 'loading' });
@@ -155,6 +210,11 @@ export default function PendingApplicationsPanel() {
   const searchHint = `${ids}-search-hint`;
   const searchErrorId = `${ids}-search-error`;
   const failure = listing.status === 'failed' ? failureMessage(listing.code) : null;
+
+  if (applicant !== null) {
+    // WF-02.02: the server re-checks access and eligibility; the ID is validated before any request.
+    return <ApplicantDetailPanel key={applicant} raw={applicant} onBack={backToList} />;
+  }
 
   return (
     <div className="space-y-5">
@@ -263,6 +323,7 @@ export default function PendingApplicationsPanel() {
                       <th scope="col" className="px-2 py-3">Submitted</th>
                       <th scope="col" className="px-2 py-3">Email proof</th>
                       <th scope="col" className="px-2 py-3">Status</th>
+                      <th scope="col" className="px-2 py-3"><span className="sr-only">Review</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -274,6 +335,7 @@ export default function PendingApplicationsPanel() {
                         <td className="dashboard-muted px-2 py-3"><Submitted value={item.created_at} /></td>
                         <td className="px-2 py-3"><ProofBadge verified={item.email_verified} /></td>
                         <td className="dashboard-muted px-2 py-3">Pending review</td>
+                        <td className="px-2 py-1 text-right"><ReviewLink item={item} onOpen={openApplicant} /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -292,6 +354,7 @@ export default function PendingApplicationsPanel() {
                       <dt className="dashboard-muted">Submitted</dt><dd><Submitted value={item.created_at} /></dd>
                       <dt className="dashboard-muted">Status</dt><dd>Pending review</dd>
                     </dl>
+                    <div className="mt-2 border-t pt-1"><ReviewLink item={item} onOpen={openApplicant} /></div>
                   </li>
                 ))}
               </ul>

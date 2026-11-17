@@ -17,4 +17,6 @@ urlpatterns = [
     path("api/auth/me/", MeView.as_view(), name="me"),
     path("api/classes/", include("classes.urls")),
     path("api/ratings/", include("ratings.urls")),
+    path("api/dashboard/", include("dashboards.urls")),
+    path("api/notifications/", include("notifications.urls")),
 ]

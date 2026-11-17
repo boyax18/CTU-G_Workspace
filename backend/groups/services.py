@@ -3,6 +3,7 @@ from django.db import IntegrityError, transaction
 from rest_framework.exceptions import ValidationError
 
 from classes.models import Enrollment
+from notifications.services import notify
 from ratings.models import RatingPeriod
 from .models import Group, GroupMembership
 
@@ -38,6 +39,11 @@ def create_group(period, name, member_ids, leader_id):
             for sid in members
         ])
     except IntegrityError:
-        # Two requests raced past the checks above; the constraint caught it.
         raise ValidationError("A student was just added to another group.")
+
+    notify(
+        [leader_id],
+        f"You are the leader of {name} for '{period.title}'.",
+        link=f"/rate/{period.id}/group",
+    )
     return group

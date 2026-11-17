@@ -2,7 +2,8 @@
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
-
+from classes.models import Enrollment
+from notifications.services import notify
 from groups.models import GroupMembership
 from .models import RatingPeriod, RatingScore, RatingSubmission
 
@@ -87,3 +88,24 @@ def submit_ratings(period, rater, scores):
     submission.submitted_at = timezone.now()
     submission.save(update_fields=["submitted_at"])
     return submission
+
+def open_period(period):
+    if period.status != RatingPeriod.Status.DRAFT:
+        raise ValidationError("Only a draft session can be opened.")
+    if not period.criteria.exists():
+        raise ValidationError("Add at least one criterion before opening.")
+    if not period.groups.exists():
+        raise ValidationError("Create groups before opening.")
+
+    period.status = RatingPeriod.Status.OPEN
+    period.save(update_fields=["status"])
+
+    student_ids = Enrollment.objects.filter(
+        classroom=period.classroom
+    ).values_list("student_id", flat=True)
+    notify(
+        student_ids,
+        f"Rating session '{period.title}' is open. Submit your peer ratings before the deadline.",
+        link=f"/rate/{period.id}",
+    )
+    return period

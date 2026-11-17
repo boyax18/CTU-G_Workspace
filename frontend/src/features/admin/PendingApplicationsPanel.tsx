@@ -3,7 +3,8 @@
  * `?applicant={id}` opens the WF-02.02 detail inside this same view; the list state (filters,
  * sort, page and loaded rows) stays in memory, so Back to pending applications restores it.
  *
- * No approve, reject or delete controls exist here (WF-02.03/02.04 are separate, unmounted flows).
+ * No approve, reject or delete controls exist in the list. WF-02.03 approval lives only in the detail,
+ * behind its own switch; after a decision the list is reloaded (GET) so it never shows a stale row.
  * The session permission hint only decides navigation; Django checks the Admin assignment and the
  * exact effective permission on every request, and this view shows only what the server returns.
  */
@@ -213,7 +214,7 @@ export default function PendingApplicationsPanel() {
 
   if (applicant !== null) {
     // WF-02.02: the server re-checks access and eligibility; the ID is validated before any request.
-    return <ApplicantDetailPanel key={applicant} raw={applicant} onBack={backToList} />;
+    return <ApplicantDetailPanel key={applicant} raw={applicant} onBack={backToList} onDecided={() => load({})} />;
   }
 
   return (

@@ -40,6 +40,14 @@
   --db-sidebar-active-fg: #14532d;
   --db-sidebar-bar: var(--accent);
   --db-scrim: rgba(9, 39, 27, .55);
+  /* Feedback blocks (TOKENS §1.4, Current since WF-02.03). Text stays --db-text/--db-error/--db-warning-fg. */
+  --db-success-bg: #e3f3e8;
+  --db-success-edge: #78ba96;
+  --db-error-bg: #fef2f2;
+  --db-error-edge: #fca5a5;
+  --db-warning-bg: #fffbeb;
+  --db-warning-edge: #fcd34d;
+  --db-warning-fg: #78350f;
   background: var(--db-background);
   background-attachment: fixed;
   color: var(--db-text);
@@ -75,6 +83,13 @@
   --db-sidebar-active-fg: #dcfce7;
   --db-sidebar-bar: #86efac;
   --db-scrim: rgba(3, 18, 10, .62);
+  --db-success-bg: #244e35;
+  --db-success-edge: #3f7a58;
+  --db-error-bg: rgba(248, 113, 113, .12);
+  --db-error-edge: rgba(248, 113, 113, .45);
+  --db-warning-bg: rgba(251, 191, 36, .12);
+  --db-warning-edge: rgba(251, 191, 36, .45);
+  --db-warning-fg: #fcd34d;
 }
 /* Explicit Dark: deeper black, mirroring the public black theme, with a quiet charcoal lift (no green). */
 .dark.theme-black .dashboard-app {
@@ -178,6 +193,27 @@
 .dashboard-hero-text { color: #ecfdf5; }
 .dashboard-hero-button { border-color: rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .06); color: #fff; }
 .dashboard-hero-button:hover { background: rgba(0, 0, 0, .18); }  /* darkens, so hover never lowers contrast */
+
+/* ---------- Feedback blocks (role="alert" for errors, role="status" otherwise; never color-only) ---------- */
+.dashboard-success { background: var(--db-success-bg); border-color: var(--db-success-edge); color: var(--db-text); }
+.dashboard-error-block { background: var(--db-error-bg); border-color: var(--db-error-edge); color: var(--db-text); }
+.dashboard-warning { background: var(--db-warning-bg); border-color: var(--db-warning-edge); color: var(--db-warning-fg); }
+
+/* ---------- Modal dialog (components/common/Modal.tsx, COMPONENTS §6) ----------
+   Native <dialog> in the top layer: the page behind is inert. Level-4 shadow; 200ms enter. */
+.dashboard-dialog {
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  color: var(--db-text);
+  box-shadow: var(--db-sheen), 0 24px 48px -16px rgba(0, 0, 0, .35);
+}
+.dashboard-dialog::backdrop { background: var(--db-scrim, rgba(9, 39, 27, .55)); }
+.dashboard-dialog[open] { animation: dashboard-dialog-in 200ms var(--ease-out, ease-out); }
+@keyframes dashboard-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-dialog[open] { animation: dashboard-dialog-fade 200ms ease; }
+  @keyframes dashboard-dialog-fade { from { opacity: 0; } }
+}
 
 /* ---------- Small pieces ---------- */
 .dashboard-placeholder-icon { background: var(--db-chip); color: var(--db-chip-fg); }

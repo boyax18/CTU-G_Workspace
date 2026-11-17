@@ -25,6 +25,21 @@ from .models import Account
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("Use --settings=config.test_settings for AR-6C1 tests.")
 
+# WF-02.03 (D-44/D-45): approval needs verified email ownership and the reviewer's attestation.
+STUDENT_ATTESTATION = {"confirmed": True, "source": "ctu_main_system_records"}
+INSTRUCTOR_ATTESTATION = {"confirmed": True, "source": "institutional_employment_records"}
+APPROVAL_BODY = {"eligibility_confirmed": True, "eligibility_source": "ctu_main_system_records"}
+
+
+def with_email_proof(account, email):
+    """Record OTP proof for the account's current address, as WF-01.01/01.02 registration does."""
+    from django.utils import timezone
+    type(account).objects.filter(pk=account.pk).update(
+        email=email, email_verified_at=timezone.now(), email_verified_address=email,
+    )
+    account.refresh_from_db()
+    return account
+
 
 @override_settings(
     ROOT_URLCONF="apps.accounts.registration_review_urls",
@@ -67,10 +82,10 @@ class RegistrationReviewAPITests(TestCase):
         self.client.force_login(self.reviewer)
         self.csrf = "a" * 32
         self.client.cookies[settings.CSRF_COOKIE_NAME] = self.csrf
-        self.target = Account.objects.create_user(
+        self.target = with_email_proof(Account.objects.create_user(
             school_id="PENDING-STUDENT-001", password="Copper!River7799",
             requested_role=self.student,
-        )
+        ), "pending.student@example.edu")
 
     def post(self, path, body, with_csrf=True):
         import json
@@ -82,7 +97,7 @@ class RegistrationReviewAPITests(TestCase):
     def test_feature_off_blocks_get_and_post(self):
         with override_settings(WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=False):
             self.assertEqual(self.client.get("/").status_code, 503)
-            self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 503)
+            self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 503)
             self.assertEqual(self.post(f"/{self.target.pk}/reject/", {"rejection_code": "duplicate_request"}).status_code, 503)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")
@@ -90,7 +105,7 @@ class RegistrationReviewAPITests(TestCase):
 
     @override_settings(WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=True)
     def test_writer_fence_returns_generic_503_without_approval(self):
-        response = self.post(f"/{self.target.pk}/approve/", {})
+        response = self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY)
         self.assertEqual(503, response.status_code)
         self.assertEqual("review_unavailable", response.json()["error"]["code"])
         self.target.refresh_from_db()
@@ -110,7 +125,7 @@ class RegistrationReviewAPITests(TestCase):
     def test_service_feature_off_also_blocks(self):
         with override_settings(WORKSPACE_REGISTRATION_APPROVAL_ENABLED=False):
             self.assertEqual(self.client.get("/").status_code, 503)
-            self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 503)
+            self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 503)
 
 
     def test_session_required_even_if_csrf_present(self):
@@ -121,23 +136,23 @@ class RegistrationReviewAPITests(TestCase):
 
         self.assertEqual(self.client.get("/").status_code, 401)
         self.assertEqual(
-            self.post(f"/{self.target.pk}/approve/", {}).status_code,
+            self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code,
             401,
         )
 
     def test_anonymous_unsafe_call_requires_csrf(self):
         self.client.logout()
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}, with_csrf=False).status_code, 403)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY, with_csrf=False).status_code, 403)
 
     def test_logged_in_post_without_csrf_denied(self):
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}, with_csrf=False).status_code, 403)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY, with_csrf=False).status_code, 403)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")
 
     def test_invalid_origin_denied(self):
         import json
         result = self.client.post(
-            f"/{self.target.pk}/approve/", data=json.dumps({}),
+            f"/{self.target.pk}/approve/", data=json.dumps(APPROVAL_BODY),
             content_type="application/json", HTTP_X_CSRFTOKEN=self.csrf,
             HTTP_ORIGIN="https://malicious.example",
         )
@@ -147,25 +162,25 @@ class RegistrationReviewAPITests(TestCase):
         AccountRole.objects.filter(account=self.reviewer).delete()
         AccountRole.objects.create(account=self.reviewer, role=self.instructor)
         self.assertEqual(self.client.get("/").status_code, 403)
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 403)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 403)
 
     def test_admin_name_without_stored_grant_denied(self):
         RolePermission.objects.filter(role=self.admin).update(is_active=False)
         self.assertEqual(self.client.get("/").status_code, 403)
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 403)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 403)
 
     def test_per_account_deny_overrides_admin_grant(self):
         AccountPermission.objects.create(
             account=self.reviewer, permission=self.permissions["approve"], effect="Deny",
         )
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 403)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 403)
         self.assertFalse(AccessAuditLog.objects.exists())
 
     def test_inactive_service_blocks(self):
         self.access_service.is_active = False
         self.access_service.save(update_fields=["is_active"])
         self.assertEqual(self.client.get("/").status_code, 503)
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 503)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 503)
 
     def test_minimal_pending_list_and_pagination_validation(self):
         other = Account.objects.create_user(
@@ -188,14 +203,14 @@ class RegistrationReviewAPITests(TestCase):
         self.assertEqual(self.client.get("/?random=1").status_code, 400)
 
     def test_approve_assigns_one_role_and_audits(self):
-        result = self.post(f"/{self.target.pk}/approve/", {})
+        result = self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY)
         self.assertEqual(result.status_code, 200, result.content)
         self.target.refresh_from_db()
         self.assertTrue(self.target.is_active)
         self.assertEqual(self.target.request_status, "Approved")
         self.assertEqual(AccountRole.objects.get(account=self.target).role_id, self.student.pk)
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.approve")
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 404)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 404)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
     def test_reject_audits_and_does_not_assign_role(self):
@@ -212,9 +227,9 @@ class RegistrationReviewAPITests(TestCase):
         self.assertFalse(AccessAuditLog.objects.exists())
 
     def test_reviewed_target_and_self_review_denied(self):
-        self.assertEqual(self.post(f"/{self.reviewer.pk}/approve/", {}).status_code, 404)
+        self.assertEqual(self.post(f"/{self.reviewer.pk}/approve/", APPROVAL_BODY).status_code, 404)
         AccountRole.objects.create(account=self.target, role=self.student)
-        self.assertEqual(self.post(f"/{self.target.pk}/approve/", {}).status_code, 404)
+        self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 404)
         self.assertFalse(AccessAuditLog.objects.exists())
 
     def test_django_superuser_session_not_workspace_authority(self):
@@ -227,7 +242,7 @@ class RegistrationReviewAPITests(TestCase):
 
     def test_audit_writer_failure_rolls_back(self):
         with patch("apps.accounts.registration_review.record_access_audit", side_effect=RuntimeError("audit unavailable")):
-            response = self.post(f"/{self.target.pk}/approve/", {})
+            response = self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY)
         self.assertEqual(response.status_code, 503)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")

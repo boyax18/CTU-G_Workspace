@@ -25,7 +25,9 @@ from apps.access_control.writer_boundary import WriterBoundaryUnavailable
 
 from .models import Account
 from .registration_review import (
+    ELIGIBILITY_SOURCES,
     REJECTION_CODES,
+    RegistrationApprovalNotAllowed,
     RegistrationReviewDenied,
     RegistrationReviewUnavailable,
     approve_registration,
@@ -35,6 +37,8 @@ from .session_auth import WorkspaceSessionAPI, _workspace_account
 
 
 READ_CODE = "accounts.registration_requests.read"
+# WF-02.03: the only accepted attestation sources; the service checks the one valid for the role.
+APPROVAL_SOURCES = frozenset(ELIGIBILITY_SOURCES.values())
 APPROVE_CODE = "accounts.registration_requests.approve"
 REJECT_CODE = "accounts.registration_requests.reject"
 
@@ -95,6 +99,13 @@ class RegistrationReviewAPI(WorkspaceSessionAPI):
         super().initial(request, *args, **kwargs)
 
     def handle_exception(self, exc):
+        # WF-02.03 D-47: a policy refusal on an application the reviewer may read is reported
+        # with a fixed reason only (never applicant data); the application stays Pending.
+        if isinstance(exc, RegistrationApprovalNotAllowed):
+            return Response({"error": {
+                "code": "approval_not_allowed", "reason": exc.reason,
+                "message": "Approval is not allowed for this application.",
+            }}, status=409)
         # Stable, non-enumerating responses: a stale target and an inaccessible
         # target are intentionally indistinguishable to the caller.
         if isinstance(exc, RegistrationReviewDenied):
@@ -299,11 +310,19 @@ class ApproveRegistrationRequestView(RegistrationReviewAPI):
 
     def post(self, request, account_id):
         actor = self.require_actor(request, APPROVE_CODE)
-        if not isinstance(request.data, dict) or request.data:
-            raise exceptions.ValidationError("Approval takes an empty JSON object.")
+        # WF-02.03 D-45: exactly the reviewer's attestation; nothing else (no role, status or
+        # account fields) is accepted, so the request cannot choose what is assigned.
+        data = request.data
+        if not isinstance(data, dict) or set(data) != {"eligibility_confirmed", "eligibility_source"}:
+            raise exceptions.ValidationError("Approval takes exactly the eligibility attestation.")
+        if (type(data["eligibility_confirmed"]) is not bool or type(data["eligibility_source"]) is not str
+                or data["eligibility_source"] not in APPROVAL_SOURCES):
+            raise exceptions.ValidationError("Invalid eligibility attestation.")
         if not 1 <= account_id <= 2_147_483_647:
             raise exceptions.NotFound()
-        decided_id = approve_registration(actor=actor, target_id=account_id)
+        decided_id = approve_registration(actor=actor, target_id=account_id, attestation={
+            "confirmed": data["eligibility_confirmed"], "source": data["eligibility_source"],
+        })
         return Response({"account_id": decided_id, "status": "Approved"})
 
 

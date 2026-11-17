@@ -10,3 +10,10 @@ export const PENDING_APPLICATIONS_LIST_ENABLED: boolean =
 
 /** The only review route mounted in config/urls.py (GET only). */
 export const PENDING_APPLICATIONS_ROUTE_ROOT = '/api/v1/admin/registration-requests/';
+
+/** WF-02.03 (D-46): the approval panel inside the WF-02.02 detail. Off unless the build sets
+ * VITE_WORKSPACE_REGISTRATION_APPROVAL_ENABLED=1, and then shown only to a session reporting the
+ * approve permission. Approval is served only by the loopback local-review mode and the sandbox;
+ * config.urls has no approve route, so a normal deployment answers 404/503 regardless. */
+export const APPLICANT_APPROVAL_ENABLED: boolean =
+  import.meta.env?.VITE_WORKSPACE_REGISTRATION_APPROVAL_ENABLED === '1';

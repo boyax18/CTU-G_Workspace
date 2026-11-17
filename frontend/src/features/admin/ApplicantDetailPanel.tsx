@@ -1,12 +1,16 @@
-/** WF-02.02 Verify and review applicant information: one application, strictly read-only.
+/** WF-02.02 Verify and review applicant information: one application, read-only by default.
  *
- * Shows only what the server returns for an application that WF-02.01 would list. There are no
- * approve, reject, activate or edit controls (WF-02.03/02.04 are separate and unmounted), nothing
- * is recorded, and a verified email is never presented as enrollment, employment or eligibility.
+ * Shows only what the server returns for an application that WF-02.01 would list. Nothing on the
+ * page edits the application or is recorded by viewing it, and a verified email is never presented
+ * as enrollment, employment or eligibility. WF-02.03 adds ONE approval section, only when the
+ * approval switch is on and the session reports the exact approve permission (Django re-checks).
+ * There is no reject control (WF-02.04).
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useDashboardContext } from '../../hooks/useDashboardContext';
+import ApplicantApprovalPanel from './ApplicantApprovalPanel';
+import { APPLICANT_APPROVAL_ENABLED } from './pendingApplicationsConfig.ts';
 import { getPendingApplication } from './registrationReviewApi.ts';
 import { parseApplicantId } from './registrationReviewApiContract.ts';
 import type { ApplicantDataNote, ApplicantDetail, EmailEvidenceState } from './registrationReviewApiContract.ts';
@@ -14,7 +18,10 @@ import type { ApplicantDataNote, ApplicantDetail, EmailEvidenceState } from './r
 type Loaded =
   | { status: 'loading' }
   | { status: 'failed'; code: string }
-  | { status: 'ready'; data: ApplicantDetail };
+  | { status: 'ready'; data: ApplicantDetail }
+  | { status: 'approved'; data: ApplicantDetail };
+
+const APPROVE_PERMISSION = 'accounts.registration_requests.approve';
 
 const outlineButton = 'dashboard-outline-button inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 const badgeClass = 'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium';
@@ -81,12 +88,19 @@ interface Props {
   /** The raw `applicant` query value; validated here before any request. */
   raw: string;
   onBack: () => void;
+  /** WF-02.03: the list behind this view is stale after a decision; refresh it. */
+  onDecided?: () => void;
+  /** WF-02.03 approval switch (D-46); a prop so tests can pin it. */
+  approvalEnabled?: boolean;
 }
 
-export default function ApplicantDetailPanel({ raw, onBack }: Props) {
-  const { setSubpage } = useDashboardContext();
+export default function ApplicantDetailPanel({ raw, onBack, onDecided, approvalEnabled = APPLICANT_APPROVAL_ENABLED }: Props) {
+  const { setSubpage, session } = useDashboardContext();
   const accountId = parseApplicantId(raw);
   const heading = useRef<HTMLHeadingElement>(null);
+  const resultHeading = useRef<HTMLHeadingElement>(null);
+  // A hint only: Django re-checks the exact permission on the approval request.
+  const canApprove = approvalEnabled && session.permissions.includes(APPROVE_PERMISSION);
   const [loaded, setLoaded] = useState<Loaded>(accountId === null ? { status: 'failed', code: 'request_unavailable' } : { status: 'loading' });
   const [version, setVersion] = useState(0);
 
@@ -100,7 +114,9 @@ export default function ApplicantDetailPanel({ raw, onBack }: Props) {
         setLoaded({ status: 'ready', data });
         setSubpage({
           label: `${data.id_label} ${data.school_id}`,
-          description: 'One pending application, read-only. Nothing on this page approves, rejects or changes it.',
+          description: canApprove
+            ? 'One pending application. You can approve it after confirming eligibility; nothing else on this page changes it.'
+            : 'One pending application, read-only. Nothing on this page approves, rejects or changes it.',
         });
       })
       .catch((error: unknown) => {
@@ -108,10 +124,18 @@ export default function ApplicantDetailPanel({ raw, onBack }: Props) {
         if (!cancelled) setLoaded({ status: 'failed', code });
       });
     return () => { cancelled = true; };
-  }, [accountId, version, setSubpage]);
+  }, [accountId, version, setSubpage, canApprove]);
 
   useEffect(() => () => setSubpage(null), [setSubpage]);
-  useEffect(() => { if (loaded.status === 'ready') heading.current?.focus(); }, [loaded.status]);
+  useEffect(() => {
+    if (loaded.status === 'ready') heading.current?.focus();
+    if (loaded.status === 'approved') resultHeading.current?.focus();
+  }, [loaded.status]);
+
+  function reload() {
+    setLoaded({ status: 'loading' });
+    setVersion((current) => current + 1);
+  }
 
   const back = (
     <button type="button" className={outlineButton} onClick={onBack}>
@@ -131,9 +155,29 @@ export default function ApplicantDetailPanel({ raw, onBack }: Props) {
           <h2 className="dashboard-heading text-lg font-semibold">{message.title}</h2>
           <p className="dashboard-muted mt-2 text-sm">{message.detail}</p>
           {message.retry && (
-            <button type="button" className={`${outlineButton} mt-5`}
-              onClick={() => { setLoaded({ status: 'loading' }); setVersion((current) => current + 1); }}>Try again</button>
+            <button type="button" className={`${outlineButton} mt-5`} onClick={reload}>Try again</button>
           )}
+        </section>
+      </div>
+    );
+  }
+
+  if (loaded.status === 'approved') {
+    const done = loaded.data;
+    return (
+      <div className="space-y-5">
+        {back}
+        <section role="status" className="dashboard-success rounded-2xl border p-6 sm:p-8">
+          <h2 ref={resultHeading} tabIndex={-1} className="text-lg font-semibold focus:outline-none">
+            <span aria-hidden="true">✓ </span>Application approved
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed">
+            {done.full_name ?? 'The applicant'} ({done.id_label} {done.school_id}) is now active with the {done.requested_role} role
+            and can sign in. Your approval and eligibility confirmation were recorded.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed">
+            What they can open after signing in depends on the permissions set for the {done.requested_role} role.
+          </p>
         </section>
       </div>
     );
@@ -204,8 +248,17 @@ export default function ApplicantDetailPanel({ raw, onBack }: Props) {
         </p>
       </section>
 
+      {canApprove && (
+        <ApplicantApprovalPanel data={data}
+          onApproved={() => { setLoaded({ status: 'approved', data }); onDecided?.(); }}
+          onGone={() => { setLoaded({ status: 'failed', code: 'request_unavailable' }); onDecided?.(); }}
+          onReload={reload} />
+      )}
+
       <p className="dashboard-muted text-xs leading-relaxed">
-        This page is read-only. Approval and rejection are separate steps and are not available here. Django verifies your permission on every request.
+        {canApprove
+          ? 'Viewing this page records nothing. Rejection is a separate step and is not available here. Django verifies your permission and the approval rules on every request.'
+          : 'This page is read-only. Approval and rejection are separate steps and are not available here. Django verifies your permission on every request.'}
       </p>
     </div>
   );

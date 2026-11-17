@@ -112,7 +112,7 @@ Blur: header 18px, frosted sidebar 18px, `.dashboard-glass` 16px. Without `backd
 
 **Depth and layering (17 Nov 2026).** Layers from back to front: background gradient → header (the public header glass, unchanged) → sidebar → overview glass cards → data panels. Why the two new tokens: `--db-shadow` replaces a single hard-coded, near-invisible panel shadow and must differ per theme (green-tinted in Light and System-dark, pure black in Dark); `--db-sheen` is the 1px top-edge highlight of the public glass, applied inside `.dashboard-panel`, `.dashboard-glass` and the frosted sidebar. Contrast limits: in System-dark every emerald lift stays at or below the public `#215b39` (page-level muted text `#c5d6ca` would drop below AA on anything lighter); in Light the background is never darker than about `#d0f5dc`, which is why `--db-accent` text uses `#166534`; in Dark the charcoal never exceeds about `#141414`.
 
-**Proposed** feedback tokens. Add them to `dashboard.css` under `.dashboard-app` and `.dark .dashboard-app` the first time a task needs them. Every text pair below passes AA (ratios measured 16 Nov 2026: error on its block 5.91 light and 8.12 dark on the panel; warning text 8.75 light and 10.68 dark; success text on its block 4.92 light and 6.75 dark).
+Feedback tokens. **Current** (WF-02.03, 17 Nov 2026) for success, error and warning: defined in `dashboard.css` under `.dashboard-app` (Light) and `.dark .dashboard-app` (both dark themes) and used through `.dashboard-success`, `.dashboard-error-block` and `.dashboard-warning` (COMPONENTS §5). The info pair is still **Proposed**; add it the first time a task needs it. Every text pair below passes AA (ratios measured 16 Nov 2026: error on its block 5.91 light and 8.12 dark on the panel; warning text 8.75 light and 10.68 dark; success text on its block 4.92 light and 6.75 dark).
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
@@ -233,7 +233,7 @@ Base unit: **4px** (the Tailwind spacing scale). Allowed steps for new code: `0.
 | 4 | `0 24px 48px -16px rgba(0,0,0,.35)` | Floating menus (`.mobile-menu`); `0 10px 24px -8px rgba(0,0,0,.35)` on `.to-top` |
 | Header | `--header-shadow` → `--header-shadow-scrolled` when `.is-scrolled` | Sticky header |
 
-The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. Use level 4 for a **Proposed** modal dialog.
+The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. The `Modal` dialog (`.dashboard-dialog`, **Current**) uses level 4 on top of `--db-sheen`.
 
 ## 6. Z-index scale
 
@@ -245,7 +245,7 @@ The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. Use l
 | `40` | Floating buttons, mobile scrim | `.to-top`, dashboard mobile overlay |
 | `50` | Sticky public header, dashboard sidebar | `.surface-header`, `.dashboard-sidebar` |
 | `60` | Dropdowns and menus anchored to the header | `.mobile-menu`, dashboard user menu (`z-[60]`) |
-| `70` | **Proposed:** modal scrim + dialog | (new Modal) |
+| `70` | Modal scrim + dialog. The **Current** `Modal` is a native `<dialog>` in the browser top layer, so it needs no z-index; keep `70` for any non-native overlay | `components/common/Modal.tsx` (top layer) |
 | `80` | **Proposed:** toasts | (new Toast) |
 | `100` | Skip link (always on top) | `.dashboard-skip-link` |
 

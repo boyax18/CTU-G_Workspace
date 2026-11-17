@@ -1,25 +1,32 @@
 /** AR-6C7D.2: guarded typed adapter for the existing, currently UNMOUNTED review API.
  * DO NOT import into the dashboard or turn on this gate before separate approvals.
  */
-import { ApiError, postJSON } from '../../api/client.ts';
+import { ApiError, initializeCSRF, postJSON, timeoutSignal } from '../../api/client.ts';
 import {
   buildApplicantDetailRequest,
+  buildApprovalRequest,
   buildPendingReviewRequest,
   buildReviewDecisionRequest,
   parseApplicantDetail,
+  parseApprovalRefusal,
   parsePendingRegistrationPage,
   parseRegistrationReviewDecision,
   parseRegistrationReviewError,
 } from './registrationReviewApiContract.ts';
 import type {
   ApplicantDetail,
+  EligibilitySource,
   PendingApplicationsQuery,
   PendingRegistrationPage,
   RegistrationReviewDecisionResult,
   RegistrationReviewRejectionCode,
 } from './registrationReviewApiContract.ts';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from './registrationReviewApiGate.ts';
-import { PENDING_APPLICATIONS_LIST_ENABLED, PENDING_APPLICATIONS_ROUTE_ROOT } from './pendingApplicationsConfig.ts';
+import {
+  APPLICANT_APPROVAL_ENABLED,
+  PENDING_APPLICATIONS_LIST_ENABLED,
+  PENDING_APPLICATIONS_ROUTE_ROOT,
+} from './pendingApplicationsConfig.ts';
 import { notifyAuthenticationRequired } from '../../utils/sessionSignals.ts';
 
 function requireApprovedActivation(): void {
@@ -109,4 +116,58 @@ export async function rejectRegistrationRequest(
   const plan = buildReviewDecisionRequest(approvedRouteRoot, accountId, 'reject', rejectionCode);
   const value = await postJSON(plan.path, plan.body);
   return parseRegistrationReviewDecision(value, accountId, 'Rejected');
+}
+
+const uncertain = () => new ApiError(
+  'We could not confirm whether the application was approved. Reload it to check its status before doing anything else.',
+  0, 'outcome_unknown', {}, { outcomeUnknown: true },
+);
+
+/** WF-02.03: approve ONE application with the reviewer's attestation (D-45). POST, never retried.
+ *
+ * Definite refusals keep their codes: 409 `email_unverified` / `eligibility_unconfirmed` (D-47),
+ * 404 `request_unavailable`, 400/401/403/429 and a 503 `review_unavailable` envelope (each is
+ * answered before any write or after a rolled-back transaction). Anything that might have been
+ * applied (no response after sending, another 5xx, or a reply that is not exactly the expected
+ * decision) is `outcome_unknown`: the caller must re-read the application, never resend (D-48).
+ */
+export async function approveApplication(
+  accountId: number,
+  source: EligibilitySource,
+  enabled: boolean = APPLICANT_APPROVAL_ENABLED,
+): Promise<RegistrationReviewDecisionResult> {
+  // MUST remain first: no CSRF request, fetch or path access while the approval switch is off.
+  if (!enabled) throw new ApiError('Approval is not activated.', 503, 'review_unavailable');
+  const plan = buildApprovalRequest(PENDING_APPLICATIONS_ROUTE_ROOT, accountId, source);
+  const csrfToken = await initializeCSRF(); // fails before anything is sent: a definite non-approval
+  let response: Response;
+  try {
+    response = await fetch(plan.path, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(plan.body), signal: timeoutSignal(),
+    });
+  } catch {
+    throw uncertain();
+  }
+  let value: unknown = null;
+  try {
+    value = await response.json();
+  } catch {
+    if (response.ok || response.status >= 500) throw uncertain();
+  }
+  if (response.ok) {
+    try {
+      return parseRegistrationReviewDecision(value, accountId, 'Approved');
+    } catch {
+      throw uncertain();
+    }
+  }
+  if (response.status === 409) {
+    throw new ApiError('Approval is not allowed for this application.', 409, parseApprovalRefusal(value) ?? 'approval_not_allowed');
+  }
+  const { code, message } = parseRegistrationReviewError(response.status, value);
+  if (response.status >= 500 && !(response.status === 503 && code === 'review_unavailable')) throw uncertain();
+  if (response.status === 401) notifyAuthenticationRequired();
+  throw new ApiError(message, response.status, code);
 }

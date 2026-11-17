@@ -21,7 +21,11 @@ from apps.access_control.models import (
     Service,
 )
 from apps.access_control.services import has_permission
-from apps.access_control.writer_boundary import require_verified_writer, writer_atomic
+from apps.access_control.writer_boundary import (
+    WriterBoundaryUnavailable,
+    require_verified_writer,
+    writer_atomic,
+)
 
 from .models import Account
 from .registration_notifications import schedule_registration_decision_email_after_commit
@@ -45,6 +49,52 @@ class RegistrationReviewDenied(Exception):
 
 class RegistrationReviewUnavailable(Exception):
     """Required approved catalogue or transaction conditions are unavailable."""
+
+
+# WF-02.03 (D-44, D-45; owner-approved 17 Nov 2026). Approval requires verified email ownership
+# for the CURRENT address and the reviewer's attestation that institutional eligibility was
+# checked against the one fixed source for the requested role. Workspace does not verify
+# enrollment or employment itself; the attestation records the reviewer's own check.
+ELIGIBILITY_SOURCES = {
+    "Student": "ctu_main_system_records",
+    "Instructor": "institutional_employment_records",
+}
+ELIGIBILITY_SUBJECTS = {"Student": "enrollment", "Instructor": "employment"}
+
+
+class RegistrationApprovalNotAllowed(RegistrationReviewDenied):
+    """Approval policy refusal (D-47): a fixed reason code, never applicant data.
+
+    Subclasses RegistrationReviewDenied so callers that only know the generic denial
+    (for example the test-only bulk service) still treat the refusal as "not decided".
+    """
+
+    REASONS = frozenset({"email_unverified", "eligibility_unconfirmed"})
+
+    def __init__(self, reason):
+        if reason not in self.REASONS:
+            reason = "eligibility_unconfirmed"
+        self.reason = reason
+        super().__init__("Approval is not allowed by policy.")
+
+
+def email_ownership_verified(account):
+    """D-44: proof recorded for the address now on file (same rule as WF-02.01/02.02)."""
+    email = (account.email or "").strip()
+    proof = (account.email_verified_address or "").strip()
+    return bool(email) and account.email_verified_at is not None and bool(proof) and proof.lower() == email.lower()
+
+
+def _attested_source(attestation):
+    """D-45: exactly {"confirmed": True, "source": <str>}; anything else is unconfirmed."""
+    if (
+        type(attestation) is not dict
+        or set(attestation) != {"confirmed", "source"}
+        or attestation["confirmed"] is not True
+        or type(attestation["source"]) is not str
+    ):
+        raise RegistrationApprovalNotAllowed("eligibility_unconfirmed")
+    return attestation["source"]
 
 
 def _account_id(value):
@@ -79,7 +129,7 @@ def _delete_rejected_registration(target_id):
             raise RegistrationReviewUnavailable("The rejected registration could not be removed.")
 
 
-def _decide(*, actor, target_id, approve, rejection_code=None):
+def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None):
     """Return the decided account ID only AFTER its transaction commits.
 
     A future protected API must independently enforce CSRF, session eligibility,
@@ -89,7 +139,14 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
     if not getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False):
         raise RegistrationReviewUnavailable("Registration review is not activated.")
 
-    from apps.access_control.executor.client import LOCAL, remote_call
+    from apps.access_control.executor.client import LOCAL, enabled as executor_enabled, remote_call
+    if approve:
+        # D-51: the protected executor protocol cannot carry the eligibility attestation, so
+        # approval is refused (before any transaction) whenever the protected writer is enabled,
+        # instead of being executed without it. Rejection is unchanged.
+        if executor_enabled():
+            raise WriterBoundaryUnavailable("Approval needs the eligibility attestation; the protected executor cannot carry it.")
+        attested_source = _attested_source(attestation)
     remote = remote_call("registration.approve" if approve else "registration.reject", {
         "actor_id": getattr(actor, "pk", None), "target_id": target_id, "rejection_code": rejection_code,
     })
@@ -216,6 +273,12 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
             or requested_role.role_name not in ELIGIBLE_BASE_ROLES
         ):
             raise RegistrationReviewDenied("The request is not an eligible pending registration.")
+        if approve:
+            # D-44 / D-45 inside the locked transaction: nothing has been written yet.
+            if not email_ownership_verified(target):
+                raise RegistrationApprovalNotAllowed("email_unverified")
+            if attested_source != ELIGIBILITY_SOURCES[requested_role.role_name]:
+                raise RegistrationApprovalNotAllowed("eligibility_unconfirmed")
 
         old = {
             "account_id": target.pk,
@@ -248,6 +311,13 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
         }
         if approve:
             new["role_id"] = requested_role.pk
+            # D-45: the reviewer's attestation in the existing audit JSON, as the four flat fields
+            # the audit writer accepts for this event only. Every value is derived here, server-side:
+            # the reviewer is the audit actor, the applicant its target, created_at its time.
+            new["email_evidence"] = "verified"
+            new["eligibility_confirmed"] = True
+            new["eligibility_subject"] = ELIGIBILITY_SUBJECTS[requested_role.role_name]
+            new["eligibility_source"] = attested_source
         else:
             # Immutable, bounded decision snapshot; required for delayed v2 emails.
             new["rejection_code"] = rejection_code
@@ -297,9 +367,14 @@ def _decide(*, actor, target_id, approve, rejection_code=None):
     return target_id
 
 
-def approve_registration(*, actor, target_id):
-    """Approve one pending Student/Instructor and attach ONLY its base role."""
-    return _decide(actor=actor, target_id=target_id, approve=True)
+def approve_registration(*, actor, target_id, attestation=None):
+    """Approve one pending Student/Instructor and attach ONLY its base role.
+
+    WF-02.03: requires verified email ownership (D-44) and the reviewer's eligibility
+    attestation {"confirmed": True, "source": ELIGIBILITY_SOURCES[role]} (D-45).
+    Without them the call is refused and the applicant stays Pending.
+    """
+    return _decide(actor=actor, target_id=target_id, approve=True, attestation=attestation)
 
 
 def reject_registration(*, actor, target_id, rejection_code):

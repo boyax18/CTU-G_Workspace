@@ -108,13 +108,13 @@ Hover is never the only affordance. Clickable cards are `<button>` or `<a>` elem
 | Inline notice (public) — Current | `<p role="status" className="notice rounded-lg px-3 py-2 text-xs">` (or `p-3 text-sm`) | Non-error information that needs attention ("Security check refreshed…") |
 | Inline status text — Current | `<p role="status" aria-live="polite" className="fg-body mt-4 text-sm">` (dashboard: `dashboard-panel rounded-lg border p-3 text-sm`) | Success or progress confirmations ("A new code was sent…") |
 | Preview banner (dashboard) — Current | `rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950` | Mock or preview warnings only. Replace with `--db-warning-*` when those are added |
-| Error, warning, success and info blocks (dashboard) — Proposed | `rounded-xl border p-4 text-sm` + `--db-{kind}-bg/-edge` + leading 19px icon + text | New dashboard feedback. Errors use `role="alert"`; the others use `role="status"` |
+| Error, warning and success blocks (dashboard) — Current (WF-02.03) | `dashboard-error-block` / `dashboard-warning` / `dashboard-success` + `rounded-xl border p-4 text-sm` (a result view may use `rounded-2xl p-6 sm:p-8`), with a leading text or icon mark (`!`, `✓`) so meaning is never color-only | New dashboard feedback. Errors use `role="alert"` (focus it with `tabIndex={-1}` after an action); the others use `role="status"`. The info block is still Proposed |
 
-## 6. Dialog (confirmation) — Current behavior and the Proposed `Modal`
+## 6. Dialog (confirmation): the `Modal` component — Current (WF-02.03)
 
-`components/common/Modal.tsx` exists but is **empty**. The current confirmations (`features/admin/RegistrationReviewLivePanel.tsx`) are inline `<section role="dialog" aria-modal="true" aria-labelledby>` blocks with no scrim and no focus trap (AUDIT A-06).
+`components/common/Modal.tsx` is implemented (17 Nov 2026) and first used by the WF-02.03 approval confirmation (`features/admin/ApplicantApprovalPanel.tsx`). Props: `open`, `title` (rendered as the h3 and the accessible name), `onClose`, `busy` (Escape is ignored while a request is in flight), optional `initialFocus`, `children` (the consequence text, linked with `aria-describedby`) and `actions`. Render it inside the dashboard so it inherits the `--db-*` tokens; style hook `.dashboard-dialog` in `dashboard.css`. The older inline confirmations in `features/admin/RegistrationReviewLivePanel.tsx` (gated off) still use `<section role="dialog">` (AUDIT A-06).
 
-**Proposed `Modal` spec** (implement in `Modal.tsx` the first time a task needs a true modal):
+**`Modal` spec** (implemented as written; a reused dialog must keep it):
 - Native `<dialog>` opened with `showModal()` (it provides inert background, Escape and top-layer stacking). Otherwise use z-index `70` with a focus trap.
 - Scrim: `.dashboard-scrim` (`--db-scrim`, the same as the mobile drawer). Panel: `dashboard-panel rounded-2xl border p-5 sm:p-6 w-[min(32rem,calc(100vw-2rem))]` with a level-4 shadow.
 - Enter: opacity 0 → 1 and `translateY(8px) scale(.97)` → none, 200ms `--ease-out`. Exit: 150ms `ease-in`. Reduced motion: opacity only.
@@ -159,7 +159,6 @@ Build each only when a task requires it, and place it where listed:
 | --- | --- | --- |
 | `Skeleton` | `components/common/Skeleton.tsx` + `.skeleton` in `dashboard.css` | PATTERNS.md §5.1 |
 | `EmptyState` | `components/dashboard/EmptyState.tsx` | PATTERNS.md §5.2 |
-| `Modal` | `components/common/Modal.tsx` | §6 above |
 | `Toast` | `components/common/Toast.tsx` | PATTERNS.md §4. z-index 80 |
 | `DashboardButton` | `components/dashboard/DashboardButton.tsx` | Wraps the §2 class strings (variants `primary`, `secondary`, `danger`; sizes `md`, `sm`; `loading`) |
 | `StatusBadge` | `components/dashboard/StatusBadge.tsx` | `inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium` + `--db-{kind}-*` + a leading dot or icon. The text always names the status ("Pending", "Approved", "Rejected") |

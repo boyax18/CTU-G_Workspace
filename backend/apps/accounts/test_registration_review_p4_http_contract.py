@@ -27,6 +27,21 @@ if (
 ):
     raise ImproperlyConfigured("P4 contract tests require the disposable MySQL test settings.")
 
+# WF-02.03 (D-44/D-45): approval needs verified email ownership and the reviewer's attestation.
+STUDENT_ATTESTATION = {"confirmed": True, "source": "ctu_main_system_records"}
+INSTRUCTOR_ATTESTATION = {"confirmed": True, "source": "institutional_employment_records"}
+APPROVAL_BODY = {"eligibility_confirmed": True, "eligibility_source": "ctu_main_system_records"}
+
+
+def with_email_proof(account, email):
+    """Record OTP proof for the account's current address, as WF-01.01/01.02 registration does."""
+    from django.utils import timezone
+    type(account).objects.filter(pk=account.pk).update(
+        email=email, email_verified_at=timezone.now(), email_verified_address=email,
+    )
+    account.refresh_from_db()
+    return account
+
 
 class RegistrationReviewP4LiveRoutingLockTests(SimpleTestCase):
     @override_settings(
@@ -84,10 +99,10 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.client.force_login(self.admin)
         self.csrf = "a" * 32
         self.client.cookies[settings.CSRF_COOKIE_NAME] = self.csrf
-        self.pending = Account.objects.create_user(
+        self.pending = with_email_proof(Account.objects.create_user(
             school_id="P4-CONTRACT-PENDING", password="ValidTestOnly!4021",
             requested_role=self.student_role,
-        )
+        ), "p4.pending@example.edu")
 
     def post(self, action, body, *, csrf=True, origin=None):
         headers = {}
@@ -164,8 +179,8 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
             [self.pending.pk],
         )
 
-    def test_approve_empty_json_returns_exact_decision_and_audit(self):
-        response = self.post("approve", {})
+    def test_approve_with_attestation_returns_exact_decision_and_audit(self):
+        response = self.post("approve", APPROVAL_BODY)
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Approved"})
         self.pending.refresh_from_db()
@@ -204,14 +219,14 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assert_not_decided()
 
     def test_no_csrf_and_bad_origin_never_mutate_account(self):
-        self.assertEqual(self.post("approve", {}, csrf=False).status_code, 403)
-        self.assertEqual(self.post("approve", {}, origin="https://invalid.example").status_code, 403)
+        self.assertEqual(self.post("approve", APPROVAL_BODY, csrf=False).status_code, 403)
+        self.assertEqual(self.post("approve", APPROVAL_BODY, origin="https://invalid.example").status_code, 403)
         self.assert_not_decided()
 
     def test_deactivated_review_gate_refuses_both_read_and_write(self):
         with override_settings(WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=False):
             self.assertEqual(self.client.get("/").status_code, 503)
-            self.assertEqual(self.post("approve", {}).status_code, 503)
+            self.assertEqual(self.post("approve", APPROVAL_BODY).status_code, 503)
         self.assert_not_decided()
 
     def test_deny_override_blocks_approval_even_with_active_role_permission(self):
@@ -219,5 +234,5 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         AccountPermission.objects.create(
             account=self.admin, permission=permission, effect="Deny", is_active=True,
         )
-        self.assertEqual(self.post("approve", {}).status_code, 403)
+        self.assertEqual(self.post("approve", APPROVAL_BODY).status_code, 403)
         self.assert_not_decided()

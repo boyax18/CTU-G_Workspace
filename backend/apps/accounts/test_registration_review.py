@@ -37,6 +37,21 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith(
         "Registration-review integration tests require --settings=config.test_settings."
     )
 
+# WF-02.03 (D-44/D-45): approval needs verified email ownership and the reviewer's attestation.
+STUDENT_ATTESTATION = {"confirmed": True, "source": "ctu_main_system_records"}
+INSTRUCTOR_ATTESTATION = {"confirmed": True, "source": "institutional_employment_records"}
+APPROVAL_BODY = {"eligibility_confirmed": True, "eligibility_source": "ctu_main_system_records"}
+
+
+def with_email_proof(account, email):
+    """Record OTP proof for the account's current address, as WF-01.01/01.02 registration does."""
+    from django.utils import timezone
+    type(account).objects.filter(pk=account.pk).update(
+        email=email, email_verified_at=timezone.now(), email_verified_address=email,
+    )
+    account.refresh_from_db()
+    return account
+
 
 @override_settings(WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True)
 class RegistrationReviewTests(TestCase):
@@ -84,14 +99,14 @@ class RegistrationReviewTests(TestCase):
         )
 
     def setUp(self):
-        self.target = Account.objects.create_user(
+        self.target = with_email_proof(Account.objects.create_user(
             school_id="STUDENT-001",
             password="Strong!Curriculum9682",
             requested_role=self.student_role,
-        )
+        ), "student001@example.edu")
 
     def test_approval_assigns_only_base_role_and_audits(self):
-        decided = approve_registration(actor=self.reviewer, target_id=self.target.pk)
+        decided = approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertEqual(decided, self.target.pk)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Approved")
@@ -127,7 +142,7 @@ class RegistrationReviewTests(TestCase):
         RolePermission.objects.create(
             role=self.student_role, permission=catalog_permission
         )
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertTrue(has_permission(self.target, "academic.catalogue.read"))
         self.assertFalse(has_permission(self.target, "accounts.registration_requests.approve"))
         self.assertFalse(AccountPermission.objects.filter(account=self.target).exists())
@@ -135,7 +150,7 @@ class RegistrationReviewTests(TestCase):
     def test_instructor_request_assigns_instructor_not_admin(self):
         self.target.requested_role = self.instructor_role
         self.target.save(update_fields=["requested_role"])
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=INSTRUCTOR_ATTESTATION)
         self.assertEqual(
             AccountRole.objects.get(account=self.target).role_id,
             self.instructor_role.pk,
@@ -154,7 +169,7 @@ class RegistrationReviewTests(TestCase):
     def test_default_feature_gate_blocks_any_review(self):
         with override_settings(WORKSPACE_REGISTRATION_APPROVAL_ENABLED=False):
             with self.assertRaises(RegistrationReviewUnavailable):
-                approve_registration(actor=self.reviewer, target_id=self.target.pk)
+                approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertEqual(AccessAuditLog.objects.count(), 0)
 
     def test_review_permission_deny_overrides_admin_grant(self):
@@ -162,7 +177,7 @@ class RegistrationReviewTests(TestCase):
             account=self.reviewer, permission=self.approve_permission, effect="Deny"
         )
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
 
     def test_reviewer_must_be_admin_not_merely_permission_holder(self):
@@ -172,55 +187,55 @@ class RegistrationReviewTests(TestCase):
             account=self.reviewer, permission=self.approve_permission, effect="Grant"
         )
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_framework_superuser_cannot_review_workspace_registrations(self):
         self.reviewer.is_staff = True
         self.reviewer.is_superuser = True
         self.reviewer.save(update_fields=["is_staff", "is_superuser"])
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_missing_or_inactive_approval_permission_blocks(self):
         RolePermission.objects.filter(
             role=self.admin_role, permission=self.approve_permission
         ).update(is_active=False)
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_inactive_governance_service_blocks(self):
         Service.objects.filter(pk=self.governance_service.pk).update(is_active=False)
         with self.assertRaises(RegistrationReviewUnavailable):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_existing_assigned_role_blocks_reapproval(self):
         AccountRole.objects.create(account=self.target, role=self.student_role)
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_double_approval_cannot_reassign_or_reaudit(self):
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
         self.assertEqual(AccountRole.objects.filter(account=self.target).count(), 1)
 
     def test_inactive_requested_role_is_not_assigned(self):
         Role.objects.filter(pk=self.student_role.pk).update(is_active=False)
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_requested_admin_role_is_never_approved(self):
         self.target.requested_role = self.admin_role
         self.target.save(update_fields=["requested_role"])
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_target_with_framework_flags_is_never_approved(self):
         self.target.is_staff = True
         self.target.save(update_fields=["is_staff"])
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
     def test_bad_rejection_code_is_rejected_before_writes(self):
         with self.assertRaises(RegistrationReviewDenied):
@@ -236,7 +251,7 @@ class RegistrationReviewTests(TestCase):
             side_effect=RuntimeError("audit store unavailable"),
         ):
             with self.assertRaises(RuntimeError):
-                approve_registration(actor=self.reviewer, target_id=self.target.pk)
+                approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")
         self.assertFalse(self.target.is_active)

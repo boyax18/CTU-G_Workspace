@@ -341,3 +341,42 @@ export function parseApplicantDetail(value: unknown, expectedId: number): Applic
     data_notes: notes as ApplicantDataNote[],
   };
 }
+
+// ---- WF-02.03 Approve applicant account (D-44, D-45, D-47) ----
+
+export type EligibilitySource = 'ctu_main_system_records' | 'institutional_employment_records';
+export type ApprovalRefusalReason = 'email_unverified' | 'eligibility_unconfirmed';
+
+/** D-45: the ONE fixed source a reviewer may cite for each requested role. */
+export const ELIGIBILITY_SOURCE_FOR_ROLE: Readonly<Record<RegistrationReviewRole, EligibilitySource>> = {
+  Student: 'ctu_main_system_records',
+  Instructor: 'institutional_employment_records',
+};
+export const ELIGIBILITY_SOURCE_LABELS: Readonly<Record<EligibilitySource, string>> = {
+  ctu_main_system_records: 'CTU main system enrollment records',
+  institutional_employment_records: 'Institutional employment records',
+};
+
+export interface ApprovalRequestPlan {
+  method: 'POST';
+  path: string;
+  body: { eligibility_confirmed: true; eligibility_source: EligibilitySource };
+}
+
+/** POST plan carrying ONLY the reviewer's attestation; the role is never sent (the server decides it). */
+export function buildApprovalRequest(root: string, accountId: number, source: EligibilitySource): ApprovalRequestPlan {
+  const base = validateRoot(root);
+  assertAccountId(accountId);
+  if (source !== 'ctu_main_system_records' && source !== 'institutional_employment_records') {
+    throw new Error('Choose the institutional source you checked.');
+  }
+  return { method: 'POST', path: `${base}${accountId}/approve/`, body: { eligibility_confirmed: true, eligibility_source: source } };
+}
+
+/** D-47: a 409 refusal carries one fixed reason; anything else is not a recognised refusal. */
+export function parseApprovalRefusal(value: unknown): ApprovalRefusalReason | null {
+  if (!isRecord(value) || !hasExactKeys(value, ['error']) || !isRecord(value.error)) return null;
+  const error = value.error;
+  if (error.code !== 'approval_not_allowed') return null;
+  return error.reason === 'email_unverified' || error.reason === 'eligibility_unconfirmed' ? error.reason : null;
+}

@@ -135,6 +135,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <DashboardShell
           session={session}
           view={view}
+          viewPermitted={canOpenDashboardView(view, session.permissions)}
           navigate={navigate}
           signOut={signOut}
           signingOut={signingOut}

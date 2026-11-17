@@ -68,7 +68,7 @@ test('an authorized reviewer sees the read-only list with name, role, date, proo
     const body = await page.locator('body').innerText();
     assert.ok(!body.includes(PRIVATE_EMAIL) && !/password|token|hash/i.test(body));
     // Navigation item is live (no "Soon") and was shown from the exact permission hint.
-    const nav = page.getByRole('link', { name: 'Registration review' }).first();
+    const nav = page.getByRole('link', { name: 'Applicant reviews' }).first();
     assert.equal(await nav.getAttribute('aria-current'), 'page');
     assert.ok(!(await nav.innerText()).includes('Soon'));
     assert.ok(initialOnly(fake.state.lists), JSON.stringify(fake.state.lists));

@@ -158,18 +158,11 @@ export default function PendingApplicationsPanel() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <p className="dashboard-eyebrow">Administration · Account Management</p>
-        <h2 className="dashboard-heading mt-1 text-2xl font-bold sm:text-3xl">Pending applications</h2>
-        <p className="dashboard-muted mt-2 max-w-3xl text-sm">
-          Student and Instructor registrations waiting for School Admin review. This list is read-only.
-        </p>
-      </div>
-
+      {/* The shared shell renders the breadcrumbs and the page h1 ("Applicant reviews"). */}
       <section className="dashboard-panel rounded-2xl border p-4 sm:p-6" aria-labelledby={`${ids}-queue`} aria-busy={loading}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h3 id={`${ids}-queue`} className="dashboard-heading text-lg font-semibold">Application queue</h3>
+            <h2 id={`${ids}-queue`} className="dashboard-heading text-lg font-semibold">Pending applications</h2>
             <p className="dashboard-muted mt-1 text-xs">Search, filters and sorting apply to all pending applications. Up to 20 are shown per page.</p>
           </div>
           <button type="button" className={secondaryButton} disabled={loading} onClick={() => load({})}>Refresh list</button>
@@ -245,9 +238,9 @@ export default function PendingApplicationsPanel() {
 
           {listing.status === 'ready' && rows.length === 0 && (
             <div className="py-6">
-              <h4 className="dashboard-heading font-semibold">
+              <h3 className="dashboard-heading font-semibold">
                 {filtered ? 'No applications match these filters.' : page > 1 ? 'No more applications.' : 'No pending applications.'}
-              </h4>
+              </h3>
               <p className="dashboard-muted mt-1 text-sm">
                 {filtered ? 'Change or clear the search and filters to see other applications.'
                   : 'New Student and Instructor registrations appear here after email verification.'}

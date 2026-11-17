@@ -126,6 +126,7 @@ Public backgrounds are really photo + overlay + glass, so these ratios are appro
 | `text-emerald-700` on `--db-panel` | 5.48 ✅ | **2.81 ❌** | — |
 | White on `.dashboard-primary-link` | 5.66 ✅ | 5.66 ✅ | — |
 | Sidebar text on the sidebar gradient | 11.83 ✅ | same | — |
+| Sidebar group labels (`.dashboard-nav-group`, `rgba(220,252,231,.82)`) and "Soon" badge (`.dashboard-nav-soon`, `#dcfce7` on a 14% white tint) on the gradient | ≥ 4.5 ✅ (browser-tested at its lightest stop) | same | — |
 
 Placeholders are allowed to be low-contrast only because a visible label always exists. Never put required information in a placeholder.
 
@@ -190,7 +191,7 @@ Base unit: **4px** (the Tailwind spacing scale). Allowed steps for new code: `0.
 | Button groups | `gap-2` (table rows, compact), `gap-3` (dialog or recovery actions) |
 | Section vertical rhythm (public) | `py-14 md:py-16`; form pages `py-10 sm:py-14` |
 
-**Fixed sizes:** public header `h-16` (64px). Dashboard topbar `h-[76px]`. Sidebar `w-[272px]`. Icon chips `h-10 w-10` (public) and `h-11 w-11`/`h-12 w-12` (dashboard). Logo `h-9 w-9` (header, footer) and `h-10 w-10` (sidebar).
+**Fixed sizes:** public header `h-16` (64px). Dashboard global header `h-16` (64px; the sidebar starts below it at ≥1024px). Sidebar `w-[272px]`, collapsed rail `w-20` (80px). Icon chips `h-10 w-10` (public) and `h-11 w-11`/`h-12 w-12` (dashboard). Logo `h-9 w-9` (header, footer) and `h-10 w-10` (sidebar).
 
 ## 4. Border radius
 
@@ -225,7 +226,7 @@ The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. Use l
 | `30` | Sticky dashboard topbar | `.dashboard-topbar` |
 | `40` | Floating buttons, mobile scrim | `.to-top`, dashboard mobile overlay |
 | `50` | Sticky public header, dashboard sidebar | `.surface-header`, `.dashboard-sidebar` |
-| `60` | Dropdowns and menus anchored to the header | `.mobile-menu` |
+| `60` | Dropdowns and menus anchored to the header | `.mobile-menu`, dashboard user menu (`z-[60]`) |
 | `70` | **Proposed:** modal scrim + dialog | (new Modal) |
 | `80` | **Proposed:** toasts | (new Toast) |
 | `100` | Skip link (always on top) | `.dashboard-skip-link` |
@@ -234,6 +235,7 @@ Use only these values. Dropdowns inside page content need no z-index above `10`,
 
 ## 7. Icons
 
+- Dashboard icon names (Current): home, user, users, wallet, clipboard, book, bell, settings, calendar, chart, receipt, lock, key, list, activity, star, menu, close, chevron, chevronDown, signout, shield, sidebar.
 - These are inline SVG components, with no icon library. Public icons are in `components/common/Icons.tsx` and dashboard icons in `components/dashboard/DashboardIcon.tsx`. Add new icons to the matching file in the same style.
 - Style: 24×24 `viewBox`, `fill="none"`, `stroke="currentColor"`, `strokeWidth 1.8`, round caps and joins, `aria-hidden`.
 - Sizes: **20px** default (public); **19px** in the dashboard; **18px** inside fields; **14–15px** inline with `text-xs` text and in the theme toggle.

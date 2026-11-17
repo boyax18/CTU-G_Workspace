@@ -21,6 +21,9 @@
 .dashboard-nav-link { color: rgba(240,253,244,.84); }
 .dashboard-nav-link:hover { background: rgba(255,255,255,.11); color: white; }
 .dashboard-nav-active, .dashboard-nav-active:hover { background: rgba(255,255,255,.19); color: #ffffff; box-shadow: inset 3px 0 #87e9ad; }
+/* Dashboard Shell v0.1: sidebar group labels and the "Soon" badge (AA on the sidebar gradient). */
+.dashboard-nav-group { color: rgba(220,252,231,.82); }
+.dashboard-nav-soon { background: rgba(255,255,255,.14); color: #dcfce7; }
 .dashboard-topbar { background: var(--db-topbar); border-color: var(--db-edge); backdrop-filter: blur(12px); }
 .dashboard-topbar-icon { color: var(--db-text); }
 .dashboard-topbar-icon:hover { background: var(--db-edge); }

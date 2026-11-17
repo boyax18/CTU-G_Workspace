@@ -19,6 +19,9 @@ import type { DashboardView } from '../features/dashboard/navigation';
 type ScreenState =
   | { status: 'loading' }
   | { status: 'anonymous' }
+  // WF-01.06 P-05: a session this tab was using has ended (expiry, sign-out elsewhere,
+  // lost eligibility). The server gives no reason; only this tab's history does.
+  | { status: 'ended' }
   | { status: 'error' }
   | { status: 'ready'; session: AuthenticatedWorkspaceSession };
 
@@ -63,7 +66,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     if (rechecking.current) return;
     rechecking.current = true;
     getWorkspaceSession()
-      .then((session) => setState(session.authenticated ? { status: 'ready', session } : { status: 'anonymous' }))
+      .then((session) => setState((previous) => {
+        if (session.authenticated) return { status: 'ready', session };
+        // Dropping the ready state also drops every account detail and permission hint.
+        return previous.status === 'ready' || previous.status === 'ended' ? { status: 'ended' } : { status: 'anonymous' };
+      }))
       .catch(() => { /* keep the current view */ })
       .finally(() => { rechecking.current = false; });
   }, []);
@@ -99,10 +106,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <><h1 className="dashboard-heading text-xl font-semibold">Checking your session…</h1>
                 <p className="dashboard-muted mt-2 text-sm">Your workspace will appear after verification.</p></>
             )}
-            {state.status === 'anonymous' && (
+            {(state.status === 'anonymous' || state.status === 'ended') && (
               <><h1 className="dashboard-heading text-xl font-semibold">Sign in required</h1>
-                <p className="dashboard-muted mt-2 text-sm">Sign in using an approved, active Workspace account.</p>
-                <a className="dashboard-primary-link mt-5 inline-flex rounded-lg px-4 py-2 text-sm font-medium" href="/#login">Return to sign-in</a></>
+                <p role="status" className="dashboard-muted mt-2 text-sm">
+                  {state.status === 'ended'
+                    ? 'Your session has ended. Sign in again to continue.'
+                    : 'Sign in using an approved, active Workspace account.'}
+                </p>
+                <a className="dashboard-primary-link mt-5 inline-flex min-h-11 items-center rounded-lg px-4 py-2 text-sm font-medium" href="/#login">Return to sign-in</a></>
             )}
             {state.status === 'error' && (
               <><h1 className="dashboard-heading text-xl font-semibold">Session unavailable</h1>

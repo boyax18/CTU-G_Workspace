@@ -34,8 +34,13 @@ def required_environment_variable(name):
 
 SECRET_KEY = required_environment_variable("DJANGO_SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# WF-01.06 (D-18, D-29): DEBUG, cookie flags, HTTPS, trusted origins, CORS and
+# session limits come from validated environment variables. DEBUG is off unless
+# DJANGO_DEBUG=1; the "production" profile requires HTTPS and Secure cookies.
+# See config/security_settings.py and docs/operations/LOCAL_SETUP_RELEASE_RUNBOOK_DRAFT.md.
+from .security_settings import build_security_settings
+
+globals().update(build_security_settings(os.environ))
 
 # Comma-separated hosts Django will serve. Add LAN IPs/hostnames here so other
 # devices on the network can reach the app through the Vite dev server proxy.
@@ -84,6 +89,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # WF-01.06 P-01: idle and absolute session expiry, before any view runs.
+    'apps.accounts.session_timeout.SessionTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]

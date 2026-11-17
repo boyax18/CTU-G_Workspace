@@ -83,30 +83,34 @@ Other tokens (`--header-*`, `--pill-*`, `--secondary-*`, `--outline-*`, `--toggl
 
 ### 1.4 Dashboard tokens (`dashboard.css`)
 
-Current values (visual refinement, 17 Nov 2026). `var(--x)` means the public token of the same theme.
+Current values (visual refinement and colour-depth refinement, 17 Nov 2026). `var(--x)` means the public token of the same theme.
 
 | Token | Light | System-dark (green) | Dark (black) |
 | --- | --- | --- | --- |
-| `--db-background` | `linear-gradient(160deg, var(--bg-from), var(--bg-via), var(--bg-to))` (mint) | same expression (forest green `#143823 → #215b39`) | same expression (`#000`) |
-| `--db-panel` (data surfaces) | `rgba(255,255,255,.92)` | `rgba(14,42,27,.94)` | `rgba(16,16,16,.94)` |
-| `--db-glass` / `--db-glass-border` (overview only) | `rgba(255,255,255,.62)` / `rgba(255,255,255,.78)` | `rgba(12,40,25,.55)` / `rgba(255,255,255,.14)` | `rgba(255,255,255,.05)` / `rgba(255,255,255,.10)` |
-| `--db-edge` | `rgba(21,128,61,.18)` | `rgba(255,255,255,.14)` | `rgba(255,255,255,.12)` |
+| `--db-background` | `radial-gradient(ellipse at 15% 0%, rgba(255,255,255,.65), transparent 55%)`, `radial-gradient(ellipse at 100% 100%, rgba(187,247,208,.45), transparent 60%)`, then the public mint `linear-gradient(160deg, var(--bg-from), var(--bg-via), var(--bg-to))` | `radial-gradient(ellipse at 85% 0%, rgba(33,91,57,.85), transparent 55%)` (emerald lift), `radial-gradient(ellipse at 0% 100%, rgba(10,36,22,.9), transparent 60%)` (deep shade), `linear-gradient(160deg, #102e1d, #143823 45%, #1a4a2e 75%, #18452c)` | `radial-gradient(ellipse at 20% 0%, rgba(255,255,255,.045), transparent 55%)` (charcoal lift), `linear-gradient(180deg, #000, #060606 55%, #0b0b0b)`; no green |
+| `--db-panel` (data surfaces) | `rgba(252,254,253,.94)` (lightly mint-tinted) | `rgba(13,40,26,.95)` | `linear-gradient(180deg, rgba(20,20,20,.96), rgba(14,14,14,.96))` |
+| `--db-glass` / `--db-glass-border` (overview only) | `rgba(255,255,255,.66)` / `rgba(255,255,255,.78)` | `rgba(24,70,44,.50)` (emerald-tinted) / `rgba(255,255,255,.14)` | `rgba(255,255,255,.055)` / `rgba(255,255,255,.10)` |
+| `--db-shadow` (**new**) | `0 1px 2px rgba(10,62,34,.06), 0 12px 32px -12px rgba(10,62,34,.18)` | `… rgba(0,20,10,.25), … rgba(0,20,10,.55)` | `… rgba(0,0,0,.4), … rgba(0,0,0,.6)` |
+| `--db-sheen` (**new**) | `inset 0 1px 0 rgba(255,255,255,.7)` | `… rgba(255,255,255,.06)` | `… rgba(255,255,255,.04)` |
+| `--db-edge` | `rgba(21,128,61,.16)` | `rgba(134,239,172,.14)` (green-tinted edge) | `rgba(255,255,255,.10)` |
 | `--db-text` | `var(--fg-strong)` `#111827` | `var(--fg-strong)` `#f3faf5` | `var(--fg-strong)` `#fafafa` |
 | `--db-muted` | `var(--fg-muted)` `#4b5563` | `var(--fg-body)` `#c5d6ca` | `var(--fg-body)` `#b8b8b8` |
 | `--db-topbar` / `--db-topbar-border` | `var(--header-bg)` / `var(--header-border)` | same | same |
-| `--db-accent` | `var(--fg-accent)` `#15803d` | `#86efac` | `#86efac` |
+| `--db-accent` | `var(--accent-hover)` `#166534` (green text stays AA on the deeper mint corner; buttons keep `#15803d`) | `var(--fg-accent)` `#86efac` | `#86efac` |
 | `--db-button` / hover | `var(--accent)` / `var(--accent-hover)` | same | same |
 | `--db-focus` | `#15803d` | `#86efac` | `#86efac` |
 | `--db-error` | `#b91c1c` | `#fca5a5` | `#fca5a5` |
 | `--db-chip` / `--db-chip-fg` | `rgba(21,128,61,.12)` / `#14532d` | `rgba(74,222,128,.16)` / `#d3f9de` | `rgba(74,222,128,.14)` / `#d3f9de` |
-| `--db-sidebar` (frosted, ≥1024px) | `rgba(255,255,255,.62)` | `rgba(20,56,35,.74)` | `rgba(10,10,10,.78)` |
+| `--db-sidebar` (frosted, ≥1024px) | `linear-gradient(180deg, rgba(255,255,255,.74), rgba(236,253,245,.62))` | `linear-gradient(180deg, rgba(13,41,26,.86), rgba(18,52,33,.80))` (deeper than the header) | `linear-gradient(180deg, rgba(12,12,12,.86), rgba(20,20,20,.82))` (charcoal) |
 | `--db-sidebar-solid` (drawer, no-blur fallback) | `#f4faf6` | `#123321` | `#0b0b0b` |
 | `--db-sidebar-text` / `-strong` / `-muted` | `var(--fg-body)` / `var(--fg-strong)` / `var(--fg-muted)` | `var(--fg-body)` / `var(--fg-strong)` / `var(--fg-body)` | same as green |
 | `--db-sidebar-active` / `-active-fg` / `-bar` | `rgba(21,128,61,.13)` / `#14532d` / `var(--accent)` | `rgba(74,222,128,.16)` / `#dcfce7` / `#86efac` | `rgba(74,222,128,.14)` / `#dcfce7` / `#86efac` |
 | `--db-scrim` | `rgba(9,39,27,.55)` | `rgba(3,18,10,.62)` | `rgba(0,0,0,.70)` |
 | Welcome banner (`.dashboard-hero`) | campus photo under `linear-gradient(115deg, rgba(8,52,36,.94), rgba(11,72,49,.90), rgba(14,86,58,.88))`, white text | same | same |
 
-Blur: header 18px, frosted sidebar 18px, `.dashboard-glass` 16px. Without `backdrop-filter` support, `--db-glass`, `--db-sidebar` and `--db-topbar` fall back to the solid values. The mobile drawer never blurs.
+Blur: header 18px, frosted sidebar 18px, `.dashboard-glass` 16px. Without `backdrop-filter` support, `--db-glass`, `--db-sidebar` and `--db-topbar` fall back to the solid values in **all three** themes (the fallback rule uses the same selectors as the theme blocks). The mobile drawer never blurs.
+
+**Depth and layering (17 Nov 2026).** Layers from back to front: background gradient → header (the public header glass, unchanged) → sidebar → overview glass cards → data panels. Why the two new tokens: `--db-shadow` replaces a single hard-coded, near-invisible panel shadow and must differ per theme (green-tinted in Light and System-dark, pure black in Dark); `--db-sheen` is the 1px top-edge highlight of the public glass, applied inside `.dashboard-panel`, `.dashboard-glass` and the frosted sidebar. Contrast limits: in System-dark every emerald lift stays at or below the public `#215b39` (page-level muted text `#c5d6ca` would drop below AA on anything lighter); in Light the background is never darker than about `#d0f5dc`, which is why `--db-accent` text uses `#166534`; in Dark the charcoal never exceeds about `#141414`.
 
 **Proposed** feedback tokens. Add them to `dashboard.css` under `.dashboard-app` and `.dark .dashboard-app` the first time a task needs them. Every text pair below passes AA (ratios measured 16 Nov 2026: error on its block 5.91 light and 8.12 dark on the panel; warning text 8.75 light and 10.68 dark; success text on its block 4.92 light and 6.75 dark).
 

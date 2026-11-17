@@ -3,18 +3,24 @@
    value matches the public site it aliases the public token from theme.css, so both surfaces
    stay one palette; dashboard components never use the public surface classes directly. */
 .dashboard-app {
-  /* Light: clean light dashboard on the public mint gradient. */
-  --db-background: linear-gradient(160deg, var(--bg-from) 0%, var(--bg-via) 55%, var(--bg-to) 100%);
-  --db-panel: rgba(255, 255, 255, .92);          /* data surfaces: tables, forms, menus */
-  --db-glass: rgba(255, 255, 255, .62);          /* overview surfaces only */
+  /* Light: the public mint gradient with a soft top-left highlight and a gentle green depth corner. */
+  --db-background:
+    radial-gradient(ellipse at 15% 0%, rgba(255, 255, 255, .65), transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(187, 247, 208, .45), transparent 60%),
+    linear-gradient(160deg, var(--bg-from) 0%, var(--bg-via) 55%, var(--bg-to) 100%);
+  --db-panel: rgba(252, 254, 253, .94);          /* data surfaces: tables, forms, menus (lightly mint-tinted) */
+  --db-glass: rgba(255, 255, 255, .66);          /* overview surfaces only */
+  /* Depth tokens: a soft two-part shadow and a 1px top-edge sheen, like the public glass edge. */
+  --db-shadow: 0 1px 2px rgba(10, 62, 34, .06), 0 12px 32px -12px rgba(10, 62, 34, .18);
+  --db-sheen: inset 0 1px 0 rgba(255, 255, 255, .7);
   --db-glass-border: rgba(255, 255, 255, .78);
   --db-glass-shadow: 0 18px 36px -14px rgba(20, 83, 45, .22), 0 6px 12px -8px rgba(20, 83, 45, .12);
-  --db-edge: rgba(21, 128, 61, .18);
+  --db-edge: rgba(21, 128, 61, .16);
   --db-text: var(--fg-strong);
   --db-muted: var(--fg-muted);
   --db-topbar: var(--header-bg);
   --db-topbar-border: var(--header-border);
-  --db-accent: var(--fg-accent);                 /* green text, links, eyebrows */
+  --db-accent: var(--accent-hover);              /* #166534: green text on the deeper mint corner stays AA */
   --db-accent-soft: var(--accent-soft);
   --db-button: var(--accent);
   --db-button-hover: var(--accent-hover);
@@ -23,7 +29,7 @@
   --db-error: #b91c1c;
   --db-chip: rgba(21, 128, 61, .12);
   --db-chip-fg: #14532d;
-  --db-sidebar: rgba(255, 255, 255, .62);        /* frosted, lg+ */
+  --db-sidebar: linear-gradient(180deg, rgba(255, 255, 255, .74), rgba(236, 253, 245, .62)); /* frosted, lg+ */
   --db-sidebar-solid: #f4faf6;                   /* drawer and no-blur fallback */
   --db-sidebar-edge: rgba(21, 128, 61, .14);
   --db-sidebar-text: var(--fg-body);
@@ -38,20 +44,29 @@
   background-attachment: fixed;
   color: var(--db-text);
 }
-/* System default on a dark OS: forest green, matching the public green theme. */
+/* System default on a dark OS: forest green, matching the public green theme. Layers from back to
+   front: deep-to-emerald background, public green-glass header, deeper sidebar, emerald glass cards,
+   deep data panels. Emerald lifts never exceed the public #215b39, so muted text stays AA. */
 .dark .dashboard-app {
-  --db-panel: rgba(14, 42, 27, .94);
-  --db-glass: rgba(12, 40, 25, .55);
+  --db-background:
+    radial-gradient(ellipse at 85% 0%, rgba(33, 91, 57, .85), transparent 55%),
+    radial-gradient(ellipse at 0% 100%, rgba(10, 36, 22, .9), transparent 60%),
+    linear-gradient(160deg, #102e1d 0%, #143823 45%, #1a4a2e 75%, #18452c 100%);
+  --db-panel: rgba(13, 40, 26, .95);
+  --db-glass: rgba(24, 70, 44, .50);
+  --db-shadow: 0 1px 2px rgba(0, 20, 10, .25), 0 12px 32px -12px rgba(0, 20, 10, .55);
+  --db-sheen: inset 0 1px 0 rgba(255, 255, 255, .06);
   --db-glass-border: rgba(255, 255, 255, .14);
   --db-glass-shadow: 0 20px 30px -10px rgba(0, 20, 10, .45);
-  --db-edge: rgba(255, 255, 255, .14);
+  --db-edge: rgba(134, 239, 172, .14);
+  --db-accent: var(--fg-accent);
   --db-muted: var(--fg-body);                    /* --fg-muted is borderline on green (AUDIT A-03) */
   --db-focus: #86efac;
   --db-error: #fca5a5;
   --db-chip: rgba(74, 222, 128, .16);
   --db-chip-fg: #d3f9de;
   --db-outline-border: rgba(74, 222, 128, .60);
-  --db-sidebar: rgba(20, 56, 35, .74);
+  --db-sidebar: linear-gradient(180deg, rgba(13, 41, 26, .86), rgba(18, 52, 33, .80));
   --db-sidebar-solid: #123321;
   --db-sidebar-edge: rgba(255, 255, 255, .12);
   --db-sidebar-hover: rgba(255, 255, 255, .08);
@@ -61,15 +76,20 @@
   --db-sidebar-bar: #86efac;
   --db-scrim: rgba(3, 18, 10, .62);
 }
-/* Explicit Dark: deeper black, mirroring the public black theme. */
+/* Explicit Dark: deeper black, mirroring the public black theme, with a quiet charcoal lift (no green). */
 .dark.theme-black .dashboard-app {
-  --db-panel: rgba(16, 16, 16, .94);
-  --db-glass: rgba(255, 255, 255, .05);
+  --db-background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, .045), transparent 55%),
+    linear-gradient(180deg, #000000 0%, #060606 55%, #0b0b0b 100%);
+  --db-panel: linear-gradient(180deg, rgba(20, 20, 20, .96), rgba(14, 14, 14, .96));
+  --db-glass: rgba(255, 255, 255, .055);
+  --db-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px -12px rgba(0, 0, 0, .6);
+  --db-sheen: inset 0 1px 0 rgba(255, 255, 255, .04);
   --db-glass-border: rgba(255, 255, 255, .10);
   --db-glass-shadow: 0 20px 30px -10px rgba(0, 0, 0, .80);
-  --db-edge: rgba(255, 255, 255, .12);
+  --db-edge: rgba(255, 255, 255, .10);
   --db-chip: rgba(74, 222, 128, .14);
-  --db-sidebar: rgba(10, 10, 10, .78);
+  --db-sidebar: linear-gradient(180deg, rgba(12, 12, 12, .86), rgba(20, 20, 20, .82));
   --db-sidebar-solid: #0b0b0b;
   --db-sidebar-edge: rgba(255, 255, 255, .10);
   --db-sidebar-hover: rgba(255, 255, 255, .07);
@@ -92,6 +112,7 @@
 @media (min-width: 1024px) {
   .dashboard-sidebar {
     background: var(--db-sidebar);
+    box-shadow: var(--db-sheen);
     -webkit-backdrop-filter: blur(18px) saturate(1.2);
     backdrop-filter: blur(18px) saturate(1.2);
   }
@@ -121,12 +142,12 @@
 
 /* ---------- Surfaces ---------- */
 /* Data surfaces stay nearly solid: tables, forms, filters, financial and admin screens, menus. */
-.dashboard-panel { background: var(--db-panel); border-color: var(--db-edge); box-shadow: 0 8px 30px rgba(10, 62, 34, .05); }
+.dashboard-panel { background: var(--db-panel); border-color: var(--db-edge); box-shadow: var(--db-sheen), var(--db-shadow); }
 /* Overview-only frosted surface (welcome widgets, module cards). Never for data screens. */
 .dashboard-glass {
   background: var(--db-glass);
   border: 1px solid var(--db-glass-border);
-  box-shadow: var(--db-glass-shadow);
+  box-shadow: var(--db-sheen), var(--db-glass-shadow);
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
@@ -166,7 +187,10 @@
 
 /* No backdrop-filter support: fall back to the solid surfaces (text never sits on raw transparency). */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .dashboard-app { --db-glass: var(--db-panel); --db-sidebar: var(--db-sidebar-solid); --db-topbar: var(--db-panel); }
+  /* Same specificity as the theme blocks, so the fallback also applies in both dark themes. */
+  .dashboard-app, .dark .dashboard-app, .dark.theme-black .dashboard-app {
+    --db-glass: var(--db-panel); --db-sidebar: var(--db-sidebar-solid); --db-topbar: var(--db-panel);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .dashboard-app *, .dashboard-app *::before, .dashboard-app *::after { transition-duration: .01ms !important; scroll-behavior: auto !important; }

@@ -198,7 +198,8 @@ test('three distinct appearances: light, forest-green System-dark and black Dark
       return {
         html: document.documentElement.className,
         background: getComputedStyle(document.querySelector('.dashboard-app')).backgroundImage,
-        sidebar: rgb(getComputedStyle(document.querySelector('#workspace-sidebar')).backgroundColor),
+        // The frosted sidebar is a vertical gradient: sample its top stop.
+        sidebar: rgb(getComputedStyle(document.querySelector('#workspace-sidebar')).backgroundImage.match(/rgba?\([^)]+\)/)[0]),
         panel: css('--db-panel'),
         blur: getComputedStyle(document.querySelector('#workspace-sidebar')).backdropFilter,
       };
@@ -216,7 +217,8 @@ test('three distinct appearances: light, forest-green System-dark and black Dark
     assert.ok(seen.light.background.includes('gradient'));
     // System-dark: forest-green sidebar and gradient, not near-black.
     assert.ok(seen.system.html.includes('dark') && !seen.system.html.includes('theme-black'));
-    assert.ok(greenness(seen.system.sidebar) >= 20 && seen.system.sidebar[1] >= 45, `green sidebar ${seen.system.sidebar}`);
+    // Deep forest green: a green hue (not near-black, not grey), deeper than the public header.
+    assert.ok(greenness(seen.system.sidebar) >= 10 && seen.system.sidebar[1] >= 35, `green sidebar ${seen.system.sidebar}`);
     assert.ok(seen.system.background.includes('rgb(20, 56, 35)'), seen.system.background);
     // Dark: black, distinct from System-dark.
     assert.ok(seen.dark.html.includes('theme-black'));

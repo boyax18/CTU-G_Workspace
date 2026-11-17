@@ -51,7 +51,7 @@ Index only. Actor and status are documented here; detailed specifications are in
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
 | WF-02.01 | View pending applications | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Owner-approved; P-01 to P-08 implemented and tested; committed (bbbc8db); list switch off by default; Human Approval recorded |
-| WF-02.02 | Verify and review applicant information | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Owner-approved; P-01 to P-08 implemented and tested; committed locally; read switch off by default; Human Approval pending |
+| WF-02.02 | Verify and review applicant information | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Owner-approved; P-01 to P-08 implemented and tested; committed (5e7a2c6); read switch off by default; Human Approval recorded |
 | WF-02.03 | Approve applicant account | Not yet inspected | Draft |
 | WF-02.04 | Reject applicant, notify by email, and delete rejected registration data | Not yet inspected | Draft |
 | WF-02.05 | Activate or deactivate an existing account | Not yet inspected | Draft |
@@ -1081,7 +1081,7 @@ Next flow: WF-02.02. Do not start until Approved is ticked.
 | Trigger | From Applicant reviews (WF-02.01) the reviewer selects one pending application; or opens its direct link. |
 | Preconditions | Valid Workspace session (WF-01.03, WF-01.06); accounts and access_control services active; the read-only review switch on (D-37); the application still meets the WF-02.01 eligibility filter (Pending, inactive, unreviewed, not staff or superuser, Student or Instructor requested role active, no assigned role). |
 | Result | A read-only view of one application: registered name, School ID (Student) or Staff ID (Instructor), email address (D-38), requested role, submission time, request status and the email-verification evidence, with a clear statement that enrollment (Student) or employment (Instructor) is not verified by Workspace. Nothing is changed, decided, sent or recorded (D-39, D-40). |
-| Status | Owner-approved 17 November 2026 (P-01 to P-08; D-37 to D-43, including the protected-file authorization for D-41). Implemented and tested: GET /api/v1/admin/registration-requests/{id}/ (read-only, same read switch as WF-02.01, off by default) and the applicant-detail page inside Applicant reviews. Approve and reject stay unmounted. Committed locally on ronald (not pushed). Human Approval pending the owner's review of the finished implementation. |
+| Status | Owner-approved 17 November 2026 (P-01 to P-08; D-37 to D-43, including the protected-file authorization for D-41). Implemented and tested: GET /api/v1/admin/registration-requests/{id}/ (read-only, same read switch as WF-02.01, off by default) and the applicant-detail page inside Applicant reviews. Approve and reject stay unmounted. Committed locally on ronald (5e7a2c6). Human Approval recorded by the owner (Ronald C. Arias, November 17, 2026) after reviewing the finished implementation. |
 
 **Inspection basis:** On 17 November 2026 the owner requested Inspect and Reconcile of WF-02.02 only (no implementation, no WF-02.03). Branch ronald at 94cc3b2 (bbbc8db WF-02.01, 8798e47 shell, 18ce71e and 94cc3b2 visual refinements), 4 commits ahead of origin/ronald. Working tree: the owner's uncommitted WF-02.01 Human Approval line in this catalogue, and untracked owner documents, all preserved. Inspected read-only:
 - Backend: accounts/models.py (Account, UserProfile), registration_staging.py (fields persisted after OTP), serializers.py (RegistrationSerializer), registration_review.py (decision service), registration_review_api.py (WF-02.01 list view, require_actor, ReviewListThrottle), registration_review_urls.py, config/urls.py, access_control/services.py, the release safeguard in init_registration_review_metadata_local_dev.py, catalogue v2_0.json.
@@ -1173,11 +1173,11 @@ Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
 AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Approved   ☒ Implemented   ☒ Tested   ☒ Committed
 
-Checklist scope: Inspected and Reconciled cover the read-only inspection and R-01 to R-14 above. Approved records the owner's 17 November 2026 authorization of P-01 to P-08 with D-37 to D-43 (including the D-41 protected-file authorization); it is not Human Approval. Implemented and Tested cover the files and results under Implementation basis and Evidence level. Committed: one owner-authorized local commit on ronald containing this entry, not pushed. Human Approval stays unchecked until the owner reviews the finished implementation.
+Checklist scope: Inspected and Reconciled cover the read-only inspection and R-01 to R-14 above. Approved records the owner's 17 November 2026 authorization of P-01 to P-08 with D-37 to D-43 (including the D-41 protected-file authorization); it is not Human Approval. Implemented and Tested cover the files and results under Implementation basis and Evidence level. Committed: one owner-authorized local commit on ronald containing this entry, not pushed. Human Approval was recorded by the owner on November 17, 2026 after reviewing the finished implementation.
 
 Blocked by:
 - No development implementation blocker for P-01 to P-08.
-- Human Approval of WF-02.02 awaits the owner's review of the finished implementation.
+- Human Approval recorded by the owner (Ronald C. Arias, November 17, 2026).
 - D-09 (approval eligibility of legacy applicants) and D-12 (instructor eligibility source) stay OPEN for WF-02.03; WF-02.02 only displays evidence.
 - Activation: the same switches as WF-02.01 (WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED=1 for Django, VITE_WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED=1 for the Vite build); production also needs the WF-01.06 production items and governance approval of the Admin read grant in the target database.
 - Remaining, outside this flow: full frontend lint still reports the 2 pre-existing findings (ThemeToggle.tsx:17 error, RegistrationReviewLivePanel.tsx:74 warning). The development database holds 1 Rejected inactive account (WF-02.04 retention review). WF-02.03 is not started.
@@ -1190,7 +1190,7 @@ Evidence level: Code-verified and automated-test verified, 17 November 2026 (bra
 - Dev-server note: React StrictMode runs the first detail read twice in development (the first response is discarded); production sends one request.
 - Not verified: an interactive run against real data (the development database has 0 Pending rows and real records were deliberately not created), Technical Super Admin with a provisioned role outside tests, and production deployment.
 
-Human Approval: ☐ Approved by: ______  Date: ______
+Human Approval: ☒ Approved by: Ronald C. Arias  Date: November 17, 2026
 
 Next flow: WF-02.03. Do not start until Approved is ticked.
 
@@ -3683,6 +3683,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.6 WF-02.02 inspection | 17 November 2026 | Owner requested Inspect and Reconcile of WF-02.02. Filled WF-02.02 in the existing structure (checklist Inspect → Reconcile → Approve → Implement → Test → Commit) with R-01 to R-14, proposals P-01 to P-08, flows, errors and required tests; added D-37 to D-43, the register status and an Appendix B row. Reported, without changing it, that the WF-02.01 Human Approval is ticked in the working copy but uncommitted while its register and change-log rows still say pending. No code, ERD, migration, settings or data change; WF-02.03 not started. | Approval of WF-02.02 pending |
 | 0.3.6 WF-02.01 Human Approval reconciliation | 17 November 2026 | The owner's Human Approval line for WF-02.01 (Ronald C. Arias, November 17,2026), committed by the owner in 5ca1062, was preserved exactly. Reconciled the stale WF-02.01 register row, Status row and Blocked-by line that still said "Human Approval pending"; earlier change-log rows are kept as the historical record. No other WF-02.01 evidence changed. | Human Approval recorded |
 | 0.3.6 WF-02.02 implementation | 17 November 2026 | Owner approved P-01 to P-08 with D-37 to D-43, including the D-41 protected-file authorization. Implemented the GET-only applicant detail, the shared eligibility filter, the narrowed two-route release safeguard and the in-view detail page; added 19 backend, 5 safeguard, 4 unit and 8 browser tests; recorded implementation basis, evidence and decision statuses. Ticked Approved to Committed; Human Approval unchecked pending the owner's review; WF-02.03 not started. | Human Approval of WF-02.02 pending |
+| 0.3.6 WF-02.02 Human Approval | 17 November 2026 | Owner reviewed the finished WF-02.02 and approved it. Recorded Human Approval (Ronald C. Arias, November 17, 2026); updated the register, Status, checklist scope and Blocked-by statements. Implementation, test and commit evidence (5e7a2c6) unchanged. D-09 and D-12 stay OPEN for WF-02.03; WF-02.03 not started. | Human Approval recorded |
 
 ### Workflow ID mapping (old → new)
 

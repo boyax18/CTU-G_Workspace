@@ -1,38 +1,41 @@
 # ratings/views.py
-from django.shortcuts import get_object_or_404
-from rest_framework import generics, status
+from rest_framework import generics
+from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from accounts.permissions import IsStudent
-from .models import RatingPeriod, RatingResult
-from .services import submit_ratings
-from .serializers import SubmitRatingsSerializer, ResultSerializer
+from django.shortcuts import get_object_or_404
 
-class SubmitRatingsView(APIView):
-    permission_classes = [IsStudent]
+from accounts.permissions import IsInstructorOrAdmin
+from classes.scope import visible_classes
+from groups.services import create_group
+from .models import RatingPeriod
+from .serializers import GroupCreateSerializer, RatingPeriodSerializer
+
+
+def visible_periods(user):
+    return RatingPeriod.objects.filter(classroom__in=visible_classes(user))
+
+
+class RatingPeriodListCreateView(generics.ListCreateAPIView):
+    serializer_class = RatingPeriodSerializer
+    permission_classes = [IsInstructorOrAdmin]
+
+    def get_queryset(self):
+        return visible_periods(self.request.user)
+
+    def perform_create(self, serializer):
+        classroom = serializer.validated_data["classroom"]
+        if not visible_classes(self.request.user).filter(pk=classroom.pk).exists():
+            raise NotFound()
+        serializer.save()
+
+
+class GroupCreateView(APIView):
+    permission_classes = [IsInstructorOrAdmin]
 
     def post(self, request, period_id):
-        # Students can only rate sessions they are enrolled in.
-        period = get_object_or_404(
-            RatingPeriod.objects.filter(
-                classroom__enrollments__student=request.user
-            ),
-            pk=period_id,
-        )
-        ser = SubmitRatingsSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
-        submit_ratings(period, request.user, ser.validated_data["scores"])
-        return Response({"detail": "Submitted."}, status=status.HTTP_201_CREATED)
-
-class MyResultView(generics.RetrieveAPIView):
-    """A student sees only their own result, and only after release."""
-    serializer_class = ResultSerializer
-    permission_classes = [IsStudent]
-
-    def get_object(self):
-        return get_object_or_404(
-            RatingResult.objects.select_related("period"),
-            period_id=self.kwargs["period_id"],
-            student=self.request.user,
-            period__status=RatingPeriod.Status.RELEASED,
-        )
+        period = get_object_or_404(visible_periods(request.user), pk=period_id)
+        serializer = GroupCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        group = create_group(period, **serializer.validated_data)
+        return Response({"id": group.id, "name": group.name}, status=201)

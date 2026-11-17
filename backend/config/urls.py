@@ -1,10 +1,10 @@
 # config/urls.py
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 from rest_framework_simplejwt.views import (
+    TokenBlacklistView,
     TokenObtainPairView,
     TokenRefreshView,
-    TokenBlacklistView,
 )
 
 from accounts.views import MeView
@@ -15,4 +15,6 @@ urlpatterns = [
     path("api/auth/refresh/", TokenRefreshView.as_view(), name="refresh"),
     path("api/auth/logout/", TokenBlacklistView.as_view(), name="logout"),
     path("api/auth/me/", MeView.as_view(), name="me"),
+    path("api/classes/", include("classes.urls")),
+    path("api/ratings/", include("ratings.urls")),
 ]

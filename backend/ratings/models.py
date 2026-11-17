@@ -1,6 +1,8 @@
+# ratings/models.py
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+
 
 class RatingPeriod(models.Model):
     class Status(models.TextChoices):
@@ -9,12 +11,17 @@ class RatingPeriod(models.Model):
         CLOSED = "closed", "Closed"
         RELEASED = "released", "Released"
 
-    classroom = models.ForeignKey("classes.Class", on_delete=models.CASCADE,
-                                  related_name="rating_periods")
+    classroom = models.ForeignKey(
+        "classes.Class", on_delete=models.CASCADE, related_name="rating_periods"
+    )
     title = models.CharField(max_length=200)
     deadline = models.DateTimeField()
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
 
 class RatingCriterion(models.Model):
     period = models.ForeignKey(RatingPeriod, on_delete=models.CASCADE, related_name="criteria")
@@ -22,6 +29,7 @@ class RatingCriterion(models.Model):
     description = models.TextField(blank=True)
     weight = models.DecimalField(max_digits=5, decimal_places=2, default=1)
     order = models.PositiveSmallIntegerField(default=0)
+
 
 class RatingSubmission(models.Model):
     period = models.ForeignKey(RatingPeriod, on_delete=models.CASCADE, related_name="submissions")
@@ -37,6 +45,7 @@ class RatingSubmission(models.Model):
     @property
     def is_locked(self):
         return self.submitted_at is not None
+
 
 class RatingScore(models.Model):
     submission = models.ForeignKey(RatingSubmission, on_delete=models.CASCADE,

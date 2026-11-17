@@ -1,5 +1,7 @@
-/** AR-6C7D.2: offline, typed contract matched to the unmounted Django review API. */
+/** AR-6C7D.2 typed contract for the Django review API; WF-02.01 adds the read-only list fields. */
 export type RegistrationReviewRole = 'Student' | 'Instructor';
+export type PendingApplicationProofFilter = 'verified' | 'legacy';
+export type PendingApplicationSort = 'submitted' | '-submitted' | 'school_id' | '-school_id';
 export type RegistrationReviewStatus = 'Approved' | 'Rejected';
 export type RegistrationReviewAction = 'approve' | 'reject';
 export type RegistrationReviewRejectionCode =
@@ -11,14 +13,28 @@ export type RegistrationReviewRejectionCode =
 export interface PendingRegistrationItem {
   account_id: number;
   school_id: string;
+  /** WF-02.01 D-32: registered name from the profile, or null when none was recorded. */
+  full_name: string | null;
   requested_role: RegistrationReviewRole;
   created_at: string;
+  /** WF-02.01 D-34: proof recorded for the address now on file. False is never "verified". */
+  email_verified: boolean;
 }
 
 export interface PendingRegistrationPage {
   results: PendingRegistrationItem[];
   page: number;
   page_size: 20;
+  /** WF-02.01 D-33: the server looked one row ahead; no total count is disclosed. */
+  has_next: boolean;
+}
+
+/** WF-02.01 D-33: server-side search, filters and sort. Omitted values use server defaults. */
+export interface PendingApplicationsQuery {
+  q?: string;
+  role?: RegistrationReviewRole;
+  proof?: PendingApplicationProofFilter;
+  sort?: PendingApplicationSort;
 }
 
 export interface RegistrationReviewDecisionResult {
@@ -44,6 +60,10 @@ export const REGISTRATION_REJECTION_CODES: readonly RegistrationReviewRejectionC
   'duplicate_request',
 ];
 
+export const PENDING_APPLICATION_SORTS: readonly PendingApplicationSort[] = ['submitted', '-submitted', 'school_id', '-school_id'];
+export const PENDING_APPLICATION_SEARCH_MAX = 50;
+const MAX_SEARCH_TERMS = 5;
+const MAX_NAME_LENGTH = 400;
 const MAX_ACCOUNT_ID = 2_147_483_647;
 const PAGE_SIZE = 20;
 const INVALID_RESPONSE = 'The registration review server returned an unexpected response.';
@@ -85,11 +105,49 @@ function isServerTimestamp(value: unknown): value is string {
     && Number.isFinite(Date.parse(value));
 }
 
-/** GET-only plan. Backend accepts only page/status and returns twenty or fewer results. */
-export function buildPendingReviewRequest(root: string, page = 1): PendingReviewRequestPlan {
+/** Trimmed search text the server accepts, or '' for none. Throws for anything else. */
+export function normalizePendingSearch(value: string): string {
+  if (typeof value !== 'string') throw new Error('Search must be text.');
+  const term = value.trim();
+  if (!term) return '';
+  if (term.length > PENDING_APPLICATION_SEARCH_MAX || !/^[\x20-\x7E]+$/.test(term)
+    || term.split(/\s+/).length > MAX_SEARCH_TERMS) {
+    throw new Error(`Use up to ${PENDING_APPLICATION_SEARCH_MAX} letters, digits or punctuation (no accents), in at most ${MAX_SEARCH_TERMS} words.`);
+  }
+  return term;
+}
+
+/** GET-only plan. Backend accepts page/status plus the WF-02.01 q/role/proof/sort fields. */
+export function buildPendingReviewRequest(
+  root: string,
+  page = 1,
+  query: PendingApplicationsQuery = {},
+): PendingReviewRequestPlan {
   const base = validateRoot(root);
   assertPageNumber(page);
-  return { method: 'GET', path: `${base}?page=${page}&status=Pending` };
+  const raw: unknown = query; // callers from plain JS may pass anything
+  if (!isRecord(raw) || Object.keys(raw).some((key) => !['q', 'role', 'proof', 'sort'].includes(key))) {
+    throw new Error('Unsupported pending-application query.');
+  }
+  const params = new URLSearchParams({ page: String(page), status: 'Pending' });
+  if (query.q !== undefined) {
+    const term = normalizePendingSearch(query.q);
+    if (term) params.set('q', term);
+  }
+  if (query.role !== undefined) {
+    if (query.role !== 'Student' && query.role !== 'Instructor') throw new Error('Unsupported requested role.');
+    params.set('role', query.role);
+  }
+  if (query.proof !== undefined) {
+    if (query.proof !== 'verified' && query.proof !== 'legacy') throw new Error('Unsupported email-proof filter.');
+    params.set('proof', query.proof);
+  }
+  if (query.sort !== undefined) {
+    if (!PENDING_APPLICATION_SORTS.includes(query.sort)) throw new Error('Unsupported sort.');
+    params.set('sort', query.sort);
+  }
+  // %20 rather than '+' so the encoding is unambiguous for every server.
+  return { method: 'GET', path: `${base}?${params.toString().replace(/\+/g, '%20')}` };
 }
 
 /** Plans exactly the existing approve/reject relative paths; never sends a request. */
@@ -114,13 +172,14 @@ export function buildReviewDecisionRequest(
   throw new Error('Unsupported registration review action.');
 }
 
-/** Strict server-response parser: no status, email, names, tokens or hashes in list data. */
+/** Strict server-response parser: no email, tokens or hashes in list data; any extra field is refused. */
 export function parsePendingRegistrationPage(value: unknown): PendingRegistrationPage {
-  if (!isRecord(value) || !hasExactKeys(value, ['results', 'page', 'page_size'])) {
+  if (!isRecord(value) || !hasExactKeys(value, ['results', 'page', 'page_size', 'has_next'])) {
     throw new Error(INVALID_RESPONSE);
   }
-  const { results, page, page_size: pageSize } = value;
-  if (!Array.isArray(results) || results.length > PAGE_SIZE || pageSize !== PAGE_SIZE) {
+  const { results, page, page_size: pageSize, has_next: hasNext } = value;
+  if (!Array.isArray(results) || results.length > PAGE_SIZE || pageSize !== PAGE_SIZE
+    || typeof hasNext !== 'boolean' || (hasNext && results.length !== PAGE_SIZE)) {
     throw new Error(INVALID_RESPONSE);
   }
   try {
@@ -130,11 +189,15 @@ export function parsePendingRegistrationPage(value: unknown): PendingRegistratio
   }
   const seen = new Set<number>();
   const items: PendingRegistrationItem[] = results.map((item: unknown) => {
-    if (!isRecord(item) || !hasExactKeys(item, ['account_id', 'school_id', 'requested_role', 'created_at'])
+    if (!isRecord(item)
+      || !hasExactKeys(item, ['account_id', 'school_id', 'full_name', 'requested_role', 'created_at', 'email_verified'])
       || !isAccountId(item.account_id)
       || typeof item.school_id !== 'string' || item.school_id.length < 1 || item.school_id.length > 50
+      || !(item.full_name === null || (typeof item.full_name === 'string'
+        && item.full_name.length >= 1 && item.full_name.length <= MAX_NAME_LENGTH))
       || typeof item.requested_role !== 'string' || !['Student', 'Instructor'].includes(item.requested_role)
       || !isServerTimestamp(item.created_at)
+      || typeof item.email_verified !== 'boolean'
       || seen.has(item.account_id)) {
       throw new Error(INVALID_RESPONSE);
     }
@@ -142,11 +205,13 @@ export function parsePendingRegistrationPage(value: unknown): PendingRegistratio
     return {
       account_id: item.account_id,
       school_id: item.school_id,
+      full_name: item.full_name as string | null,
       requested_role: item.requested_role as RegistrationReviewRole,
       created_at: item.created_at,
+      email_verified: item.email_verified,
     };
   });
-  return { results: items, page: page as number, page_size: PAGE_SIZE };
+  return { results: items, page: page as number, page_size: PAGE_SIZE, has_next: hasNext };
 }
 
 /** Server confirms one exact account ID and one expected decision; no optimistic success. */

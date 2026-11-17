@@ -3,6 +3,8 @@
  * Permission codes are backend-provided, point-in-time hints, never authority.
  * Module destinations intentionally render a safe placeholder until approved APIs exist.
  */
+import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig.ts';
+
 export type DashboardView =
   | 'overview'
   | 'account'
@@ -30,7 +32,9 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
   { id: 'account', label: 'My account', icon: 'user', section: 'workspace', integration: 'shell' },
   {
     id: 'registration-review', label: 'Registration review', icon: 'users', section: 'modules',
-    requiredAny: ['accounts.registration_requests.read'], integration: 'planned',
+    requiredAny: ['accounts.registration_requests.read'],
+    // WF-02.01: live (read-only) only when the list switch is on; Django still decides access.
+    integration: PENDING_APPLICATIONS_LIST_ENABLED ? 'shell' : 'planned',
   },
   {
     id: 'finance', label: 'Finance & payments', icon: 'wallet', section: 'modules',

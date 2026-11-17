@@ -24,8 +24,8 @@ const read = 'accounts.registration_requests.read';
 const approve = 'accounts.registration_requests.approve';
 const reject = 'accounts.registration_requests.reject';
 const records = [
-  { account_id: 9101, school_id: 'CTU-100', requested_role: 'Student', created_at: '2026-11-12T10:00:00+08:00' },
-  { account_id: 9102, school_id: 'CTU-200', requested_role: 'Instructor', created_at: '2026-11-12T10:00:00+08:00' },
+  { account_id: 9101, school_id: 'CTU-100', full_name: 'Ana Reyes', requested_role: 'Student', created_at: '2026-11-12T10:00:00+08:00', email_verified: true },
+  { account_id: 9102, school_id: 'CTU-200', full_name: null, requested_role: 'Instructor', created_at: '2026-11-12T10:00:00+08:00', email_verified: false },
 ];
 
 test('live API gate stays disabled and approved route remains unset', () => {
@@ -33,20 +33,19 @@ test('live API gate stays disabled and approved route remains unset', () => {
   assert.equal(REGISTRATION_REVIEW_APPROVED_ROUTE_ROOT, null);
 });
 
-test('panel hides from non-Admin role even when read hint is present', () => {
-  assert.equal(model.mayShowReviewPanel(['Student'], [read], true), false);
-  assert.equal(model.mayShowReviewPanel(['Instructor'], [read, approve], true), false);
+// WF-02.01 R-10: presentation follows the exact permission hint only; role names are never consulted.
+// Django still requires the Admin assignment and the effective permission on every request.
+test('panel follows only the exact read hint and the gate, never a role name', () => {
+  assert.equal(model.mayShowReviewPanel.length, 2);
+  assert.equal(model.mayShowReviewPanel([], true), false);
+  assert.equal(model.mayShowReviewPanel(['Admin'], true), false);
+  assert.equal(model.mayShowReviewPanel([approve, reject], true), false);
+  assert.equal(model.mayShowReviewPanel([read], false), false);
+  assert.equal(model.mayShowReviewPanel([read], true), true);
 });
 
-test('panel requires both Admin assignment hint and exact read hint', () => {
-  assert.equal(model.mayShowReviewPanel(['Admin'], [], true), false);
-  assert.equal(model.mayShowReviewPanel([], [read], true), false);
-  assert.equal(model.mayShowReviewPanel(['Admin'], [read], false), false);
-  assert.equal(model.mayShowReviewPanel(['Admin'], [read], true), true);
-});
-
-test('multi-role session includes Admin without implying extra privileges', () => {
-  assert.equal(model.mayShowReviewPanel(['Student', 'Admin'], [read], true), true);
+test('a read hint never implies decision privileges', () => {
+  assert.equal(model.mayShowReviewPanel([read], true), true);
   assert.equal(model.mayShowDecision([read], 'approve'), false);
 });
 

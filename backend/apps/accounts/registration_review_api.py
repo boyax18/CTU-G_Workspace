@@ -1,14 +1,20 @@
-"""AR-6C1 draft API: disabled by default, not registered in config.urls.
+"""Registration review API: every view is disabled by default.
 
-Requires TWO separately approved feature gates before any request proceeds:
-WORKSPACE_REGISTRATION_REVIEW_API_ENABLED and WORKSPACE_REGISTRATION_APPROVAL_ENABLED.
-Do not enable the gates or register routes until institutional governance approval.
+Decisions (approve/reject, WF-02.03/02.04) are not registered in config.urls and require
+TWO separately approved feature gates: WORKSPACE_REGISTRATION_REVIEW_API_ENABLED and
+WORKSPACE_REGISTRATION_APPROVAL_ENABLED.
+
+WF-02.01 (D-31): only the read-only pending list is mounted in config.urls, behind its own
+WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED gate (default off). The list gate never opens a
+decision view. The isolated review URLconfs keep their existing two-gate behavior.
 """
 
 from django.conf import settings
 from django.contrib.auth import get_user
-from django.core.exceptions import RequestDataTooBig
-from django.db.models import Exists, OuterRef
+from django.core.exceptions import ObjectDoesNotExist, RequestDataTooBig
+from django.db import DatabaseError
+from django.db.models import BooleanField, Case, Exists, F, OuterRef, Q, Value, When
+from django.db.models.functions import Lower
 from rest_framework import exceptions, status
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
@@ -49,16 +55,42 @@ class ReviewBurstThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": address}
 
 
+class ReviewListThrottle(SimpleRateThrottle):
+    """WF-02.01 D-36: listing has its own 60/min budget per signed-in account.
+
+    Decisions keep ReviewBurstThrottle. Anonymous callers (refused with 401 later)
+    fall back to the socket address; forwarding headers are never trusted.
+    """
+
+    scope = "workspace_review_list"
+    rate = "60/min"
+
+    def get_cache_key(self, request, view):
+        # DRF marks request.user anonymous here (authentication_classes=[]), so read the
+        # session exactly as require_actor does. This identifies; it never authorizes.
+        user = get_user(request._request)
+        account_id = getattr(user, "pk", None) if isinstance(user, Account) else None
+        ident = f"account:{account_id}" if type(account_id) is int else "address:" + request.META.get("REMOTE_ADDR", "unknown")
+        return self.cache_format % {"scope": self.scope, "ident": ident}
+
+
+def _decision_gates_open():
+    return bool(
+        getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_API_ENABLED", False)
+        and getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False)
+    )
+
+
 class RegistrationReviewAPI(WorkspaceSessionAPI):
     """Inherit explicit CSRF, bounded JSON parser and no-store headers."""
 
     throttle_classes = [ReviewBurstThrottle]
 
+    def review_gate_open(self):
+        return _decision_gates_open()
+
     def initial(self, request, *args, **kwargs):
-        if not (
-            getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_API_ENABLED", False)
-            and getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False)
-        ):
+        if not self.review_gate_open():
             raise ReviewAPIUnavailable()
         super().initial(request, *args, **kwargs)
 
@@ -67,7 +99,8 @@ class RegistrationReviewAPI(WorkspaceSessionAPI):
         # target are intentionally indistinguishable to the caller.
         if isinstance(exc, RegistrationReviewDenied):
             return Response({"error": {"code": "request_unavailable", "message": "Registration request is unavailable."}}, status=404)
-        if isinstance(exc, (RegistrationReviewUnavailable, WriterBoundaryUnavailable)):
+        if isinstance(exc, (RegistrationReviewUnavailable, WriterBoundaryUnavailable, DatabaseError)):
+            # WF-02.01 R-13: a database failure is a review outage, never an auth result.
             return Response({"error": {"code": "review_unavailable", "message": "Registration review is unavailable."}}, status=503)
         if isinstance(exc, RequestDataTooBig):
             exc = exceptions.ParseError("Request body too large.")
@@ -113,49 +146,141 @@ class RegistrationReviewAPI(WorkspaceSessionAPI):
         return actor
 
 
+PAGE_SIZE = 20
+LIST_QUERY_FIELDS = frozenset({"page", "status", "q", "role", "proof", "sort"})
+LIST_ROLES = frozenset({"Student", "Instructor"})
+LIST_PROOF = frozenset({"verified", "legacy"})
+# Stable orderings; account_id breaks ties so pages never overlap or skip rows.
+LIST_SORTS = {
+    "submitted": ("created_at", "account_id"),
+    "-submitted": ("-created_at", "-account_id"),
+    "school_id": ("school_id", "account_id"),
+    "-school_id": ("-school_id", "-account_id"),
+}
+MAX_SEARCH_LENGTH = 50
+MAX_SEARCH_TERMS = 5
+NAME_FIELDS = ("first_name", "middle_name", "last_name", "suffix")
+
+
+def _single(params, name, default=None):
+    values = params.getlist(name)
+    if len(values) > 1:
+        raise exceptions.ValidationError("Repeated query field.")
+    return values[0] if values else default
+
+
+def _search_terms(raw):
+    if raw is None:
+        return ()
+    term = raw.strip()
+    # Printable ASCII only: School IDs and the current registration name fields.
+    if not 1 <= len(term) <= MAX_SEARCH_LENGTH or not all(" " <= ch <= "~" for ch in term):
+        raise exceptions.ValidationError("Invalid search.")
+    terms = term.split()
+    if len(terms) > MAX_SEARCH_TERMS:
+        raise exceptions.ValidationError("Invalid search.")
+    return tuple(terms)
+
+
+def _full_name(account):
+    try:
+        profile = account.profile
+    except ObjectDoesNotExist:
+        return None
+    parts = [getattr(profile, field) for field in NAME_FIELDS]
+    name = " ".join(part.strip() for part in parts if isinstance(part, str) and part.strip())
+    return name or None
+
+
 class PendingRegistrationRequestsView(RegistrationReviewAPI):
+    """WF-02.01: read-only list of eligible Pending Student/Instructor applications."""
+
     http_method_names = ["get", "head", "options"]
+    throttle_classes = [ReviewListThrottle]
+
+    def review_gate_open(self):
+        # D-31: the independent list gate, or the isolated review configs' existing pair.
+        return bool(getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", False)) or _decision_gates_open()
 
     def get(self, request):
         actor = self.require_actor(request, READ_CODE)
-        if set(request.query_params) - {"page", "status"}:
+        params = request.query_params
+        if set(params) - LIST_QUERY_FIELDS:
             raise exceptions.ValidationError("Unsupported query fields.")
-        if request.query_params.get("status", "Pending") != "Pending":
+        if _single(params, "status", "Pending") != "Pending":
             raise exceptions.ValidationError("Only Pending may be listed.")
-        page_text = request.query_params.get("page", "1")
+        page_text = _single(params, "page", "1")
         if not page_text.isascii() or not page_text.isdecimal():
             raise exceptions.ValidationError("Invalid page.")
         page = int(page_text)
         if not 1 <= page <= 10000:
             raise exceptions.ValidationError("Invalid page.")
+        terms = _search_terms(_single(params, "q"))
+        role = _single(params, "role")
+        if role is not None and role not in LIST_ROLES:
+            raise exceptions.ValidationError("Invalid role.")
+        proof = _single(params, "proof")
+        if proof is not None and proof not in LIST_PROOF:
+            raise exceptions.ValidationError("Invalid proof filter.")
+        sort = _single(params, "sort", "submitted")
+        if sort not in LIST_SORTS:
+            raise exceptions.ValidationError("Invalid sort.")
+
         # Current ERD is single-campus; do not invent tenant/campus scope.
-        # Exclude assigned, previously reviewed and privileged accounts.
+        # Exclude assigned, previously reviewed and privileged accounts (D-35).
         assigned = AccountRole.objects.filter(account_id=OuterRef("pk"))
         qs = (Account.objects
             .filter(
                 request_status="Pending", is_active=False,
                 is_staff=False, is_superuser=False,
-                requested_role__role_name__in=("Student", "Instructor"),
+                requested_role__role_name__in=tuple(LIST_ROLES),
                 requested_role__is_active=True,
                 reviewed_by__isnull=True, reviewed_at__isnull=True,
             )
             .exclude(pk=actor.pk)
-            .filter(~Exists(assigned))
-            .select_related("requested_role")
-            .order_by("account_id"))
-        page_size = 20
-        start = (page - 1) * page_size
-        # Minimum proposed fields; no email, hashes or reset tokens.
+            .filter(~Exists(assigned)))
+        if role is not None:
+            qs = qs.filter(requested_role__role_name=role)
+        for term in terms:
+            # ORM lookups escape % and _; every term must match somewhere.
+            match = Q(school_id__istartswith=term)
+            for field in NAME_FIELDS:
+                match |= Q(**{f"profile__{field}__icontains": term})
+            qs = qs.filter(match)
+        # D-34: proof counts only when it was recorded for the address now on file.
+        qs = qs.annotate(_email_lower=Lower("email"), _proof_lower=Lower("email_verified_address")).annotate(
+            email_verified=Case(
+                When(
+                    Q(email__isnull=False, email_verified_at__isnull=False,
+                      email_verified_address__isnull=False, _email_lower=F("_proof_lower")),
+                    then=Value(True),
+                ),
+                default=Value(False),
+                output_field=BooleanField(),
+            ),
+        )
+        if proof is not None:
+            qs = qs.filter(email_verified=(proof == "verified"))
+        qs = qs.select_related("requested_role", "profile").order_by(*LIST_SORTS[sort])
+
+        start = (page - 1) * PAGE_SIZE
+        rows = list(qs[start:start + PAGE_SIZE + 1])
+        # D-32: permitted fields only; no email address, hashes, tokens or reviewer data.
         results = [
             {
                 "account_id": account.pk,
                 "school_id": account.school_id,
+                "full_name": _full_name(account),
                 "requested_role": account.requested_role.role_name,
                 "created_at": account.created_at.isoformat(),
+                "email_verified": bool(account.email_verified),
             }
-            for account in qs[start:start + page_size]
+            for account in rows[:PAGE_SIZE]
         ]
-        return Response({"results": results, "page": page, "page_size": page_size})
+        return Response({
+            "results": results, "page": page, "page_size": PAGE_SIZE,
+            "has_next": len(rows) > PAGE_SIZE,
+        })
 
 
 class ApproveRegistrationRequestView(RegistrationReviewAPI):

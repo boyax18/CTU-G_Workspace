@@ -32,13 +32,12 @@ type FetchState =
 type PendingDecision = { item: PendingRegistrationItem; action: RegistrationReviewAction };
 
 interface Props {
-  roles: readonly string[];
   permissions: readonly string[];
 }
 
 /** Hard-disabled in current builds; no hooks or network calls in the disabled branch. */
-export default function RegistrationReviewLivePanel({ roles, permissions }: Props) {
-  if (!mayShowReviewPanel(roles, permissions, REGISTRATION_REVIEW_LIVE_API_ENABLED)
+export default function RegistrationReviewLivePanel({ permissions }: Props) {
+  if (!mayShowReviewPanel(permissions, REGISTRATION_REVIEW_LIVE_API_ENABLED)
     || !REGISTRATION_REVIEW_APPROVED_ROUTE_ROOT) {
     return (
       <section role="status" className="dashboard-panel rounded-2xl border p-6">
@@ -184,7 +183,7 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
         <div className="mt-4 flex items-center justify-between border-t pt-3 text-sm">
           <button type="button" disabled={page <= 1 || submitting} className="rounded-lg border px-3 py-2 disabled:opacity-40" onClick={() => { setPage((p) => p - 1); setSelection(null); setListing({ status: 'loading' }); }}>Previous</button>
           <span className="dashboard-muted">Page {page}</span>
-          <button type="button" disabled={listing.status !== 'ready' || rows.length < 20 || submitting || page >= 10000} className="rounded-lg border px-3 py-2 disabled:opacity-40" onClick={() => { setPage((p) => p + 1); setSelection(null); setListing({ status: 'loading' }); }}>Next</button>
+          <button type="button" disabled={listing.status !== 'ready' || !listing.data.has_next || submitting || page >= 10000} className="rounded-lg border px-3 py-2 disabled:opacity-40" onClick={() => { setPage((p) => p + 1); setSelection(null); setListing({ status: 'loading' }); }}>Next</button>
         </div>
       </div>
 

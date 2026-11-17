@@ -36,11 +36,14 @@ const example = () => ({
   results: [{
     account_id: 910001,
     school_id: '9900001',
+    full_name: 'Fictional Applicant',
     requested_role: 'Student',
     created_at: '2026-11-10T09:15:00+08:00',
+    email_verified: false,
   }],
   page: 1,
   page_size: 20,
+  has_next: false,
 });
 
 // Response payloads are supplied by fake data, not by HTTP.
@@ -50,8 +53,8 @@ test('parses the exact minimal pending-list envelope', () => {
 });
 
 test('allows empty pages without inventing a total count', () => {
-  assert.deepEqual(parsePendingRegistrationPage({ results: [], page: 100, page_size: 20 }), {
-    results: [], page: 100, page_size: 20,
+  assert.deepEqual(parsePendingRegistrationPage({ results: [], page: 100, page_size: 20, has_next: false }), {
+    results: [], page: 100, page_size: 20, has_next: false,
   });
 });
 
@@ -219,4 +222,93 @@ test('mock UI and dashboard are not modified or coupled to real client', () => {
   assert.doesNotMatch(dashboard, /registrationReviewApi(?:Contract)?['".]/);
   const gate = readFileSync(new URL('../src/features/admin/registrationReviewPreviewGate.ts', import.meta.url), 'utf8');
   assert.match(gate, /= false;/);
+});
+
+// ---- WF-02.01 View pending applications (P-07) ----
+const { PENDING_APPLICATIONS_LIST_ENABLED, PENDING_APPLICATIONS_ROUTE_ROOT } = await import('../src/features/admin/pendingApplicationsConfig.ts');
+const LIST_ROOT = '/api/v1/admin/registration-requests/';
+
+test('WF-02.01 list switch is off by default and targets the one mounted route', () => {
+  assert.equal(PENDING_APPLICATIONS_LIST_ENABLED, false);
+  assert.equal(PENDING_APPLICATIONS_ROUTE_ROOT, LIST_ROOT);
+});
+
+test('WF-02.01 query builder sends only validated server-side search, filters and sort', () => {
+  assert.deepEqual(buildPendingReviewRequest(LIST_ROOT, 1, {}), { method: 'GET', path: `${LIST_ROOT}?page=1&status=Pending` });
+  assert.deepEqual(
+    buildPendingReviewRequest(LIST_ROOT, 3, { q: '  maria santos ', role: 'Instructor', proof: 'legacy', sort: '-submitted' }),
+    { method: 'GET', path: `${LIST_ROOT}?page=3&status=Pending&q=maria%20santos&role=Instructor&proof=legacy&sort=-submitted` },
+  );
+  assert.equal(buildPendingReviewRequest(LIST_ROOT, 1, { q: '   ' }).path, `${LIST_ROOT}?page=1&status=Pending`);
+  assert.match(buildPendingReviewRequest(LIST_ROOT, 1, { q: '50%_&x=1' }).path, /q=50%25_%26x%3D1$/);
+});
+
+test('WF-02.01 query builder refuses malformed or unsupported values before any request', () => {
+  for (const query of [
+    { q: '1'.repeat(51) }, { q: 'Ñame' }, { q: 'a\nb' }, { q: 'a b c d e f' },
+    { role: 'Admin' }, { role: 'student' }, { proof: 'yes' }, { sort: 'created_at' },
+    { status: 'Approved' }, { page: 2 }, null, [],
+  ]) {
+    assert.throws(() => buildPendingReviewRequest(LIST_ROOT, 1, query), undefined, JSON.stringify(query));
+  }
+  assert.equal(contract.normalizePendingSearch('  7240  '), '7240');
+  assert.equal(contract.normalizePendingSearch(''), '');
+});
+
+test('WF-02.01 parser requires an accurate has_next and typed name/proof fields', () => {
+  const full = (overrides = {}) => ({
+    ...example(),
+    results: Array.from({ length: 20 }, (_, i) => ({ ...example().results[0], account_id: 1000 + i })),
+    has_next: true,
+    ...overrides,
+  });
+  assert.equal(parsePendingRegistrationPage(full()).has_next, true);
+  assert.throws(() => parsePendingRegistrationPage({ ...example(), has_next: true }), undefined, 'has_next with a short page');
+  for (const hasNext of [undefined, 'false', 0, null]) {
+    const payload = { ...example(), has_next: hasNext };
+    if (hasNext === undefined) delete payload.has_next;
+    assert.throws(() => parsePendingRegistrationPage(payload));
+  }
+  for (const patch of [
+    { email_verified: 'true' }, { email_verified: 1 }, { email_verified: undefined },
+    { full_name: '' }, { full_name: 42 }, { full_name: 'x'.repeat(401) },
+  ]) {
+    const payload = example();
+    Object.assign(payload.results[0], patch);
+    if ('email_verified' in patch && patch.email_verified === undefined) delete payload.results[0].email_verified;
+    assert.throws(() => parsePendingRegistrationPage(payload), undefined, JSON.stringify(patch));
+  }
+  const nameless = example();
+  nameless.results[0].full_name = null;
+  assert.equal(parsePendingRegistrationPage(nameless).results[0].full_name, null);
+});
+
+test('WF-02.01 list client refuses without ANY request while switched off', async () => {
+  let called = 0;
+  const before = globalThis.fetch;
+  globalThis.fetch = async () => { called += 1; throw new Error('Should never be called'); };
+  try {
+    await assert.rejects(api.listPendingApplications(1, { q: 'x' }), (error) => error.code === 'review_unavailable' && error.status === 503);
+    assert.equal(called, 0);
+  } finally {
+    globalThis.fetch = before;
+  }
+});
+
+test('WF-02.01 list client, when enabled, issues exactly one GET and never a write', async () => {
+  const calls = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (path, init) => {
+    calls.push({ path, method: init.method, credentials: init.credentials, cache: init.cache });
+    return { ok: true, status: 200, json: async () => example() };
+  };
+  try {
+    const page = await api.listPendingApplications(2, { role: 'Student' }, true);
+    assert.equal(page.results[0].school_id, '9900001');
+  } finally {
+    globalThis.fetch = before;
+  }
+  assert.deepEqual(calls, [{
+    path: `${LIST_ROOT}?page=2&status=Pending&role=Student`, method: 'GET', credentials: 'same-origin', cache: 'no-store',
+  }]);
 });

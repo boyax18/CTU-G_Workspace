@@ -7,6 +7,8 @@ import {
 import DashboardIcon from '../../components/dashboard/DashboardIcon';
 import RegistrationReviewLivePanel from '../admin/RegistrationReviewLivePanel';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from '../admin/registrationReviewApiGate';
+import PendingApplicationsPanel from '../admin/PendingApplicationsPanel';
+import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig';
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
@@ -56,7 +58,12 @@ export default function SessionDashboardPage() {
 
   // AR-6C7E.1: only visible after independently approved frontend/backend activation.
   if (view === 'registration-review' && REGISTRATION_REVIEW_LIVE_API_ENABLED) {
-    return <RegistrationReviewLivePanel roles={account.roles} permissions={permissions} />;
+    return <RegistrationReviewLivePanel permissions={permissions} />;
+  }
+
+  // WF-02.01 (D-31): read-only pending applications; Django rechecks every request.
+  if (view === 'registration-review' && PENDING_APPLICATIONS_LIST_ENABLED) {
+    return <PendingApplicationsPanel />;
   }
 
   if (view !== 'overview') {

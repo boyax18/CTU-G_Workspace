@@ -9,7 +9,7 @@ from django.core.management.base import CommandError
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from config.review_sandbox_middleware import LoopbackOnlyMiddleware
-from django.urls import NoReverseMatch, reverse
+from django.urls import NoReverseMatch, resolve, reverse
 
 from apps.accounts.management.commands import seed_review_sandbox
 
@@ -35,8 +35,22 @@ class ReviewSandboxSafetyTests(SimpleTestCase):
         self.assertEqual(cfg.EMAIL_BACKEND, "django.core.mail.backends.locmem.EmailBackend")
 
     def test_original_registration_review_url_not_mounted(self):
-        with self.assertRaises(NoReverseMatch):
-            reverse("registration-review-pending")
+        # WF-02.01 (Option A, owner-authorized 17 Nov 2026): the original URLconf mounts only the
+        # GET-only pending list; every decision route stays unmounted outside the sandbox.
+        from apps.access_control.management.commands.init_registration_review_metadata_local_dev import (
+            unexpected_review_routes,
+        )
+        from apps.accounts.registration_review_api import PendingRegistrationRequestsView
+
+        self.assertEqual(reverse("registration-review-pending"), "/api/v1/admin/registration-requests/")
+        match = resolve("/api/v1/admin/registration-requests/")
+        self.assertIs(match.func.view_class, PendingRegistrationRequestsView)
+        self.assertEqual(match.func.view_class.http_method_names, ["get", "head", "options"])
+        for name in ("registration-review-approve", "registration-review-reject", "bulk-registration-review"):
+            with self.subTest(name=name), self.assertRaises(NoReverseMatch):
+                reverse(name, kwargs={"account_id": 1} if "bulk" not in name else None)
+        self.assertEqual(unexpected_review_routes("config.urls"), [])
+        self.assertNotEqual(unexpected_review_routes("config.review_sandbox_urls"), [])
         with override_settings(ROOT_URLCONF="config.review_sandbox_urls"):
             self.assertEqual(
                 reverse("registration-review-pending"),

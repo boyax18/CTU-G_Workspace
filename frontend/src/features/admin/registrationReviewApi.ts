@@ -10,11 +10,13 @@ import {
   parseRegistrationReviewError,
 } from './registrationReviewApiContract.ts';
 import type {
+  PendingApplicationsQuery,
   PendingRegistrationPage,
   RegistrationReviewDecisionResult,
   RegistrationReviewRejectionCode,
 } from './registrationReviewApiContract.ts';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from './registrationReviewApiGate.ts';
+import { PENDING_APPLICATIONS_LIST_ENABLED, PENDING_APPLICATIONS_ROUTE_ROOT } from './pendingApplicationsConfig.ts';
 import { notifyAuthenticationRequired } from '../../utils/sessionSignals.ts';
 
 function requireApprovedActivation(): void {
@@ -58,6 +60,18 @@ export async function listPendingRegistrationRequests(
 ): Promise<PendingRegistrationPage> {
   requireApprovedActivation(); // MUST remain first: no fetch, CSRF request or path access while disabled.
   const plan = buildPendingReviewRequest(approvedRouteRoot, page);
+  return parsePendingRegistrationPage(await getReviewJSON(plan.path));
+}
+
+/** WF-02.01: read-only list on the one mounted route. Its own gate; never the decision gate. */
+export async function listPendingApplications(
+  page = 1,
+  query: PendingApplicationsQuery = {},
+  enabled: boolean = PENDING_APPLICATIONS_LIST_ENABLED,
+): Promise<PendingRegistrationPage> {
+  // MUST remain first: no fetch or path access while the list is switched off.
+  if (!enabled) throw new ApiError('Pending applications are not activated.', 503, 'review_unavailable');
+  const plan = buildPendingReviewRequest(PENDING_APPLICATIONS_ROUTE_ROOT, page, query);
   return parsePendingRegistrationPage(await getReviewJSON(plan.path));
 }
 

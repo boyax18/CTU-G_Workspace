@@ -113,12 +113,14 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertIn("no-store", response["Cache-Control"])
         self.assertTrue(response["Content-Type"].startswith("application/json"))
         payload = response.json()
-        self.assertEqual(set(payload), {"results", "page", "page_size"})
+        self.assertEqual(set(payload), {"results", "page", "page_size", "has_next"})  # WF-02.01 D-33
+        self.assertIs(payload["has_next"], False)
         self.assertEqual(payload["page"], 1)
         self.assertEqual(payload["page_size"], 20)
         self.assertEqual(len(payload["results"]), 1)
         item = payload["results"][0]
-        self.assertEqual(set(item), {"account_id", "school_id", "requested_role", "created_at"})
+        # WF-02.01 D-32: name and proof state added; still no email address.
+        self.assertEqual(set(item), {"account_id", "school_id", "full_name", "requested_role", "created_at", "email_verified"})
         self.assertEqual(item["account_id"], self.pending.pk)
         self.assertEqual(item["school_id"], "P4-CONTRACT-PENDING")
         self.assertEqual(item["requested_role"], "Student")
@@ -138,7 +140,9 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertEqual(len(first["results"]), 20)
         self.assertEqual(len(second["results"]), 1)
         self.assertEqual(second["page_size"], 20)
-        self.assertEqual(third, {"results": [], "page": 3, "page_size": 20})
+        self.assertIs(first["has_next"], True)
+        self.assertIs(second["has_next"], False)
+        self.assertEqual(third, {"results": [], "page": 3, "page_size": 20, "has_next": False})
         self.assertEqual(len({row["account_id"] for row in first["results"] + second["results"]}), 21)
 
     def test_pending_list_rejects_unsupported_filters_and_pages(self):

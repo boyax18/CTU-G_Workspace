@@ -180,7 +180,7 @@ class RegistrationReviewAPITests(TestCase):
         )
         self.assertEqual(
             set(response.json()["results"][0]),
-            {"account_id", "school_id", "requested_role", "created_at"},
+            {"account_id", "school_id", "full_name", "requested_role", "created_at", "email_verified"},
         )
         self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(self.client.get("/?page=0").status_code, 400)

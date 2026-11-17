@@ -17,7 +17,16 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from apps.accounts.registration_review_api import PendingRegistrationRequestsView
+
 urlpatterns = [
     path('api/v1/auth/', include('apps.accounts.urls')),
+    # WF-02.01 (D-31): ONLY the read-only list is mounted, behind its own gate (default off).
+    # Approve/reject (WF-02.03/02.04) remain unmounted; never include the isolated review URLconf here.
+    path(
+        'api/v1/admin/registration-requests/',
+        PendingRegistrationRequestsView.as_view(),
+        name='registration-review-pending',
+    ),
     path('admin/', admin.site.urls),
 ]

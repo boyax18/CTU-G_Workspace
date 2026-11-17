@@ -111,11 +111,23 @@ class ActivationRecoveryExerciseTests(TransactionTestCase):
         self.run_exercise()
         self.assertIs(getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False), False)
         self.assertIs(getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_API_ENABLED", False), False)
-        with self.assertRaises(NoReverseMatch):
-            reverse("registration-review-pending")
+        # WF-02.01 Option A (owner-authorized 17 Nov 2026): only the approved GET-only list may be
+        # mounted; every decision route stays unresolvable.
+        self.assertEqual(p1.unexpected_review_routes(), [])
+        for name, kwargs in (("registration-review-approve", {"account_id": 1}),
+                             ("registration-review-reject", {"account_id": 1}),
+                             ("bulk-registration-review", None)):
+            with self.subTest(route=name), self.assertRaises(NoReverseMatch):
+                reverse(name, kwargs=kwargs)
         self.run_exercise("compensate")
-        with self.assertRaises(NoReverseMatch):
-            reverse("registration-review-pending")
+        # WF-02.01 Option A (owner-authorized 17 Nov 2026): only the approved GET-only list may be
+        # mounted; every decision route stays unresolvable.
+        self.assertEqual(p1.unexpected_review_routes(), [])
+        for name, kwargs in (("registration-review-approve", {"account_id": 1}),
+                             ("registration-review-reject", {"account_id": 1}),
+                             ("bulk-registration-review", None)):
+            with self.subTest(route=name), self.assertRaises(NoReverseMatch):
+                reverse(name, kwargs=kwargs)
 
     def test_no_implicit_run(self):
         self.prepare()
@@ -333,8 +345,14 @@ class ActivationRecoveryExerciseTests(TransactionTestCase):
         self.prepare()
         self.run_exercise()
         self.assertEqual(Account.objects.filter(request_status="Pending").count(), 0)
-        with self.assertRaises(NoReverseMatch):
-            reverse("registration-review-pending")
+        # WF-02.01 Option A (owner-authorized 17 Nov 2026): only the approved GET-only list may be
+        # mounted; every decision route stays unresolvable.
+        self.assertEqual(p1.unexpected_review_routes(), [])
+        for name, kwargs in (("registration-review-approve", {"account_id": 1}),
+                             ("registration-review-reject", {"account_id": 1}),
+                             ("bulk-registration-review", None)):
+            with self.subTest(route=name), self.assertRaises(NoReverseMatch):
+                reverse(name, kwargs=kwargs)
         self.assertEqual(AccountRole.objects.filter(role=self.student_role).count(), 1)
         self.assertEqual(AccountRole.objects.filter(role=self.instructor_role).count(), 1)
 

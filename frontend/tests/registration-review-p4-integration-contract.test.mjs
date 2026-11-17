@@ -31,8 +31,10 @@ const ROUTE = '/api/v1/registration-requests/';
 const record = {
   account_id: 840001,
   school_id: 'P4-TEST-STUDENT',
+  full_name: 'Test Applicant',
   requested_role: 'Student',
   created_at: '2026-11-12T10:30:00+08:00',
+  email_verified: true,
 };
 function response(status, body) {
   return { status, ok: status >= 200 && status < 300, json: async () => body };
@@ -46,11 +48,11 @@ async function withFakeFetch(fake, body) {
 }
 
 test('Django pending list envelope is accepted without exposing private account fields', () => {
-  const result = contract.parsePendingRegistrationPage({ results: [record], page: 1, page_size: 20 });
+  const result = contract.parsePendingRegistrationPage({ results: [record], page: 1, page_size: 20, has_next: false });
   assert.deepEqual(result.results[0], record);
   assert.equal(result.page_size, 20);
   assert.throws(() => contract.parsePendingRegistrationPage({
-    results: [{ ...record, email: 'private@example.invalid' }], page: 1, page_size: 20,
+    results: [{ ...record, email: 'private@example.invalid' }], page: 1, page_size: 20, has_next: false,
   }));
 });
 
@@ -58,8 +60,8 @@ test('Django page 2 / empty page contract and approved Pending-only query match 
   assert.deepEqual(contract.buildPendingReviewRequest(ROUTE, 2), {
     method: 'GET', path: `${ROUTE}?page=2&status=Pending`,
   });
-  assert.deepEqual(contract.parsePendingRegistrationPage({ results: [], page: 3, page_size: 20 }), {
-    results: [], page: 3, page_size: 20,
+  assert.deepEqual(contract.parsePendingRegistrationPage({ results: [], page: 3, page_size: 20, has_next: false }), {
+    results: [], page: 3, page_size: 20, has_next: false,
   });
   assert.throws(() => contract.buildPendingReviewRequest(ROUTE, 0));
   assert.throws(() => contract.buildPendingReviewRequest(ROUTE, 10001));
@@ -155,9 +157,13 @@ test('disabled client refuses list/approve/reject without ANY browser network ca
   assert.equal(calls, 0);
 });
 
-test('backend URLconf is not mounted by the frontend integration', () => {
+test('backend URLconf mounts only the WF-02.01 read-only list, never the decision routes', () => {
   const djangoUrls = readFileSync(new URL('../../backend/config/urls.py', import.meta.url), 'utf8');
-  assert.doesNotMatch(djangoUrls, /registration_review_urls|registration-requests/);
+  // D-31: exactly one review path, bound directly to the GET-only list view.
+  assert.doesNotMatch(djangoUrls,
+    /registration_review_urls|registration_bulk|ApproveRegistration|RejectRegistration|BulkRegistration|\/approve\/|\/reject\/|\/bulk\//);
+  assert.equal(djangoUrls.match(/registration-requests/g)?.length, 1);
+  assert.match(djangoUrls, /'api\/v1\/admin\/registration-requests\/',\s*PendingRegistrationRequestsView\.as_view\(\)/);
   const dashboard = readFileSync(new URL('../src/features/dashboard/SessionDashboardPage.tsx', import.meta.url), 'utf8');
   assert.match(dashboard, /REGISTRATION_REVIEW_LIVE_API_ENABLED/);
   const candidate = readFileSync(new URL('../../backend/apps/accounts/registration_review_urls.py', import.meta.url), 'utf8');

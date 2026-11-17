@@ -211,7 +211,12 @@ test('mock UI and dashboard are not modified or coupled to real client', () => {
   const preview = readFileSync(new URL('../src/features/admin/RegistrationReviewPreview.tsx', import.meta.url), 'utf8');
   const dashboard = readFileSync(new URL('../src/features/dashboard/SessionDashboardPage.tsx', import.meta.url), 'utf8');
   assert.doesNotMatch(preview, /registrationReviewApi(?:Contract|Gate)?/);
-  assert.doesNotMatch(dashboard, /registrationReviewApi(?:Contract|Gate)?/);
+  // AR-6C7E.1 deliberately lets the dashboard read the activation gate (a boolean
+  // constant) to decide whether the live panel may appear. The dashboard must still
+  // never import the review API client or its contract directly.
+  const reviewModules = dashboard.match(/registrationReviewApi\w*/g) ?? [];
+  assert.deepEqual([...new Set(reviewModules)], ['registrationReviewApiGate']);
+  assert.doesNotMatch(dashboard, /registrationReviewApi(?:Contract)?['".]/);
   const gate = readFileSync(new URL('../src/features/admin/registrationReviewPreviewGate.ts', import.meta.url), 'utf8');
   assert.match(gate, /= false;/);
 });

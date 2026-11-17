@@ -88,6 +88,25 @@ class RegistrationReviewAPITests(TestCase):
         self.assertEqual(self.target.request_status, "Pending")
         self.assertFalse(AccessAuditLog.objects.exists())
 
+    @override_settings(WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=True)
+    def test_writer_fence_returns_generic_503_without_approval(self):
+        response = self.post(f"/{self.target.pk}/approve/", {})
+        self.assertEqual(503, response.status_code)
+        self.assertEqual("review_unavailable", response.json()["error"]["code"])
+        self.target.refresh_from_db()
+        self.assertEqual("Pending", self.target.request_status)
+        self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+
+    @override_settings(WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=True)
+    def test_writer_fence_returns_generic_503_without_rejection(self):
+        response = self.post(f"/{self.target.pk}/reject/", {"rejection_code": "duplicate_request"})
+        self.assertEqual(503, response.status_code)
+        self.assertNotIn("database writer", response.content.decode())
+        self.target.refresh_from_db()
+        self.assertEqual("Pending", self.target.request_status)
+        self.assertFalse(AccessAuditLog.objects.exists())
+
     def test_service_feature_off_also_blocks(self):
         with override_settings(WORKSPACE_REGISTRATION_APPROVAL_ENABLED=False):
             self.assertEqual(self.client.get("/").status_code, 503)
@@ -182,9 +201,7 @@ class RegistrationReviewAPITests(TestCase):
     def test_reject_audits_and_does_not_assign_role(self):
         result = self.post(f"/{self.target.pk}/reject/", {"rejection_code": "identity_mismatch"})
         self.assertEqual(result.status_code, 200, result.content)
-        self.target.refresh_from_db()
-        self.assertFalse(self.target.is_active)
-        self.assertEqual(self.target.request_status, "Rejected")
+        self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 

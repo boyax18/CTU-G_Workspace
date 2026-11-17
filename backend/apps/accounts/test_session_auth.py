@@ -1,9 +1,14 @@
 """AR-5A HTTP session tests; run ONLY with --settings=config.test_settings."""
 
+import re
+from unittest import mock
+
 from django.conf import settings
 from django.core.cache import cache
+from django.contrib.sessions.models import Session
 from django.core.exceptions import ImproperlyConfigured
-from django.test import TestCase
+from django.db import DatabaseError
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.access_control.models import AccountRole, Role
@@ -180,3 +185,103 @@ class WorkspaceSessionTests(TestCase):
         self.assertEqual(response.json(), {"authenticated": False})
         self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(self.client.get(self.base_path + "logout/").status_code, 405)
+
+    # WF-01.03 P-05 / D-16: per-identity login budget (owner-approved 16 Nov 2026).
+    def test_identity_budget_applies_across_ip_addresses_and_normalized_ids(self):
+        variants = ["2026-STUDENT-001", " 2026-student-001 ", "2026-Student-001"]
+        responses = [
+            self.login(school_id=variants[i % 3], password="Incorrect!9274", REMOTE_ADDR=f"10.0.0.{i + 1}")
+            for i in range(8)
+        ]
+        self.assertTrue(all(response.status_code == 401 for response in responses), [r.status_code for r in responses])
+        blocked = self.login(REMOTE_ADDR="10.0.1.1")  # correct password, fresh IP
+        self.assertEqual(blocked.status_code, 429)
+        self.assertEqual(blocked.json()["error"]["code"], "too_many_attempts")
+        self.assertTrue(blocked["Retry-After"].isdigit())
+        self.assertNotIn(settings.SESSION_COOKIE_NAME, self.client.cookies)
+        # Another identity keeps its own budget.
+        other = self.login(school_id="2026-STUDENT-999", password="Incorrect!9274", REMOTE_ADDR="10.0.1.2")
+        self.assertEqual(other.status_code, 401)
+
+    def test_identity_budget_is_checked_before_authentication(self):
+        for i in range(8):
+            self.login(password="Incorrect!9274", REMOTE_ADDR=f"10.0.2.{i + 1}")
+        with mock.patch("apps.accounts.session_auth.authenticate") as authenticate:
+            response = self.login(REMOTE_ADDR="10.0.3.1")
+        self.assertEqual(response.status_code, 429)
+        authenticate.assert_not_called()
+
+    def test_identity_budget_cache_keys_never_contain_raw_identifier(self):
+        self.login(password="Incorrect!9274")
+        keys = [str(key).lower() for key in getattr(cache, "_cache", {})]
+        self.assertTrue(any("login:school_id" in key for key in keys), keys)
+        self.assertFalse(any("2026-student-001" in key for key in keys), keys)
+
+    # WF-01.03 P-04: every authentication response carries a safe request reference.
+    def test_auth_responses_carry_distinct_request_reference(self):
+        responses = [
+            self.login(password="Incorrect!9274"),
+            self.client.post(self.base_path + "login/", {}, format="json"),  # CSRF failure
+            self.login(),
+            self.client.get(self.base_path + "session/"),
+        ]
+        responses.append(self.client.post(self.base_path + "logout/", {}, format="json",
+                                          HTTP_X_CSRFTOKEN=self.current_csrf()))
+        self.assertEqual([r.status_code for r in responses], [401, 403, 200, 200, 200])
+        references = [r["X-Request-ID"] for r in responses]
+        self.assertTrue(all(re.fullmatch(r"[a-f0-9]{32}", value) for value in references), references)
+        self.assertEqual(len(set(references)), len(references))
+
+    # WF-01.04 P-05 (owner-approved 16 Nov 2026): logout boundary tests.
+    def logout(self):
+        return self.client.post(self.base_path + "logout/", {}, format="json",
+                                HTTP_X_CSRFTOKEN=self.current_csrf())
+
+    def test_old_session_cookie_is_anonymous_after_logout(self):
+        self.assertEqual(self.login().status_code, 200)
+        old_key = self.client.cookies[settings.SESSION_COOKIE_NAME].value
+        self.assertTrue(Session.objects.filter(session_key=old_key).exists())
+        self.assertEqual(self.logout().status_code, 200)
+        self.assertFalse(Session.objects.filter(session_key=old_key).exists())
+        # Replay the captured cookie: the server-side session no longer exists.
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = old_key
+        self.assertEqual(self.client.get(self.base_path + "session/").json(), {"authenticated": False})
+        with override_settings(
+            ROOT_URLCONF="apps.accounts.registration_review_urls",
+            WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=True,
+            WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
+        ):
+            self.client.cookies[settings.SESSION_COOKIE_NAME] = old_key
+            review = self.client.get("/")
+        self.assertEqual(review.status_code, 401)
+        self.assertEqual(review.json()["error"]["code"], "authentication_required")
+
+    def test_logout_response_expires_the_session_cookie(self):
+        self.assertEqual(self.login().status_code, 200)
+        response = self.logout()
+        cookie = response.cookies[settings.SESSION_COOKIE_NAME]
+        self.assertEqual(cookie.value, "")
+        self.assertEqual(str(cookie["max-age"]), "0")
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertNotIn("school_id", response.content.decode())
+
+    def test_anonymous_logout_is_safe_and_creates_no_session(self):
+        sessions_before = Session.objects.count()
+        first, second = self.logout(), self.logout()
+        for response in (first, second):
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"authenticated": False})
+        self.assertEqual(Session.objects.count(), sessions_before)
+        self.assertEqual(self.client.get(self.base_path + "session/").json(), {"authenticated": False})
+
+    def test_session_store_failure_never_claims_logout(self):
+        self.assertEqual(self.login().status_code, 200)
+        csrf = self.current_csrf()
+        with mock.patch("django.contrib.sessions.backends.db.SessionStore.delete",
+                        side_effect=DatabaseError("session store unavailable")):
+            response = self.client.post(self.base_path + "logout/", {}, format="json", HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()["error"]["code"], "auth_unavailable")
+        self.assertNotIn("authenticated", response.json())
+        # Django does not save sessions on 5xx responses: the session is honestly still active.
+        self.assertTrue(self.client.get(self.base_path + "session/").json()["authenticated"])

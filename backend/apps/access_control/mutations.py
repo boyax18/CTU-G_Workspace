@@ -20,6 +20,7 @@ from .delegation import (
     is_reserved_role, require_delegation, require_governance_authority,
 )
 from .models import AccountPermission, AccountRole, Permission, Role, RolePermission, Service
+from .writer_boundary import require_verified_writer, writer_atomic
 
 
 def _pk(value, model):
@@ -44,13 +45,20 @@ class _Context:
 
 @contextmanager
 def _management_context(actor, permission, management_code, *, role=None, target=None):
+    # P3C6A: fail closed before ORM validation or acquiring a transaction.
+    if management_code == ROLE_PERMISSION_MANAGE:
+        require_verified_writer("role_permission.change")
+    elif management_code == ACCOUNT_PERMISSION_MANAGE:
+        require_verified_writer("account_permission.change")
+    else:
+        require_verified_writer(None)  # Invalid management codes always fail.
     actor_id, permission_id = _pk(actor, Account), _pk(permission, Permission)
     role_id = _pk(role, Role) if role is not None else None
     target_id = _pk(target, Account) if target is not None else None
     if target_id == actor_id:
         raise PermissionManagementDenied("Self-targeted permission mutations are prohibited.")
 
-    with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
+    with writer_atomic():
         connection = transaction.get_connection(DEFAULT_DB_ALIAS)
         if connection.vendor != "mysql" or connection.isolation_level != "read committed":
             raise DelegationPolicyUnavailable("Trusted mutations require primary MySQL READ COMMITTED isolation.")
@@ -134,6 +142,12 @@ def _role_snapshot(row):
 
 
 def _change_role_permission(*, actor, role, permission, enable, reason):
+    from .executor.client import LOCAL, remote_call
+    remote = remote_call("role_permission.grant" if enable else "role_permission.revoke", {
+        "actor_id": _pk(actor, Account), "role_id": _pk(role, Role), "permission_id": _pk(permission, Permission), "reason": reason,
+    })
+    if remote is not LOCAL:
+        return remote
     with _management_context(actor, permission, ROLE_PERMISSION_MANAGE, role=role) as context:
         _reason(reason)
         row = RolePermission.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(role=context.role, permission=context.permission).first()
@@ -177,6 +191,12 @@ def _override_snapshot(row):
 
 
 def _change_account_override(*, actor, target, permission, effect, deactivate, reason):
+    from .executor.client import LOCAL, remote_call
+    operation = "account_permission.deactivate" if deactivate else "account_permission." + str(effect).lower()
+    remote = remote_call(operation, {"actor_id": _pk(actor, Account), "target_id": _pk(target, Account),
+                                   "permission_id": _pk(permission, Permission), "reason": reason})
+    if remote is not LOCAL:
+        return remote
     if effect not in {"Grant", "Deny", None} or (not deactivate and effect is None):
         raise PermissionManagementValidationError("Use the Grant or Deny operation.")
     with _management_context(actor, permission, ACCOUNT_PERMISSION_MANAGE, target=target) as context:

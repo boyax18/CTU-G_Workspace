@@ -18,3 +18,6 @@ dist/
 
 # Local editor files
 .vscode/
+
+# Private encrypted local recovery snapshots
+/.local/

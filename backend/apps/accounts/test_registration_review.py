@@ -141,17 +141,13 @@ class RegistrationReviewTests(TestCase):
             self.instructor_role.pk,
         )
 
-    def test_rejection_keeps_account_inactive_without_assignment(self):
+    def test_rejection_deletes_account_without_assignment(self):
         reject_registration(
             actor=self.reviewer,
             target_id=self.target.pk,
             rejection_code="incomplete_submission",
         )
-        self.target.refresh_from_db()
-        self.assertEqual(self.target.request_status, "Rejected")
-        self.assertFalse(self.target.is_active)
-        self.assertEqual(self.target.rejection_reason, "incomplete_submission")
-        self.assertEqual(self.target.reviewed_by_id, self.reviewer.pk)
+        self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 

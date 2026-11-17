@@ -19,6 +19,7 @@ This folder holds the project's **living documentation**. The SRS describes **wh
 | `implementation/authentication/ar-6c2-routing-safety-verification.md` | Routing isolation and prior 25/25 test evidence | If routing or feature gates change |
 | `api/AUTH_ENDPOINT_INVENTORY.md` | Initial authentication API inventory to validate against route code | When auth endpoints/contracts change |
 | `templates/PHASE_COMPLETION_CHECKLIST.md` | Standard closure checklist for future phases | Every new phase |
+| `design/README.md` | UI design reference for agents and developers: tokens, components, patterns, consistency audit. Read before any frontend/UI work | When `frontend/src/css/*`, shared components or UI conventions change |
 
 ## Existing documentation to retain
 

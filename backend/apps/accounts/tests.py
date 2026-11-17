@@ -58,14 +58,14 @@ class AccountCreationTests(SimpleTestCase):
                 account = Account.objects.create_user("2026-12345", email=email)
             self.assertIsNone(account.email)
 
-    def test_email_is_not_unique_and_domain_is_normalized(self):
+    def test_email_is_unique_and_entire_address_is_normalized(self):
         with patch.object(Account, "save") as save:
             first = Account.objects.create_user("2026-12345", "Person@EXAMPLE.COM")
             second = Account.objects.create_user("2026-54321", "Person@example.com")
         self.assertEqual(save.call_count, 2)
-        self.assertEqual(first.email, "Person@example.com")
+        self.assertEqual(first.email, "person@example.com")
         self.assertEqual(second.email, first.email)
-        self.assertFalse(Account._meta.get_field("email").unique)
+        self.assertTrue(Account._meta.get_field("email").unique)
 
     def test_invalid_identity_inputs_are_rejected_before_save(self):
         cases = [

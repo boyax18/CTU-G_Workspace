@@ -71,6 +71,11 @@ def fixtures(owner):
     owner.actor = make_account("MUTATION-ACTOR")
     owner.target = make_account("MUTATION-TARGET")
     AccountRole.objects.create(account=owner.actor, role=owner.operator_role)
+    # Permission possession now also requires the protected two-tier profile.
+    owner.admin_role = Role.objects.create(role_name="Admin")
+    owner.technical_role = Role.objects.create(role_name="Technical Super Admin")
+    AccountRole.objects.create(account=owner.actor, role=owner.admin_role)
+    AccountRole.objects.create(account=owner.actor, role=owner.technical_role)
     AccountRole.objects.create(account=owner.target, role=owner.student)
     for permission in (owner.role_manage, owner.account_manage, owner.delegate):
         RolePermission.objects.create(role=owner.operator_role, permission=permission)
@@ -326,16 +331,16 @@ class PermissionMutationTests(_Helpers, TestCase):
 
     def test_reserved_administrative_roles_cannot_be_mutated(self):
         for name in ("Admin", "Technical Super Admin"):
-            role = Role.objects.create(role_name=name)
+            role = Role.objects.get(role_name=name)
             self.assert_denied_unchanged(lambda: self.grant_role(role=role))
 
     def test_stale_forged_role_label_does_not_hide_reserved_role(self):
-        role = Role.objects.create(role_name="Admin")
+        role = Role.objects.get(role_name="Admin")
         role.role_name = "Student"
         self.assert_denied_unchanged(lambda: self.grant_role(role=role))
 
     def test_accounts_with_reserved_roles_are_protected_even_if_that_role_is_inactive(self):
-        admin = Role.objects.create(role_name="Admin", is_active=False)
+        admin = Role.objects.create(role_name="super-admin", is_active=False)
         AccountRole.objects.create(account=self.target, role=admin)
         self.assert_denied_unchanged(self.grant_account)
         self.assert_denied_unchanged(self.deny_account)
@@ -384,7 +389,8 @@ class PermissionMutationTests(_Helpers, TestCase):
         self.assert_denied_unchanged(self.grant_account)
 
     def test_requested_role_alone_does_not_create_management_authority(self):
-        admin = Role.objects.create(role_name="Admin")
+        admin = Role.objects.get(role_name="Admin")
+        AccountRole.objects.filter(account=self.actor, role=admin).delete()
         Account.objects.filter(pk=self.actor.pk).update(requested_role=admin)
         RolePermission.objects.filter(role=self.operator_role, permission=self.role_manage).delete()
         RolePermission.objects.create(role=admin, permission=self.role_manage)
@@ -429,6 +435,7 @@ class PermissionMutationTests(_Helpers, TestCase):
 
     def test_no_role_assignments_account_changes_or_privileged_roles_are_created(self):
         assignments = list(AccountRole.objects.order_by("pk").values())
+        roles = list(Role.objects.order_by("pk").values())
         accounts = list(Account.objects.order_by("pk").values("pk", "is_active", "request_status"))
         self.grant_role()
         self.grant_account()
@@ -436,7 +443,23 @@ class PermissionMutationTests(_Helpers, TestCase):
         self.deactivate()
         self.assertEqual(list(AccountRole.objects.order_by("pk").values()), assignments)
         self.assertEqual(list(Account.objects.order_by("pk").values("pk", "is_active", "request_status")), accounts)
-        self.assertFalse(Role.objects.filter(role_name="Technical Super Admin").exists())
+        self.assertEqual(list(Role.objects.order_by("pk").values()), roles)
+
+    def test_school_admin_cannot_manage_access_control_even_with_explicit_grants(self):
+        AccountRole.objects.filter(account=self.actor, role=self.technical_role).delete()
+        self.assertTrue(has_permission(self.actor, ROLE_PERMISSION_MANAGE))
+        for operation in (self.grant_role, self.grant_account, self.deny_account, self.deactivate):
+            self.assert_denied_unchanged(operation)
+
+    def test_technical_title_without_school_admin_is_not_management_authority(self):
+        AccountRole.objects.filter(account=self.actor, role=self.admin_role).delete()
+        self.assertTrue(has_permission(self.actor, ROLE_PERMISSION_MANAGE))
+        self.assert_denied_unchanged(self.grant_role)
+
+    def test_removing_either_profile_role_revokes_next_mutation_on_same_actor_object(self):
+        self.grant_role()
+        AccountRole.objects.filter(account=self.actor, role=self.technical_role).delete()
+        self.assert_denied_unchanged(lambda: self.grant_role(permission=self.write))
 
 
 @override_settings(ACCESS_CONTROL_DELEGATION_POLICY=POLICY)

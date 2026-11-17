@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import '../css/theme.css';
 import '../css/dashboard.css';
 import ThemeProvider from '../contexts/ThemeProvider';
 import { DashboardContext } from '../contexts/DashboardContext';
 import DashboardShell from '../components/dashboard/DashboardShell';
-import { getWorkspaceSession, logoutWorkspace } from '../features/auth/session';
+import { getWorkspaceSession } from '../features/auth/session';
+import { signOutMessage, signOutWorkspace } from '../features/auth/signOut';
+import { useSessionRevalidation } from '../hooks/useSessionRevalidation';
 import type { AuthenticatedWorkspaceSession } from '../features/auth/session';
 import {
   canOpenDashboardView,
@@ -17,6 +19,9 @@ import type { DashboardView } from '../features/dashboard/navigation';
 type ScreenState =
   | { status: 'loading' }
   | { status: 'anonymous' }
+  // WF-01.06 P-05: a session this tab was using has ended (expiry, sign-out elsewhere,
+  // lost eligibility). The server gives no reason; only this tab's history does.
+  | { status: 'ended' }
   | { status: 'error' }
   | { status: 'ready'; session: AuthenticatedWorkspaceSession };
 
@@ -52,17 +57,37 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [state]);
 
+  // WF-01.04 P-02/P-03/P-04: re-read the server session when another tab signs
+  // out, this tab becomes visible, a cached page is restored, or a protected API
+  // answers 401. Only an anonymous answer replaces the shell; a failed read keeps
+  // the current view (the backend still refuses every protected request).
+  const rechecking = useRef(false);
+  const recheckSession = useCallback(() => {
+    if (rechecking.current) return;
+    rechecking.current = true;
+    getWorkspaceSession()
+      .then((session) => setState((previous) => {
+        if (session.authenticated) return { status: 'ready', session };
+        // Dropping the ready state also drops every account detail and permission hint.
+        return previous.status === 'ready' || previous.status === 'ended' ? { status: 'ended' } : { status: 'anonymous' };
+      }))
+      .catch(() => { /* keep the current view */ })
+      .finally(() => { rechecking.current = false; });
+  }, []);
+  useSessionRevalidation(recheckSession);
+
   const signOut = useCallback(async () => {
     if (signingOut) return;
     setSigningOut(true);
     setSignOutError('');
-    try {
-      await logoutWorkspace();
-      window.location.assign('/');
-    } catch {
-      setSignOutError('Sign-out could not be confirmed. Please try again.');
-      setSigningOut(false);
+    const outcome = await signOutWorkspace();
+    if (outcome === 'signed_out') {
+      // Replace the history entry so Back does not return to the dashboard.
+      window.location.replace('/');
+      return;
     }
+    setSignOutError(signOutMessage(outcome));
+    setSigningOut(false);
   }, [signingOut]);
 
   const session = state.status === 'ready' ? state.session : null;
@@ -81,10 +106,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <><h1 className="dashboard-heading text-xl font-semibold">Checking your session…</h1>
                 <p className="dashboard-muted mt-2 text-sm">Your workspace will appear after verification.</p></>
             )}
-            {state.status === 'anonymous' && (
+            {(state.status === 'anonymous' || state.status === 'ended') && (
               <><h1 className="dashboard-heading text-xl font-semibold">Sign in required</h1>
-                <p className="dashboard-muted mt-2 text-sm">Sign in using an approved, active Workspace account.</p>
-                <a className="dashboard-primary-link mt-5 inline-flex rounded-lg px-4 py-2 text-sm font-medium" href="/#login">Return to sign-in</a></>
+                <p role="status" className="dashboard-muted mt-2 text-sm">
+                  {state.status === 'ended'
+                    ? 'Your session has ended. Sign in again to continue.'
+                    : 'Sign in using an approved, active Workspace account.'}
+                </p>
+                <a className="dashboard-primary-link mt-5 inline-flex min-h-11 items-center rounded-lg px-4 py-2 text-sm font-medium" href="/#login">Return to sign-in</a></>
             )}
             {state.status === 'error' && (
               <><h1 className="dashboard-heading text-xl font-semibold">Session unavailable</h1>

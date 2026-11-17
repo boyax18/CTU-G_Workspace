@@ -19,7 +19,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from backend/.env.
-load_dotenv(BASE_DIR / ".env")
+if os.environ.get("WORKSPACE_DEPLOYMENT_SETTINGS") != "1":
+    load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -33,10 +34,21 @@ def required_environment_variable(name):
 
 SECRET_KEY = required_environment_variable("DJANGO_SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# WF-01.06 (D-18, D-29): DEBUG, cookie flags, HTTPS, trusted origins, CORS and
+# session limits come from validated environment variables. DEBUG is off unless
+# DJANGO_DEBUG=1; the "production" profile requires HTTPS and Secure cookies.
+# See config/security_settings.py and docs/operations/LOCAL_SETUP_RELEASE_RUNBOOK_DRAFT.md.
+from .security_settings import build_security_settings
 
-ALLOWED_HOSTS = []
+globals().update(build_security_settings(os.environ))
+
+# Comma-separated hosts Django will serve. Add LAN IPs/hostnames here so other
+# devices on the network can reach the app through the Vite dev server proxy.
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("WORKSPACE_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -77,6 +89,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # WF-01.06 P-01: idle and absolute session expiry, before any view runs.
+    'apps.accounts.session_timeout.SessionTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -163,9 +177,33 @@ WORKSPACE_PASSWORD_RESET_ENABLED = os.environ.get("WORKSPACE_PASSWORD_RESET_ENAB
 WORKSPACE_EMAIL_SMTP_ENABLED = os.environ.get("WORKSPACE_EMAIL_SMTP_ENABLED", "0") == "1"
 WORKSPACE_PUBLIC_BASE_URL = os.environ.get("WORKSPACE_PUBLIC_BASE_URL", "http://localhost:5173").rstrip("/")
 PASSWORD_RESET_TIMEOUT = 1800  # 30 minutes
-DEFAULT_FROM_EMAIL = os.environ.get(
-    "WORKSPACE_EMAIL_FROM", "ctuginatilanextensioncampus@gmail.com"
+from email.utils import formataddr, parseaddr
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as SenderValidationError
+
+_sender_raw = os.environ.get("WORKSPACE_EMAIL_FROM", "ctuginatilanextensioncampus@gmail.com")
+if any(ch in _sender_raw for ch in "\r\n"):
+    raise ImproperlyConfigured("Invalid WORKSPACE_EMAIL_FROM address.")
+_sender_address = parseaddr(_sender_raw)[1]
+try:
+    validate_email(_sender_address)
+except SenderValidationError as exc:
+    raise ImproperlyConfigured("Invalid WORKSPACE_EMAIL_FROM address.") from exc
+DEFAULT_FROM_EMAIL = formataddr(("CTU-G Workspace", _sender_address))
+# An explicit deployment hostname allowlist is mandatory for production email links.
+WORKSPACE_EMAIL_PUBLIC_HOSTS = frozenset(
+    host.strip().lower() for host in
+    os.environ.get("WORKSPACE_EMAIL_PUBLIC_HOSTS", "").split(",") if host.strip()
 )
+WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", "0"
+) == "1"
+WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED", "0"
+) == "1"
+WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED", "0"
+) == "1"
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
     if WORKSPACE_EMAIL_SMTP_ENABLED
@@ -182,3 +220,15 @@ if WORKSPACE_EMAIL_SMTP_ENABLED:
 # The key WORKSPACE_OUTBOX_KEK_V1_B64 is read only when encrypting a recipient.
 WORKSPACE_REGISTRATION_OUTBOX_ENABLED = os.environ.get("WORKSPACE_REGISTRATION_OUTBOX_ENABLED", "0") == "1"
 WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION = os.environ.get("WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION", "v1")
+
+# WF-01.01 defaults implement the catalogue suggestions; policy sign-off is separate.
+STUDENT_REGISTRATION_OTP_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_OTP_SECONDS", "600"))
+STUDENT_REGISTRATION_RESEND_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_RESEND_SECONDS", "60"))
+STUDENT_REGISTRATION_MAX_RESENDS = int(os.environ.get("STUDENT_REGISTRATION_MAX_RESENDS", "3"))
+STUDENT_REGISTRATION_MAX_ATTEMPTS = int(os.environ.get("STUDENT_REGISTRATION_MAX_ATTEMPTS", "5"))
+STUDENT_REGISTRATION_STAGE_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_STAGE_SECONDS", "1800"))
+STUDENT_REGISTRATION_STAGING_KEY = os.environ.get("STUDENT_REGISTRATION_STAGING_KEY", SECRET_KEY)
+EMAIL_TIMEOUT = 10
+
+# Public support only. Empty means "Contact the School Admin office".
+WORKSPACE_REGISTRATION_SUPPORT_CONTACT = os.environ.get("WORKSPACE_REGISTRATION_SUPPORT_CONTACT", "")

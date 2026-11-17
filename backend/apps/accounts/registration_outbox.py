@@ -4,6 +4,7 @@ Only called after an authorized review has created its exact audit receipt,
 within the SAME primary MySQL transaction. Failures must abort the decision.
 """
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import DEFAULT_DB_ALIAS, transaction
@@ -45,21 +46,37 @@ def record_registration_decision_outbox(*, audit_log_id, target_account_id,
         code = "registration.approved" if approved else "registration.rejected"
         expected_action = "account.registration.approve" if approved else "account.registration.reject"
         event = AccessAuditLog.objects.using(DEFAULT_DB_ALIAS).only(
-            "action", "target_account_id"
+            "action", "target_account_id", "old_value", "new_value"
         ).get(pk=audit_log_id)
-        if event.action != expected_action or event.target_account_id != target_account_id:
+        snapshot = event.new_value if type(event.new_value) is dict else {}
+        previous = event.old_value if type(event.old_value) is dict else {}
+        deleted_rejection = (
+            not approved and event.target_account_id is None
+            and type(snapshot.get("account_id")) is int
+            and snapshot.get("account_id") == target_account_id
+            and previous.get("account_id") == target_account_id
+            and previous.get("request_status") == "Pending"
+            and snapshot.get("account_deleted") is True
+            and snapshot.get("request_status") == "Rejected"
+        )
+        if event.action != expected_action or not (event.target_account_id == target_account_id or deleted_rejection):
             raise RegistrationOutboxError("Registration outbox audit binding is invalid.")
 
+        version = 2 if getattr(settings, "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", False) else 1
+        if version == 2 and not approved:
+            from .registration_email_templates import REJECTION_LABELS
+            if snapshot.get("rejection_code") not in REJECTION_LABELS:
+                raise RegistrationOutboxError("Immutable rejection reason is unavailable.")
         values = {
             "decision_audit_log_id": audit_log_id,
             "template_code": code,
-            "template_version": 1,
+            "template_version": version,
             "updated_at": timezone.now(),
         }
         if _recipient_valid(recipient_email):
             values.update(encrypt_recipient(
                 email=recipient_email, audit_log_id=audit_log_id,
-                template_code=code, template_version=1,
+                template_code=code, template_version=version,
             ))
             values.update(delivery_status="Pending", next_attempt_at=timezone.now())
         else:

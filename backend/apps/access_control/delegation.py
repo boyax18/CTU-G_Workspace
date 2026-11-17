@@ -15,7 +15,7 @@ from django.db import DEFAULT_DB_ALIAS
 from apps.accounts.models import Account
 
 from .models import Permission
-from .services import has_permission
+from .technical_admin import has_technical_authority
 
 ROLE_PERMISSION_MANAGE = "access_control.role_permissions.manage"
 ACCOUNT_PERMISSION_MANAGE = "access_control.account_permissions.manage"
@@ -111,7 +111,7 @@ def require_governance_authority(actor, permission_code):
     if (
         entry is None or entry.permission_code != permission_code
         or entry.service.service_code != GOVERNANCE_SERVICE
-        or not entry.service.is_active or not has_permission(actor, permission_code)
+        or not entry.service.is_active or not has_technical_authority(actor, permission_code)
     ):
         raise PermissionManagementDenied("Explicit active management/delegation authority is required.")
 

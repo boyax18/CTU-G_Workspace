@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from .models import Account
+from .email_identity import normalize_account_email
 
 
 class StringField(serializers.CharField):
@@ -35,6 +36,13 @@ class RegistrationSerializer(serializers.Serializer):
         if not isinstance(data, Mapping):
             raise serializers.ValidationError({"non_field_errors": ["Provide a JSON object."]})
         if set(data) - set(self.fields):
+            if data.get("requested_role") == "Instructor" and set(data) & {"course", "year_level", "section"}:
+                raise serializers.ValidationError({
+                    "non_field_errors": [serializers.ErrorDetail(
+                        "Student-only school information is not accepted for Instructor registration.",
+                        code="student_only_fields",
+                    )],
+                })
             raise serializers.ValidationError({"non_field_errors": ["The request contains unsupported fields."]})
         return super().to_internal_value(data)
 
@@ -46,6 +54,7 @@ class RegistrationSerializer(serializers.Serializer):
         return value
 
     def validate_email(self, value):
+        value = normalize_account_email(value)
         try:
             Account._meta.get_field("email").clean(value, None)
         except DjangoValidationError as exc:

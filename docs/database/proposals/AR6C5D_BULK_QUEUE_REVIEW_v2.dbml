@@ -1,0 +1,62 @@
+// CTU-G Workspace — AR-6C5D bulk registration processing queue (review v2)
+// PROPOSAL ONLY: NOT approved, NOT an amendment to docs/database/full_schema.dbml.
+// No migration or live API/worker is authorized by this file.
+// These queues are for REGISTRATION DECISIONS ONLY; they do not manage enrollment.
+// The separate registration_notification_outbox remains responsible for email.
+// Recommended pilot snapshot limit: 500 account IDs, policy subject to approval.
+
+Table registration_bulk_jobs {
+  bulk_job_id bigint [pk, increment]
+  requested_by_account_id int [not null, note: 'FK to accounts; actor who authorized submission; must be rechecked before EVERY decision']
+  idempotency_key_hash binary(32) [not null, note: 'SHA-256 of validated high-entropy, caller-specific idempotency key; never store plaintext']
+  request_fingerprint binary(32) [not null, note: 'Digest of canonical action, rejection code, selection mode and submitted selection/filter specification; reject same key with different payload']
+  selection_digest binary(32) [not null, note: 'Digest of sorted server-resolved target IDs at job creation; not a substitute for immutable job_items']
+  action enum('Approve', 'Reject') [not null]
+  rejection_code varchar(64) [note: 'Required iff Reject; allowlisted reason code only']
+  selection_mode enum('Explicit', 'AllMatching') [not null]
+  selection_count int [not null, note: '1 to approved maximum; equals number of immutable job_items']
+  status enum('Queued', 'Running', 'Completed', 'Partial', 'Stopped', 'Cancelled') [not null, default: 'Queued']
+  succeeded_count int [not null, default: 0]
+  skipped_count int [not null, default: 0]
+  failed_count int [not null, default: 0]
+  cancelled_count int [not null, default: 0]
+  stop_reason_code varchar(64) [note: 'Allowlisted operator-safe code only; no personal data']
+  cancel_requested_at datetime [note: 'UTC; cancellation is cooperative, never reverses committed decisions']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  started_at datetime
+  finished_at datetime
+  updated_at datetime
+
+  indexes {
+    (requested_by_account_id, idempotency_key_hash) [unique, name: 'bulk_actor_idempotency_uk']
+    (status, created_at) [name: 'bulk_job_status_idx']
+  }
+}
+
+Table registration_bulk_job_items {
+  bulk_job_item_id bigint [pk, increment]
+  bulk_job_id bigint [not null, note: 'FK to registration_bulk_jobs; frozen snapshot membership']
+  target_account_id int [not null, note: 'FK to accounts; account eligibility rechecked at processing time']
+  status enum('Pending', 'Leased', 'Approved', 'Rejected', 'Skipped', 'Failed', 'Cancelled') [not null, default: 'Pending']
+  attempt_count int [not null, default: 0]
+  next_attempt_at datetime [note: 'UTC due time for Pending/retryable attempts; never busy-spin']
+  lease_token varchar(64) [note: 'High-entropy, per-claim fencing token; populated only while Leased']
+  lease_expires_at datetime [note: 'UTC; populated only while Leased; reclaim only after expiry']
+  decision_audit_log_id int [unique, note: 'Nullable FK to immutable access_audit_logs; required for successful Approved/Rejected results; write in SAME transaction as decision']
+  last_failure_code varchar(64) [note: 'Allowlisted sanitized diagnostic only; do not store exception text or recipient data']
+  processed_at datetime [note: 'UTC; set for terminal statuses']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at datetime
+
+  indexes {
+    (bulk_job_id, target_account_id) [unique, name: 'bulk_job_target_uk']
+    (status, next_attempt_at) [name: 'bulk_item_due_idx']
+    (status, lease_expires_at) [name: 'bulk_item_lease_idx']
+    (bulk_job_id, status) [name: 'bulk_item_job_status_idx']
+  }
+}
+
+Ref: registration_bulk_jobs.requested_by_account_id > accounts.account_id
+Ref: registration_bulk_job_items.bulk_job_id > registration_bulk_jobs.bulk_job_id
+Ref: registration_bulk_job_items.target_account_id > accounts.account_id
+Ref: registration_bulk_job_items.decision_audit_log_id > access_audit_logs.access_audit_log_id

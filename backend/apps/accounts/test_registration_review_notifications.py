@@ -35,6 +35,13 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=True,
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    # Deterministic, local-only email context so a developer's backend/.env (for
+    # example a LAN WORKSPACE_PUBLIC_BASE_URL or an enabled outbox) cannot change
+    # the result. Production email rules are unchanged: http is accepted only for
+    # localhost with the locmem test backend.
+    WORKSPACE_PUBLIC_BASE_URL="http://localhost:5173",
+    WORKSPACE_EMAIL_PUBLIC_HOSTS=frozenset(),
+    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
 )
 class RegistrationDecisionEmailTests(TestCase):
     @classmethod
@@ -104,11 +111,8 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertEqual(len(callbacks), 1)
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ["applicant@example.edu"])
-        self.assertIn("not approved", mail.outbox[0].subject.lower())
-        self.target.refresh_from_db()
-        self.assertEqual(self.target.request_status, "Rejected")
-        self.assertFalse(self.target.is_active)
-        self.assertTrue(Account.objects.filter(pk=self.target.pk).exists())
+        self.assertIn("rejected", mail.outbox[0].subject.lower())
+        self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 
     def test_disabled_notification_gate_does_not_register_callback(self):

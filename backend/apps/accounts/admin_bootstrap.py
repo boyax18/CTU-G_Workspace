@@ -13,6 +13,7 @@ from django.utils import timezone
 
 from apps.access_control.audit import record_access_audit
 from apps.access_control.models import AccessAuditLog, AccountRole, Role
+from apps.access_control.writer_boundary import require_verified_writer, writer_atomic
 from .models import Account
 
 
@@ -62,6 +63,14 @@ def provision_first_workspace_admin(*, operator_school_id, operator_password,
     """
     if not getattr(settings, "WORKSPACE_FIRST_ADMIN_BOOTSTRAP_ENABLED", False):
         raise BootstrapRefused("One-time Workspace Admin bootstrap is disabled.")
+    from apps.access_control.executor.client import LOCAL, remote_call
+    remote = remote_call("bootstrap.initial_admin", {"operator_school_id": operator_school_id,
+        "operator_password": operator_password, "new_school_id": new_school_id,
+        "new_email": new_email, "new_password": new_password})
+    if remote is not LOCAL:
+        return remote
+    # P3C6A: deny the bootstrap before its DB preflight when enforcement is on.
+    require_verified_writer("bootstrap.initial_admin")
     _require_local_primary_mysql()
     if not all(type(v) is str and v.strip() for v in (
         operator_school_id, operator_password, new_school_id,
@@ -79,7 +88,7 @@ def provision_first_workspace_admin(*, operator_school_id, operator_password,
         raise BootstrapRefused("The operator and new Admin must be different accounts.")
 
     try:
-        with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
+        with writer_atomic():
             # Locks the canonical Admin row; concurrent runs of THIS bootstrap
             # serialize here, then re-check assignments and prior events.
             try:

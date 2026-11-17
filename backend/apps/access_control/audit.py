@@ -41,8 +41,12 @@ _ID_LIST_FIELDS = frozenset({"role_ids", "permission_ids"})
 _ENUM_FIELDS = {
     "effect": frozenset({"Grant", "Deny"}),
     "request_status": frozenset({"Pending", "Approved", "Rejected"}),
+    "rejection_code": frozenset({
+        "incomplete_submission", "ineligible_registration",
+        "identity_mismatch", "duplicate_request",
+    }),
 }
-_STATE_FIELDS = _ID_FIELDS | _ID_LIST_FIELDS | frozenset(_ENUM_FIELDS) | frozenset({"is_active"})
+_STATE_FIELDS = _ID_FIELDS | _ID_LIST_FIELDS | frozenset(_ENUM_FIELDS) | frozenset({"is_active", "account_deleted"})
 _ACTION_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]*", re.ASCII)
 
 
@@ -83,7 +87,7 @@ def _state(value, field):
             valid = item is None or _valid_id(item)
         elif key in _ID_LIST_FIELDS:
             valid = type(item) is list and len(item) <= MAX_ID_LIST_ITEMS and all(_valid_id(entry) for entry in item)
-        elif key == "is_active":
+        elif key in {"is_active", "account_deleted"}:
             valid = type(item) is bool
         else:
             valid = type(item) is str and item in _ENUM_FIELDS[key]

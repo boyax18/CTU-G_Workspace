@@ -4,9 +4,14 @@ from django.contrib.auth.password_validation import validate_password
 from django.db import models, transaction
 
 from .fields import CurrentTimestamp, MySQLEnumField, MySQLTimestampField
+from .email_identity import normalize_account_email
 
 
 class AccountManager(BaseUserManager):
+    @classmethod
+    def normalize_email(cls, email):
+        return normalize_account_email(email)
+
     def create_user(self, school_id, email=None, password=None, **extra_fields):
         """Create a pending account; requested roles never assign privileges."""
         requested_role = extra_fields.pop("requested_role", None)
@@ -19,9 +24,7 @@ class AccountManager(BaseUserManager):
 
         school_id = self.model.normalize_username(school_id.strip())
         school_id = self.model._meta.get_field("school_id").clean(school_id, None)
-        if email is not None and not isinstance(email, str):
-            raise ValueError("Email must be a string or None.")
-        email = self.normalize_email(email.strip()) if email and email.strip() else None
+        email = self.normalize_email(email)
         email = self.model._meta.get_field("email").clean(email, None)
 
         if requested_role is not None:
@@ -97,7 +100,9 @@ class Account(AbstractBaseUser):
     account_id = models.AutoField(primary_key=True)
     school_id = models.CharField(max_length=50, unique=True)
     password = models.CharField(max_length=255, db_column="password_hash")
-    email = models.EmailField(max_length=150, null=True, blank=True)
+    email = models.EmailField(max_length=150, null=True, blank=True, unique=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True, editable=False)
+    email_verified_address = models.EmailField(max_length=150, null=True, blank=True, editable=False)
 
     requested_role = models.ForeignKey(
         "access_control.Role",
@@ -154,6 +159,13 @@ class Account(AbstractBaseUser):
     class Meta:
         db_table = "accounts"
 
+    def save(self, *args, **kwargs):
+        # Do not expand partial approval/password writes to include email.
+        update_fields = kwargs.get("update_fields")
+        if update_fields is None or "email" in update_fields:
+            self.email = normalize_account_email(self.email)
+        return super().save(*args, **kwargs)
+
     def has_perm(self, perm, obj=None):
         """Delegate global permissions; object-specific access has no policy yet."""
         if obj is not None:
@@ -191,5 +203,25 @@ class UserProfile(models.Model):
     def __str__(self):
         name = " ".join(part for part in (self.first_name, self.last_name) if part)
         return name or f"Profile for account {self.account_id}"
+
+class StudentRegistrationStage(models.Model):
+    """Encrypted short-lived data; keyed identity digests reserve staged attempts."""
+
+    token_hash = models.CharField(max_length=64, unique=True)
+    school_id_digest = models.CharField(max_length=64, unique=True)
+    email_digest = models.CharField(max_length=64, unique=True)
+    encrypted_payload = models.TextField()
+    otp_digest = models.CharField(max_length=64, blank=True, default="")
+    otp_expires_at = models.DateTimeField(null=True, blank=True)
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    resend_count = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)
+    last_sent_at = models.DateTimeField()
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "student_registration_staging"
+
 
 from .outbox_models import RegistrationNotificationOutbox  # noqa: E402,F401

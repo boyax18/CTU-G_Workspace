@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-101: documentation corrections D-1 and D-2 (documentation only)
+
+- D-2: recorded the F-1 correction commit `9e259e79000be960569a55a82b8bc1841257dc37` (corrected `validation_v2_1.py` blob `e176f9267b69baae7546d060064254d26a3e7df7a106b6505e941cb5b83d98b3`) and the review scope (v2.1 = `14125f9` + `9e259e7`; v2.2 = `28d46e1`) in the pre-review, review package section 17, workflow catalogue and decision register.
+- D-1: the pre-review now records 39 genuine independent tamper probes rejected. The two probes that mocked the second read return the pinned digest by design after the correction; earlier wording overstated the count.
+- **Not done:** no source, test, pin or digest change; D-3 (`role_assignment.py` docstring, F-6) is left for the next authorized source revision; D-101 OPEN; sign-offs blank; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 D-101: F-1 validator correction (local development only)
 
 - `validation_v2_1.py` now parses the v2.0 base only from the bytes it has already hashed against the pin and validated with the v2 validator. Before, with default arguments it re-read `v2_0.json` without verification, so a file replaced between the reads could weaken guarantees in a standalone v2.1 result; the v2.2 chain already rejected this. Pins, addenda, deltas and both effective digests are unchanged.

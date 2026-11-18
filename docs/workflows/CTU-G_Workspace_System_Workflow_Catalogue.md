@@ -3,11 +3,11 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.1  |  15 November 2026  |  For stakeholder review
+Draft version 0.3.8  |  17 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
-This catalogue organizes the proposed CTU-G Workspace processes into 13 functional workflow categories. It is intended to support the Software Requirements Specification (SRS), use-case descriptions, acceptance criteria, and test-case planning.
+This catalogue organizes the proposed CTU-G Workspace processes into 13 functional workflow categories. It is intended to support the Software Requirements Specification (SRS), use-case descriptions, acceptance criteria, and test-case planning. **v0.3.8 adds requirements-only proposals to unstarted workflows**, grounded in SRS v0.4 and Use Case Specification v0.4.1. All previously started WF-01.01–WF-01.06 and WF-02.01–WF-02.03 entries are preserved byte-for-byte, including their evidence, approvals and checklists.
 
 These entries are proposed workflow definitions, not a statement that each function is implemented or approved. Detailed steps, business rules, permission codes, exception handling, and integration contracts must be reconciled with the approved SRS and actual system design.
 
@@ -22,7 +22,7 @@ These entries are proposed workflow definitions, not a statement that each funct
 | WF-05 | Academic Information | Group B | 4 |
 | WF-06 | Clearance Management | Group B | 5 |
 | WF-07 | SSG Financial Management | Group B | 8 |
-| WF-08 | Group Rating | Group B | To be defined |
+| WF-08 | Group Rating | Group B | 6 |
 | WF-09 | Announcements & Notifications | Group B | 5 |
 | WF-10 | Account Concerns & Support | Group B | 4 |
 | WF-11 | System Administration & Configuration | Group C | 4 |
@@ -88,6 +88,7 @@ Index only. Actor and status are documented here; detailed specifications are in
 | WF-05.02 | View assigned subjects (instructor) | Not yet inspected | Draft |
 | WF-05.03 | View enrolled students where authorized | Not yet inspected | Draft |
 | WF-05.04 | Obtain or verify academic status from CTU main system | Not yet inspected | Draft |
+| Not assigned (WF-05 candidate) | Complete Student Semester Onboarding — Semester Academic Information Setup | Student (own current-period information); authorized verifier | Proposed addition; subflow ID/count not approved |
 
 #### WF-06  Clearance Management
 
@@ -118,7 +119,7 @@ Index only. Actor and status are documented here; detailed specifications are in
 | --- | --- | --- | --- |
 | Not assigned | Group Rating subflows — owner review required | Student / Instructor (SRS scope only) | Draft — not yet inspected |
 
-No WF-08.xx IDs or detailed workflow behaviors assigned. Group Rating is included as a draft campus-service category only; the project owner will approve its workflow breakdown before specifications are written.
+**No WF-08.xx IDs have been assigned or approved.** Requirements-only candidate subflows: create activity and category-budget sheet; nominate leaders and invite members; resolve unassigned students/finalize roster; Student-requested transfer and Instructor-verified correction; exact category-budget peer allocation; restricted aggregation and release (policy pending). See Section 4, WF-08. All remain Draft and uninspected.
 
 #### WF-09  Announcements & Notifications
 
@@ -171,7 +172,7 @@ No WF-08.xx IDs or detailed workflow behaviors assigned. Group Rating is include
 
 ## 4. Detailed workflow specifications
 
-Each flow has a consistent header, main flow, alternative flow, errors, links and approval checklist. Uninspected flows are placeholders only: no behavior has been invented.
+Each flow has a consistent header, main flow, alternative flow, errors, links and approval checklist. Unstarted flows may now include **proposed target behavior sourced from the unapproved SRS v0.4 and Use Case Specification v0.4.1**; such text does not mean a code/ERD inspection occurred or that the workflow was approved or implemented. Started workflows remain unchanged.
 
 ### 4.0 Reusable workflow template (moved from former Section 6)
 
@@ -183,10 +184,10 @@ Each flow has a consistent header, main flow, alternative flow, errors, links an
 | Alternative flows | Numbered alternatives; Not yet inspected until reconciled |
 | Errors | Step \| Problem \| What happens |
 | Links | Depends on; Feeds |
-| Checklist footer | Guidelines; AI Agent Checklist; Blocked by; Evidence level; Human Approval; Next flow |
+| Checklist footer | Guidelines; AI Agent Guidelines Checklist; Blocked by; Evidence level; Human Approval; Next flow |
 | Evidence and approval | Record verification level; do not tick Approved without the project owner |
 
-Original reusable-template intent retained: purpose/scope, actors/permissions, trigger/preconditions, postconditions, requirement/data traceability, acceptance/testing, approval and version must be confirmed during each flow’s inspection.
+Original reusable-template intent retained: purpose/scope, actors/permissions, trigger/preconditions, postconditions, requirement/data traceability, acceptance/testing, approval and version must be confirmed during each flow’s inspection. For **unstarted** entries, the AI Agent Guidelines Checklist is **Inspect → Reconcile → Approve → Implement → Test → Commit**; all stages and the distinct Human Approval stay unchecked until separately evidenced. Historical checklists in already started workflows are not altered.
 
 ### Group A - Core System Workflows
 
@@ -1823,9 +1824,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -1865,9 +1866,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -1907,9 +1908,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -1949,9 +1950,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -1991,9 +1992,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2033,9 +2034,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2077,9 +2078,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2119,9 +2120,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2161,9 +2162,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2203,9 +2204,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2245,9 +2246,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2265,169 +2266,277 @@ Next flow: WF-05.01. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Approved Student viewing own academic information; assigned Instructor or authorized staff viewing only permitted records (exact permissions to reconcile) |
+| Trigger | **Proposed:** User opens own or assigned academic information for the current or a historical period. |
+| Preconditions | **Proposed:** Valid session, effective record-scope authorization and campus active period where applicable; CTU main-system data or authorized verification available. |
+| Result | **Proposed:** Displays correctly scoped program, year, section, enrolled subjects, and onboarding/verification status without treating self-entered data as official enrollment. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Identify the requested academic period and verify the user’s data scope.
+
+2. Read approved period-specific academic profile and verification state; distinguish official data from submitted provisional details.
+
+3. For a Student, present **Student Semester Onboarding** status and direct them to **Semester Academic Information Setup** if the active-period record is not Verified.
+
+4. Display approved historical periods without changing their records; link only to authorized corrections or support.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Missing active-period onboarding: provide the onboarding entry/status link, not an invented enrollment record.
+- A2. Irregular/mixed-section or returning Student: display verified subject-level assignments without assuming a single section.
+- A3. CTU source unavailable: show provisional/pending status and historical information where authorized.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1 | Wrong Student or unassigned class | Deny without leaking academic records. |
+| 2 | Verification evidence missing | Display Unverified; do not infer enrollment. |
+| 3 | Period changed while loading | Revalidate the current period and request refresh. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-01.03/01.06, WF-03.05, WF-11.01; official academic verification in WF-05.04.
 
-Feeds: Not yet inspected.
+Feeds: Proposed Student Semester Onboarding (ID pending), WF-06.01/02, WF-07.01, WF-08 proposed activity eligibility.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-03, FR-ACA-07–10, FR-AUTH-09; UC-D12 and Section 6.2.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Active-period, access gating, academic data representation and verified-source integration contract; semester onboarding ID and policy approval. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-05.02. Do not start until Approved is ticked.
+Next flow: WF-05.02.. Do not start until Approved is ticked.
 
 #### WF-05.02 — View assigned subjects (instructor)
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Instructor assigned to the relevant class or course, subject to exact effective permission |
+| Trigger | **Proposed:** Instructor opens assigned-subject view. |
+| Preconditions | **Proposed:** Active Instructor appointment and period-scoped, verified teaching-assignment evidence. |
+| Result | **Proposed:** Only the Instructor’s verified subject and class assignments display, with the correct period. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Validate Instructor session, effective permission, assignment and selected period.
+
+2. Load only officially verified assigned subjects/classes; show unresolved assignments distinctly.
+
+3. Provide authorized links to eligible student rosters and any later WF-08 group activity.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. No assignment: show an empty state rather than attaching guessed classes.
+- A2. Assignment changed/period closed: refresh and restrict stale capabilities.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1 | Instructor not assigned | Deny class-scoped access. |
+| 2 | Institutional assignment unavailable | Keep assignment unverified and do not open group/clearance actions. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-05.04; WF-11.01; WF-03.05.
 
-Feeds: Not yet inspected.
+Feeds: WF-05.03, WF-06.03, WF-08 proposed Instructor activity.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-02, FR-ACA-10, FR-RAT-01; UC-D14.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Verified teaching-assignment source and exact scoped permissions. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-05.03. Do not start until Approved is ticked.
+Next flow: WF-05.03.. Do not start until Approved is ticked.
 
 #### WF-05.03 — View enrolled students where authorized
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Authorized Instructor or verifier with a relevant assigned class |
+| Trigger | **Proposed:** Instructor opens the enrolled-student roster for their verified assignment. |
+| Preconditions | **Proposed:** CTU-verified course/class relationship and session/record scope. |
+| Result | **Proposed:** A read-only, verified class roster limited to the assigned class and period. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Validate effective permissions and verified class assignment.
+
+2. Retrieve verified roster and period; distinguish missing information from non-enrollment.
+
+3. Return only permitted student fields; make verified eligibility available to WF-08 without revealing unrelated student information.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Irregular Student spans subjects: determine eligibility by verified per-subject enrollment, not homeroom section alone.
+- A2. Institution changes roster: invalidate stale eligibility and require refresh.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1 | Foreign class | 403/filtered with no roster leakage. |
+| 2 | No official roster | Show pending verification; cannot authorize group placement. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-05.04; WF-03.05.
 
-Feeds: Not yet inspected.
+Feeds: WF-06.02/03, WF-08 proposed group formation and rating eligibility.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-02, FR-ACA-10; FR-RAT-01–03.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Verified roster source, privacy and cache/revalidation policy. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-05.04. Do not start until Approved is ticked.
+Next flow: WF-05.04.. Do not start until Approved is ticked.
 
 #### WF-05.04 — Obtain or verify academic status from CTU main system
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Authorized academic verification process or institutional verifier; CTU main system remains authoritative |
+| Trigger | **Proposed:** Student submits onboarding details, authorized synchronization arrives, or an eligible staff member requests reverification. |
+| Preconditions | **Proposed:** Identifiable Student and academic period; authenticated trusted upstream evidence or approved manual-verification authority. |
+| Result | **Proposed:** Attributable, period-specific Verified/Needs Correction/Not Enrolled outcome; no authoritative Workspace enrollment administration. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Receive a submitted Student Semester Onboarding record or an authorized CTU academic-status event for a defined period.
+
+2. Validate the institutional source, course/program, year level, section where applicable, each subject/class and assigned Instructor evidence.
+
+3. Compare the submission with CTU records or log authorized manual verification; do not accept typed subjects as official evidence.
+
+4. Record verified or correction-needed status and evidence references within approved scope, preserving past periods.
+
+5. Provide resulting verified enrollment/subject eligibility to WF-07.01, WF-06.02 and WF-08.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Student irregular/no single section: verify subjects individually rather than reject legitimate mixed sections.
+- A2. Integration unavailable or evidence conflicts: retain Submitted/Needs Correction; no fee or clearance assignment on provisional subjects.
+- A3. Official non-enrollment or return after gap: record eligibility for that period only; no invented gap-period enrollment.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 2 | Untrusted/contradictory source | Refuse verification; require authorized reconciliation. |
+| 4 | Write or evidence verification failure | No false Verified status, no downstream assessment. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-11.01, CTU-owned academic records or authorized verification procedure.
 
-Feeds: Not yet inspected.
+Feeds: Proposed Student Semester Onboarding (ID pending), WF-07.01, WF-06.02, WF-08 group eligibility.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-08–10, FR-FIN-09–14, UC-D12/D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Official source contract, verifier appointment, retention and schema reconciliation; no new enrollment-management table. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-06.01. Do not start until Approved is ticked.
+Next flow: WF-06.01.. Do not start until Approved is ticked.
+
+#### WF-05 (ID pending) — Complete Student Semester Onboarding — Semester Academic Information Setup (proposed additional subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Approved Student; authorized academic verifier for review (separate duties) |
+| Trigger | **Proposed:** First eligible login in Active period, or newly Active semester with no Verified onboarding for that Student/period. |
+| Preconditions | **Proposed:** Authenticated approved Student; one Active period; CTU main system or an authorized verifier is the enrollment authority. |
+| Result | **Proposed:** Verified period-specific course/program, year level, section and subjects are available to eligible services; no self-created official enrollment. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. After login, Student service checks Verified onboarding for the campus Active period and opens **Semester Academic Information Setup** when missing.
+
+2. Show School Year and Semester read-only; prefill trusted course/program, year level, section and subjects where available.
+
+3. Student reviews or enters permitted current academic details, including irregular/mixed-section subjects; Save Draft or Submit for Verification.
+
+4. Authorized verification compares official CTU information or approved manual evidence; return Verified or Needs Correction and retain audit/evidence references.
+
+5. Upon Verified, allow normal Student Dashboard; trigger/confirm separate period-specific fee eligibility and clearance preparation.
+
+#### Alternative flows
+
+- A1. Student remains Draft/Submitted/Needs Correction: restrict normal Student services but preserve Logout, support, onboarding status/correction and permitted historical obligations; other independently authorized roles are not blocked.
+- A2. Not officially enrolled: no invented enrollment, fee or clearance; show corrections/support.
+- A3. Student already verified by an upstream integration: prefill/confirm as policy allows; never duplicate fee assessments.
+- A4. School period changes during entry: prevent write into the wrong period; preserve previous submission and request confirmation.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| 2 | No Active period | Hold onboarding; do not accept period selected by Student. |
+| 4 | Source unavailable or discrepancy | Retain Submitted/Needs Correction, not Verified. |
+| 5 | Unverified subject or official class assignment | No clearance signatory or Group Rating eligibility. |
+
+#### Links
+
+Depends on: WF-01.03/01.06, WF-11.01, WF-05.04, WF-03.05.
+
+Feeds: WF-05.01, WF-06.01/02, WF-07.01/02, WF-08 group formation.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-07–10, FR-AUTH-09, FR-FIN-15–16; UC-D12/D13, Section 6.2.
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: Owner adoption of new subflow ID/count, onboarding gate, verification authority, correction policy, and compatibility with existing WF-01.01 registration field contract. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: WF-05.04 / next approved academic service. Do not start until Approved is ticked.
 
 ### WF-06  Clearance Management
 
@@ -2435,85 +2544,110 @@ Next flow: WF-06.01. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Approved eligible Student |
+| Trigger | **Proposed:** Student requests current-period clearance. |
+| Preconditions | **Proposed:** Eligible academic period; approved prior-semester clearance policy; verified enrollment and required signatories where applicable. |
+| Result | **Proposed:** One valid period-linked clearance request, without auto-clearing previous-period obligations. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Identify current period and check Student ownership.
+
+2. Check Verified period academic eligibility and separately approved previous-clearance prerequisite; never infer from self-reported subjects.
+
+3. Load verified current-period subjects, required signatories and applicable fee-clearance item.
+
+4. Create/return the scoped request idempotently and show pending requirements.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. First-year, returning, transferee or irregular Student: follow separately approved exception policy, not an arbitrary block.
+- A2. Older clearance outstanding: show separately and apply only approved gating; do not erase it.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 2 | No verified eligibility | Keep request pending/ineligible; link to onboarding/verification. |
+| 4 | Duplicate request/concurrent creation | Return existing valid period request; prevent duplicates. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-05.04, proposed Student Semester Onboarding, WF-07.01/02, WF-11.01.
 
-Feeds: Not yet inspected.
+Feeds: WF-06.02–05.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-CLR-01, FR-CLR-06–08; UC-D07/D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Previous-period prerequisite/exception policy, idempotent schema and signing contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-06.02. Do not start until Approved is ticked.
+Next flow: WF-06.02.. Do not start until Approved is ticked.
 
 #### WF-06.02 — Verify clearance eligibility and requirements
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Student (own status) and authorized clearance/verifier service |
+| Trigger | **Proposed:** Clearance requirement evaluation for a valid period. |
+| Preconditions | **Proposed:** Verified period enrollment and instructor/signatory assignments; current fee assessment evidence. |
+| Result | **Proposed:** Correct current-period academic and financial clearance requirements without false auto-approval. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Validate Student and period, including current or approved historical scope.
+
+2. Retrieve verified subject/class-to-Instructor signatory assignments and current-period fee status.
+
+3. Apply separately approved previous-term clearance and exception rules, without changing academic enrollment records.
+
+4. Record or present current-period clearance requirements and explicit unresolved items, preserving historical records.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Official subject or Instructor assignment missing: hold that academic item for verification.
+- A2. Fee not yet assessed or eligibility unresolved: show pending verification, not a paid/cleared state.
+- A3. Prior semester uncleared: show a distinct historical issue and follow approved exception rules.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 2 | Provisional subjects | Do not create official Instructor clearance assignments. |
+| 3 | No approved previous-clearance gate | Do not silently apply an invented rule. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-05.04, WF-07.01/02, WF-11.01.
 
-Feeds: Not yet inspected.
+Feeds: WF-06.01, WF-06.03–05.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-CLR-02–04, FR-CLR-06–08; UC-D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Signatory rules, old-clearance exceptions, fee interpretation and approval policy. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-06.03. Do not start until Approved is ticked.
+Next flow: WF-06.03.. Do not start until Approved is ticked.
 
 #### WF-06.03 — Review and decide assigned clearance items
 
@@ -2545,9 +2679,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2587,9 +2721,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2629,9 +2763,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2647,85 +2781,111 @@ Next flow: WF-07.01. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Authorized SSG Finance eligibility service / Treasurer reviewing permitted evidence |
+| Trigger | **Proposed:** Active-period eligibility check, verified upstream sync, or Student onboarding confirmation. |
+| Preconditions | **Proposed:** Verifiable CTU enrollment state for the exact period and an approved fee policy. |
+| Result | **Proposed:** An explainable eligible/ineligible/unverified fee decision for the period; no arbitrary charge. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Identify Student, academic period and fee type; verify authorization and policy version.
+
+2. Fetch trusted enrollment status or recorded authorized manual verification.
+
+3. Classify eligible, verified not enrolled, or unresolved; explain decision source/date.
+
+4. Pass only verified eligible outcomes to WF-07.02; preserve gap-period and past-balance history.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. First-year/newcomer/transferee: use verified first applicable enrolled period.
+- A2. Returning after gap: assess only the return period; do not charge gap periods automatically.
+- A3. Conflicting or unavailable evidence: hold for review and never silently mark enrolled.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 2 | Untrusted or absent evidence | No new obligation; show pending verification. |
+| 3 | Invalid fee period | Refuse and preserve existing records. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-05.04; WF-11.01; approved campus fee policy.
 
-Feeds: Not yet inspected.
+Feeds: WF-07.02, WF-06.02.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-09–14, FR-FIN-16; UC-D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: CTU verification contract, effective fee policy, audit/retention safeguards. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-07.02. Do not start until Approved is ticked.
+Next flow: WF-07.02.. Do not start until Approved is ticked.
 
 #### WF-07.02 — Assess organizational fee obligation
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Authorized SSG Finance assessment service / Treasurer with protected approval rights |
+| Trigger | **Proposed:** Verified eligible enrollment in an applicable academic period, even before Student first login. |
+| Preconditions | **Proposed:** WF-07.01 positive verified eligibility; approved rate and exemption policy; trusted period and identity. |
+| Result | **Proposed:** Exactly one valid obligation for Student + period + fee type, with policy/effective-date evidence and unchanged historical balances. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Read verified eligibility and approved current-period fee schedule, including any lawful exemption.
+
+2. Check existing assessed obligation for the same Student, period and fee type.
+
+3. Atomically create one valid obligation or return existing obligation, with evidence and audit according to approved schema.
+
+4. Present current obligation separately from historic unpaid balances and send only approved notifications.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Student submits onboarding repeatedly, logs in late or background sync repeats: return existing charge without duplication.
+- A2. Not enrolled/verification missing: assess nothing.
+- A3. Approved exemption, amendment or reversal: require separate attributable action, never silently rewrite posted history.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1 | Missing approved rate or verified enrollment | Stop; no speculative charge. |
+| 3 | Concurrent assessments or failure | Unique/transaction protection prevents double obligation or partial write. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-07.01, WF-11.01; approved fee amount/exemption policy.
 
-Feeds: Not yet inspected.
+Feeds: WF-07.06, WF-06.02, WF-07.03/04.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-13–18, UC-D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Unique/index design against official ERD, amount/effective date policy, exemption/reversal and audit governance. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-07.03. Do not start until Approved is ticked.
+Next flow: WF-07.03.. Do not start until Approved is ticked.
 
 #### WF-07.03 — Record and validate payments
 
@@ -2757,9 +2917,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2799,9 +2959,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2841,9 +3001,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2857,43 +3017,55 @@ Next flow: WF-07.06. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Student (own records), Treasurer (permitted operational scope), SSG Advisor (read-only scoped monitoring) |
+| Trigger | **Proposed:** Authorized user views current or historical finances. |
+| Preconditions | **Proposed:** Approved Student account or independently delegated finance role; current/historical periods available. |
+| Result | **Proposed:** Accurate current obligation, amounts paid, balance and historical period ledger views with strict access scopes. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Authenticate and evaluate effective permissions, ownership and active period.
+
+2. Load current eligible obligation/payment state and prior-period obligations by their original periods.
+
+3. Show current status and permitted history separately; never merge prior unpaid debt into current-semester assessed amount.
+
+4. Expose only authorized aggregate/read-only monitoring to the single SSG Advisor (Finance Monitor) responsibility.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. No current assessment because not enrolled/unverified: show Not Assessed or Pending Verification, not Paid.
+- A2. Returning Student after a gap: show assessed eligible periods and historical balances separately.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1 | Cross-user financial access | Deny and withhold data. |
+| 2 | Unverified ledger state | Show reconciliation status, not invented financial totals. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-07.01–03, WF-11.01; approved finance report scope.
 
-Feeds: Not yet inspected.
+Feeds: Student dashboard, WF-06.02, WF-07.07.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-02–07, FR-FIN-17–18; UC-D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Scope/redaction policy, eventual transaction schema and verified finance calculations. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-07.07. Do not start until Approved is ticked.
+Next flow: WF-07.07.. Do not start until Approved is ticked.
 
 #### WF-07.07 — Prepare authorized financial reports
 
@@ -2925,9 +3097,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -2941,49 +3113,401 @@ Next flow: WF-07.08. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** Authorized Treasurer / eligibility verification workflow |
+| Trigger | **Proposed:** Fee evaluation of Student newly entering, transferring or returning after an inactive period. |
+| Preconditions | **Proposed:** Official period-by-period enrollment evidence and applicable fee schedule. |
+| Result | **Proposed:** Correct treatment of newcomer, transferee and returning Student without fabricated retroactive charges. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Classify each relevant period using trusted CTU enrollment evidence.
+
+2. Apply fee eligibility and policy for the first/current eligible enrolled period.
+
+3. For absences, leave non-enrolled periods unassessed; preserve legitimate earlier debts unchanged.
+
+4. Document decision and exceptions, sending eligible period for idempotent assessment.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Irregular program or subject mix: apply verified enrolled status, not number of subjects entered.
+- A2. Conflict between sources: require authorized reconciliation.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1 | Enrollment status not verified | No automatic charge. |
+| 4 | Retry | Existing valid obligation is reused. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-05.04, WF-07.01/02.
 
-Feeds: Not yet inspected.
+Feeds: WF-07.02 and WF-07.06.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-09–18; UC-D13.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Institutional verification, fee exemptions/returner policy and evidence retention. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-09.01. Do not start until Approved is ticked.
+Next flow: WF-09.01.. Do not start until Approved is ticked.
 
 ### WF-08  Group Rating
 
-Not yet inspected. Scope evidenced in SRS v0.5, FR-RAT-01–FR-RAT-04: assigned-class rating sheets, student group invitations, safeguards for group ratings, and privacy-scoped results. These are requirements for later reconciliation, not implementation claims or approved workflow definitions.
+**Category status: Draft — proposed breakdown for discussion only. No WF-08.xx identifiers are assigned or approved.** This section incorporates SRS v0.4 FR-RAT-01–17 and Use Case Specification v0.4.1 UC-D09, UC-D14–D16. It does not approve any scoring formula, grades, privacy/release policy, ERD changes, or implementation.
 
-Workflow IDs: Not assigned. Actor(s) and exact permissions: Unknown – needs confirmation. Main flow, alternatives, errors, links, and checklist footer will be added when the project owner defines the individual Group Rating workflows. No WF-08 subflow has been approved.
+#### WF-08 (ID pending) — Create group-rating activity and Instructor-defined rating sheet (proposed subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Instructor of a verified assigned subject/class/period |
+| Trigger | **Proposed:** Authorized actor begins this proposed WF-08 activity step for an approved subject/class/academic period. |
+| Preconditions | **Proposed:** Verified class roster, current activity state and appropriate effective permissions; exact backend/API/ERD contracts are still uninspected. |
+| Result | **Proposed:** Only valid and attributable changes for this candidate step; no unrelated group, rating or role access. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. Verify Instructor assignment and current/eligible academic period.
+
+2. Create draft rating activity and select the correct verified student roster.
+
+3. Configure group-size range, formation deadline and activity-level sheet with as many practical named categories as needed and a **positive point budget per category**.
+
+4. Preview and publish the sheet only after category/budget validation; keep the published version immutable once allocations exist.
+
+#### Alternative flows
+
+- A1. No assigned class/roster: refuse activity creation.
+- A2. Incomplete/duplicate category or invalid budget: keep draft.
+- A3. After first accepted allocation: require separately approved versioned correction, never silent edit.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Preflight | Wrong subject, activity, Student or role | Deny without change; no record leakage. |
+| Commit | Duplicate, expired or conflicting roster/score update | Revalidate and roll back; do not claim success. |
+
+#### Links
+
+Depends on: WF-05.04 official class eligibility; WF-11.01 academic period; effective permissions; other WF-08 candidate steps as relevant.
+
+Feeds: Next candidate WF-08 step after separate approved specification, or audit/authorized reporting once permitted.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-RAT-01, FR-RAT-05, FR-RAT-15; UC-D14/D16
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: WF-08 subflow IDs and acceptance policy pending. Details include leader disputes, size cap, transfer validity, departed-member eligibility, point precision, final aggregation and privacy contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Next owner-approved WF-08 subflow (ID pending). Do not start until Approved is ticked.
+
+#### WF-08 (ID pending) — Nominate leaders, invite classmates and confirm membership (proposed subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Assigned Instructor, nominated Student Leader and invited eligible Students |
+| Trigger | **Proposed:** Authorized actor begins this proposed WF-08 activity step for an approved subject/class/academic period. |
+| Preconditions | **Proposed:** Verified class roster, current activity state and appropriate effective permissions; exact backend/API/ERD contracts are still uninspected. |
+| Result | **Proposed:** Only valid and attributable changes for this candidate step; no unrelated group, rating or role access. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. Instructor nominates initial leaders from the verified class roster.
+
+2. Student nominee accepts or declines; a declined nomination gives no leader authority.
+
+3. Accepted Group Leader sends invitations to eligible classmates with available capacity.
+
+4. Each invited Student accepts or declines their own invitation; revalidate eligibility and capacity atomically.
+
+5. Confirm at most one accepted group per Student within this activity; leader status is not a new application role.
+
+#### Alternative flows
+
+- A1. Invitation expired, revoked, declined or from another activity: no membership.
+- A2. Concurrent acceptance for last slot: only eligible capacity wins.
+- A3. Student receives several invitations: only one accepted membership is allowed.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Preflight | Wrong subject, activity, Student or role | Deny without change; no record leakage. |
+| Commit | Duplicate, expired or conflicting roster/score update | Revalidate and roll back; do not claim success. |
+
+#### Links
+
+Depends on: WF-05.04 official class eligibility; WF-11.01 academic period; effective permissions; other WF-08 candidate steps as relevant.
+
+Feeds: Next candidate WF-08 step after separate approved specification, or audit/authorized reporting once permitted.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-RAT-02–03, FR-RAT-09; UC-D14
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: WF-08 subflow IDs and acceptance policy pending. Details include leader disputes, size cap, transfer validity, departed-member eligibility, point precision, final aggregation and privacy contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Next owner-approved WF-08 subflow (ID pending). Do not start until Approved is ticked.
+
+#### WF-08 (ID pending) — Resolve unassigned Students and finalize group roster (proposed subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Assigned Instructor with verified class authority |
+| Trigger | **Proposed:** Authorized actor begins this proposed WF-08 activity step for an approved subject/class/academic period. |
+| Preconditions | **Proposed:** Verified class roster, current activity state and appropriate effective permissions; exact backend/API/ERD contracts are still uninspected. |
+| Result | **Proposed:** Only valid and attributable changes for this candidate step; no unrelated group, rating or role access. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. Review group leaders, memberships, pending invitations and the verified unassigned-student roster.
+
+2. Choose an authorized extension, request more Group Leader invitations, or directly assign eligible unassigned Students with a reason and notifications.
+
+3. Check Instructor-configured minimum/maximum; document an authorized exception only within an independently approved hard cap.
+
+4. Verify every eligible Student is placed or has an approved exception; finalize and lock the roster with attributable history.
+
+#### Alternative flows
+
+- A1. Group undersized/oversized: require permitted exception, no silent bypass.
+- A2. Direct assignment is not represented as Student acceptance.
+- A3. Unresolved students or competing roster writes prevent finalization.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Preflight | Wrong subject, activity, Student or role | Deny without change; no record leakage. |
+| Commit | Duplicate, expired or conflicting roster/score update | Revalidate and roll back; do not claim success. |
+
+#### Links
+
+Depends on: WF-05.04 official class eligibility; WF-11.01 academic period; effective permissions; other WF-08 candidate steps as relevant.
+
+Feeds: Next candidate WF-08 step after separate approved specification, or audit/authorized reporting once permitted.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-RAT-09–10, FR-RAT-13; UC-D14
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: WF-08 subflow IDs and acceptance policy pending. Details include leader disputes, size cap, transfer validity, departed-member eligibility, point precision, final aggregation and privacy contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Next owner-approved WF-08 subflow (ID pending). Do not start until Approved is ticked.
+
+#### WF-08 (ID pending) — Request and decide Student group transfer / membership correction (proposed subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Student requests own ordinary transfer; assigned Instructor decides; eligible leaders are notified |
+| Trigger | **Proposed:** Authorized actor begins this proposed WF-08 activity step for an approved subject/class/academic period. |
+| Preconditions | **Proposed:** Verified class roster, current activity state and appropriate effective permissions; exact backend/API/ERD contracts are still uninspected. |
+| Result | **Proposed:** Only valid and attributable changes for this candidate step; no unrelated group, rating or role access. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. Student submits destination group and reason; original membership remains while Pending.
+
+2. Instructor checks Student, source/destination capacities, period/class eligibility and current roster version.
+
+3. If the Student is a Group Leader, Instructor directly designates an eligible source-group successor, without successor-acceptance; notify successor and permit correction concerns.
+
+4. Instructor approves/rejects; on approval transfer, successor change and audit/history commit together.
+
+5. After finalization, process only protected roster amendments; refuse ordinary changes when rating submissions already exist until integrity rules are approved.
+
+#### Alternative flows
+
+- A1. Pending/rejected/cancelled request leaves membership unchanged.
+- A2. Transfer would break min/max/hard capacity or leader validity: block or seek approved exception.
+- A3. Instructor corrects a proven record error through separate logged correction, not a fictional Student transfer.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Preflight | Wrong subject, activity, Student or role | Deny without change; no record leakage. |
+| Commit | Duplicate, expired or conflicting roster/score update | Revalidate and roll back; do not claim success. |
+
+#### Links
+
+Depends on: WF-05.04 official class eligibility; WF-11.01 academic period; effective permissions; other WF-08 candidate steps as relevant.
+
+Feeds: Next candidate WF-08 step after separate approved specification, or audit/authorized reporting once permitted.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-RAT-03, FR-RAT-11–13; UC-D15
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: WF-08 subflow IDs and acceptance policy pending. Details include leader disputes, size cap, transfer validity, departed-member eligibility, point precision, final aggregation and privacy contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Next owner-approved WF-08 subflow (ID pending). Do not start until Approved is ticked.
+
+#### WF-08 (ID pending) — Submit exact peer category-point allocations (proposed subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Eligible Student or Group Leader evaluating only *other* verified members of their group |
+| Trigger | **Proposed:** Authorized actor begins this proposed WF-08 activity step for an approved subject/class/academic period. |
+| Preconditions | **Proposed:** Verified class roster, current activity state and appropriate effective permissions; exact backend/API/ERD contracts are still uninspected. |
+| Result | **Proposed:** Only valid and attributable changes for this candidate step; no unrelated group, rating or role access. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. Retrieve the published sheet, budget per category and effective eligible roster, excluding the logged-in Student entirely.
+
+2. Display **Groupmate** rows, one column per Instructor-defined **Category (N points)**, **Total** last, and a **Total Distributed** row.
+
+3. Student explicitly enters nonnegative values including deliberate zero for each eligible groupmate/category.
+
+4. For each category separately, validate the sum across recipient rows is **exactly** the Instructor-assigned budget; blank is not zero.
+
+5. Confirm member/period/roster/sheet version, no self/foreign recipient, uniqueness and idempotent final submission; commit without public result publication.
+
+**Proposed table example, Student A rating (Student A is not listed):**
+
+| Groupmate | Participation (10 points) | Cooperation (10 points) | Contribution (20 points) | Total |
+| --- | ---: | ---: | ---: | ---: |
+| Student B | 4 | 3 | 8 | 15 |
+| Student C | 3 | 2 | 7 | 12 |
+| Student D | 3 | 5 | 5 | 13 |
+| **Total Distributed** | **10/10** | **10/10** | **20/20** | **40/40** |
+
+This is an illustrative allocation, not an approved calculation of final grades. Every submitted category column must exactly match its own point budget.
+
+#### Alternative flows
+
+- A1. Under/over budget, missing cells, foreign/self recipient or duplicate final allocation: reject with safe guidance.
+- A2. One eligible member/no recipient: block final submission and refer Instructor.
+- A3. Departed member may receive manually assigned zeros if eligible under approved snapshot policy; never auto-fill missing entries.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Preflight | Wrong subject, activity, Student or role | Deny without change; no record leakage. |
+| Commit | Duplicate, expired or conflicting roster/score update | Revalidate and roll back; do not claim success. |
+
+#### Links
+
+Depends on: WF-05.04 official class eligibility; WF-11.01 academic period; effective permissions; other WF-08 candidate steps as relevant.
+
+Feeds: Next candidate WF-08 step after separate approved specification, or audit/authorized reporting once permitted.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-RAT-03–08, FR-RAT-14–16; UC-D16
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: WF-08 subflow IDs and acceptance policy pending. Details include leader disputes, size cap, transfer validity, departed-member eligibility, point precision, final aggregation and privacy contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Next owner-approved WF-08 subflow (ID pending). Do not start until Approved is ticked.
+
+#### WF-08 (ID pending) — Calculate and release permitted results — policy pending (proposed subflow)
+
+| Field | Definition |
+| --- | --- |
+| Actor / required permission | **Proposed, not inspected:** Authorized Instructor and approved result recipients (policy not established) |
+| Trigger | **Proposed:** Authorized actor begins this proposed WF-08 activity step for an approved subject/class/academic period. |
+| Preconditions | **Proposed:** Verified class roster, current activity state and appropriate effective permissions; exact backend/API/ERD contracts are still uninspected. |
+| Result | **Proposed:** Only valid and attributable changes for this candidate step; no unrelated group, rating or role access. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+
+#### Main flow
+
+**Proposed target flow (not implementation evidence):**
+
+1. Keep submitted allocations protected while final aggregation, size normalization, optional weighting and result audience are unapproved.
+
+2. After explicit owner policy adoption, independently reconcile a versioned aggregation, release and redaction contract before implementation.
+
+#### Alternative flows
+
+- A1. No approved calculation/publication policy: do not create final grade or publish results.
+- A2. Historical roster/category revisions require preservation and controlled interpretation.
+
+#### Errors
+
+| Step | Problem | What happens |
+| --- | --- | --- |
+| Preflight | Wrong subject, activity, Student or role | Deny without change; no record leakage. |
+| Commit | Duplicate, expired or conflicting roster/score update | Revalidate and roll back; do not claim success. |
+
+#### Links
+
+Depends on: WF-05.04 official class eligibility; WF-11.01 academic period; effective permissions; other WF-08 candidate steps as relevant.
+
+Feeds: Next candidate WF-08 step after separate approved specification, or audit/authorized reporting once permitted.
+
+Requirement/use-case traceability (proposed): SRS v0.4 FR-RAT-04, FR-RAT-17; UC-D09/D16
+
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
+
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+
+Blocked by: WF-08 subflow IDs and acceptance policy pending. Details include leader disputes, size cap, transfer validity, departed-member eligibility, point precision, final aggregation and privacy contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+
+Human Approval: ☐ Approved by: ______  Date: ______
+
+Next flow: Next owner-approved WF-08 subflow (ID pending). Do not start until Approved is ticked.
 
 ### WF-09  Announcements & Notifications
 
@@ -3017,9 +3541,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3059,9 +3583,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3101,9 +3625,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3143,9 +3667,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3185,9 +3709,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3229,9 +3753,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3271,9 +3795,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3313,9 +3837,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3355,9 +3879,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3375,43 +3899,58 @@ Next flow: WF-11.01. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | **Proposed, not inspected:** School Admin with approved academic-period operational permission; Technical Super Admin inherits via effective Admin permissions |
+| Trigger | **Proposed:** Admin creates, schedules, or requests activation of a new School Year/Semester. |
+| Preconditions | **Proposed:** Authorized account, validated campus calendar and proposed period metadata; prior-period active state known. |
+| Result | **Proposed:** Exactly one Active campus semester; prior period closed transactionally, with complete historical data retained. |
+| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
 
 #### Main flow
 
-Not yet inspected.
+**Proposed target flow (not implementation evidence):**
+
+1. Create draft/Scheduled period with verified school year, semester and applicable dates; reject overlaps/duplicates.
+
+2. Preflight eligibility of proposed transition, single-Active invariant and downstream service dependencies.
+
+3. Show confirmation/impact preview, obtain authorized School Admin confirmation and write attributable audit.
+
+4. Atomically close prior Active period and activate next, or roll back everything; never mass-assign fees or claim student enrollment.
+
+5. Publish the current academic period for Student Semester Onboarding; Finance and Clearance independently evaluate verified eligibility.
 
 #### Alternative flows
 
-Not yet inspected.
+- A1. Future period scheduled: keep current period Active until explicit approved activation (automation is separate).
+- A2. Reopening/correcting Closed period: require exceptional, separately approved workflow.
+- A3. Missing academic source or active-period conflict: stop without changing Active state.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 2 | More than one Active period/overlap | Reject and preserve current period. |
+| 4 | Concurrent activations or audit failure | Full rollback; no dual-Active semester. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: Official campus period policy; WF-03.05; verified schema and audit contract.
 
-Feeds: Not yet inspected.
+Feeds: WF-05.01/04, Proposed Student Semester Onboarding, WF-06/07/08.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-05–06, FR-AUTH-09; UC-D11.
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-Blocked by: Unknown – needs confirmation
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Evidence level: Unknown – needs confirmation
+Blocked by: Single-active DB constraint, period-state mapping/ERD review, reopening/automation decisions and Admin permissions. No ERD, migration, permission grant or code change is approved by this proposal.
+
+Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-11.02. Do not start until Approved is ticked.
+Next flow: WF-11.02.. Do not start until Approved is ticked.
 
 #### WF-11.02 — Manage system operational settings
 
@@ -3443,9 +3982,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3485,9 +4024,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3527,9 +4066,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3571,9 +4110,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3613,9 +4152,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3655,9 +4194,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3697,9 +4236,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3739,9 +4278,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3783,9 +4322,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3825,9 +4364,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3867,9 +4406,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3909,9 +4448,9 @@ Depends on: Not yet inspected.
 
 Feeds: Not yet inspected.
 
-Guidelines: Inspect → Reconcile → Clean → Verify → Approve → Continue
+Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Checklist: ☐ Inspected   ☐ Reconciled   ☐ Tested   ☐ Cleaned   ☐ Verified
+AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
 Blocked by: Unknown – needs confirmation
 
@@ -3940,6 +4479,10 @@ Next flow: Final pass / owner approval. Do not start until Approved is ticked.
 - Account creation is all-or-nothing, backed by database-level concurrency protection.
 - Roles and permissions attach to the account ID, never to the email.
 - No ERD, migration, or code change is authorized by this document.
+- **Unstarted-module design only:** WF-11.01 activates one campus semester safely; a new period does not automatically prove enrollment or assess a fee. Students use the proposed WF-05 Student Semester Onboarding page; current term and academic status must come from CTU/authorized verification.
+- **Unstarted-module design only:** Fee obligations are independently assessed once per verified eligible Student/period/fee type under approved rate rules, regardless of first login. WF-06 uses verified Instructor subjects/signatories and separately approved old-clearance prerequisites; historical debt/clearance is preserved.
+- **Unstarted-module design only:** WF-08 Group Rating uses Instructor-defined positive **category point budgets**, with groupmates as rows (self excluded), categories as columns and Total last. Every rater, including Group Leaders, allocates the **exact budget in each category**. Zero is valid only when entered deliberately; blanks, duplicate submissions, self-rating and unverified rosters are refused. Aggregation and publication remain open.
+- For every unstarted workflow, the six-stage **AI Agent Guidelines Checklist** and separate Human Approval are unmarked until actual Inspect → Reconcile → Approve → Implement → Test → Commit evidence exists. No AI checklist state is inferred from discussion or from the source requirements alone.
 
 ## 6. Appendix A – Decision Register
 
@@ -4082,6 +4625,8 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 
 ## 8. Appendix C – Document control
 
+**v0.3.8 source reconciliation note:** Proposed future-module additions use SRS v0.4 (`CTU-G_Workspace_SRS_v0.4_UPDATED.md`) and Use Case Specification v0.4.1. They do not edit any started flow or approve an unassigned subflow ID. Original uploaded catalogue is retained separately.
+
 | Control | Value |
 | --- | --- |
 | Document | CTU-G Workspace System Workflow Catalogue |
@@ -4159,6 +4704,8 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.11 WF-02.06 acceptance check | 18 November 2026 | Owner requested an investigation of the intermittent WF-02.03 approval-dialog contrast failure before Human Approval. Reproduced it: the measured element was the page's Approve application button behind the dialog during its hover transition; the dark-theme primary-button hover colour #16a34a gives 3.30:1 (a genuine, pre-existing AA defect in System-dark and Dark); rest 5.02:1, Light hover 7.13:1; the dialog text meets AA; the test passed 6/6 alone and was left unchanged. Confirmed Technical Super Admin cases use isolated fixtures only and ctug_workspace has no such role. Proposed a dashboard-only token correction for owner decision; nothing changed or committed; Human Approval left unchecked. | Owner decision on the accessibility correction and Human Approval pending |
 | 0.3.11 WF-02.06 accessibility correction | 18 November 2026 | Owner authorized the dashboard-only WCAG AA correction. Set --db-button-hover to #166534 for the System-dark and Dark dashboard themes (dashboard.css); primary-button hover now 7.13:1 (was 3.30:1), verified in the browser for the affected buttons at four widths in three themes (96 measurements); full browser regression 122/122, unit 211/211, build passed, lint baseline unchanged; TOKENS.md and AUDIT.md A-21 updated. The public .btn-primary hover stays open for a separate decision. Human Approval left unchecked. | Human Approval pending |
 | 0.3.11 WF-02.06 Human Approval and WF-02 closure | 18 November 2026 | Owner approved WF-02.06 for completed local development (implementation ec6a145, documentation f51a9c6, accessibility correction 32ca7fa) on the reported implementation, full regression and accessibility evidence, which also closes the WF-02 Account Management category (WF-02.01 to WF-02.06, all with Human Approval) for local development only. Recorded Human Approval (Ronald C. Arias, November 18, 2026); updated the register, Status, checklist scope, Blocked-by and Appendix B; recorded the closing evidence (backend 1792/1792, frontend 211/211, browser 122/122, build passed, hover 7.13:1, AUDIT A-21; lint only under the WF-02.06 exception). Open: production release blocked; public-site dark-theme button hover (AUDIT A-21); Technical Super Admin planned for WF-03; audit retention, V2-06, V2-07, V2-08 and D-67. Not a production authorization; WF-03.01 not started. | Human Approval recorded (local development only); WF-02 closed for local development |
+
+| 0.3.8 requirements-only draft for unstarted workflows | 17 November 2026 | Updated only unstarted drafts in WF-05, WF-06, WF-07, WF-08 and WF-11.01 to reflect SRS v0.4 and Use Case Specification v0.4.1. Proposed Student Semester Onboarding and WF-08 subflow descriptions have no approved IDs; current registered IDs/titles remain unchanged. Standardized unstarted checklist footers. Historical started WF-01.01–06 and WF-02.01–03 specification bodies and register statuses preserved byte-exact; no owner/AI approvals or implementation evidence added. No code, ERD, migration, permission or repository write. | Awaiting stakeholder review and individual Inspect/Reconcile |
 
 ### Workflow ID mapping (old → new)
 

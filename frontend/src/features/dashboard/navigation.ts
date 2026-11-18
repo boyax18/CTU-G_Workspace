@@ -10,6 +10,7 @@
  * Permission codes are point-in-time hints; Django authorizes every request.
  */
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig.ts';
+import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -124,7 +125,8 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     integration: PENDING_APPLICATIONS_LIST_ENABLED ? 'shell' : planned,
     description: 'Pending Student and Instructor applications waiting for School Admin review. This list is read-only.' },
   { id: 'account-directory', label: 'Account directory', icon: 'list', group: 'account-operations',
-    requiredAny: ['accounts.school_accounts.read'], integration: planned,
+    // WF-02.05 (D-69, D-70): live only when its switch is on; Django still decides access.
+    requiredAny: ['accounts.school_accounts.read'], integration: ACCOUNT_STATUS_ENABLED ? 'shell' : planned,
     description: 'Eligible school accounts and their status.' },
 
   { id: 'my-subjects', label: 'My subjects', icon: 'book', group: 'academic',

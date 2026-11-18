@@ -199,6 +199,16 @@ class LoginView(WorkspaceSessionAPI):
         # Compute the response before creating the session, so a database error
         # never leaves behind a logged-in session and a failed API response.
         login(request._request, account)
+        # WF-02.05 D-66: login() has just bound the session to the current suspension epoch.
+        # Re-read eligibility AFTER that, from the database: a suspension committed before the
+        # epoch was read is seen here (sign-out, refuse); one committed after it changes the
+        # epoch, so this session already fails the next request's hash check.
+        if _workspace_account(Account.objects.filter(pk=account.pk).first()) is None:
+            logout(request._request)
+            return Response(
+                {"error": {"code": "invalid_credentials", "message": "Unable to sign in with these credentials."}},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
         if proof is not None:
             request.session["workspace_executor_proof"] = proof
         return Response({"authenticated": True, **payload})

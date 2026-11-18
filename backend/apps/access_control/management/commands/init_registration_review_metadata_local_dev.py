@@ -61,9 +61,14 @@ _APPROVED_READ_ROUTES = (
     ("detail", READ_ONLY_DETAIL_ROUTE, READ_ONLY_DETAIL_NAME, PendingRegistrationDetailView),
 )
 _WRITE_HANDLERS = ("post", "put", "patch", "delete")
-_REVIEW_NAME_PREFIXES = ("registration-review", "bulk-review", "bulk-registration-review")
-_REVIEW_ROUTE_MARKER = "registration-requests"
-_REVIEW_MODULE_PREFIXES = ("apps.accounts.registration_review", "apps.accounts.registration_bulk")
+# WF-02.05 stage 3 (owner-authorized 18 Nov 2026): account-status routes are recognized by every
+# layer too (class, module, route name and path marker), so an opaque wrapper on a school-accounts
+# path is refused like one on a registration-requests path. Nothing here is newly tolerated.
+_REVIEW_NAME_PREFIXES = ("registration-review", "bulk-review", "bulk-registration-review", "school-accounts")
+_REVIEW_ROUTE_MARKERS = ("registration-requests", "school-accounts")
+_REVIEW_MODULE_PREFIXES = (
+    "apps.accounts.registration_review", "apps.accounts.registration_bulk", "apps.accounts.account_status",
+)
 
 
 def _walk_url_patterns(patterns, prefix=""):
@@ -116,7 +121,7 @@ def unexpected_review_routes(urlconf=None):
             (isinstance(view_class, type) and issubclass(view_class, RegistrationReviewAPI))
             or module.startswith(_REVIEW_MODULE_PREFIXES)
             or name.startswith(_REVIEW_NAME_PREFIXES)
-            or _REVIEW_ROUTE_MARKER in route
+            or any(marker in route for marker in _REVIEW_ROUTE_MARKERS)
         )
         if not is_review:
             continue

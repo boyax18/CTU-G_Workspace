@@ -32,6 +32,10 @@ ROOT_URLCONF = "config.review_sandbox_urls"
 MIDDLEWARE = ["config.review_sandbox_middleware.LoopbackOnlyMiddleware", *MIDDLEWARE]  # noqa: F405
 WORKSPACE_REGISTRATION_REVIEW_API_ENABLED = True
 WORKSPACE_REGISTRATION_APPROVAL_ENABLED = True
+# WF-02.05 D-69 (owner-authorized 18 Nov 2026): account directory and status changes, in this
+# local mode only. config.settings keeps WORKSPACE_ACCOUNT_STATUS_ENABLED absent (off); the protected
+# writer still refuses; the accounts.school_accounts.* rows must exist (governed tooling) to act.
+WORKSPACE_ACCOUNT_STATUS_ENABLED = True
 
 # No external emails or password reset activity in demos.
 # WF-02.04 D-54/D-62 (owner-authorized 18 Nov 2026): a rejection needs the durable encrypted

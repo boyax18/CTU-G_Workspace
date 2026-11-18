@@ -305,3 +305,74 @@ class ReleaseToolingWithReadOnlyListTests(TransactionTestCase):
                 self.assertFalse(Service.objects.filter(is_active=True).exists())
         # Back to the real URLconf with the switch off: the gate reports normally again.
         self.assertIn("OPERATIONAL SCOPE VERIFIED", self.p3c())
+
+
+# ---- WF-02.05 stage 3: account-status routes (owner-authorized safeguard amendment) ----
+
+def _account_status_function_view(request, account_id):  # pragma: no cover - never dispatched
+    return HttpResponse(status=405)
+
+
+_account_status_function_view.__module__ = "apps.accounts.account_status_extra"
+
+
+class AccountStatusSafeguardTests(SimpleTestCase):
+    """Every recognized layer refuses an account-status mount; registration-review checks are unchanged."""
+
+    def setUp(self):
+        from apps.accounts.account_status_api import (
+            ActivateSchoolAccountView, SchoolAccountListView, SuspendSchoolAccountView,
+        )
+        self.suspend = SuspendSchoolAccountView.as_view()
+        self.views = (SchoolAccountListView, SuspendSchoolAccountView, ActivateSchoolAccountView)
+
+    def refused(self, *patterns):
+        return p1.unexpected_review_routes(urlconf(approved_list(), approved_detail(), *patterns))
+
+    def test_every_mount_shape_is_refused(self):
+        suspend = self.suspend
+
+        class Renamed(self.views[1]):
+            pass
+        opaque = lambda request, account_id: suspend(request, account_id=account_id)  # noqa: E731
+        from django.views.decorators.csrf import csrf_exempt
+        shapes = {
+            "direct": path("api/v1/admin/school-accounts/<int:account_id>/suspend/", suspend, name="school-accounts-suspend"),
+            "include": path("api/v1/admin/school-accounts/", include("apps.accounts.account_status_urls")),
+            "include elsewhere": path("x/", include("apps.accounts.account_status_urls")),
+            "renamed path and name": path("other/<int:account_id>/off/", suspend, name="plain"),
+            "subclass": path("s/<int:account_id>/", Renamed.as_view()),
+            "class-based wrapper": path("c/<int:account_id>/", type("Wrap", (self.views[1],), {}).as_view()),
+            "csrf_exempt": path("e/<int:account_id>/", csrf_exempt(suspend)),
+            "opaque wrapper on a school-accounts path": path("api/v1/admin/school-accounts/<int:account_id>/off/", opaque),
+            "opaque wrapper with a school-accounts name": path("o/<int:account_id>/", opaque, name="school-accounts-x"),
+            "function view in an account_status module": path("f/<int:account_id>/", _account_status_function_view),
+            "read-only list": path("api/v1/admin/school-accounts/", self.views[0].as_view(), name="school-accounts-list"),
+        }
+        for label, pattern in shapes.items():
+            with self.subTest(label):
+                self.assertTrue(self.refused(pattern))
+
+    def test_the_approved_registration_read_routes_alone_are_still_allowed(self):
+        self.assertEqual(p1.unexpected_review_routes(urlconf(approved_list(), approved_detail())), [])
+        self.assertEqual(p1.unexpected_review_routes("config.urls"), [])
+        for name in ("config.review_local_urls", "config.review_sandbox_urls"):
+            found = p1.unexpected_review_routes(name)
+            self.assertTrue(any("school-accounts" in item for item in found), name)
+            self.assertTrue(any("approve" in item for item in found), name)
+
+    def test_p1_and_p3c_guard_refuses_a_mounted_account_status_route(self):
+        with patch.object(p1, "unexpected_review_routes", wraps=p1.unexpected_review_routes):
+            set_urlconf(urlconf(approved_list(), path("api/v1/admin/school-accounts/", include("apps.accounts.account_status_urls"))))
+            try:
+                with self.assertRaises(CommandError):
+                    p1.refuse_unless_only_read_only_list(CommandError, "refused")
+            finally:
+                set_urlconf(None)
+
+    def test_remaining_limit_an_opaque_wrapper_on_an_unrelated_path_and_module(self):
+        suspend = self.suspend
+        opaque = lambda request, account_id: suspend(request, account_id=account_id)  # noqa: E731
+        # Statically undetectable for every review route; the default-off backend switch and the
+        # protected-writer refusal are the independent layers (tested in test_wf0205_stage2).
+        self.assertEqual(self.refused(path("unrelated/<int:account_id>/", opaque)), [])

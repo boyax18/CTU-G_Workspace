@@ -178,6 +178,29 @@ class Account(AbstractBaseUser):
         # Django app labels are not an application permission catalogue.
         return False
 
+    def _get_session_auth_hash(self, secret=None):
+        """WF-02.05 D-66: bind every session to the account's latest suspension.
+
+        Django re-checks this hash on every request (django.contrib.auth.get_user) and flushes a
+        mismatching session. Until an account has ever been suspended the hash is exactly
+        Django's own, so no existing session changes. After a suspension the hash also binds the
+        primary key of that committed, append-only suspension audit row, so every session signed
+        in before it fails the check, on every device, including after a later reactivation.
+        No schema change: the audit row is the epoch and is written in the same transaction as
+        is_active. Fallback secrets (SECRET_KEY_FALLBACKS) are handled by Django as before.
+        """
+        from django.utils.crypto import salted_hmac
+        from .account_status import status_epoch
+
+        base = super()._get_session_auth_hash(secret=secret)
+        epoch = status_epoch(self.pk)
+        if not epoch:
+            return base
+        return salted_hmac(
+            "ctug.workspace.accounts.session_status_epoch.v1", f"{base}:{epoch}",
+            secret=secret, algorithm="sha256",
+        ).hexdigest()
+
     def __str__(self):
         return self.school_id
 

@@ -12,6 +12,8 @@ import RegistrationReviewLivePanel from '../admin/RegistrationReviewLivePanel';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from '../admin/registrationReviewApiGate';
 import PendingApplicationsPanel from '../admin/PendingApplicationsPanel';
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig';
+import AccountDirectoryPanel from '../admin/AccountDirectoryPanel';
+import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
@@ -163,6 +165,9 @@ export default function SessionDashboardPage() {
     // WF-02.01 (D-31): read-only pending applications; Django rechecks every request.
     if (PENDING_APPLICATIONS_LIST_ENABLED) return <PendingApplicationsPanel />;
   }
+
+  // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
+  if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
 
   return <ModuleUnavailable onBack={back} />;
 }

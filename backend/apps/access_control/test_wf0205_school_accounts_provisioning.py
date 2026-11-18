@@ -140,6 +140,38 @@ class ProvisioningTests(TransactionTestCase):
         AccountPermission.objects.create(account=self.student, permission=suspend, effect="Grant")
         self.refused("verify")
 
+    def test_stage3c_role_coverage_school_admin_deny_and_protected_writer(self):
+        """Stage 3C: the cases ctug_workspace has no accounts for (Instructor, Treasurer, a School
+        Admin's own Deny), plus the protected-writer refusal once the governed rows are active."""
+        from apps.access_control.writer_boundary import WriterBoundaryUnavailable
+        from apps.accounts.account_status import suspend_account
+
+        instructor = self.account("TEST-S3C-INSTRUCTOR", "Instructor")
+        treasurer = self.account("TEST-S3C-TREASURER", "Treasurer")
+        student_treasurer = self.account("7260002", "Student", "Treasurer")
+        self.release_registration_review()
+        for phase in s3.PHASES:
+            self.phase(phase)
+        for account in (self.actor, self.tsa_admin):
+            self.assertEqual(CODES & set(get_effective_permissions(account)), CODES)
+        for account in (self.tsa_only, self.student, instructor, treasurer, student_treasurer):
+            self.assertFalse(CODES & set(get_effective_permissions(account)), account.school_id)
+            self.assertFalse(any(has_permission(account, code) for code in CODES), account.school_id)
+        # A School Admin's own account-level Deny takes precedence over the active Admin binding.
+        read = Permission.objects.get(permission_code="accounts.school_accounts.read")
+        AccountPermission.objects.create(account=self.actor, permission=read, effect="Deny")
+        self.assertFalse(has_permission(self.actor, "accounts.school_accounts.read"))
+        self.assertTrue(has_permission(self.actor, "accounts.school_accounts.suspend"))
+        self.assertTrue(has_permission(self.tsa_admin, "accounts.school_accounts.read"))
+        # The protected writer still refuses account-status changes, before any change or audit.
+        audits = AccessAuditLog.objects.count()
+        with override_settings(WORKSPACE_ACCOUNT_STATUS_ENABLED=True, WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=True):
+            with self.assertRaises(WriterBoundaryUnavailable):
+                suspend_account(actor=self.tsa_admin, target_id=self.student.pk, expected_active=True)
+        self.student.refresh_from_db()
+        self.assertTrue(self.student.is_active)
+        self.assertEqual(AccessAuditLog.objects.count(), audits)
+
     def test_preconditions_order_and_confirmations(self):
         self.refused("metadata")  # no registration-review release yet
         call_command("init_registration_review_metadata_local_dev", apply=True, actor_account_id=self.actor.pk,

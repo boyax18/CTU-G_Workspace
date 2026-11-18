@@ -569,7 +569,7 @@ class RoleChangeConcurrencyTests(TransactionTestCase):
 
 
 class ProtectedCompatibilityTests(TransactionTestCase):
-    """TC-035 / TC-030: the governance rows make P4 compensation refuse (D-85 still OPEN); the old
+    """TC-035 / TC-030: P4 compensation refuses while the governance profile exists (D-85, see test_wf0301_d85_p3b_compatibility); the old
     executor bootstrap stays dormant; catalogue v2 is unchanged and still validates."""
 
     def tearDown(self):

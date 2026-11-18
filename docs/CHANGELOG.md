@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 18 November 2026 — WF-03.01 Stage D: D-85 P3B compatibility (local development only)
+
+- The protected P3B compensation check now distinguishes registration-review, WF-02.05 school-account and the exact Technical Super Admin governance rows. The governance profile is accepted only when its definitions, bindings and 1 + 6 + 6 receipts match catalogue v2 and the database exactly, and compensation refuses while the governance profile exists.
+- Tests: new D-85 module 16/16; affected suites D-85 16/16, test_wf0301_role_assignment 26/26, test_wf0205_p3b_compatibility 17/17, test_wf0205_school_accounts_provisioning 7/7 (first draft 7 errors, corrected), plus the P1/P2/P3B/P3C/P3D/P3E/P4, release-safeguard and WF-02.05 account-status suites, all within the regression below; accounts/access_control regression every accounts and access_control module (78) 1834/1834 OK; manage.py check no issues; makemigrations --check --dry-run no changes.
+- **Not done:** no catalogue v2.1, no Technical Super Admin or administrator provisioning, no `ctug_workspace` change, no API activation, no executor/wex-1, no ERD or migration change, no push.
+
 ### 18 November 2026 — WF-03.01 staged implementation (local development only)
 
 - Implemented and tested in the disposable test database: the Django-Superuser-exclusive `configure_workspace_roles` command (designated, re-authenticated framework operator; School Admin and Technical Super Admin grant/revoke; Instructor kept; exact catalogue v2 governance profile; audited; refuses `ctug_workspace`), Technical Super Admin School Admin assignment/revocation (service and isolated API, default-off, not mounted), the role-change session epoch, and Access control → Role assignments behind `VITE_WORKSPACE_ROLE_ASSIGNMENT_ENABLED`.

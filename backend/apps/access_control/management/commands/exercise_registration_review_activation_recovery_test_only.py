@@ -117,6 +117,111 @@ def _governed_school_accounts(*, permission_rows, binding_rows, services, admin,
     return extra, extra_bindings
 
 
+def _governance_contract():
+    """WF-03.01 D-85: the exact Technical Super Admin governance profile and its receipt actions,
+    taken from the pinned catalogue v2 through the Django-Superuser procedure's own definitions."""
+    from apps.access_control import framework_roles as fr
+    from apps.access_control.role_management import RoleChangeUnavailable, TECHNICAL
+    try:
+        codes, definitions, role_definition = fr._governance_definitions()
+    except RoleChangeUnavailable as exc:
+        raise ActivationExerciseRefused("The governance profile is no longer defined by catalogue v2.") from exc
+    return fr, TECHNICAL, tuple(codes), definitions, role_definition
+
+
+def _governed_governance_profile(*, permission_rows, binding_rows, services, released):
+    """WF-03.01 D-85 (owner-authorized 18 Nov 2026, local development only): besides the registration
+    and WF-02.05 school-account rows, the ONLY tolerated rows are the Technical Super Admin governance
+    profile created by the Django-Superuser procedure: exactly the six catalogue v2 composition codes on
+    the access_control service with the catalogue's attributes, bound only to an active Technical Super
+    Admin role (exactly six active bindings and nothing else on that role), proven field by field by
+    exactly one framework.role.create, six framework.permission.create and six
+    framework.role_binding.create receipts from ONE designated framework superuser, in creation order
+    and all after the registration P4 activation. Anything else - a missing, extra or altered
+    definition, a foreign or inactive binding, an inactive role, or a missing, duplicated, forged,
+    reordered, stale or mismatched receipt - is refused. Returns the rows so callers exclude them from
+    the registration checks; it never authorizes compensation by itself (see _assert_no_governance_profile).
+    """
+    fr, technical_name, codes, definitions, role_definition = _governance_contract()
+    governance = {row.permission_code: row for row in permission_rows if row.permission_code in codes}
+    governance_ids = {row.pk for row in governance.values()}
+    role = Role.objects.select_for_update().filter(role_name=technical_name).first()
+    receipts = list(AccessAuditLog.objects.select_for_update()
+                    .filter(action__in=(fr.ROLE_CREATE, fr.PERMISSION_CREATE, fr.BINDING_CREATE))
+                    .order_by("access_audit_log_id"))
+    governance_bindings = [b for b in binding_rows if b.permission_id in governance_ids]
+    role_bindings = [b for b in binding_rows if role is not None and b.role_id == role.pk]
+    if not governance:
+        # A bare Technical Super Admin role row (e.g. an inactive protected-executor fixture) was
+        # tolerated before D-85 and still is; any binding on it or any governance receipt is not.
+        if receipts or role_bindings:
+            raise ActivationExerciseRefused("Governance evidence or bindings exist without their definitions.")
+        return {}, []
+    service = services["access_control"]
+    if (set(governance) != set(codes) or role is None or not role.is_active
+            or role.description != role_definition["description"]
+            or any(not fr._matches(governance[code], definitions[code], service) for code in codes)):
+        raise ActivationExerciseRefused("The Technical Super Admin governance definitions are partial or differ.")
+    bound = {b.pk for b in governance_bindings}
+    if (bound != {b.pk for b in role_bindings} or len(governance_bindings) != len(codes)
+            or {b.permission_id for b in governance_bindings} != governance_ids
+            or any(b.role_id != role.pk or not b.is_active for b in governance_bindings)):
+        raise ActivationExerciseRefused("The Technical Super Admin governance bindings are partial, foreign or inactive.")
+
+    role_receipts = [r for r in receipts if r.action == fr.ROLE_CREATE]
+    permission_receipts = [r for r in receipts if r.action == fr.PERMISSION_CREATE]
+    binding_receipts = [r for r in receipts if r.action == fr.BINDING_CREATE]
+    if (len(role_receipts), len(permission_receipts), len(binding_receipts)) != (1, len(codes), len(codes)):
+        raise ActivationExerciseRefused("Governance receipts are missing or duplicated.")
+    actors = {r.actor_account_id for r in receipts}
+    operator = Account.objects.filter(pk=next(iter(actors))).first() if len(actors) == 1 else None
+    if (operator is None or not (operator.is_staff and operator.is_superuser)
+            or AccountRole.objects.filter(account=operator).exists()):
+        raise ActivationExerciseRefused("Governance receipts are not from one framework operator.")
+    by_permission = {b.permission_id: b for b in governance_bindings}
+    created = role_receipts[0]
+    valid = (created.role_id == role.pk and created.permission_id is None and created.target_account_id is None
+             and created.old_value is None and created.new_value == {"role_id": role.pk, "is_active": True}
+             and created.reason == "permission_change")
+    valid = valid and {r.permission_id for r in permission_receipts} == governance_ids and all(
+        r.role_id is None and r.target_account_id is None and r.old_value is None and r.reason == "permission_change"
+        and r.new_value == {"permission_id": r.permission_id, "service_id": service.pk} for r in permission_receipts)
+    valid = valid and {r.permission_id for r in binding_receipts} == governance_ids and all(
+        r.role_id == role.pk and r.target_account_id is None and r.old_value is None and r.reason == "permission_change"
+        and r.new_value == {"role_id": role.pk, "permission_id": r.permission_id,
+                            "role_permission_id": by_permission[r.permission_id].pk, "is_active": True}
+        and by_permission[r.permission_id].granted_by_id == operator.pk for r in binding_receipts)
+    if not valid:
+        raise ActivationExerciseRefused("Governance receipts do not match the governance rows.")
+    if not (released is not None and released < created.pk < min(r.pk for r in permission_receipts)
+            and max(r.pk for r in permission_receipts) < min(r.pk for r in binding_receipts)):
+        raise ActivationExerciseRefused("Governance receipts are out of order or precede the registration release.")
+    return governance, governance_bindings
+
+
+def _assert_no_governance_profile():
+    """WF-03.01 D-85: compensation is one-way and deactivates the shared access_control service, which
+    would strand both the Technical Super Admin and the Django-Superuser procedure (it needs that
+    service active), so it is refused while the governance profile exists - whether or not a holder is
+    currently effective. Without the six governance permission rows no Technical Super Admin can be
+    effective, so a bare role assignment is left exactly as before D-85 (this check also runs on P4's
+    post-activation snapshot). The permission rows are already locked by _snapshot, assignment rows are
+    locked here, and every role change locks the two service rows that this snapshot already holds, so
+    a concurrent grant waits and then finds the services inactive."""
+    from apps.access_control.role_management import TECHNICAL
+    from apps.access_control.technical_admin import has_technical_authority
+    _, _, codes, _, _ = _governance_contract()
+    if not Permission.objects.filter(permission_code__in=codes).exists():
+        return
+    holders = list(AccountRole.objects.select_for_update().filter(role__role_name=TECHNICAL)
+                   .select_related("account").order_by("account_role_id"))
+    if any(has_technical_authority(h.account, code) for h in holders for code in codes):
+        raise ActivationExerciseRefused("An effective Technical Super Admin exists; compensation refused.")
+    if holders:
+        raise ActivationExerciseRefused("A Technical Super Admin assignment exists; compensation refused.")
+    raise ActivationExerciseRefused("The governance profile depends on the shared access_control service; compensation refused.")
+
+
 def _assert_no_stranded_suspensions():
     """Compensation is one-way (P4 cannot re-activate after it). Refuse it while any account is still
     deactivated through WF-02.05, because the rollback would leave it with no governed path back."""
@@ -175,17 +280,28 @@ def _snapshot(*, actor_id, expected_ids, active):
         raise ActivationExerciseRefused("P1 audit evidence differs.") from exc
 
     all_bindings = list(RolePermission.objects.select_for_update().order_by("role_permission_id"))
+    # WF-03.01 D-85: partition the exact Technical Super Admin governance profile out FIRST (it is
+    # verified on its own receipts), so the WF-02.05 check still sees only registration + school rows.
+    released = (AccessAuditLog.objects.filter(action__in=(SERVICE_ACTIVATE, BINDING_ACTIVATE))
+                .aggregate(last=Max("pk"))["last"])
+    governance, governance_bindings = _governed_governance_profile(
+        permission_rows=permission_rows, binding_rows=all_bindings, services=services, released=released,
+    )
+    governance_ids = {row.pk for row in governance.values()}
+    school_rows = [row for row in permission_rows if row.pk not in governance_ids]
+    school_binding_rows = [row for row in all_bindings if row not in governance_bindings]
     extra, extra_bindings = _governed_school_accounts(
-        permission_rows=permission_rows, binding_rows=all_bindings,
+        permission_rows=school_rows, binding_rows=school_binding_rows,
         services=services, admin=admin, actor=actor,
     )
-    if len(permission_rows) != 3 + len(extra):
+    if len(permission_rows) != 3 + len(extra) + len(governance):
         raise ActivationExerciseRefused("Unexpected or missing catalogue rows.")
     if active:
         _assert_no_stranded_suspensions()
+        _assert_no_governance_profile()
     # The registration-review scope and every check on it are exactly as before; P3B/P4 operate
-    # only on these three bindings and never on the governed school-account rows.
-    binding_rows = [item for item in all_bindings if item not in extra_bindings]
+    # only on these three bindings and never on the governed school-account or governance rows.
+    binding_rows = [item for item in school_binding_rows if item not in extra_bindings]
     bindings = {item.permission_id: item for item in binding_rows}
     expected_permission_ids = {item.pk for item in permissions.values()}
     if (len(binding_rows) != 3
@@ -262,6 +378,10 @@ def _assert_effective_permissions(expected_ids, *, active):
     school_codes = school_account_scope_codes()
     school_bindings = list(RolePermission.objects.filter(permission__permission_code__in=school_codes))
     school_live = active and len(school_bindings) == 3 and all(b.is_active for b in school_bindings)
+    # WF-03.01 D-85: a governance code may be effective only for an Admin + Technical Super Admin
+    # composite holder (never through Admin alone, an override, or a framework flag).
+    _, technical_name, governance_codes, _, _ = _governance_contract()
+    governance_codes = frozenset(governance_codes)
     accounts = list(Account.objects.order_by("account_id"))
     if len(accounts) > 100:
         raise ActivationExerciseRefused("This exercise is limited to at most 100 test accounts.")
@@ -270,6 +390,10 @@ def _assert_effective_permissions(expected_ids, *, active):
         expected = target_codes if active and account.pk in expected_ids else frozenset()
         expected_school = school_codes if school_live and account.pk in expected_ids else frozenset()
         if granted & target_codes != expected or granted & school_codes != expected_school:
+            raise ActivationExerciseRefused("Unexpected effective permission detected.")
+        governed = granted & governance_codes
+        if governed and not (account.pk in expected_ids and AccountRole.objects.filter(
+                account=account, role__role_name=technical_name, role__is_active=True).exists()):
             raise ActivationExerciseRefused("Unexpected effective permission detected.")
 
 

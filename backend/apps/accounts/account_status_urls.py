@@ -1,7 +1,8 @@
-"""WF-02.05 isolated URLconf. NOT included by config.urls, review_local_urls or review_sandbox_urls.
+"""WF-02.05 isolated URLconf, mounted at api/v1/admin/school-accounts/ ONLY by the owner-authorized
+local-review and sandbox URLconfs (config.review_local_urls, config.review_sandbox_urls; D-69).
 
-Mounting it in the local review or sandbox URLconfs is a protected change that needs separate
-owner authorization (D-69); the proposed mount point is api/v1/admin/school-accounts/.
+It is NOT included by config.urls, so normal production routes never expose it; the release
+safeguard refuses it there, and WORKSPACE_ACCOUNT_STATUS_ENABLED stays off in config.settings.
 """
 
 from django.urls import path

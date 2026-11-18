@@ -31,6 +31,10 @@
 | D-91 | Django Superuser can configure CTU-G Workspace system data and add/remove all account roles; only Django Superuser can grant/revoke Technical Super Admin. | Configuration channel not yet implemented; existing Django Admin read-only. |
 | D-92 | Protected and auditable Django Superuser configuration; no normal Workspace API bypass; reconcile first-operator ceremony, signed evidence, audit/session, P3B/P4 and last-operator safety. | OPEN for owner/security/DBA decision; **not permission to execute bootstrap**. |
 | D-80/D-81/D-85/D-88/D-89/D-90 | Existing two-Admin executor, first target, permission catalogue pins, storage, P3B and recovery. | OPEN; new authority model conflicts with earlier mechanisms. |
+| D-93 / D-95 | Protected Django-Superuser command; designated, re-authenticated operator | Implemented 18 Nov 2026 for the disposable test database only (configure_workspace_roles); development-database use and evidence/co-signoff still OPEN. |
+| D-94 / D-97 | Legacy Admin-only operator protected; School Admin removal safeguards | Implemented 18 Nov 2026 (Admin without Instructor, Technical Super Admin holders and the last School Admin cannot lose Admin through WF-03.01); operator-transfer plan OPEN. |
+| D-96 | Old bootstrap paths | Not changed: executor bootstrap stays dormant and release-blocked; retirement OPEN. |
+| D-98 | WF-03.01 lint baseline | OPEN: `npm run lint` still fails on the two unchanged pre-existing findings; no WF-03.01 exception has been approved. |
 
 See `docs/decisions/ADR-004-django-superuser-role-authority-amendment.md`. The change is a **documentation alignment** only: no live data, permission, ERD, migration or protected writer changes.
 

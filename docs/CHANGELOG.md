@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 18 November 2026 — WF-03.01 staged implementation (local development only)
+
+- Implemented and tested in the disposable test database: the Django-Superuser-exclusive `configure_workspace_roles` command (designated, re-authenticated framework operator; School Admin and Technical Super Admin grant/revoke; Instructor kept; exact catalogue v2 governance profile; audited; refuses `ctug_workspace`), Technical Super Admin School Admin assignment/revocation (service and isolated API, default-off, not mounted), the role-change session epoch, and Access control → Role assignments behind `VITE_WORKSPACE_ROLE_ASSIGNMENT_ENABLED`.
+- Tests: 26 backend, 6 frontend unit and 6 browser tests; affected accounts/access_control regression 1818/1818; `npm test` 217/217; all browser suites 128/128; build passed; lint fails only on the two unchanged baseline findings (no WF-03.01 exception approved).
+- **Not done:** no real administrator, role or permission changed; ordinary roles (catalogue v2.1), P3B/P4 compatibility, executor parity, API mounting and production remain blocked; pinned contracts, ERD and migrations unchanged.
+
 ### 18 November 2026 — WF-03.01 administrator authority alignment (documentation draft)
 
 - Recorded the owner's updated rules: approved Instructor retains Instructor when assigned School Admin; only Django Superuser may grant/revoke Technical Super Admin, and Django Superuser may configure all data and roles through protected audited procedures. School Admin cannot manage any roles or permissions; Technical Super Admin may manage eligible School Admin and ordinary roles but not Technical Super Admin.

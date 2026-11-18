@@ -14,6 +14,8 @@ import PendingApplicationsPanel from '../admin/PendingApplicationsPanel';
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig';
 import AccountDirectoryPanel from '../admin/AccountDirectoryPanel';
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
+import RoleAssignmentsPanel from '../access-control/RoleAssignmentsPanel';
+import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig';
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
@@ -168,6 +170,8 @@ export default function SessionDashboardPage() {
 
   // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
   if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
+  // WF-03.01 (D-86): Technical Super Admin role assignments; Django rechecks every request.
+  if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel />;
 
   return <ModuleUnavailable onBack={back} />;
 }

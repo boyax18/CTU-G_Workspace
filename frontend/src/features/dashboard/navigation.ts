@@ -11,6 +11,7 @@
  */
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig.ts';
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig.ts';
+import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -191,7 +192,8 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     description: 'Your announcement notifications.' },
 
   { id: 'role-assignments', label: 'Role assignments', icon: 'users', group: 'access-control',
-    requiredAny: ['access_control.admin_assignments.manage'], integration: planned,
+    // WF-03.01 (D-86, D-87): live only when its switch is on; Django still decides access.
+    requiredAny: ['access_control.admin_assignments.manage'], integration: ROLE_ASSIGNMENT_ENABLED ? 'shell' : planned,
     description: 'School Admin role assignments under protected governance.' },
   { id: 'role-permissions', label: 'Role permissions', icon: 'key', group: 'access-control',
     requiredAny: ['access_control.role_permissions.manage'], integration: planned,

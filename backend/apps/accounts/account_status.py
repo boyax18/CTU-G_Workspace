@@ -60,11 +60,18 @@ def is_reserved_role(role_name):
 
 
 def status_epoch(account_id):
-    """D-66: primary key of the account's latest committed suspension audit, or 0."""
+    """D-66 + WF-03.01 D-83: primary key of the account's latest committed suspension OR role
+    grant/revoke audit (Technical Super Admin path and Django Superuser procedure), or 0.
+
+    Monotonic: it only ever moves forward, so every WF-02.05 guarantee holds (a reactivation never
+    revives a session from before a suspension), and additionally every role elevation or removal
+    ends all of the account's earlier sessions, and re-adding a removed role cannot revive them.
+    """
     if type(account_id) is not int:
         return 0
+    from apps.access_control.role_management import ROLE_CHANGE_ACTIONS
     return (AccessAuditLog.objects.using(DEFAULT_DB_ALIAS)
-            .filter(target_account_id=account_id, action=SUSPEND_ACTION)
+            .filter(target_account_id=account_id, action__in=(SUSPEND_ACTION, *ROLE_CHANGE_ACTIONS))
             .aggregate(epoch=Max("pk"))["epoch"] or 0)
 
 

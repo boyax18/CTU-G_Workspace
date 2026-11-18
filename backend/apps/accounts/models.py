@@ -179,13 +179,15 @@ class Account(AbstractBaseUser):
         return False
 
     def _get_session_auth_hash(self, secret=None):
-        """WF-02.05 D-66: bind every session to the account's latest suspension.
+        """WF-02.05 D-66 / WF-03.01 D-83: bind every session to the account's latest suspension or
+        role grant/revoke.
 
         Django re-checks this hash on every request (django.contrib.auth.get_user) and flushes a
-        mismatching session. Until an account has ever been suspended the hash is exactly
-        Django's own, so no existing session changes. After a suspension the hash also binds the
-        primary key of that committed, append-only suspension audit row, so every session signed
-        in before it fails the check, on every device, including after a later reactivation.
+        mismatching session. Until an account has ever been suspended or had a role changed the
+        hash is exactly Django's own, so no existing session changes. Afterwards the hash also
+        binds the primary key of that committed, append-only audit row (status_epoch), so every
+        session signed in before it fails the check, on every device, including after a later
+        reactivation or after a removed role is added again.
         No schema change: the audit row is the epoch and is written in the same transaction as
         is_active. Fallback secrets (SECRET_KEY_FALLBACKS) are handled by Django as before.
         """

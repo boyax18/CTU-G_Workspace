@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 Stage D: D-89 Permission Catalogue v2.1 (local development only)
+
+- Added Permission Catalogue v2.1 as a separately versioned overlay: the pinned AR-3B2A v2.1 addendum, `v2_1_delta.json` and `validation_v2_1.py`. v2 stays byte-identical and validates first. The only binding change moves `access_control.role_assignments.ordinary.manage` from Admin to Technical Super Admin, and the Admin and Technical Super Admin eligibility rules are restated. Every v2 security guarantee is re-checked.
+- Tests: v2.1 static 17/17; runtime (disposable database) 9/9; affected suites 884/884 in 34 modules (every module reading the catalogue, the registration-review P1 to P4 suites, D-85, WF-03.01, WF-02.05 and the release safeguard).
+- **Not done:** validated specification only. Nothing was provisioned and no consumer switched to v2.1; no real role or account changed; no API, switch, executor or production change; independent review of the addendum pin is OPEN.
+
 ### 18 November 2026 — WF-03.01 Stage D: D-85 P3B compatibility (local development only)
 
 - The protected P3B compensation check now distinguishes registration-review, WF-02.05 school-account and the exact Technical Super Admin governance rows. The governance profile is accepted only when its definitions, bindings and 1 + 6 + 6 receipts match catalogue v2 and the database exactly, and compensation refuses while the governance profile exists.

@@ -15,7 +15,10 @@ WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER = True
 DEBUG = False
 ALLOWED_HOSTS = []  # the dedicated mTLS server has no Django routes
 WORKSPACE_REGISTRATION_APPROVAL_ENABLED = True
-WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = True
+# WF-02.04 D-61 (owner-authorized 18 Nov 2026, partial retirement): rejected-account
+# reapplication is disabled in the executor too, so no Rejected account can be revived through
+# it. The code, routes and protocol handler stay until a separately authorized removal.
+WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = False
 WORKSPACE_FIRST_ADMIN_BOOTSTRAP_ENABLED = _executor_config.get("first_admin_bootstrap_enabled", False)
 if type(WORKSPACE_FIRST_ADMIN_BOOTSTRAP_ENABLED) is not bool:
     raise ValueError("Explicit boolean first-Admin bootstrap policy required.")

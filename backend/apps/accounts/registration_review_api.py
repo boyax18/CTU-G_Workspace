@@ -28,6 +28,7 @@ from .registration_review import (
     ELIGIBILITY_SOURCES,
     REJECTION_CODES,
     RegistrationApprovalNotAllowed,
+    RegistrationRejectionNotAllowed,
     RegistrationReviewDenied,
     RegistrationReviewUnavailable,
     approve_registration,
@@ -105,6 +106,13 @@ class RegistrationReviewAPI(WorkspaceSessionAPI):
             return Response({"error": {
                 "code": "approval_not_allowed", "reason": exc.reason,
                 "message": "Approval is not allowed for this application.",
+            }}, status=409)
+        # WF-02.04 D-58: fixed rejection policy conflicts, raised only after authorization and
+        # eligibility were confirmed in the lock; stale or unknown targets stay 404 below.
+        if isinstance(exc, RegistrationRejectionNotAllowed):
+            return Response({"error": {
+                "code": "rejection_not_allowed", "reason": exc.reason,
+                "message": "Rejection is not allowed for this application.",
             }}, status=409)
         # Stable, non-enumerating responses: a stale target and an inaccessible
         # target are intentionally indistinguishable to the caller.
@@ -339,7 +347,9 @@ class RejectRegistrationRequestView(RegistrationReviewAPI):
         if not 1 <= account_id <= 2_147_483_647:
             raise exceptions.NotFound()
         decided_id = reject_registration(actor=actor, target_id=account_id, rejection_code=rejection_code)
-        return Response({"account_id": decided_id, "status": "Rejected"})
+        # WF-02.04 D-54: success means the encrypted email is QUEUED in the same committed
+        # transaction; delivery happens later in the outbox worker and is never claimed here.
+        return Response({"account_id": decided_id, "status": "Rejected", "notification": "queued"})
 
 
 ID_LABELS = {"Student": "School ID", "Instructor": "Staff ID"}

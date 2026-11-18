@@ -6,12 +6,15 @@ import {
   buildApplicantDetailRequest,
   buildApprovalRequest,
   buildPendingReviewRequest,
+  buildRejectionRequest,
   buildReviewDecisionRequest,
   parseApplicantDetail,
   parseApprovalRefusal,
   parsePendingRegistrationPage,
   parseRegistrationReviewDecision,
   parseRegistrationReviewError,
+  parseRejectionDecision,
+  parseRejectionRefusal,
 } from './registrationReviewApiContract.ts';
 import type {
   ApplicantDetail,
@@ -20,10 +23,12 @@ import type {
   PendingRegistrationPage,
   RegistrationReviewDecisionResult,
   RegistrationReviewRejectionCode,
+  RejectionDecisionResult,
 } from './registrationReviewApiContract.ts';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from './registrationReviewApiGate.ts';
 import {
   APPLICANT_APPROVAL_ENABLED,
+  APPLICANT_REJECTION_ENABLED,
   PENDING_APPLICATIONS_LIST_ENABLED,
   PENDING_APPLICATIONS_ROUTE_ROOT,
 } from './pendingApplicationsConfig.ts';
@@ -170,4 +175,58 @@ export async function approveApplication(
   if (response.status >= 500 && !(response.status === 503 && code === 'review_unavailable')) throw uncertain();
   if (response.status === 401) notifyAuthenticationRequired();
   throw new ApiError(message, response.status, code);
+}
+
+const rejectionUncertain = () => new ApiError(
+  'We could not confirm whether the application was rejected. Reload it to check its status before doing anything else.',
+  0, 'outcome_unknown', {}, { outcomeUnknown: true },
+);
+
+/** WF-02.04: reject ONE application with one fixed reason (D-56). POST, never retried.
+ *
+ * Success requires the exact {account_id, status: "Rejected", notification: "queued"} reply: the
+ * email is queued, never reported as delivered (D-54). Definite refusals keep their codes: 409
+ * `recipient_unverified` / `direct_permissions` / `protected_history` (D-55, D-58), 404, 400, 401,
+ * 403, 429 and a 503 `review_unavailable` envelope. Anything that might have been applied is
+ * `outcome_unknown`, and the caller must re-read the application instead of sending again.
+ */
+export async function rejectApplication(
+  accountId: number,
+  code: RegistrationReviewRejectionCode,
+  enabled: boolean = APPLICANT_REJECTION_ENABLED,
+): Promise<RejectionDecisionResult> {
+  // MUST remain first: no CSRF request, fetch or path access while the rejection switch is off.
+  if (!enabled) throw new ApiError('Rejection is not activated.', 503, 'review_unavailable');
+  const plan = buildRejectionRequest(PENDING_APPLICATIONS_ROUTE_ROOT, accountId, code);
+  const csrfToken = await initializeCSRF(); // fails before anything is sent: a definite non-rejection
+  let response: Response;
+  try {
+    response = await fetch(plan.path, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(plan.body), signal: timeoutSignal(),
+    });
+  } catch {
+    throw rejectionUncertain();
+  }
+  let value: unknown = null;
+  try {
+    value = await response.json();
+  } catch {
+    if (response.ok || response.status >= 500) throw rejectionUncertain();
+  }
+  if (response.ok) {
+    try {
+      return parseRejectionDecision(value, accountId);
+    } catch {
+      throw rejectionUncertain();
+    }
+  }
+  if (response.status === 409) {
+    throw new ApiError('Rejection is not allowed for this application.', 409, parseRejectionRefusal(value) ?? 'rejection_not_allowed');
+  }
+  const { code: errorCode, message } = parseRegistrationReviewError(response.status, value);
+  if (response.status >= 500 && !(response.status === 503 && errorCode === 'review_unavailable')) throw rejectionUncertain();
+  if (response.status === 401) notifyAuthenticationRequired();
+  throw new ApiError(message, response.status, errorCode);
 }

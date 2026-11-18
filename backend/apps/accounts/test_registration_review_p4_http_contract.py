@@ -18,6 +18,7 @@ from apps.access_control.models import (
     RolePermission, Service,
 )
 from .models import Account
+from .rejection_test_support import rejection_outbox
 
 
 if (
@@ -200,10 +201,12 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assert_not_decided()
 
+    @rejection_outbox()  # WF-02.04 D-54 test correction
     def test_reject_one_of_four_codes_returns_exact_decision_without_role(self):
         response = self.post("reject", {"rejection_code": "identity_mismatch"})
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Rejected"})
+        # WF-02.04 D-54: the exact decision now states that the email is queued (never delivered).
+        self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Rejected", "notification": "queued"})
         self.assertFalse(Account.objects.filter(pk=self.pending.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.pending).exists())
         audit = AccessAuditLog.objects.get()

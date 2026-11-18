@@ -380,3 +380,57 @@ export function parseApprovalRefusal(value: unknown): ApprovalRefusalReason | nu
   if (error.code !== 'approval_not_allowed') return null;
   return error.reason === 'email_unverified' || error.reason === 'eligibility_unconfirmed' ? error.reason : null;
 }
+
+// ---- WF-02.04 Reject applicant (D-54, D-55 revised, D-56, D-58) ----
+
+export type RejectionRefusalReason = 'recipient_unverified' | 'direct_permissions' | 'protected_history';
+
+/** D-56: the exact public wording the applicant receives for each fixed code (backend REJECTION_LABELS). */
+export const REJECTION_PUBLIC_LABELS: Readonly<Record<RegistrationReviewRejectionCode, string>> = {
+  incomplete_submission: 'Incomplete registration information',
+  ineligible_registration: 'Registration eligibility could not be confirmed',
+  identity_mismatch: 'Registration identity could not be verified',
+  duplicate_request: 'Duplicate registration request',
+};
+
+export interface RejectionRequestPlan {
+  method: 'POST';
+  path: string;
+  body: { rejection_code: RegistrationReviewRejectionCode };
+}
+
+export interface RejectionDecisionResult {
+  account_id: number;
+  status: 'Rejected';
+  /** D-54: the email is queued in the same transaction; delivery is never claimed. */
+  notification: 'queued';
+}
+
+/** POST plan carrying only one fixed reason code; never free text. */
+export function buildRejectionRequest(root: string, accountId: number, code: RegistrationReviewRejectionCode): RejectionRequestPlan {
+  const base = validateRoot(root);
+  assertAccountId(accountId);
+  if (typeof code !== 'string' || !REGISTRATION_REJECTION_CODES.includes(code)) {
+    throw new Error('Choose one of the four rejection reasons.');
+  }
+  return { method: 'POST', path: `${base}${accountId}/reject/`, body: { rejection_code: code } };
+}
+
+/** The server must confirm this exact rejection AND that its email was queued. */
+export function parseRejectionDecision(value: unknown, expectedId: number): RejectionDecisionResult {
+  assertAccountId(expectedId);
+  if (!isRecord(value) || !hasExactKeys(value, ['account_id', 'status', 'notification'])
+    || value.account_id !== expectedId || value.status !== 'Rejected' || value.notification !== 'queued') {
+    throw new Error(INVALID_RESPONSE);
+  }
+  return { account_id: expectedId, status: 'Rejected', notification: 'queued' };
+}
+
+/** D-58: a 409 conflict carries one fixed reason; anything else is not a recognised conflict. */
+export function parseRejectionRefusal(value: unknown): RejectionRefusalReason | null {
+  if (!isRecord(value) || !hasExactKeys(value, ['error']) || !isRecord(value.error)) return null;
+  const error = value.error;
+  if (error.code !== 'rejection_not_allowed') return null;
+  return error.reason === 'recipient_unverified' || error.reason === 'direct_permissions' || error.reason === 'protected_history'
+    ? error.reason : null;
+}

@@ -247,6 +247,10 @@ class Task1BulkNotificationCompatibilityTests(TestCase):
             ))
 
     def test_bulk_rejection_creates_one_v2_reason_snapshot_per_decision(self):
+        # WF-02.04 D-55 (owner-approved test correction): successful rejection needs verified proof.
+        from django.utils import timezone
+        for target in self.targets:
+            Account.objects.filter(pk=target.pk).update(email_verified_at=timezone.now(), email_verified_address=target.email)
         result = process_bulk_registration(
             actor=self.admin, action="reject",
             account_ids=[target.pk for target in self.targets],

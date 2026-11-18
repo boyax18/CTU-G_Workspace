@@ -20,6 +20,7 @@ from apps.access_control.models import (
 )
 
 from .models import Account
+from .rejection_test_support import rejection_outbox
 
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
@@ -213,9 +214,11 @@ class RegistrationReviewAPITests(TestCase):
         self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 404)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
+    @rejection_outbox()  # WF-02.04 D-54 test correction
     def test_reject_audits_and_does_not_assign_role(self):
         result = self.post(f"/{self.target.pk}/reject/", {"rejection_code": "identity_mismatch"})
         self.assertEqual(result.status_code, 200, result.content)
+        self.assertEqual(result.json(), {"account_id": self.target.pk, "status": "Rejected", "notification": "queued"})
         self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")

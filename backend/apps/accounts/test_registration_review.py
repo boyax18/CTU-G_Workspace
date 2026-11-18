@@ -23,6 +23,7 @@ from apps.access_control.models import (
 from apps.access_control.services import has_permission
 
 from .models import Account
+from .rejection_test_support import rejection_outbox
 from .registration_review import (
     RegistrationReviewDenied,
     RegistrationReviewUnavailable,
@@ -156,6 +157,7 @@ class RegistrationReviewTests(TestCase):
             self.instructor_role.pk,
         )
 
+    @rejection_outbox()  # WF-02.04 D-54 test correction
     def test_rejection_deletes_account_without_assignment(self):
         reject_registration(
             actor=self.reviewer,
@@ -237,6 +239,7 @@ class RegistrationReviewTests(TestCase):
         with self.assertRaises(RegistrationReviewDenied):
             approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
 
+    @rejection_outbox()  # WF-02.04 D-54 test correction: the code check, not the outbox, must refuse
     def test_bad_rejection_code_is_rejected_before_writes(self):
         with self.assertRaises(RegistrationReviewDenied):
             reject_registration(

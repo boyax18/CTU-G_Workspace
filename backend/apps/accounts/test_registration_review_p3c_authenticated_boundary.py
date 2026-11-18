@@ -18,6 +18,7 @@ from apps.access_control.models import (
 )
 
 from .models import Account
+from .rejection_test_support import rejection_outbox
 
 
 if (settings.SETTINGS_MODULE != "config.test_settings"
@@ -262,9 +263,11 @@ class RegistrationReviewP3CAuthenticatedBoundaryTests(TestCase):
         self.assertEqual(self.post("approve", APPROVAL_BODY).status_code, 404)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
+    @rejection_outbox()  # WF-02.04 D-54 test correction
     def test_valid_admin_rejection_is_audited_without_role_assignment(self):
         response = self.post("reject", {"rejection_code": "duplicate_request"})
         self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(response.json()["notification"], "queued")
         self.assertFalse(Account.objects.filter(pk=self.pending.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.pending).exists())
         receipt = AccessAuditLog.objects.get()

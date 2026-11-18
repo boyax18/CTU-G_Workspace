@@ -33,9 +33,16 @@ MIDDLEWARE = ["config.review_sandbox_middleware.LoopbackOnlyMiddleware", *MIDDLE
 WORKSPACE_REGISTRATION_REVIEW_API_ENABLED = True
 WORKSPACE_REGISTRATION_APPROVAL_ENABLED = True
 
-# No emails, encrypted outbox deliveries, or password reset activity in demos.
-WORKSPACE_REGISTRATION_OUTBOX_ENABLED = False
+# No external emails or password reset activity in demos.
+# WF-02.04 D-54/D-62 (owner-authorized 18 Nov 2026): a rejection needs the durable encrypted
+# outbox and the v2 template, or it refuses. Mail stays in Django's in-memory backend (locmem),
+# so nothing can leave this machine; SMTP stays disabled. No key is stored in source control:
+# set the test-only WORKSPACE_OUTBOX_KEK_V1_B64 in the local environment, otherwise every
+# rejection rolls back. Delivery attempts still need WORKSPACE_OUTBOX_WORKER_ENABLED=1.
+WORKSPACE_REGISTRATION_OUTBOX_ENABLED = True
 WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED = False
+WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = True
+WORKSPACE_PUBLIC_BASE_URL = "http://localhost:5173"  # locmem + loopback only; never an external URL
 WORKSPACE_EMAIL_SMTP_ENABLED = False
 WORKSPACE_PASSWORD_RESET_ENABLED = False
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

@@ -28,8 +28,9 @@ from apps.access_control.writer_boundary import (
 )
 
 from .models import Account
+from .outbox_models import RegistrationNotificationOutbox
 from .registration_notifications import schedule_registration_decision_email_after_commit
-from .registration_outbox import record_registration_decision_outbox
+from .registration_outbox import _recipient_valid, record_registration_decision_outbox
 
 
 APPROVE_CODE = "accounts.registration_requests.approve"
@@ -76,6 +77,31 @@ class RegistrationApprovalNotAllowed(RegistrationReviewDenied):
             reason = "eligibility_unconfirmed"
         self.reason = reason
         super().__init__("Approval is not allowed by policy.")
+
+
+class RegistrationRejectionNotAllowed(RegistrationReviewDenied):
+    """WF-02.04 rejection policy conflict (D-58): a fixed reason code, never applicant data.
+
+    Raised only after the reviewer's authorization and the application's eligibility were
+    confirmed inside the lock, so it reveals nothing to a caller who cannot read the
+    application. Subclasses RegistrationReviewDenied so bulk and executor callers fail closed.
+    """
+
+    REASONS = frozenset({"recipient_unverified", "direct_permissions", "protected_history"})
+
+    def __init__(self, reason):
+        if reason not in self.REASONS:
+            reason = "protected_history"
+        self.reason = reason
+        super().__init__("Rejection is not allowed by policy.")
+
+
+def rejection_notification_ready():
+    """D-54: a completed rejection needs the durable outbox and the v2 (reason-bearing) template."""
+    return bool(
+        getattr(settings, "WORKSPACE_REGISTRATION_OUTBOX_ENABLED", False)
+        and getattr(settings, "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", False)
+    )
 
 
 def email_ownership_verified(account):
@@ -155,6 +181,10 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
 
     # P3C6A: when enforcement is enabled, stop BEFORE any primary-DB read/write.
     require_verified_writer("registration.approve" if approve else "registration.reject")
+    if not approve and not rejection_notification_ready():
+        # WF-02.04 D-54: never delete an applicant without the durable notification record.
+        # Checked where the writes happen (here, or inside the executor), before any read or write.
+        raise RegistrationReviewUnavailable("Rejection requires the durable notification outbox.")
 
     actor_id = _account_id(actor)
     target_id = _target_id(target_id)
@@ -279,14 +309,19 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
                 raise RegistrationApprovalNotAllowed("email_unverified")
             if attested_source != ELIGIBILITY_SOURCES[requested_role.role_name]:
                 raise RegistrationApprovalNotAllowed("eligibility_unconfirmed")
+        else:
+            # WF-02.04, inside the locked transaction and before any write.
+            if AccountPermission.objects.using(DEFAULT_DB_ALIAS).filter(account=target).exists():
+                raise RegistrationRejectionNotAllowed("direct_permissions")
+            # D-55 (revised): the rejection email needs a verified, deliverable current address.
+            if not email_ownership_verified(target) or not _recipient_valid(target.email):
+                raise RegistrationRejectionNotAllowed("recipient_unverified")
 
         old = {
             "account_id": target.pk,
             "request_status": "Pending",
             "is_active": False,
         }
-        if not approve and AccountPermission.objects.using(DEFAULT_DB_ALIAS).filter(account=target).exists():
-            raise RegistrationReviewDenied("A registration with permission history requires separate review.")
         target.request_status = "Approved" if approve else "Rejected"
         target.is_active = bool(approve)
         target.reviewed_by = reviewer
@@ -337,12 +372,16 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
             # The audit receipt and encrypted outbox row are one transaction;
             # both roll back if encryption, validation or insertion fails.
             receipt_id = record_access_audit_receipt(**audit_values)
-            record_registration_decision_outbox(
+            outbox_id = record_registration_decision_outbox(
                 audit_log_id=receipt_id,
                 target_account_id=target.pk,
                 approved=approve,
                 recipient_email=target.email,
             )
+            if not approve and not RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS).filter(
+                    pk=outbox_id, delivery_status="Pending").exists():
+                # D-54/D-55: a rejection completes only with a deliverable, queued notification.
+                raise RegistrationReviewUnavailable("The rejection notification could not be queued.")
         else:
             # Existing audit and best-effort callback path remains unchanged.
             record_access_audit(**audit_values)
@@ -361,9 +400,8 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
             except IntegrityError as exc:
                 if not exc.args or exc.args[0] != 1451:
                     raise
-                raise RegistrationReviewDenied(
-                    "The registration has protected history and requires separate review."
-                ) from exc
+                # D-58: a fixed policy conflict; the whole decision (audit, outbox) rolls back.
+                raise RegistrationRejectionNotAllowed("protected_history") from exc
     return target_id
 
 
@@ -378,7 +416,13 @@ def approve_registration(*, actor, target_id, attestation=None):
 
 
 def reject_registration(*, actor, target_id, rejection_code):
-    """Audit rejection and remove an eligible applicant's account and profile."""
+    """Audit rejection, queue its email and remove the applicant's account and profile.
+
+    WF-02.04: one of the four fixed codes (D-56); requires the durable outbox with the v2
+    template (D-54) and a verified, deliverable current address (D-55 revised). Audit,
+    encrypted outbox row and deletion commit together or not at all. Policy conflicts raise
+    RegistrationRejectionNotAllowed (D-58); the notification is queued, never "delivered".
+    """
     return _decide(
         actor=actor,
         target_id=target_id,

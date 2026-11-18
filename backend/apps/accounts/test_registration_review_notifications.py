@@ -20,8 +20,12 @@ from apps.access_control.models import (
     Service,
 )
 from .models import Account
+from .outbox_models import RegistrationNotificationOutbox
+from .rejection_test_support import rejection_outbox
 from .registration_review import (
+    RegistrationRejectionNotAllowed,
     RegistrationReviewDenied,
+    RegistrationReviewUnavailable,
     approve_registration,
     reject_registration,
 )
@@ -116,19 +120,28 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertEqual(self.target.request_status, "Approved")
 
     def test_rejected_email_and_immutable_rejection_audit(self):
+        # WF-02.04 D-54 (owner-approved rewrite): rejection never uses this best-effort email path.
+        # With the best-effort gate ON but no durable outbox, it is refused before any write.
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
-            reject_registration(
-                actor=self.reviewer,
-                target_id=self.target.pk,
-                rejection_code="incomplete_submission",
-            )
-            self.assertEqual(len(mail.outbox), 0)
-        self.assertEqual(len(callbacks), 1)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["applicant@example.edu"])
-        self.assertIn("rejected", mail.outbox[0].subject.lower())
+            with self.assertRaises(RegistrationReviewUnavailable):
+                reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
+        self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
+        self.assertTrue(Account.objects.filter(pk=self.target.pk, request_status="Pending").exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
+        # With the outbox ready, an authorized rejection queues exactly one encrypted row bound to its
+        # immutable audit inside the decision, schedules no best-effort email and sends nothing itself.
+        with rejection_outbox(), self.captureOnCommitCallbacks(execute=True) as callbacks:
+            reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
+        self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
+        audit = AccessAuditLog.objects.get()
+        self.assertEqual(audit.action, "account.registration.reject")
+        self.assertEqual(audit.new_value["rejection_code"], "incomplete_submission")
+        row = RegistrationNotificationOutbox.objects.get()
+        self.assertEqual((row.decision_audit_log_id, row.template_code, row.template_version, row.delivery_status),
+                         (audit.pk, "registration.rejected", 2, "Pending"))
+        self.assertNotIn(b"applicant@example.edu", bytes(row.encrypted_recipient))
         self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
-        self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 
     def test_disabled_notification_gate_does_not_register_callback(self):
         with override_settings(WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False):
@@ -138,15 +151,20 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_missing_email_skips_notification_without_blocking_review(self):
-        # D-44: approval now requires an email, so the missing-recipient path is reached by a
-        # rejection (allowed without proof); the notification assertions are unchanged.
+        # WF-02.04 D-55 (revised, owner-approved rewrite): without a recipient the rejection is now
+        # REFUSED, even with the outbox ready: no deletion, role change, audit, row or email.
         self.target.email = None
         self.target.save(update_fields=["email"])
-        with self.captureOnCommitCallbacks(execute=True) as callbacks:
-            reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
-        self.assertEqual(len(callbacks), 0)
-        self.assertEqual(len(mail.outbox), 0)
-        self.assertEqual(AccessAuditLog.objects.count(), 1)
+        with rejection_outbox(), self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with self.assertRaises(RegistrationRejectionNotAllowed) as caught:
+                reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
+        self.assertEqual(caught.exception.reason, "recipient_unverified")
+        self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
+        self.target.refresh_from_db()
+        self.assertEqual((self.target.request_status, self.target.is_active), ("Pending", False))
+        self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
 
     def test_failed_audit_rolls_back_and_sends_nothing(self):
         with patch("apps.accounts.registration_review.record_access_audit", side_effect=RuntimeError("audit failed")):

@@ -33,6 +33,16 @@ MAX_BATCH = 100
 FIRST_RETRY_SECONDS = 60
 MAX_RETRY_SECONDS = 3600
 
+# WF-02.04 D-57 (owner-authorized 18 Nov 2026): the encrypted recipient is erased in the SAME
+# lease-fenced UPDATE that makes a row terminal (Delivered, or Dead with no retry left). Nothing
+# re-queues a Dead row, so no approved recovery operation needs the address afterwards. Pending,
+# Retry and Leased rows are never erased. Status, attempts, failure code and times are kept.
+RECIPIENT_FIELDS = ("encrypted_recipient", "recipient_nonce", "wrapped_data_key", "encryption_key_version")
+
+
+def _erased_recipient(now):
+    return {**{field: None for field in RECIPIENT_FIELDS}, "recipient_erased_at": now}
+
 
 class OutboxWorkerUnavailable(RuntimeError):
     """Delivery gates, configuration, or required database are unavailable."""
@@ -130,9 +140,12 @@ def _claim_next():
             row.next_attempt_at = None
             row.last_failure_code = "attempts_exhausted"
             row.updated_at = now
+            for field, value in _erased_recipient(now).items():
+                setattr(row, field, value)
             row.save(using=DEFAULT_DB_ALIAS, update_fields=[
                 "delivery_status", "lease_token", "lease_expires_at",
                 "next_attempt_at", "last_failure_code", "updated_at",
+                *RECIPIENT_FIELDS, "recipient_erased_at",
             ])
             return "exhausted"
         token = secrets.token_urlsafe(32)  # 43 chars, fits VARCHAR(64)
@@ -161,12 +174,14 @@ def _finish(claim, *, failure_code=None, permanent=False):
         values.update(
             delivery_status="Delivered", delivered_at=now,
             next_attempt_at=None, last_failure_code=None,
+            **_erased_recipient(now),
         )
         result = "delivered"
     elif permanent or claim.attempt >= MAX_ATTEMPTS:
         values.update(
             delivery_status="Dead", next_attempt_at=None,
             last_failure_code=failure_code,
+            **_erased_recipient(now),
         )
         result = "dead"
     else:

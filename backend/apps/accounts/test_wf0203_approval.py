@@ -558,6 +558,11 @@ class ApprovalConcurrencyTests(TransactionTestCase):
         self.assertEqual(AccountRole.objects.filter(account=self.target).count(), 1)
 
     def test_concurrent_approve_and_reject_decide_once(self):
+        # WF-02.04 D-54 (owner-approved test correction): rejection needs the outbox to reach the locks.
+        from .rejection_test_support import rejection_outbox
+        ready = rejection_outbox()
+        ready.__enter__()
+        self.addCleanup(ready.__exit__, None, None, None)
         def approve(actor, pk):
             return approve_registration(actor=actor, target_id=pk, attestation=STUDENT)
 

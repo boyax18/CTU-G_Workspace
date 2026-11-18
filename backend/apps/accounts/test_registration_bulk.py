@@ -13,6 +13,7 @@ from apps.access_control.models import (
     RolePermission, Service,
 )
 from .models import Account
+from .rejection_test_support import REJECTION_READY, fresh_test_key, verified_email
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("Bulk review tests require config.test_settings.")
@@ -24,7 +25,9 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
     WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED=True,
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False,
-    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
+    # WF-02.04 D-54/D-55 (owner-approved test correction): bulk rejection uses the same
+    # single-account service, which now needs the durable outbox and a verified recipient.
+    **REJECTION_READY,
 )
 class BulkRegistrationReviewTests(TestCase):
     @classmethod
@@ -53,6 +56,10 @@ class BulkRegistrationReviewTests(TestCase):
             cls.permissions[action] = perm
 
     def setUp(self):
+        import os
+        key = patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()})
+        key.start()
+        self.addCleanup(key.stop)
         cache.clear()
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.reviewer)
@@ -62,10 +69,10 @@ class BulkRegistrationReviewTests(TestCase):
         self.two = self.new_target("BULK-STUDENT-2")
 
     def new_target(self, school_id, role=None):
-        return Account.objects.create_user(
+        return verified_email(Account.objects.create_user(
             school_id=school_id, password="Copper!River7293",
             requested_role=role or self.student,
-        )
+        ), f"{school_id.lower()}@example.edu")
 
     def post(self, payload, *, csrf=True):
         return self.client.post(

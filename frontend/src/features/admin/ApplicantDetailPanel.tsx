@@ -4,24 +4,54 @@
  * page edits the application or is recorded by viewing it, and a verified email is never presented
  * as enrollment, employment or eligibility. WF-02.03 adds ONE approval section, only when the
  * approval switch is on and the session reports the exact approve permission (Django re-checks).
- * There is no reject control (WF-02.04).
+ * WF-02.04 adds ONE rejection section the same way, behind its own switch and the exact reject
+ * permission. Neither section changes the other's behaviour; Django serializes the decisions.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useDashboardContext } from '../../hooks/useDashboardContext';
 import ApplicantApprovalPanel from './ApplicantApprovalPanel';
-import { APPLICANT_APPROVAL_ENABLED } from './pendingApplicationsConfig.ts';
+import ApplicantRejectionPanel from './ApplicantRejectionPanel';
+import { APPLICANT_APPROVAL_ENABLED, APPLICANT_REJECTION_ENABLED } from './pendingApplicationsConfig.ts';
 import { getPendingApplication } from './registrationReviewApi.ts';
-import { parseApplicantId } from './registrationReviewApiContract.ts';
-import type { ApplicantDataNote, ApplicantDetail, EmailEvidenceState } from './registrationReviewApiContract.ts';
+import { parseApplicantId, REJECTION_PUBLIC_LABELS } from './registrationReviewApiContract.ts';
+import type { ApplicantDataNote, ApplicantDetail, EmailEvidenceState, RegistrationReviewRejectionCode } from './registrationReviewApiContract.ts';
 
 type Loaded =
   | { status: 'loading' }
   | { status: 'failed'; code: string }
   | { status: 'ready'; data: ApplicantDetail }
-  | { status: 'approved'; data: ApplicantDetail };
+  | { status: 'approved'; data: ApplicantDetail }
+  | { status: 'rejected'; data: ApplicantDetail; code: RegistrationReviewRejectionCode };
 
 const APPROVE_PERMISSION = 'accounts.registration_requests.approve';
+const REJECT_PERMISSION = 'accounts.registration_requests.reject';
+
+/** Sub-page description and footer note for the decisions this session may make here. */
+function decisionCopy(canApprove: boolean, canReject: boolean): { description: string; note: string } {
+  if (canApprove && canReject) {
+    return {
+      description: 'One pending application. You can approve or reject it; each decision is confirmed first.',
+      note: 'Viewing this page records nothing. Django verifies your permission and the decision rules on every request.',
+    };
+  }
+  if (canApprove) {
+    return {
+      description: 'One pending application. You can approve it after confirming eligibility; nothing else on this page changes it.',
+      note: 'Viewing this page records nothing. Rejection is a separate step and is not available here. Django verifies your permission and the approval rules on every request.',
+    };
+  }
+  if (canReject) {
+    return {
+      description: 'One pending application. You can reject it with a fixed reason; nothing else on this page changes it.',
+      note: 'Viewing this page records nothing. Approval is a separate step and is not available here. Django verifies your permission and the rejection rules on every request.',
+    };
+  }
+  return {
+    description: 'One pending application, read-only. Nothing on this page approves, rejects or changes it.',
+    note: 'This page is read-only. Approval and rejection are separate steps and are not available here. Django verifies your permission on every request.',
+  };
+}
 
 const outlineButton = 'dashboard-outline-button inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 const badgeClass = 'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium';
@@ -92,15 +122,21 @@ interface Props {
   onDecided?: () => void;
   /** WF-02.03 approval switch (D-46); a prop so tests can pin it. */
   approvalEnabled?: boolean;
+  /** WF-02.04 rejection switch (D-62); a prop so tests can pin it. */
+  rejectionEnabled?: boolean;
 }
 
-export default function ApplicantDetailPanel({ raw, onBack, onDecided, approvalEnabled = APPLICANT_APPROVAL_ENABLED }: Props) {
+export default function ApplicantDetailPanel({
+  raw, onBack, onDecided, approvalEnabled = APPLICANT_APPROVAL_ENABLED, rejectionEnabled = APPLICANT_REJECTION_ENABLED,
+}: Props) {
   const { setSubpage, session } = useDashboardContext();
   const accountId = parseApplicantId(raw);
   const heading = useRef<HTMLHeadingElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   // A hint only: Django re-checks the exact permission on the approval request.
   const canApprove = approvalEnabled && session.permissions.includes(APPROVE_PERMISSION);
+  const canReject = rejectionEnabled && session.permissions.includes(REJECT_PERMISSION);
+  const copy = decisionCopy(canApprove, canReject);
   const [loaded, setLoaded] = useState<Loaded>(accountId === null ? { status: 'failed', code: 'request_unavailable' } : { status: 'loading' });
   const [version, setVersion] = useState(0);
 
@@ -114,9 +150,7 @@ export default function ApplicantDetailPanel({ raw, onBack, onDecided, approvalE
         setLoaded({ status: 'ready', data });
         setSubpage({
           label: `${data.id_label} ${data.school_id}`,
-          description: canApprove
-            ? 'One pending application. You can approve it after confirming eligibility; nothing else on this page changes it.'
-            : 'One pending application, read-only. Nothing on this page approves, rejects or changes it.',
+          description: copy.description,
         });
       })
       .catch((error: unknown) => {
@@ -124,12 +158,12 @@ export default function ApplicantDetailPanel({ raw, onBack, onDecided, approvalE
         if (!cancelled) setLoaded({ status: 'failed', code });
       });
     return () => { cancelled = true; };
-  }, [accountId, version, setSubpage, canApprove]);
+  }, [accountId, version, setSubpage, copy.description]);
 
   useEffect(() => () => setSubpage(null), [setSubpage]);
   useEffect(() => {
     if (loaded.status === 'ready') heading.current?.focus();
-    if (loaded.status === 'approved') resultHeading.current?.focus();
+    if (loaded.status === 'approved' || loaded.status === 'rejected') resultHeading.current?.focus();
   }, [loaded.status]);
 
   function reload() {
@@ -177,6 +211,28 @@ export default function ApplicantDetailPanel({ raw, onBack, onDecided, approvalE
           </p>
           <p className="mt-2 text-sm leading-relaxed">
             What they can open after signing in depends on the permissions set for the {done.requested_role} role.
+          </p>
+        </section>
+      </div>
+    );
+  }
+
+  if (loaded.status === 'rejected') {
+    const done = loaded.data;
+    return (
+      <div className="space-y-5">
+        {back}
+        <section role="status" className="dashboard-success rounded-2xl border p-6 sm:p-8">
+          <h2 ref={resultHeading} tabIndex={-1} className="text-lg font-semibold focus:outline-none">
+            <span aria-hidden="true">✓ </span>Application rejected
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed">
+            The application from {done.full_name ?? 'the applicant'} ({done.id_label} {done.school_id}) was rejected with the
+            reason &ldquo;{REJECTION_PUBLIC_LABELS[loaded.code]}&rdquo;, and their registration data were deleted. Your decision was recorded.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed">
+            A rejection email has been queued for delivery. Delivery happens separately and is not confirmed here. The applicant
+            may register again with the same {done.id_label} and email address.
           </p>
         </section>
       </div>
@@ -255,11 +311,14 @@ export default function ApplicantDetailPanel({ raw, onBack, onDecided, approvalE
           onReload={reload} />
       )}
 
-      <p className="dashboard-muted text-xs leading-relaxed">
-        {canApprove
-          ? 'Viewing this page records nothing. Rejection is a separate step and is not available here. Django verifies your permission and the approval rules on every request.'
-          : 'This page is read-only. Approval and rejection are separate steps and are not available here. Django verifies your permission on every request.'}
-      </p>
+      {canReject && (
+        <ApplicantRejectionPanel data={data}
+          onRejected={(code) => { setLoaded({ status: 'rejected', data, code }); onDecided?.(); }}
+          onGone={() => { setLoaded({ status: 'failed', code: 'request_unavailable' }); onDecided?.(); }}
+          onReload={reload} />
+      )}
+
+      <p className="dashboard-muted text-xs leading-relaxed">{copy.note}</p>
     </div>
   );
 }

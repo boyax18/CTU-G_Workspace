@@ -52,7 +52,7 @@ className="dashboard-outline-button inline-flex min-h-11 items-center justify-ce
 | Disabled | `opacity-50` + `cursor-not-allowed`. Current code varies (40%/50%/60%); use 50% for new code | same |
 | Loading | disable the button and change its label ("Approving…"). Optionally add `<LoadingSpinner />` before the text | same |
 
-**Destructive (Proposed):** `bg-[#b91c1c] text-white hover:bg-[#991b1b]` + the same focus and disabled classes. Use it for the confirm button of reject, delete and deactivate actions, never for the button that opens the dialog.
+**Destructive (Current since WF-02.04, `features/admin/ApplicantRejectionPanel.tsx`):** `bg-[#b91c1c] text-white hover:bg-[#991b1b]` (white on `#b91c1c` is about 6.5:1) + the same focus and disabled classes. Use it for the confirm button of reject, delete and deactivate actions, never for the button that opens the dialog.
 
 **On-hero button (Current):** `dashboard-hero-button rounded-xl border px-4 py-2.5 text-sm font-semibold` (6% white fill; hover darkens, so contrast never drops over the photo) + a white focus outline. Use it only on `.dashboard-hero`.
 

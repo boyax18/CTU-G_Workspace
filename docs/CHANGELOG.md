@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-103: Permission Catalogue v2.2 (local development only)
+
+- Added Permission Catalogue v2.2 as a second versioned overlay: the pinned AR-3B2A v2.2 addendum, `v2_2_delta.json` and `validation_v2_2.py`. v2.0 and v2.1 stay byte-identical and are validated first. `access_control.school_access.inspect` and `access_control.audit.school.read` move from Admin to Technical Super Admin, so School Admin holds no `access_control.*` default and keeps its WF-02 `accounts.*` permissions.
+- Tests: v2.2 static 16/16; runtime (disposable database) 9/9; affected suites 921/921 in 37 modules (catalogue v2/v2.1/v2.2 and planners, registration-review P1 to P4, D-85, D-89, WF-03.01, WF-02.05 account status and P3B/provisioning, WF-02.06 history, release safeguard).
+- **Not done:** validated specification only. Nothing was provisioned, and no consumer, route, navigation item or audit screen changed. P3B/P4 are unchanged (D-102 OPEN), and independent review of the addendum pins is OPEN (D-101).
+
 ### 19 November 2026 — WF-03.01 Stage D: D-89 Permission Catalogue v2.1 (local development only)
 
 - Added Permission Catalogue v2.1 as a separately versioned overlay: the pinned AR-3B2A v2.1 addendum, `v2_1_delta.json` and `validation_v2_1.py`. v2 stays byte-identical and validates first. The only binding change moves `access_control.role_assignments.ordinary.manage` from Admin to Technical Super Admin, and the Admin and Technical Super Admin eligibility rules are restated. Every v2 security guarantee is re-checked.

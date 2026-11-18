@@ -197,7 +197,7 @@ def validate_catalogue(delta=None, *, base_manifest_bytes=None, addendum_bytes=N
         validated = v2.validate_manifest(v2._json(raw))
     except v2.CatalogueV2ValidationError as exc:
         raise CatalogueV21ValidationError("The base v2 catalogue does not validate.") from exc
-    base = v2.read_manifest() if base_manifest_bytes is None else v2._json(raw)
+    base = v2._json(raw)  # the exact bytes hashed and validated above; never a second read
     text = _read(ADDENDUM, "Pinned v2.1 addendum") if addendum_bytes is None else addendum_bytes
     _require(sha256(text).hexdigest() == ADDENDUM_SHA256, "Pinned v2.1 addendum digest mismatch; revision review required.")
     try:

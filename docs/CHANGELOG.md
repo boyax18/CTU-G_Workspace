@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-101: F-1 validator correction (local development only)
+
+- `validation_v2_1.py` now parses the v2.0 base only from the bytes it has already hashed against the pin and validated with the v2 validator. Before, with default arguments it re-read `v2_0.json` without verification, so a file replaced between the reads could weaken guarantees in a standalone v2.1 result; the v2.2 chain already rejected this. Pins, addenda, deltas and both effective digests are unchanged.
+- Tests: 4 new regression tests on the real file-reading path (failing before, passing after); the `test_catalogue_v2_2` baseline records the revised validator digest. Focused catalogue tests 101/101, D-85 16/16, other catalogue suites 73/73.
+- Recorded D-101 F-2: Permission Catalogue v2.1 is a historical validated dependency only; operational adoption must use the approved v2.2 chain.
+- **Not done:** no independent review or sign-off (D-101 OPEN); nothing provisioned or activated; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 D-103: Permission Catalogue v2.2 (local development only)
 
 - Added Permission Catalogue v2.2 as a second versioned overlay: the pinned AR-3B2A v2.2 addendum, `v2_2_delta.json` and `validation_v2_2.py`. v2.0 and v2.1 stay byte-identical and are validated first. `access_control.school_access.inspect` and `access_control.audit.school.read` move from Admin to Technical Super Admin, so School Admin holds no `access_control.*` default and keeps its WF-02 `accounts.*` permissions.

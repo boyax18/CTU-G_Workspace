@@ -3,11 +3,16 @@
 Run: python manage.py test apps.access_control.test_catalogue_v2_1 --settings=config.test_settings --noinput
 """
 
+from contextlib import contextmanager
 from copy import deepcopy
 from hashlib import sha256
 import json
+import os
+from pathlib import Path
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 import unittest.mock
 
@@ -303,6 +308,92 @@ print('stdlib-only v2.1 validation passed')
         result = subprocess.run([sys.executable, "-B", "-c", code], cwd=v2.ROOT / "backend",
                                 text=True, capture_output=True, check=True)
         self.assertEqual(result.stdout.strip(), "stdlib-only v2.1 validation passed")
+
+
+# D-101 F-1 regression support. Effective v2.1 digest recorded independently (unchanged by the F-1 correction).
+V21_DIGEST = "1adb16465e9d32712f890a95ee13dd5f21f4441790715aeaf91aa10c53183362"
+TAMPERED_SECOND_READS = {
+    "permission description": lambda d: d["permissions"][0].update(description=d["permissions"][0]["description"] + " (swapped)"),
+    "Django Superuser bypass": lambda d: d["composition"]["authorization"].update(django_superuser_is_application_bypass=True),
+    "Deny precedence": lambda d: d["composition"]["authorization"].update(explicit_deny_precedence=False),
+    "operational gate": lambda d: d["operational_gates"].update(grants="OPEN"),
+}
+
+
+@contextmanager
+def manifest_on_disk(after_first_read=None):
+    """Disposable real files read through the validators' own paths; the repository is never written.
+
+    Copies v2_0.json and the v2.1 addendum into a temporary tree, points validation_v2_1.ROOT (the hashed read) and
+    validation_v2.MANIFEST_PATH (any further read) at the same copy, and runs after_first_read(path) once,
+    immediately after the first real read of that copy. Yields the list of real reads of the copy.
+    """
+    with tempfile.TemporaryDirectory(prefix="ctug_d101_f1_") as tmp:
+        root = Path(tmp)
+        for relative in (v21.BASE_MANIFEST, v21.ADDENDUM):
+            (root / relative).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(v2.ROOT / relative, root / relative)
+        manifest = (root / v21.BASE_MANIFEST).resolve()
+        reads = []
+        real_read_bytes = Path.read_bytes
+
+        def read_bytes(path):
+            data = real_read_bytes(path)
+            if path.resolve() == manifest:
+                reads.append(sha256(data).hexdigest())
+                if len(reads) == 1 and after_first_read is not None:
+                    after_first_read(manifest)
+            return data
+
+        with unittest.mock.patch.object(v21, "ROOT", root), unittest.mock.patch.object(v2, "MANIFEST_PATH", manifest), \
+                unittest.mock.patch.object(Path, "read_bytes", read_bytes):
+            yield reads
+
+
+def disk_sha256(path):
+    """Digest of the file currently on disk, read outside the counted Path.read_bytes hook."""
+    with open(path, "rb") as handle:
+        return sha256(handle.read()).hexdigest()
+
+
+def replace_with(change):
+    """Atomically replace the file on disk (os.replace) with a validly formatted but tampered v2 manifest."""
+    def replace(path):
+        with open(path, "rb") as handle:
+            data = json.loads(handle.read())
+        change(data)
+        staged = path.with_name(path.name + ".staged")
+        staged.write_bytes(json.dumps(data, indent=2).encode("utf-8"))
+        os.replace(staged, path)
+    return replace
+
+
+class SingleVerifiedReadTests(unittest.TestCase):
+    """D-101 F-1: the v2 base is parsed only from the bytes that were hashed against the pin and validated by v2."""
+
+    def test_base_is_not_read_a_second_time(self):
+        with unittest.mock.patch.object(v2, "read_manifest", side_effect=AssertionError("second manifest read")):
+            self.assertEqual(v21.validate_catalogue().digest, V21_DIGEST)
+
+    def test_manifest_replaced_after_its_verified_read_cannot_change_the_result(self):
+        for label, change in TAMPERED_SECOND_READS.items():
+            with self.subTest(label), manifest_on_disk(replace_with(change)) as reads:
+                result = v21.validate_catalogue()
+                self.assertNotEqual(disk_sha256(v2.MANIFEST_PATH), reads[0])  # really replaced (no false positive)
+                self.assertEqual(result.digest, V21_DIGEST)
+                self.assertTrue(result.data["composition"]["authorization"]["explicit_deny_precedence"])
+                self.assertFalse(result.data["composition"]["authorization"]["django_superuser_is_application_bypass"])
+                self.assertEqual(len(reads), 1)  # the validator read the manifest exactly once
+
+    def test_manifest_removed_after_or_before_its_verified_read(self):
+        with manifest_on_disk(lambda path: path.unlink()) as reads:
+            self.assertEqual(v21.validate_catalogue().digest, V21_DIGEST)
+            self.assertFalse(Path(v2.MANIFEST_PATH).exists())
+            self.assertEqual(len(reads), 1)
+        with manifest_on_disk() as reads:
+            Path(v2.MANIFEST_PATH).unlink()
+            with self.assertRaisesRegex(v21.CatalogueV21ValidationError, "manifest is unavailable"):
+                v21.validate_catalogue()
 
 
 def _thaw(value):

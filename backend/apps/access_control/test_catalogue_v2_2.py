@@ -14,6 +14,7 @@ import unittest.mock
 from .catalogue import validation_v2 as v2
 from .catalogue import validation_v2_1 as v21
 from .catalogue import validation_v2_2 as v22
+from .test_catalogue_v2_1 import TAMPERED_SECOND_READS, disk_sha256, manifest_on_disk, replace_with
 
 TSA = "Technical Super Admin"
 INSPECT = "access_control.school_access.inspect"
@@ -24,7 +25,9 @@ NORMALIZED = {
     "backend/apps/access_control/catalogue/v2_0.json": "a7e2705236a37522b77468fd4154113d19e7e64bc479cfa420c41d7744a2548b",
     "backend/apps/access_control/catalogue/validation_v2.py": "f6b83305db567dcafc57eba97011554587be4b65d6d3c7116dc6a80b9a756aa4",
     "backend/apps/access_control/catalogue/v2_1_delta.json": "b028a419bdc66a19a782f6a968464ffb2f4cec7e10630ec4c169e6cda549d3d8",
-    "backend/apps/access_control/catalogue/validation_v2_1.py": "79e46cfc2790f4370f85c66aec12512102cb37e320cc9a5307181f88a036fa91",
+    # Revised by the D-101 F-1 correction (was 79e46cfc2790f4370f85c66aec12512102cb37e320cc9a5307181f88a036fa91 at
+    # 14125f9): the v2 base is parsed only from the verified bytes; pins and effective digests are unchanged.
+    "backend/apps/access_control/catalogue/validation_v2_1.py": "e176f9267b69baae7546d060064254d26a3e7df7a106b6505e941cb5b83d98b3",
 }
 RAW = {
     "docs/architecture/AR-3B2A-ADDENDUM-v2.1.md": "78a3c7e2e0afd07a7c4c052e13f3503378076dc7f487d9ecf3bf1dc940e1afb7",
@@ -37,6 +40,7 @@ RAW = {
         "02eb308db5aff1491ea2d024f5f7f1074125e3a7b9bb02dbd1409f6a6170a99e",
 }
 V21_DIGEST = "1adb16465e9d32712f890a95ee13dd5f21f4441790715aeaf91aa10c53183362"
+V22_DIGEST = "192ba955d1dae06bfbdf574e52ef454390b9fd41b803f63778d1d220b6cd8c6d"
 
 
 def pairs(data):
@@ -297,6 +301,18 @@ print('stdlib-only v2.2 validation passed')
         result = subprocess.run([sys.executable, "-B", "-c", code], cwd=v2.ROOT / "backend",
                                 text=True, capture_output=True, check=True)
         self.assertEqual(result.stdout.strip(), "stdlib-only v2.2 validation passed")
+
+
+class ChainSingleVerifiedReadTests(unittest.TestCase):
+    """D-101 F-1 through the chain: a v2 manifest replaced on disk after its verified read never reaches v2.2."""
+
+    def test_chain_ignores_a_manifest_replaced_after_its_verified_read(self):
+        for label, change in TAMPERED_SECOND_READS.items():
+            with self.subTest(label), manifest_on_disk(replace_with(change)) as reads:
+                result = v22.validate_catalogue()
+                self.assertNotEqual(disk_sha256(v2.MANIFEST_PATH), reads[0])  # really replaced (no false positive)
+                self.assertEqual(len(reads), 1)
+                self.assertEqual((result.base_digest, result.digest), (V21_DIGEST, V22_DIGEST))
 
 
 if __name__ == "__main__":

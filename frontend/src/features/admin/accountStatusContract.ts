@@ -24,12 +24,37 @@ export interface SchoolAccountPage {
   has_next: boolean;
 }
 
+/** WF-02.06 D-74: the only history events, each with its fixed description. */
+export type StatusHistoryEvent = 'registration_approved' | 'account_deactivated' | 'account_reactivated';
+/** WF-02.06 D-73: made by Django from the trusted session; never a name or ID. */
+export type HistoryActor = 'You' | 'An administrator';
+
+export interface StatusHistoryEntry {
+  event: StatusHistoryEvent;
+  description: string;
+  occurred_at: string;
+  actor: HistoryActor;
+  /** Only for activation/deactivation events; null when the audit did not record a matching state. */
+  previous_is_active?: boolean | null;
+  new_is_active?: boolean | null;
+}
+
+export interface StatusHistoryPage {
+  results: StatusHistoryEntry[];
+  page: number;
+  page_size: 20;
+  has_next: boolean;
+}
+
 export interface SchoolAccountDetail extends SchoolAccountItem {
   name: { first: string | null; middle: string | null; last: string | null; suffix: string | null };
   request_status: 'Approved';
   created_at: string;
   /** A hint only; Django re-checks it inside the lock. */
   can_reactivate: boolean;
+  /** WF-02.06 D-75: null means "Not recorded"; never inferred. */
+  approved_at: string | null;
+  last_status_change: StatusHistoryEntry | null;
 }
 
 export interface AccountStatusResult { account_id: number; is_active: boolean }
@@ -95,6 +120,55 @@ export function buildAccountDetailRequest(root: string, accountId: number): stri
   return `${validateRoot(root)}${accountId}/`;
 }
 
+/** WF-02.06: GET only; the page is the only query field the server accepts. */
+export function buildAccountHistoryRequest(root: string, accountId: number, page = 1): string {
+  if (!isAccountId(accountId)) throw new Error('Invalid account ID.');
+  if (!Number.isInteger(page) || page < 1 || page > 10_000) throw new Error('Invalid page.');
+  return `${validateRoot(root)}${accountId}/history/?page=${page}`;
+}
+
+const HISTORY_DESCRIPTIONS: Record<StatusHistoryEvent, string> = {
+  registration_approved: 'Registration approved',
+  account_deactivated: 'Account deactivated',
+  account_reactivated: 'Account reactivated',
+};
+const STATUS_STATES: Partial<Record<StatusHistoryEvent, readonly [boolean, boolean]>> = {
+  account_deactivated: [true, false],
+  account_reactivated: [false, true],
+};
+
+/** Exact D-74 shape: refuses extra fields, unknown events, other actor labels or inconsistent states. */
+export function parseHistoryEntry(value: unknown): StatusHistoryEntry {
+  if (!isRecord(value)) fail();
+  const v = value as Record<string, unknown>;
+  const event = v.event as StatusHistoryEvent;
+  if (!Object.prototype.hasOwnProperty.call(HISTORY_DESCRIPTIONS, event)) fail();
+  const states = STATUS_STATES[event];
+  const keys = ['event', 'description', 'occurred_at', 'actor', ...(states ? ['previous_is_active', 'new_is_active'] : [])];
+  if (!exactKeys(v, keys) || v.description !== HISTORY_DESCRIPTIONS[event] || !isTimestamp(v.occurred_at)
+    || (v.actor !== 'You' && v.actor !== 'An administrator')) fail();
+  const entry: StatusHistoryEntry = {
+    event, description: HISTORY_DESCRIPTIONS[event], occurred_at: v.occurred_at as string, actor: v.actor as HistoryActor,
+  };
+  if (states) {
+    const recorded = v.previous_is_active === null && v.new_is_active === null;
+    if (!recorded && (v.previous_is_active !== states[0] || v.new_is_active !== states[1])) fail();
+    entry.previous_is_active = v.previous_is_active as boolean | null;
+    entry.new_is_active = v.new_is_active as boolean | null;
+  }
+  return entry;
+}
+
+export function parseHistoryPage(value: unknown, expectedPage: number): StatusHistoryPage {
+  if (!isRecord(value) || !exactKeys(value, ['results', 'page', 'page_size', 'has_next'])) fail();
+  const v = value as Record<string, unknown>;
+  if (!Array.isArray(v.results) || v.results.length > 20 || v.page_size !== 20 || typeof v.has_next !== 'boolean'
+    || v.page !== expectedPage || (v.has_next && v.results.length !== 20)) fail();
+  // Kept in Django's order (newest first by the append-only audit key); never re-sorted here.
+  const results = (v.results as unknown[]).map(parseHistoryEntry);
+  return { results, page: expectedPage, page_size: 20, has_next: v.has_next as boolean };
+}
+
 export function buildStatusChangeRequest(root: string, accountId: number, action: AccountStatusAction, expectedActive: boolean) {
   if (!isAccountId(accountId)) throw new Error('Invalid account ID.');
   if (action !== 'suspend' && action !== 'activate') throw new Error('Unsupported action.');
@@ -105,7 +179,8 @@ export function buildStatusChangeRequest(root: string, accountId: number, action
 
 function parseItem(item: unknown, detail = false): SchoolAccountItem {
   const keys = ['account_id', 'school_id', 'id_label', 'full_name', 'roles', 'is_active'];
-  const all = detail ? [...keys, 'name', 'request_status', 'created_at', 'can_reactivate'] : keys;
+  const all = detail
+    ? [...keys, 'name', 'request_status', 'created_at', 'can_reactivate', 'approved_at', 'last_status_change'] : keys;
   if (!isRecord(item) || !exactKeys(item, all)) fail();
   const v = item as Record<string, unknown>;
   if (!isAccountId(v.account_id) || typeof v.school_id !== 'string' || v.school_id.length < 1 || v.school_id.length > 50
@@ -136,11 +211,14 @@ export function parseAccountDetail(value: unknown, expectedId: number): SchoolAc
   if (base.account_id !== expectedId || v.request_status !== 'Approved' || !isTimestamp(v.created_at)
     || typeof v.can_reactivate !== 'boolean' || !isRecord(name) || !exactKeys(name, ['first', 'middle', 'last', 'suffix'])
     || !optionalText(name.first, 100) || !optionalText(name.middle, 100) || !optionalText(name.last, 100)
-    || !optionalText(name.suffix, 20)) fail();
+    || !optionalText(name.suffix, 20) || (v.approved_at !== null && !isTimestamp(v.approved_at))) fail();
+  const last = v.last_status_change === null ? null : parseHistoryEntry(v.last_status_change);
+  if (last && !STATUS_STATES[last.event]) fail(); // only an activation/deactivation is a status change
   const n = name as Record<string, string | null>;
   return {
     ...base, name: { first: n.first, middle: n.middle, last: n.last, suffix: n.suffix }, request_status: 'Approved',
     created_at: v.created_at as string, can_reactivate: v.can_reactivate as boolean,
+    approved_at: v.approved_at as string | null, last_status_change: last,
   };
 }
 

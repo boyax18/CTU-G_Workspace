@@ -288,7 +288,9 @@ class AccountStatusHTTPTests(TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(set(body), {"account_id", "school_id", "id_label", "name", "full_name", "roles",
-                                     "is_active", "request_status", "created_at", "can_reactivate"})
+                                     "is_active", "request_status", "created_at", "can_reactivate",
+                                     # WF-02.06 D-75/D-76 status dates (exact contract in test_wf0206_account_history)
+                                     "approved_at", "last_status_change"})
         self.assertEqual((body["is_active"], body["can_reactivate"], body["roles"]), (False, True, ["Student"]))
         missing = [self.client.get(f"{API}{pk}/") for pk in (self.pending.pk, self.admin_target.pk, self.w.reviewer.pk, 2_000_000_000)]
         self.assertEqual({r.status_code for r in missing}, {404})
@@ -352,7 +354,7 @@ class AccountStatusHTTPTests(TestCase):
             with self.subTest(url=url), self.assertRaises(Resolver404):
                 resolve(url, urlconf="config.urls")
         from apps.access_control.management.commands.init_registration_review_metadata_local_dev import unexpected_review_routes
-        self.assertEqual(len(unexpected_review_routes(URLCONF)), 4)
+        self.assertEqual(len(unexpected_review_routes(URLCONF)), 5)  # list, detail, history (WF-02.06), suspend, activate
         self.assertEqual(unexpected_review_routes("config.urls"), [])
 
 

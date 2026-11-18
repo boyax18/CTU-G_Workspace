@@ -9,11 +9,13 @@ import { ApiError, initializeCSRF, timeoutSignal } from '../../api/client.ts';
 import { notifyAuthenticationRequired } from '../../utils/sessionSignals.ts';
 import { parseRegistrationReviewError } from './registrationReviewApiContract.ts';
 import {
-  buildAccountDetailRequest, buildAccountsRequest, buildStatusChangeRequest,
-  parseAccountDetail, parseAccountPage, parseStatusChange, parseStatusConflict,
+  buildAccountDetailRequest, buildAccountHistoryRequest, buildAccountsRequest, buildStatusChangeRequest,
+  parseAccountDetail, parseAccountPage, parseHistoryPage, parseStatusChange, parseStatusConflict,
 } from './accountStatusContract.ts';
 import { ACCOUNT_STATUS_ENABLED, ACCOUNT_STATUS_ROUTE_ROOT } from './accountStatusConfig.ts';
-import type { AccountsQuery, AccountStatusAction, AccountStatusResult, SchoolAccountDetail, SchoolAccountPage } from './accountStatusContract.ts';
+import type {
+  AccountsQuery, AccountStatusAction, AccountStatusResult, SchoolAccountDetail, SchoolAccountPage, StatusHistoryPage,
+} from './accountStatusContract.ts';
 
 
 const off = () => new ApiError('Account status is not activated.', 503, 'review_unavailable');
@@ -51,6 +53,12 @@ export async function listSchoolAccounts(page = 1, query: AccountsQuery = {}, en
 export async function getSchoolAccount(accountId: number, enabled = ACCOUNT_STATUS_ENABLED): Promise<SchoolAccountDetail> {
   if (!enabled) throw off();
   return parseAccountDetail(await getJSON(buildAccountDetailRequest(ACCOUNT_STATUS_ROUTE_ROOT, accountId)), accountId);
+}
+
+/** WF-02.06: one page (20, newest first) of the account's permitted status history; read-only. */
+export async function getSchoolAccountHistory(accountId: number, page = 1, enabled = ACCOUNT_STATUS_ENABLED): Promise<StatusHistoryPage> {
+  if (!enabled) throw off();
+  return parseHistoryPage(await getJSON(buildAccountHistoryRequest(ACCOUNT_STATUS_ROUTE_ROOT, accountId, page)), page);
 }
 
 /** One confirmed-state POST; never retried. Definite refusals keep their codes. */

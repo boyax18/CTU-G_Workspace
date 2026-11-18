@@ -8,12 +8,15 @@ safeguard refuses it there, and WORKSPACE_ACCOUNT_STATUS_ENABLED stays off in co
 from django.urls import path
 
 from .account_status_api import (
-    ActivateSchoolAccountView, SchoolAccountDetailView, SchoolAccountListView, SuspendSchoolAccountView,
+    ActivateSchoolAccountView, SchoolAccountDetailView, SchoolAccountHistoryView, SchoolAccountListView,
+    SuspendSchoolAccountView,
 )
 
 urlpatterns = [
     path("", SchoolAccountListView.as_view(), name="school-accounts-list"),
     path("<int:account_id>/", SchoolAccountDetailView.as_view(), name="school-accounts-detail"),
+    # WF-02.06 D-76: the only history route; read-only (GET/HEAD/OPTIONS).
+    path("<int:account_id>/history/", SchoolAccountHistoryView.as_view(), name="school-accounts-history"),
     path("<int:account_id>/suspend/", SuspendSchoolAccountView.as_view(), name="school-accounts-suspend"),
     path("<int:account_id>/activate/", ActivateSchoolAccountView.as_view(), name="school-accounts-activate"),
 ]

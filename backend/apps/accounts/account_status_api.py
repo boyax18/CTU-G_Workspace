@@ -11,10 +11,11 @@ from django.db.models import Exists, OuterRef, Q
 from rest_framework import exceptions
 from rest_framework.response import Response
 
-from apps.access_control.models import AccountRole
+from apps.access_control.audit import APPROVAL_ACTION
+from apps.access_control.models import AccessAuditLog, AccountRole
 
 from .account_status import (
-    ACTIVATE_CODE, READ_CODE, SUSPEND_CODE, AccountStatusConflict,
+    ACTIVATE_ACTION, ACTIVATE_CODE, READ_CODE, SUSPEND_ACTION, SUSPEND_CODE, AccountStatusConflict,
     activate_account, gate_open, is_reserved_role, suspend_account,
 )
 from .models import Account
@@ -51,6 +52,65 @@ def _roles(account):
 def _id_label(account):
     role = getattr(account.requested_role, "role_name", None)
     return ID_LABELS.get(role, "School ID")
+
+
+# WF-02.06 D-74 (owner-approved 18 Nov 2026): the ONLY audit events a school-account reader may see,
+# each reduced to a fixed event type, a fixed description, its time and a server-made actor label.
+# Raw audit JSON, reasons, approval attestations, IDs and identities are never returned (D-73, D-77).
+HISTORY_EVENTS = {
+    APPROVAL_ACTION: ("registration_approved", "Registration approved"),
+    SUSPEND_ACTION: ("account_deactivated", "Account deactivated"),
+    ACTIVATE_ACTION: ("account_reactivated", "Account reactivated"),
+}
+STATUS_ACTIONS = (SUSPEND_ACTION, ACTIVATE_ACTION)
+# What each status event must record (old is_active, new is_active); anything else is not shown.
+_STATUS_STATES = {SUSPEND_ACTION: (True, False), ACTIVATE_ACTION: (False, True)}
+HISTORY_QUERY_FIELDS = frozenset({"page"})
+_HISTORY_COLUMNS = ("action", "actor_account_id", "old_value", "new_value", "created_at")
+
+
+def _history_rows(account_id, actions):
+    """Deterministic newest first (the append-only primary key); only the columns needed."""
+    return (AccessAuditLog.objects.filter(target_account_id=account_id, action__in=actions)
+            .order_by("-access_audit_log_id").values(*_HISTORY_COLUMNS))
+
+
+def _actor_label(actor_id, viewer):
+    # D-73: generated from the trusted session identity; never a name, e-mail, School ID or ID.
+    return "You" if type(actor_id) is int and actor_id == viewer.pk else "An administrator"
+
+
+def _recorded_state(value):
+    state = value.get("is_active") if isinstance(value, dict) else None
+    return state if type(state) is bool else None
+
+
+def _history_entry(row, viewer):
+    event, description = HISTORY_EVENTS[row["action"]]
+    entry = {"event": event, "description": description,
+             "occurred_at": row["created_at"].isoformat(), "actor": _actor_label(row["actor_account_id"], viewer)}
+    if row["action"] in _STATUS_STATES:
+        # Only states the audit row itself recorded, and only when they match the event; never inferred.
+        recorded = (_recorded_state(row["old_value"]), _recorded_state(row["new_value"]))
+        previous, new = recorded if recorded == _STATUS_STATES[row["action"]] else (None, None)
+        entry.update(previous_is_active=previous, new_is_active=new)
+    return entry
+
+
+def _approved_at(account):
+    """D-75: the append-only approval audit time (written with the decision); otherwise the account's
+    own reviewed_at (legacy rows); otherwise None ("Not recorded"). A date is never inferred."""
+    audited = (AccessAuditLog.objects.filter(target_account_id=account.pk, action=APPROVAL_ACTION)
+               .order_by("-access_audit_log_id").values_list("created_at", flat=True).first())
+    moment = audited or account.reviewed_at
+    return moment.isoformat() if moment else None
+
+
+def _page(params):
+    page_text = _single(params, "page", "1")
+    if not page_text.isascii() or not page_text.isdecimal() or not 1 <= int(page_text) <= 10000:
+        raise exceptions.ValidationError("Invalid page.")
+    return int(page_text)
 
 
 class AccountStatusAPI(RegistrationReviewAPI):
@@ -120,11 +180,43 @@ class SchoolAccountDetailView(AccountStatusAPI):
             "account_id": account.pk, "school_id": account.school_id, "id_label": _id_label(account),
             "name": {field: _clean(getattr(profile, f"{field}_name" if field != "suffix" else "suffix", None))
                      for field in ("first", "middle", "last", "suffix")},
+            # Current state comes from the account row only (D-75); history never decides it.
             "full_name": _full_name(account), "roles": roles, "is_active": account.is_active,
-            "request_status": "Approved", "created_at": account.created_at.isoformat(),
+            "request_status": account.request_status, "created_at": account.created_at.isoformat(),
             # A hint only: the service re-checks it inside the lock (D-63).
             "can_reactivate": bool(roles),
+            # WF-02.06 D-75/D-76: status dates; None means "Not recorded".
+            "approved_at": _approved_at(account),
+            "last_status_change": next(
+                (_history_entry(row, actor) for row in _history_rows(account.pk, STATUS_ACTIONS)[:1]), None),
         })
+
+
+class SchoolAccountHistoryView(AccountStatusAPI):
+    """WF-02.06 D-76: read-only, paginated status history of ONE eligible account.
+
+    Same gate, session, Admin-assignment, service and exact-permission checks as the WF-02.05 detail
+    (accounts.school_accounts.read; account-level Deny wins), the same eligibility queryset and the
+    same non-enumerating 404. Only the D-74 allowlisted events are read; nothing is written.
+    """
+
+    http_method_names = ["get", "head", "options"]
+    throttle_classes = [ReviewListThrottle]
+
+    def get(self, request, account_id):
+        actor = self.require_actor(request, READ_CODE)
+        params = request.query_params
+        if set(params) - HISTORY_QUERY_FIELDS:
+            raise exceptions.ValidationError("Unsupported query fields.")
+        page = _page(params)
+        if not 1 <= account_id <= MAX_ACCOUNT_ID:
+            raise exceptions.NotFound()
+        if not eligible_accounts(actor).filter(pk=account_id).exists():
+            raise exceptions.NotFound()
+        start = (page - 1) * PAGE_SIZE
+        rows = list(_history_rows(account_id, tuple(HISTORY_EVENTS))[start:start + PAGE_SIZE + 1])
+        return Response({"results": [_history_entry(row, actor) for row in rows[:PAGE_SIZE]],
+                         "page": page, "page_size": PAGE_SIZE, "has_next": len(rows) > PAGE_SIZE})
 
 
 class _StatusChangeView(AccountStatusAPI):

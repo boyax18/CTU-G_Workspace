@@ -25,7 +25,14 @@ const ROOT = '/api/v1/admin/school-accounts/';
 const item = (id = 7, overrides = {}) => ({ account_id: id, school_id: '7240001', id_label: 'School ID', full_name: 'Ana Cruz',
   roles: ['Student'], is_active: true, ...overrides });
 const detail = (id = 7, overrides = {}) => ({ ...item(id), name: { first: 'Ana', middle: null, last: 'Cruz', suffix: null },
-  request_status: 'Approved', created_at: '2026-11-10T09:15:00+08:00', can_reactivate: true, ...overrides });
+  request_status: 'Approved', created_at: '2026-11-10T09:15:00+08:00', can_reactivate: true,
+  approved_at: null, last_status_change: null, ...overrides });
+// WF-02.06 history entries, exactly as Django returns them.
+const deactivated = (overrides = {}) => ({ event: 'account_deactivated', description: 'Account deactivated',
+  occurred_at: '2026-11-18T10:00:00+00:00', actor: 'You', previous_is_active: true, new_is_active: false, ...overrides });
+const approved = (overrides = {}) => ({ event: 'registration_approved', description: 'Registration approved',
+  occurred_at: '2026-11-01T08:00:00+00:00', actor: 'An administrator', ...overrides });
+const historyPage = (results, overrides = {}) => ({ results, page: 1, page_size: 20, has_next: false, ...overrides });
 const reply = (status, body) => ({ ok: status >= 200 && status < 300, status, headers: new Headers(), json: async () => {
   if (body === undefined) throw new SyntaxError('not json');
   return body;
@@ -137,4 +144,65 @@ test('the UI never edits roles or permissions and has no history or bulk control
     const source = readFileSync(new URL(`../src/features/admin/${file}`, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /role_assignments|account_permissions|role_permissions|postJSON|bulk|history\(\)/i, file);
   }
+});
+
+// -- WF-02.06 (D-73 to D-76) ----------------------------------------------------------------------
+test('history plans are GET-only with just the page', () => {
+  assert.equal(contract.buildAccountHistoryRequest(ROOT, 7), `${ROOT}7/history/?page=1`);
+  assert.equal(contract.buildAccountHistoryRequest(ROOT, 7, 3), `${ROOT}7/history/?page=3`);
+  for (const [id, page] of [[0, 1], [7, 0], [7, 10_001], [7, 1.5]]) assert.throws(() => contract.buildAccountHistoryRequest(ROOT, id, page));
+});
+
+test('detail status dates: null means not recorded; the last change must be a status event', () => {
+  const plain = contract.parseAccountDetail(detail(), 7);
+  assert.deepEqual([plain.approved_at, plain.last_status_change], [null, null]);
+  const dated = contract.parseAccountDetail(detail(7, { approved_at: '2026-11-01T08:00:00+00:00', last_status_change: deactivated() }), 7);
+  assert.equal(dated.last_status_change.description, 'Account deactivated');
+  for (const bad of [{ approved_at: 'yesterday' }, { last_status_change: approved() }, { last_status_change: { ...deactivated(), reason: 'x' } }]) {
+    assert.throws(() => contract.parseAccountDetail(detail(7, bad), 7), JSON.stringify(bad));
+  }
+  const { approved_at: _omitted, ...missing } = detail();
+  assert.throws(() => contract.parseAccountDetail(missing, 7));
+});
+
+test('history entries are the exact allowlisted shape and never carry identities or raw audit data', () => {
+  const page = contract.parseHistoryPage(historyPage([deactivated({ actor: 'An administrator' }), approved()]), 1);
+  assert.deepEqual(page.results.map((r) => [r.event, r.actor]), [['account_deactivated', 'An administrator'], ['registration_approved', 'An administrator']]);
+  assert.deepEqual(contract.parseHistoryEntry(deactivated({ previous_is_active: null, new_is_active: null })).new_is_active, null);
+  for (const bad of [
+    { ...deactivated(), actor: 'Ana Cruz' }, { ...deactivated(), actor_account_id: 3 }, { ...deactivated(), old_value: {} },
+    { ...deactivated(), description: 'Deactivated by admin 3' }, { ...deactivated(), event: 'account.role.assign' },
+    { ...deactivated(), previous_is_active: false, new_is_active: true }, { ...deactivated(), previous_is_active: true, new_is_active: null },
+    { ...approved(), previous_is_active: null, new_is_active: null }, { ...approved(), eligibility_source: 'ctu_main_system_records' },
+    { ...deactivated(), occurred_at: 'today' }]) {
+    assert.throws(() => contract.parseHistoryEntry(bad), JSON.stringify(bad));
+  }
+  for (const bad of [historyPage([], { page: 2 }), historyPage([], { has_next: true }), historyPage([], { page_size: 50 }),
+    { ...historyPage([]), total: 0 }, historyPage(Array.from({ length: 21 }, () => approved()))]) {
+    assert.throws(() => contract.parseHistoryPage(bad, 1), JSON.stringify(bad).slice(0, 80));
+  }
+});
+
+test('history: off sends nothing; on, one GET per page and refusals keep their codes', async () => {
+  await withFetch(() => reply(200, historyPage([])), async (calls) => {
+    await assert.rejects(api.getSchoolAccountHistory(7), (e) => e.code === 'review_unavailable');
+    assert.equal(calls.length, 0);
+    assert.equal((await api.getSchoolAccountHistory(7, 1, true)).results.length, 0);
+    assert.deepEqual(calls.map((c) => [c.path, c.method]), [[`${ROOT}7/history/?page=1`, 'GET']]);
+  });
+  for (const [status, code] of [[403, 'access_denied'], [404, 'request_unavailable'], [503, 'review_unavailable']]) {
+    await withFetch(() => reply(status, { error: { code, message: 'x' } }), async (calls) => {
+      await assert.rejects(api.getSchoolAccountHistory(7, 1, true), (e) => e.code === code && e.status === status);
+      assert.equal(calls.length, 1); // never retried
+    });
+  }
+});
+
+test('the history UI has no write path and shows actors only as the server labels', () => {
+  const source = readFileSync(new URL('../src/features/admin/AccountDetailPanel.tsx', import.meta.url), 'utf8');
+  const history = source.slice(source.indexOf('function StatusHistory'), source.indexOf('export default function'));
+  assert.match(history, /getSchoolAccountHistory/);
+  assert.doesNotMatch(history, /changeAccountStatus|method: 'POST'|actor_account|school_id|email/);
+  assert.match(source, /Not recorded/);
+  assert.doesNotMatch(source, /Account history is a separate view/);
 });

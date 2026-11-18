@@ -321,9 +321,10 @@ class AccountStatusSafeguardTests(SimpleTestCase):
 
     def setUp(self):
         from apps.accounts.account_status_api import (
-            ActivateSchoolAccountView, SchoolAccountListView, SuspendSchoolAccountView,
+            ActivateSchoolAccountView, SchoolAccountHistoryView, SchoolAccountListView, SuspendSchoolAccountView,
         )
         self.suspend = SuspendSchoolAccountView.as_view()
+        self.history = SchoolAccountHistoryView
         self.views = (SchoolAccountListView, SuspendSchoolAccountView, ActivateSchoolAccountView)
 
     def refused(self, *patterns):
@@ -348,6 +349,10 @@ class AccountStatusSafeguardTests(SimpleTestCase):
             "opaque wrapper with a school-accounts name": path("o/<int:account_id>/", opaque, name="school-accounts-x"),
             "function view in an account_status module": path("f/<int:account_id>/", _account_status_function_view),
             "read-only list": path("api/v1/admin/school-accounts/", self.views[0].as_view(), name="school-accounts-list"),
+            # WF-02.06: the read-only history view, at its own path and at an unrelated path and name.
+            "read-only history": path("api/v1/admin/school-accounts/<int:account_id>/history/", self.history.as_view(),
+                                      name="school-accounts-history"),
+            "history renamed path and name": path("h/<int:account_id>/", self.history.as_view(), name="plain-h"),
         }
         for label, pattern in shapes.items():
             with self.subTest(label):

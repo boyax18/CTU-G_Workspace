@@ -23,6 +23,17 @@
 | OD-19 | Authoritative CTU enrollment verification and fee liability rules | CTU enrollment representative + SSG finance owner | Open | No automatic organization-fee eligibility implementation |
 | FIN-D01..06 | Verification source, recurrence, withdrawal/transfer/proration, waivers, uniqueness and corrections | CTU enrollment + SSG finance + privacy | Proposed questions only | No new fee model/ERD/migration |
 
+### WF-03.01 — Administrator role policy amendment (owner-stated 18 November 2026)
+
+| Decision reference | Owner-directed desired behavior | Implementation/contract status |
+|---|---|---|
+| D-79 / D-82 | School Admin is approved Instructor+Admin; cannot mutate any role. Technical Super Admin is approved Instructor+Admin+Technical Super Admin and may manage eligible ordinary/School Admin roles. | Requirement intent stated; change to protected manifest and SRS v1 needs controlled versioning. |
+| D-91 | Django Superuser can configure CTU-G Workspace system data and add/remove all account roles; only Django Superuser can grant/revoke Technical Super Admin. | Configuration channel not yet implemented; existing Django Admin read-only. |
+| D-92 | Protected and auditable Django Superuser configuration; no normal Workspace API bypass; reconcile first-operator ceremony, signed evidence, audit/session, P3B/P4 and last-operator safety. | OPEN for owner/security/DBA decision; **not permission to execute bootstrap**. |
+| D-80/D-81/D-85/D-88/D-89/D-90 | Existing two-Admin executor, first target, permission catalogue pins, storage, P3B and recovery. | OPEN; new authority model conflicts with earlier mechanisms. |
+
+See `docs/decisions/ADR-004-django-superuser-role-authority-amendment.md`. The change is a **documentation alignment** only: no live data, permission, ERD, migration or protected writer changes.
+
 ## 2. Change request record (use for each approved item)
 
 **Request ID:** ____  

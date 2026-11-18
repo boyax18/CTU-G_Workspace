@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 18 November 2026 — WF-03.01 administrator authority alignment (documentation draft)
+
+- Recorded the owner's updated rules: approved Instructor retains Instructor when assigned School Admin; only Django Superuser may grant/revoke Technical Super Admin, and Django Superuser may configure all data and roles through protected audited procedures. School Admin cannot manage any roles or permissions; Technical Super Admin may manage eligible School Admin and ordinary roles but not Technical Super Admin.
+- Updated editable SRS v0.4 review draft, Use Case Specification working copies, WF-03.01, Master Test/UAT plan, traceability, decision register and access-control release-gate document; added ADR-004. No historical implementation, test results, Human Approvals, pins, official ERD or database objects changed.
+- **Pending:** existing protected two-Admin/three-signer bootstrap, read-only Django Admin, permission catalogue v2 pins/validator, P3B/P4 and `wex-1` schema/security approval. No production authority or code implementation is inferred from the documentation amendments.
+
+
 Document meaningful changes after they are verified. Avoid including credentials, secrets, or personal account information.
 
 ## 2026-11-08 — Local Development Checkpoint

@@ -12,7 +12,7 @@
 | FR-AUTH-07 rate-limit/auth events | AT-12 | Storage and event contract not approved | P,G | Design and privacy review, rate-limit tests |
 | FR-ACL-01..03,11 deny and object scope | AT-11,16,23 | Evaluator implementation/tested; no active catalogue | I,T,G,U | Service gating + module-specific ownership tests |
 | FR-ACL-04..10,12..14 protected governance | AT-03,06,07,08,09,10,14,15 | Historical C1/C2A planning, no approved grants | P,G | Role composition, catalogue manifest, impact/mutation/rollback |
-| FR-ADM-01..09 role assignment profiles | AT-03,05,08,09,10 | Admin role/default policy proposed; bootstrap separate | P,G | Target allowlist, conflicts, audit and no self-escalation |
+| FR-ADM-01..09 role assignment profiles; owner amendment 18 Nov | AT-03,05,08,09,10; TC-004,018,020..025,028..033 | Instructor registration/approval already implemented; role assignment/privileged promotions not implemented; Django Superuser-only Technical Super Admin authority planned | P,G | Controlled SRS/Use Case/catalogue reconciliation; protected bootstrap, session epoch and audit tests |
 | FR-ACA-01..04 academic | AT-16 | ERD and intended use cases | P,G,U | Module workflow, CTU-owned data source, record/class scopes |
 | FR-FIN-01..08 SSG Finance | AT-04,05,24 | ERD and desired finance flows | P,G,U | Ledger/fee policy, conflict controls, monitor read-only exports |
 | Proposed FR-FIN-09..14 | Proposed AT-25..31 | Companion only; no approved code evidence | P,G | Approve external enrollment status/fee recurrence/returning rules |
@@ -20,7 +20,7 @@
 | FR-RAT-01..04 group rating | (not individually numbered in v0.4) | ERD and intended behavior | P,G,U | Tests for group membership, duplicate/self-rating and privacy |
 | FR-COM-01..04 announcements/reports | (not individually numbered in v0.4) | ERD/intended behavior | P,G,U | Audience, read-state, report finalization/export tests |
 | FR-AUD-01..05 security events/audit | AT-12,15 | Mutation audit implemented; auth-event store pending | I,T,G | Scope, PII redaction, retention, rollback and real role grant |
-| FR-DJA-01..07, FR-ADMRO-01 | AT-13,22 | Read-only `/admin/` reviewed and 121/121 backend suite reported | I,T,U | Test current candidate, model allowlist and bypass negatives |
+| FR-DJA-01..07, FR-ADMRO-01; amended FR-DJA-04/06 | AT-13,22; TC-009,024..027,030,034,037,038 | Existing Django Admin read-only historically; new authenticated, audited Django Superuser configuration authority not implemented | P,G | Verify protected configuration contract and exclusive Technical Super Admin grant/revoke; no ordinary Workspace API bypass |
 | FR-REC-01..02 password recovery | AT-17 | Recovery code/tests documented | I,T,D,G | E2E email/sender flow, anti-enumeration and secure rollout |
 | FR-NOT-01..02 notification outbox | AT-18,19 | Encrypted writer + worker code, historical 93/93 checkpoint | I,T,D,G | Sender, worker/queue recovery, key rotation and privacy |
 | FR-BULK-01..02 immediate selected review | AT-20 | Detached service/API; historical 115/115 checkpoint | I,T,D,G | Each-item authorization/replay/concurrency and live-routing gate |
@@ -29,6 +29,10 @@
 | FR-DOC-01 documentation/change control | AT-14 (partial) | November 11 v0.4 SRS + 12-file refresh prepared | I,G | Integrate/approve package, keep evidence versioned |
 | NFR-SEC-01..03 security | AT-07,09..16,22,23 | Selected negative tests reported | T,G | Full release-candidate security matrix, threat model |
 | NFR-PRV/AUD/REL/PER/USA/OPS | All applicable | Proposed standards, limited technical checkpoints | P,G,U | Privacy officer review, performance/restore/accessibility evidence |
+
+## Administrative authority reconciliation (18 November 2026; documentation only)
+
+The project owner requires: **approved Instructor → School Admin via authorized Technical Super Admin or Django Superuser; approved Instructor → Technical Super Admin exclusively via Django Superuser; Django Superuser may administer all system data and account roles through reviewed protected procedures; School Admin cannot manage access control**. See the editable SRS §3.5, UC-D05, WF-03.01, test cases TC-020..038 and decision addendum ADR-004. Current protected bootstrap, pinned SRS v1 and pinned AR-3B2A are **not** silently rewritten; contract migration and executor/pin updates require separate approval. Status is **P,G** and *no test was run* for this documentation alignment.
 
 ## Missing acceptance-test ID coverage
 

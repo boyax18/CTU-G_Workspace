@@ -53,3 +53,9 @@ A smaller activation scope would require an explicit, versioned, approved catalo
 - [ ] Architecture/SRS/ERD/API/phase documents updated
 
 **Do not mark the catalogue live until the actual implementation and approvals satisfy these gates.**
+
+## 18 November 2026 owner-directed Django Superuser role-authority amendment (review-only)
+
+The target model: an approved Instructor may acquire School Admin (`Admin`) through an authorized Technical Super Admin or Django Superuser; only Django Superuser can grant/revoke the Technical Super Admin role. Django Superuser may configure system data and any role, **but only through reviewed, authenticated, audited and protected configuration operations**. School Admin cannot manage role assignments. Technical Super Admin has `Instructor + Admin + Technical Super Admin`, with exact access-control permissions, and cannot elevate another Technical Super Admin. No public privileged registration.
+
+**Conflict and gate:** The existing two-Admin, three-signer protected executor/bootstrap and the integrity-pinned catalogue still encode older policy. This document does not approve bypassing them or turning on Django Admin's currently read-only mutation interface. Approval is needed for revised `v2_0.json`/validator pins, protected writer path, bootstrap/evidence, `wex-1` storage, P3B/P4 compensation, last-operator and recovery, session epochs, and actual safe Superuser provisioning. See WF-03.01 D-79/D-91/D-92, editable SRS §3.5 and ADR-004. All governance release gates remain **BLOCKED**.

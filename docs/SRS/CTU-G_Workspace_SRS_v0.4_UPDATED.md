@@ -17,7 +17,7 @@
 
 | Field | Record |
 |---|---|
-| Revision | v0.4, 2026-11-17 — reconciles Workflow Catalogue category numbering, semester onboarding/fee/clearance contracts and Group Rating point allocation; **draft for review** |
+| Revision | v0.4 draft (17 Nov 2026) + owner-directed administrator-authority alignment (18 Nov 2026); **review draft**, not an implementation/release authorization |
 | Supersedes | v0.3 SRS draft for documentation review only; no changes to databases, permissions, existing software or approval status |
 | Previous design reference | `docs/phase1h-c1-permission-catalogue-governance-proposal.md` (C1 v1; now requires reconciliation) |
 | Database reference | `docs/database/full_schema.dbml`; `docs/database/schema.dbml` — read-only contracts |
@@ -127,10 +127,10 @@ The application SHALL support multiple active roles on one account. The current 
 | Instructor | Instructor | Assigned classes, teaching, clearance and rating services |
 | Student Treasurer | Student + Treasurer | Own student tools plus approved SSG Treasurer operations; conflict-of-interest controls required |
 | Instructor SSG Advisor (Finance Monitor) | Instructor + SSG Advisor (proposed), or equivalent separately approved narrow overrides | Instructor rights plus **one** financial-monitoring responsibility: scoped View Financial Overview, View Financial Reports, and View Transaction History; no Treasurer write powers |
-| Normal Admin | Admin | School management, registration review, eligible ordinary role assignment; redacted school audit monitoring if approved |
-| Technical Super Admin | Admin + separately protected governance authority (role composition subject to approval) | School Admin rights **plus** protected role-default and override governance |
+| Normal Admin | Instructor + Admin (promotion of an approved Instructor) | Instructor permissions plus School Admin school operations; **no Access Control Management or role assignment** |
+| Technical Super Admin | Instructor + Admin + Technical Super Admin (privileged role assignment by Django Superuser only) | Inherits School Admin operational permissions through Admin plus separately authorized access-control governance; cannot assign/revoke the Technical Super Admin role |
 | Instructor + Normal Admin | Instructor + Admin | Both job duties, subject to separation-of-duties rules |
-| Instructor + Super Admin | Instructor + Admin + protected governance role | Combined duties only if independently approved; higher-risk conflict controls apply |
+| Instructor + Super Admin | Instructor + Admin + Technical Super Admin | Intended multi-role composition; must be installed via an audited Django-Superuser-only protected configuration action, subject to verified eligibility and last-operator rules |
 
 **Interpretation:** “School Admin” and “Technical Super Admin” are **two application administrative tiers**, not merely two independent individual permission codes. Their implementation is proposed as role composition to reuse the existing schema; the protected role name and compatibility rules remain an approval decision. Having an Admin role does not confer automatic global permission-management powers.
 
@@ -139,21 +139,21 @@ The application SHALL support multiple active roles on one account. The current 
 | Activity | Normal Admin | Super Admin (application) | Django Superuser |
 |---|---|---|---|
 | Review ordinary registration | Allowed by approved school permission | Inherits school rights | No automatic application authority |
-| Assign ordinary roles to eligible users | Within explicit grantable-role allowlist | Within explicit allowlist | No automatic application authority |
-| Promote user to Normal Admin | Not by default | Authorized protected workflow, with approval rules | Not by default |
-| Promote user to Super Admin | No | Only separate elevated-governance workflow, never unrestricted self/service promotion | Not by default |
-| Change **default permissions of any application role** | **No** | **Exclusive protected authority**, subject to policy, audit and governance limits | No automatic application authority |
-| Add/revoke direct account permissions | Only if explicitly delegated for narrow use cases; default No | Protected authority with target/service restrictions | No automatic application authority |
+| Assign ordinary roles to eligible users | No | With exact effective permission and eligible target | Authorized Django administrative configuration procedure |
+| Promote approved Instructor to School Admin | No | Yes, through approved protected role assignment | Yes, through protected audited Django configuration |
+| Promote approved Instructor to Technical Super Admin | No | **No**, including self and other accounts | **Exclusive Django Superuser authority**, via an approved protected and audited procedure |
+| Change **default permissions of any application role** | No | Governed permission-management workflow and effective-permission checks | Protected audited configuration authority; no implicit ordinary Workspace API bypass |
+| Add/revoke direct account permissions | No | Governed permission-management workflow, eligible target and deny precedence | Protected audited configuration authority; no implicit ordinary Workspace API bypass |
 | View school authentication/security activity | Limited redacted, school-scoped view when implemented and granted | Redacted governance/audit view | Technical logging access per controlled Django operations |
-| Manage academic settings, announcements | School-authorized | Inherits School Admin | Not automatically |
+| Manage academic settings, announcements | Authorized school operation | Inherits via Admin assignment | Protected administrative configuration authority; record-scope and audit safeguards apply |
 | Manage Django framework/admin site | No | No by default | Yes if Django Admin properly configured and restricted |
 | View every student's payments/ratings | No blanket access | No blanket access | No automatic custom API access |
 
 ### 3.3 Provisioning and separation principles
 
-- The **first application Super Admin** must be established through a separately approved, attributable initial-operator process. Once operational, this Super Admin may create or promote other **Normal Admins** under an approved workflow and audit trail.
-- Promoting or provisioning another **Super Admin** requires a stronger governance process (independent approval/recovery policy to be finalized) and cannot be a one-click unlimited escalation.
-- School Admins may attach approved ordinary roles (including eligible Treasurer and the single SSG Advisor (Finance Monitor) responsibility) to Student/Instructor accounts. They must not self-assign protected governance authority or modify role templates.
+- **Administrator onboarding:** an eligible person registers through the ordinary Instructor workflow (WF-01.02), obtains independent approval under WF-02.03, and keeps the Instructor role. Technical Super Admin may then grant/revoke the School Admin (`Admin`) role through WF-03.01; the Django Superuser may do so through a protected audited configuration action. There is no separate public registration path for either administrative tier.
+- **Exclusive elevation:** only an authenticated Django framework Superuser may grant or revoke the Technical Super Admin role for an existing eligible approved Instructor through a reviewed, attributable, protected configuration procedure. The target also needs `Admin` membership and explicit governance permissions; the original Instructor role is retained. An application Technical Super Admin cannot elevate themselves or anyone else to Technical Super Admin.
+- School Admin cannot assign/revoke *any* account role, including ordinary Treasurer/SSG Advisor roles, or manage default/direct permissions. Technical Super Admin may handle eligible ordinary roles and School Admin role assignments under approved governance; Django Superuser has protected full configuration authority over role records. Eligibility, separation-of-duties and audit checks still apply.
 - No user may approve their own account request, assign protected roles to themselves, grant permissions to themselves, remove their own Deny override, or change a role template whose modification would bypass an approved privilege-escalation control.
 - Students and instructors retain their original roles when assigned an additional approved role unless a separate authorized removal occurs.
 - The last effective application Super Admin must not be silently deactivated, demoted, or stripped of necessary governance permissions; recovery must remain possible.
@@ -167,6 +167,18 @@ For an approved active account with at least one assigned active role and an act
 
 Every protected action also requires record-level scope checks (self, assigned class, period, specific signatory responsibility, approved reporting scope) and contextual business validation. No role name, requested role, frontend visibility, Django staff status, or Django Superuser flag is itself a bypass of the custom evaluator.
 
+### 3.5 Owner-directed Django Superuser and administrator-role policy (18 November 2026; proposed implementation)
+
+**Requirement authority:** The project owner specified this target role model on 18 November 2026. It governs the **revised documentation proposal**, not the currently deployed application's behavior. Do not imply current Django Admin supports these writes: the inspected Django Admin is read-only and the existing protected executor still requires another Admin account and independent signatures.
+
+- **Django Superuser:** framework-level highest **administrative configuration authority** over system data and account roles. Can add or remove Student, Instructor, Treasurer, School Admin (`Admin`), and Technical Super Admin roles, subject to reviewed, authenticated, auditable, safe configuration operations; only Django Superuser can grant/revoke Technical Super Admin. No automatic right to bypass the existing Workspace API evaluator through `is_superuser`.
+- **Technical Super Admin (Super Administrator):** no independent public registration; a previously approved Instructor retains Instructor and additionally holds Admin + Technical Super Admin. Authorized for Access Control Management through precise permission grants, and may grant/revoke School Admin for other eligible approved Instructors. Cannot grant/revoke Technical Super Admin.
+- **School Admin (Normal Administrator):** no independent public registration; an approved Instructor retains Instructor and receives Admin from an authorized Technical Super Admin or Django Superuser. Performs school operations; cannot manage role assignments, role-default permissions or account overrides.
+- **Identity/eligibility separation:** Instructor registration (WF-01.02) and approval (WF-02.03) remain the normal path to eligible administrator accounts. Student and Instructor base-role changes by a Django Superuser need explicit integrity checks; they are not a public re-registration bypass. The first School Admin/first Technical Super Admin bootstrap remains a distinct unresolved security transition.
+- **Pending engineering decisions:** whether trusted Django Admin actions or a superuser-authenticated command are the reviewed configuration surface; how the existing protected two-Admin/three-signer bootstrap, executor storage, P3B/P4 compatibility, signed receipts, operator recovery and last-operator protection adapt. No direct SQL, unbounded model editor, automatic role grant, schema installation or release change is authorized by this SRS amendment.
+
+Related decision register: D-79, D-80, D-81, D-82, D-85, D-88, D-89, D-90, and proposed D-91/D-92 in WF-03.01. Historical integrity-pinned documents are preserved; update their versioned manifests and hashes only with a separately reviewed contract migration.
+
 ## 4. Primary use cases
 
 | ID | Actor(s) | Use case and expected outcome |
@@ -175,11 +187,11 @@ Every protected action also requires record-level scope checks (self, assigned c
 | UC-02 | Normal/Super Admin | Approve eligible application; atomically activate and attach requested base role defaults |
 | UC-03 | School/Technical Super Admin | Reject an eligible application, notify the recipient by approved email flow and delete rejected registration account/data under an approved audit/privacy/error-recovery contract so they may register afresh; no previous-credentials or rejected-account-reuse design. |
 | UC-04 | Approved account | Sign in/out using secure browser session and CSRF controls; fetch effective capabilities |
-| UC-05 | Normal Admin | Assign/remove an eligible ordinary extra role from a Student or Instructor with reason and audit |
+| UC-05 | Technical Super Admin or Django Superuser through its protected administration procedure | Assign/remove an eligible ordinary additional role with review, evidence, atomic audit and session protection; School Admin denied |
 | UC-06 | Super Admin | Change a role's default permissions in protected interface; see impact and audit before commit |
 | UC-07 | Super Admin | Add/revoke permitted direct user overrides without overriding protected constraints |
-| UC-08 | Super Admin | Authorize creation/promotion of a Normal Admin, preserving a valid governance operator |
-| UC-09 | Privileged governance operators | Provision/recover another Super Admin only through independently controlled privileged workflow |
+| UC-08 | Technical Super Admin or Django Superuser (separate protected procedure) | Grant/revoke School Admin (`Admin`) only to an authorized approved Instructor while retaining Instructor, with atomic audit and session safety |
+| UC-09 | Django Superuser only | Grant/revoke Technical Super Admin to an eligible approved Instructor through a separately approved protected configuration procedure; retains Instructor+Admin and explicit governance permissions |
 | UC-10 | Normal/Super Admin | Review redacted, scope-limited authentication/security activity after dedicated event logging is implemented |
 | UC-11 | Instructor | Receive the SSG Advisor (Finance Monitor) responsibility without losing Instructor access |
 | UC-12 | Instructor serving as SSG Advisor (Finance Monitor) | View authorized read-only financial overview, reports and transaction history under the **same** responsibility profile |
@@ -190,7 +202,7 @@ Every protected action also requires record-level scope checks (self, assigned c
 | UC-17 | Instructor / Student (Group Leader or member) | WF-08 Hybrid Group Management: form verified groups, manage invitations/transfer and successor corrections, publish Instructor-defined categories and distribute **exact budget points per category** to other eligible groupmates only; scoring results/privacy to be approved separately. |
 | UC-18 | Authorized campus users | Create/read announcements and track their own read state |
 | UC-19 | Treasurer/School Admin | Generate and review reports at permitted detail level; separate finalization controls |
-| UC-20 | Django Superuser | Perform restricted Django framework maintenance without automatically bypassing custom application security |
+| UC-20 | Django Superuser | Configure and maintain CTU-G Workspace system data and any role, including exclusively granting/revoking Technical Super Admin via protected audited Django administration, without an ordinary Workspace API bypass |
 
 ## 5. Functional requirements
 
@@ -248,10 +260,10 @@ Every protected action also requires record-level scope checks (self, assigned c
 
 | ID | Priority | Requirement |
 |---|---|---|
-| FR-ADM-01 | P0 | An appropriately authorized Normal Admin SHALL be able to assign/revoke **ordinary approved** roles to eligible Students and Instructors, subject to recipient-role and conflict rules. |
-| FR-ADM-02 | P0 | A Super Admin SHALL be able to establish additional Normal Admins under an explicitly protected and auditable promotion/provisioning process. |
-| FR-ADM-03 | P0 | No ordinary Admin SHALL be able to assign or grant application Super Admin authority to themselves or another account via the ordinary assignment service. |
-| FR-ADM-04 | P0 | Super Admin promotion, removal, last-operator recovery and governance privilege changes SHALL require a separate protected, independently reviewable authorization process. |
+| FR-ADM-01 | P0 | School Admin SHALL NOT grant, remove or modify any account role or access-control permission. Only authorized Technical Super Admin may perform governed ordinary role assignments, subject to eligible accounts, exact effective permissions and audit; the Django Superuser MAY configure all account roles through an independently protected, authenticated, audited administration channel. |
+| FR-ADM-02 | P0 | An approved Instructor SHALL retain their Instructor role when assigned School Admin (`Admin`) by an authorized Technical Super Admin or Django Superuser through protected, audited administration. No separate public School Admin registration is permitted. |
+| FR-ADM-03 | P0 | Only the authenticated Django Superuser SHALL be able to assign or revoke Technical Super Admin membership; neither School Admin nor Technical Super Admin may grant/revoke that role for anyone, including themselves. The protected procedure must validate eligibility and prevent unauthorized privilege elevation. |
+| FR-ADM-04 | P0 | Django Superuser authority over all application data and account roles SHALL be exposed only through reviewed administrative configuration operations, with authenticated execution, scoped write contracts, atomic audit, last-operator safeguards, transaction rollback and appropriate recovery. It SHALL NOT implicitly bypass ordinary CTU-G Workspace API effective-permission checks. Existing independent-signature/bootstrap machinery requires a separately approved reconciliation before replacement. |
 | FR-ADM-05 | P0 | Role changes SHALL record acting account, target account, role, before/after state, reason and event time within approved audit contracts. |
 | FR-ADM-06 | P1 | Normal Admin SHALL be able to inspect eligible accounts' assigned roles and effective abilities, but SHALL not access sensitive technical secrets or unrestricted governance change interfaces. |
 | FR-ADM-07 | P1 | Normal Admin MAY receive an explicit read-only school-scoped security/authentication-log permission. This SHALL not confer role-template editing or full technical system configuration. |
@@ -365,9 +377,9 @@ Every protected action also requires record-level scope checks (self, assigned c
 | FR-DJA-01 | P0 | The project SHALL provide a supported, reviewed Django Superuser provisioning method compatible with the custom `Account` model and authentication backend. |
 | FR-DJA-02 | P0 | Django Superuser SHALL be a **separate framework privilege**, not an implicit `account_roles` entry and not an automatic custom permission bypass. |
 | FR-DJA-03 | P0 | If current custom Account model lacks required Django framework fields/methods/admin integration, the team SHALL first document the exact compatibility gap and seek approval for any migration or code adaptation. |
-| FR-DJA-04 | P0 | Django Admin SHALL allow only explicitly registered, reviewed maintenance functions; direct edits to protected role, permission and audit records SHALL be disabled or routed through trusted audited services. |
+| FR-DJA-04 | P0 | Django Superuser SHALL have the highest controlled configuration authority over CTU-G Workspace system data, including adding/removing any account role, via explicitly registered, reviewed, authenticated and audited Django administrative procedures. Protected role, permission and audit edits SHALL not be exposed as unrestricted raw model editing; approved business, integrity and recovery safeguards continue to apply. |
 | FR-DJA-05 | P0 | Django Superuser creation/recovery SHALL use an independent, authenticated and attributable technical procedure with emergency access and secrets-handling safeguards. |
-| FR-DJA-06 | P0 | The initial application Super Admin bootstrap SHALL not assume a Django Superuser automatically satisfies the custom first-operator audit actor requirement. |
+| FR-DJA-06 | P0 | Only a Django Superuser may authorize Technical Super Admin elevation/revocation via the protected administrator configuration path. Reconcile this owner-directed design with the existing two-Admin/three-signer first-operator bootstrap, audit attribution, release gates and P3B/P4 invariants before implementing or activating the replacement; framework `is_superuser` alone is not a normal Workspace API grant. |
 | FR-DJA-07 | P1 | Technical framework actions and changes to application authority SHALL have clearly separated policies, logs and recovery procedures. |
 
 ### 5.11 Shared dashboard and interfaces
@@ -375,7 +387,7 @@ Every protected action also requires record-level scope checks (self, assigned c
 | ID | Priority | Requirement |
 |---|---|---|
 | FR-UI-01 | P1 | The application SHALL use one shared `DashboardLayout` with context-sensitive navigation based on effective permissions. |
-| FR-UI-02 | P1 | Normal Admin SHALL see school-management, approval, eligible role assignment and limited monitoring screens. |
+| FR-UI-02 | P1 | School Admin SHALL see authorized school-management, applicant approval and limited monitoring screens, but no Access Control Management role editor, permission overrides or technical governance navigation. |
 | FR-UI-03 | P1 | Super Admin SHALL additionally see role-default templates, service permissions, per-user overrides, effective-access inspection and security audit interfaces. |
 | FR-UI-04 | P1 | A user with multiple roles SHALL use one account/session and see the union of authorized features, without separate logins or duplicate profiles. |
 | FR-UI-05 | P0 | Screens SHALL clearly distinguish **Change Role Default** (affects all role holders) from **Change This User's Permissions** (one account). |
@@ -455,12 +467,12 @@ The 42-table main DBML and auth DBML SHALL remain read-only until any schema rev
 | AT-05 | Student gains Treasurer role | Student and Treasurer menus visible where authorized; own-finance conflicting actions refused |
 | AT-06 | Super Admin changes Instructor role default | Impact preview; change committed with audit; every applicable Instructor holder's effective permission changes; protected grant rules enforced |
 | AT-07 | Normal Admin attempts role-default edit | Denied even if UI request is forged; no state change or fake success audit |
-| AT-08 | Super Admin creates a Normal Admin | Protected promotion with attribution; new account gets school Admin rights but no governance role |
-| AT-09 | Normal Admin attempts Super Admin promotion | Denied; no governance authority granted |
+| AT-08 | Authorized Technical Super Admin promotes an approved Instructor to School Admin | Protected assignment adds Admin while preserving Instructor; no Technical Super Admin grant; audit and session handling verified |
+| AT-09 | School Admin or Technical Super Admin attempts unauthorized Technical Super Admin elevation | Denied for both; only Django Superuser can use the protected role elevation/revocation procedure; no write on failure |
 | AT-10 | Super Admin attempts self-grant/last-admin removal | Denied or routed through separately approved governance recovery, never silently executed |
 | AT-11 | Multi-role account with Deny override | Direct Deny wins even if a second role grants same code; authorization checked again on next request |
 | AT-12 | Normal Admin monitors auth activity | Only redacted, authorized campus-scoped events shown, no passwords/tokens or unrestricted security diagnostics |
-| AT-13 | Django Superuser logs into Django Admin | Only reviewed maintenance functions available; no automatic CTU-G role grants/custom bypass |
+| AT-13 | Django Superuser operates reviewed Django Admin configuration | Only protected audited administrative operations, including role management and exclusive Technical Super Admin role grant/revoke, can mutate data; no automatic ordinary Workspace API bypass |
 | AT-14 | Catalogue planner after SRS change | Reports previous C1 manifest incompatibilities as unresolved; does not apply existing 82-code/96-binding baseline automatically |
 | AT-15 | Audit insertion fails during role change | Security transaction rolled back; role/override state unchanged |
 | AT-16 | Instructor accesses other class / Student other payment | Server returns denied/filtered result regardless of role membership or hidden buttons |
@@ -518,7 +530,7 @@ The following **AT-V04-01–AT-V04-25** are **provisional v0.4 test scenarios**,
 |---|---|
 | OD-01 | Confirm that **Normal Admin = Admin**, **Super Admin = Admin + protected governance role**, and exact persisted role name (keep `Technical Super Admin` or rename through approved process). |
 | OD-02 | Define if a Super Admin can elevate another Super Admin alone; recommendation: independent approval and last-operator safeguards. |
-| OD-03 | Define the precise list of assignable ordinary roles for Normal Admin; include eligible Treasurer and the **single** SSG Advisor (Finance Monitor) role, with conflict checks. |
+| OD-03 | Define the exact ordinary role allowlist, target eligibility, and approved Treasurer / SSG Advisor appointment evidence **for Technical Super Admin** (or separately protected Django Superuser administration); School Admin receives no role assignment authority. |
 | OD-04 | **Terminology resolved:** SSG Advisor and Finance Monitor are the same responsibility, not separate roles. Confirm the recommended canonical `SSG Advisor` role or equivalent narrow account overrides, and approve any additional advisor duties separately. |
 | OD-05 | Approve the three SSG Advisor (Finance Monitor) views, dataset filters, redactions, report maturity, transaction history scope and retention/export rules. |
 | OD-06 | Define Student+Treasurer conflict rules (self-payments, exemption, receiving/issuing receipt) and Instructor+Admin conflict rules. |
@@ -526,7 +538,7 @@ The following **AT-V04-01–AT-V04-25** are **provisional v0.4 test scenarios**,
 | OD-08 | Set exact Super Admin limits for editing any role default, including their own Admin/governance role and safeguards for globally disruptive changes. |
 | OD-09 | Define first application Super Admin identity/bootstrap attribution, governance approval evidence and recovery. |
 | OD-10 | Decide Django Superuser integration path after inspecting the custom Account model; any migrations require separate authorization. |
-| OD-11 | Set direct Grant/Deny override governance and whether Normal Admin receives any narrowly delegated override authority. |
+| OD-11 | Set Technical Super Admin direct Grant/Deny override governance; School Admin may not manage account-specific permissions. Django Superuser protected configuration remains separately reviewed and audited. |
 | OD-12 | Reconcile all affected C1 D01-D18 policy proposals and freeze a new approved catalogue/grant manifest; keep all activation and database writes blocked until then. |
 | OD-13 | Determine session revocation timing after role/default/override changes and account suspensions. |
 | OD-14 | Approve performance, privacy, audit-retention, operational recovery and deployment acceptance targets. |
@@ -573,3 +585,5 @@ This SRS v0.4 is suitable for stakeholder review, not authorized deployment. The
 ---
 
 **End of SRS v0.4 — Draft for review.**
+
+> **Administrative-role alignment note (18 Nov 2026):** Historical R3/R4, OD-01/03/08/09/10/11, and older FR-ADM-01/UC-05 descriptions elsewhere in archived or integrity-pinned sources may refer to School Admin role delegation or a two-Admin bootstrap. The policy in §3.5 and revised FR-ADM requirements above is the owner-directed proposed revision. Resolve all protected contracts and catalogue pins before implementation; no ERD or database change was performed by this document edit.

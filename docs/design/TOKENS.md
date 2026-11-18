@@ -66,7 +66,7 @@ Use the **class** column in JSX and the **variable** column in CSS.
 | `--fg-accent` | `#15803d` | `#86efac` | `#86efac` (inherits) |
 | `--fg-error` | `#dc2626` | `#f87171` | `#f87171` (inherits) |
 | `--accent` | `#15803d` | `#15803d` | `#15803d` |
-| `--accent-hover` | `#166534` | `#16a34a` | `#16a34a` |
+| `--accent-hover` | `#166534` | `#16a34a` (white text 3.30:1: fails AA for the public `.btn-primary` hover, AUDIT A-21, still open; the dashboard no longer uses it for buttons) | `#16a34a` (same) |
 | `--accent-bright` | `#16a34a` | `#4ade80` | `#4ade80` |
 | `--accent-soft` | `rgba(21,128,61,.12)` | `rgba(74,222,128,.16)` | inherits |
 | `--glass-bg` | `rgba(255,255,255,.28)` | `rgba(255,255,255,.09)` | `rgba(255,255,255,.05)` |
@@ -97,7 +97,7 @@ Current values (visual refinement and colour-depth refinement, 17 Nov 2026). `va
 | `--db-muted` | `var(--fg-muted)` `#4b5563` | `var(--fg-body)` `#c5d6ca` | `var(--fg-body)` `#b8b8b8` |
 | `--db-topbar` / `--db-topbar-border` | `var(--header-bg)` / `var(--header-border)` | same | same |
 | `--db-accent` | `var(--accent-hover)` `#166534` (green text stays AA on the deeper mint corner; buttons keep `#15803d`) | `var(--fg-accent)` `#86efac` | `#86efac` |
-| `--db-button` / hover | `var(--accent)` / `var(--accent-hover)` | same | same |
+| `--db-button` / hover | `var(--accent)` `#15803d` / `var(--accent-hover)` `#166534` (white text 5.02:1 / 7.13:1) | `var(--accent)` `#15803d` / **`#166534`** (fixed 18 Nov 2026, AUDIT A-21: was `var(--accent-hover)` `#16a34a`, 3.30:1) | inherits System-dark: `#15803d` / **`#166534`** |
 | `--db-focus` | `#15803d` | `#86efac` | `#86efac` |
 | `--db-error` | `#b91c1c` | `#fca5a5` | `#fca5a5` |
 | `--db-chip` / `--db-chip-fg` | `rgba(21,128,61,.12)` / `#14532d` | `rgba(74,222,128,.16)` / `#d3f9de` | `rgba(74,222,128,.14)` / `#d3f9de` |

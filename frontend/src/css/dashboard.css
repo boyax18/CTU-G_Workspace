@@ -68,6 +68,9 @@
   --db-glass-shadow: 0 20px 30px -10px rgba(0, 20, 10, .45);
   --db-edge: rgba(134, 239, 172, .14);
   --db-accent: var(--fg-accent);
+  /* White text on the dark-theme --accent-hover (#16a34a) is only 3.30:1; #166534 is 7.13:1 (AUDIT A-21).
+     Dashboard-only: System-dark and Dark (theme-black inherits this block). Public .btn-primary is unchanged. */
+  --db-button-hover: #166534;
   --db-muted: var(--fg-body);                    /* --fg-muted is borderline on green (AUDIT A-03) */
   --db-focus: #86efac;
   --db-error: #fca5a5;

@@ -141,7 +141,7 @@ owner's separate authorization (decision D-105). Never put passwords in the repo
 Status: `accounts/0006_account_session_revocation_version` is applied to the local `ctug_workspace` (Stage B
 Gate 2, 19 November 2026, decision D-106), and all existing sessions were cleared. The non-decrease trigger,
 the restricted MySQL accounts and the ERD update are NOT applied (Stage B-2, separate authorization). The owner's
-real-account login test (Test A) is still PENDING. Never run `migrate --fake`, a schema rollback or an in-place
+real-account login test (Test A) PASSED on 19 November 2026 (TC-042). Never run `migrate --fake`, a schema rollback or an in-place
 restore without the owner's separate authorization.
 
 Local deployment record (Gates 1 and 2; non-sensitive JSON records are kept next to the backup, outside the

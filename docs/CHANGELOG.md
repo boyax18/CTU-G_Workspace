@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 SR-1 Stage B Gate 2 closure: real-account login verified
+
+- **Test A passed:** the owner ran it privately. Workspace login 200, session authenticated, role Admin (School Admin) with 6 effective permissions (current local provisioning), no Technical Super Admin, logout 200, then unauthenticated.
+- **Server-side corroboration:** the server log and read-only database checks agree. No session remains, and accounts, roles, permissions and receipts are unchanged.
+- SR-1 Stage B is complete for the local database. **Still open:** Stage B-2 (trigger, restricted accounts, test-runner credential, SR-1a fix, checkpoint anchoring, restore procedure) and the ERD update. D-101 is OPEN; D-102 is not implemented; the WF-03.01 Human Approval is not recorded.
+
 ### 19 November 2026 — WF-03.01 SR-1 Stage B Gates 1 and 2: migration 0006 applied to the local database
 
 - **Gate 1:** a consistent backup of `ctug_workspace` was taken outside the repository (SHA-256 `093c5290…cdcfcaf`). It was restore-verified into a scratch schema (18/18 tables equal), and migration 0006 was rehearsed there. The isolated SR-1, D-85 and session suites passed 94/94.

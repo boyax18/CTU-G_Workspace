@@ -114,6 +114,28 @@ Scheduler templates (adapt paths and the service account; **do not install on a 
 
 Record the schedule, owner and first successful run in the operations records (section 7).
 
+## 5C. Database accounts and audit checkpoints (R-2 phase 1 design; NOT applied)
+
+Status: designed and tested on disposable test databases only (`backend/apps/access_control/test_wf0301_r2_audit_integrity.py`). The local application still
+connects as MySQL `root`. Applying the accounts below to `ctug_workspace` and changing `backend/.env` need the
+owner's separate authorization (decision D-105). Never put passwords in the repository.
+
+- **Runtime account** (for example `ctug_app`, used by the Django application):
+  - `GRANT SELECT, INSERT, LOCK TABLES ON ctug_workspace.*`;
+  - `GRANT UPDATE, DELETE ON ctug_workspace.<table>` for every table **except** `access_audit_logs`;
+  - no DDL, `TRIGGER`, `GRANT OPTION`, `SUPER` or user-management rights.
+  - Re-run the per-table `UPDATE, DELETE` grants after a migration adds a table.
+- **Migration account** (for example `ctug_migrate`, used only for `manage.py migrate`):
+  `CREATE, ALTER, DROP, INDEX, REFERENCES, SELECT, INSERT, UPDATE, DELETE` on `ctug_workspace.*`.
+- **Verifier account** (optional): `SELECT` on `ctug_workspace.access_audit_logs` only.
+- `root` stays with the database administrator. The tests run with a privileged account because they create
+  and drop disposable databases.
+- **Checkpoint (prototype):** `manage.py report_access_audit_checkpoint` prints a checkpoint, and
+  `--verify <file>` checks the receipts against a checkpoint file kept **outside** the database (for example
+  in the D-95 operational record). `--hmac-key-env <NAME>` authenticates it with a key held outside the
+  database. Take checkpoints only when no governance operation is running: a receipt that commits late with
+  a lower ID makes a later verification fail closed. Cadence, key custody and storage need decision D-105.
+
 ## 6. Safe repository/archive checklist
 
 Do not distribute workspace source archives containing `.env`, `.git`, `.venv`, `node_modules`, local SQL backups, student data, test secrets, logs or build caches. Earlier reviewed source ZIP was reported to contain `.env`; treat that archive as sensitive. Prefer tracked-source export and a separately reviewed secrets configuration process. If secret values were shared outside trusted recipients, coordinate credential rotation. Never add a real `.env` to the repository.

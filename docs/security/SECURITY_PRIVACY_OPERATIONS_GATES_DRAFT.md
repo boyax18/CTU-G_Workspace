@@ -12,7 +12,7 @@
 | Object-level access | Ownership/period/assigned class/action context checked **server side** | Cross-account/class/period API tests |
 | Admin governance | Normal Admin cannot edit role defaults; Super Admin follows protected workflow | Allowlist, impact preview, independent review, audit rollback |
 | Django framework Admin | Reviewed read-only maintenance models; `is_superuser` != Workspace grant | Django Admin negative tests, no custom API bypass |
-| Audit | Attributable bounded event; security mutation atomic with its audit | Forced-failure/rollback tests, privacy review |
+| Audit | Attributable bounded event; security mutation atomic with its audit; receipts not modifiable or deletable by the application account; revocation not reversible by deleting a receipt (R-2, SR-1) | Forced-failure/rollback tests, privacy review; least-privilege and checkpoint tests on disposable databases (test_wf0301_r2_audit_integrity); OPEN until D-105 is decided and applied |
 | Session and CSRF | HttpOnly cookie, secure origin, protection on state change, timely session invalidation | Browser integration + stale-session cases |
 | SMTP/password recovery | Feature-gated off unless separately approved; no token/log exposure | Safe reset tests, key rotation and sender/worker plan |
 | Notification outbox | Encrypted recipient, bounded retries/leases, redacted logs, at-least-once backend acceptance semantics | Outbox isolation, retries, duplicate/rollback tests |

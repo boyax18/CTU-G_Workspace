@@ -1,5 +1,16 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 R-2: Option D phase 1 verification and prototypes (local development only)
+
+- Confirmed: the application connects to `ctug_workspace` as MySQL `root`, so audit receipts are append-only by convention only. **SR-1 confirmed (activation blocker):** deleting an account's latest suspension or role-change receipt moves its session epoch backwards and revives an unused revoked session. The proposed fix (a monotonic revocation epoch) needs separate approval.
+- Tested on disposable databases only:
+  - a least-privilege runtime account (no UPDATE, DELETE or DDL on `access_audit_logs`; `LOCK TABLES` needed for its locking reads) that runs every governance path;
+  - a separate migration account (runs a full `migrate`);
+  - a SELECT-only verifier account.
+- Added the read-only prototype `report_access_audit_checkpoint` (`apps/access_control/audit_checkpoint.py`): a hash chain over every receipt, verified against a checkpoint held outside the database (optional HMAC). It is not wired into any governance or session path.
+- Tests: new `test_wf0301_r2_audit_integrity` 16/16 (two runs); affected regression 1926/1926 in 85 modules, 0 skipped; `manage.py check` and `makemigrations --check` clean.
+- **Not done:** no account, grant, trigger, migration, `.env` or connection change on `ctug_workspace`; R-2 OPEN (decisions D-105); D-101 OPEN; D-102 not started; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 D-101: independent reviewer handoff (documentation only)
 
 - Added section 19 to `docs/security/WF-03.01_D-89_CATALOGUE_V2_1_INTEGRITY_REVIEW_PACKAGE.md`: what the reviewer approves (v2.1, then v2.2) and what is out of scope, the evidence status (rechecked versus agent-reported), the exact bytes (SHA-256 and Git blob IDs of the 19 in-scope artefacts), PowerShell-safe and Git commands, the checklist mapping, decision criteria and post-sign-off prohibitions.

@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-107: S0-first Technical Super Admin provisioning (decision and readiness)
+
+- **Owner decision (local development only):** the first Technical Super Admin grant may create S0, the six existing v2.0 governance codes. The three S1 codes are deferred to the D-102 extension (OD-2, OD-7). D-101 stays OPEN, and OD-7 is not bypassed.
+- Amended the D-102 "first grant creates S1" text in readiness sections 1, 3.3, 3.8 and 4, and added section 4.1 (first-grant prerequisites).
+- **Read-only checks:** gate and command present; migration 0006 applied; no Technical Super Admin role; School Admin has zero `access_control` permissions; the runtime catalogue is v2.0; the S0 definitions are field-identical to v2.2; **no eligible Approved Instructor exists**.
+- **Not done:** no grant, no operator designation, no environment change. Documentation only.
+
 ### 19 November 2026 — WF-03.01 D-93/D-95: development-database gate for the protected Superuser command
 
 - `framework_roles` replaces the unconditional `DEVELOPMENT_DATABASE_APPROVED` block with a default-deny development gate. It accepts `ctug_workspace` only when every condition is positively verified, in the configuration and on the live connection.

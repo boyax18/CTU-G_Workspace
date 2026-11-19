@@ -255,7 +255,9 @@ class SuperuserProcedureTests(TestCase):
             self.refused(RoleChangeUnavailable, "grant-technical-super-admin", self.instructor)
         with patch.dict("os.environ", {"DJANGO_SETTINGS_MODULE": "config.settings"}):
             self.refused(RoleChangeUnavailable, "grant-technical-super-admin", self.instructor)
-        self.assertIs(framework_roles.DEVELOPMENT_DATABASE_APPROVED, False)
+        # D-93/D-95: no approval flag exists any more; the development gate is checked condition by condition
+        # (test_wf0301_d93_development_gate), and under these settings it refuses (DEBUG off, test database).
+        self.assertFalse(hasattr(framework_roles, "DEVELOPMENT_DATABASE_APPROVED"))
 
     def test_tc009_the_command_never_takes_credentials_from_arguments(self):
         out = StringIO()

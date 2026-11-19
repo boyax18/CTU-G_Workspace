@@ -16,15 +16,22 @@ as catalogue v2 defines them (composition.application_super_admin, bound only to
 Admin) on the first grant, and verified on every later grant; inconsistent state is refused, never
 repaired. The last effective Technical Super Admin is never removed (D-88).
 
-Stage restriction: until P3B/P4 compatibility (D-85), the operator designation and evidence (D-95)
-and the procedure surface (D-93) are approved, this runs ONLY against the disposable MySQL test
-database; ctug_workspace and every other target are refused before any read.
+Targets (default deny, checked before any data read): the disposable MySQL test database, or the local
+development database through the D-93/D-95 development gate (owner-authorized implementation 19 Nov 2026;
+NOT yet authorized for use). The development gate requires, all positively verified: the config.settings
+module, DEBUG on, exactly one database alias, MySQL `ctug_workspace` on loopback (configured and live), READ
+COMMITTED, no review backend / role-assignment API flag, no protected writer, no mounted review or
+role-management route, and an operator allowlist taken only from the process environment (never from
+backend/.env). Its confirmation is database-bound (`ctug_workspace:WF-03.01:<operation>:<account_id>`). The
+low-level mutators refuse unless configure_role has passed every gate in the current transaction.
 """
 
+import contextvars
 import os
+import re
 
 from django.conf import settings
-from django.db import DEFAULT_DB_ALIAS, connection
+from django.db import DEFAULT_DB_ALIAS, connection, connections, transaction
 
 from apps.accounts import session_revocation
 from apps.accounts.models import Account
@@ -43,41 +50,159 @@ from .writer_boundary import writer_atomic
 
 OPERATIONS = ("grant-school-admin", "revoke-school-admin", "grant-technical-super-admin", "revoke-technical-super-admin")
 OPERATORS_SETTING = "WORKSPACE_ROLE_CONFIGURATION_OPERATORS"
-# Flip only with the owner's separate approval of D-85, D-93 and D-95 (never by configuration alone).
-DEVELOPMENT_DATABASE_APPROVED = False
+# D-93/D-95 development gate: the ONLY non-test target, matched exactly (configuration and live connection).
+DEVELOPMENT_SETTINGS_MODULE = "config.settings"
+DEVELOPMENT_DATABASE = "ctug_workspace"
+LOOPBACK = frozenset({"localhost", "127.0.0.1", "::1"})
+# Modes that must be off for the development target: review backends and the role-assignment API (the
+# protected writer is checked separately).
+CONFLICTING_FLAGS = ("WORKSPACE_REGISTRATION_REVIEW_API_ENABLED", "WORKSPACE_REGISTRATION_APPROVAL_ENABLED",
+                     "WORKSPACE_ROLE_ASSIGNMENT_ENABLED")
+ROLE_MANAGEMENT_VIEW_MODULES = frozenset({"apps.access_control.role_assignment_api"})
+_OPERATOR_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,49}")
+_ENV_KEY_LINE = re.compile(r"^\s*(?:export\s+)?WORKSPACE_ROLE_CONFIGURATION_OPERATORS\s*=", re.MULTILINE)
+# Set only by configure_role after every gate and the operator's re-authentication, for one transaction.
+_AUTHORIZED = contextvars.ContextVar("wf0301_framework_operation", default=None)
 PERMISSION_CREATE = "framework.permission.create"
 ROLE_CREATE = "framework.role.create"
 BINDING_CREATE = "framework.role_binding.create"
 
 
+def _development_configuration():
+    """Configuration only (no connection): does this process claim the D-93/D-95 development target?"""
+    return (os.environ.get("DJANGO_SETTINGS_MODULE") == DEVELOPMENT_SETTINGS_MODULE
+            and connections[DEFAULT_DB_ALIAS].settings_dict.get("NAME") == DEVELOPMENT_DATABASE)
+
+
 def confirmation_for(operation, target_id):
-    return f"WF-03.01:{operation}:{target_id}"
+    """Exact per-action confirmation; database-bound for the development target (D-93/D-95)."""
+    base = f"WF-03.01:{operation}:{target_id}"
+    return f"{DEVELOPMENT_DATABASE}:{base}" if _development_configuration() else base
+
+
+def parse_operator_allowlist(raw):
+    """D-95: designated framework-operator School IDs, comma-separated, from the process environment.
+
+    Fail closed: anything empty, malformed or duplicated designates nobody, so a bad value is never mistaken
+    for an approval. Deliberately NOT a Django setting: the WF-03.01 release safeguard forbids every settings
+    module from defining the role gates (test_release_surface_is_isolated_and_reported)."""
+    if type(raw) is not str or not raw.strip():
+        return ()
+    items = [part.strip() for part in raw.split(",")]
+    if any(_OPERATOR_ID.fullmatch(item) is None for item in items) or len(set(items)) != len(items):
+        return ()
+    return tuple(items)
+
+
+def _designated_operators(target_kind):
+    """The disposable test database keeps its test-only setting; the development target reads ONLY the
+    process environment (the gate has already refused a settings or backend/.env definition)."""
+    if target_kind == "development":
+        return parse_operator_allowlist(os.environ.get(OPERATORS_SETTING))
+    return tuple(getattr(settings, OPERATORS_SETTING, ()) or ())
+
+
+def _env_file():
+    return settings.BASE_DIR / ".env"
+
+
+def _mounted_role_management_routes(urlconf):
+    from django.urls import URLResolver, get_resolver
+    found = []
+
+    def walk(patterns):
+        for pattern in patterns:
+            if isinstance(pattern, URLResolver):
+                walk(pattern.url_patterns)
+                continue
+            view = getattr(pattern.callback, "view_class", None) or pattern.callback
+            if getattr(view, "__module__", "") in ROLE_MANAGEMENT_VIEW_MODULES:
+                found.append(str(pattern.pattern))
+    walk(get_resolver(urlconf).url_patterns)
+    return found
+
+
+def _require_development_target():
+    """D-93/D-95 development gate: every condition positively verified, otherwise refuse (no data read)."""
+    def refuse(reason):
+        raise RoleChangeUnavailable(f"The development database gate refused: {reason}.")
+
+    cfg = connection.settings_dict
+    if os.environ.get("DJANGO_SETTINGS_MODULE") != DEVELOPMENT_SETTINGS_MODULE:
+        refuse("not the config.settings module")
+    if settings.DEBUG is not True:
+        refuse("DEBUG is not enabled")
+    if getattr(settings, "REGISTRATION_TEST_DATABASE", None):
+        refuse("a test database is configured")
+    if list(settings.DATABASES) != [DEFAULT_DB_ALIAS] or list(connections) != [DEFAULT_DB_ALIAS]:
+        refuse("more than one database alias")
+    if (connection.vendor != "mysql" or cfg.get("ENGINE") != "django.db.backends.mysql"
+            or cfg.get("NAME") != DEVELOPMENT_DATABASE or cfg.get("HOST") not in LOOPBACK):
+        refuse("not the local MySQL development database")
+    if connection.isolation_level != "read committed":
+        refuse("the isolation level is not READ COMMITTED")
+    if any(getattr(settings, flag, False) is not False for flag in CONFLICTING_FLAGS):
+        refuse("a review or role-management mode is enabled")
+    from .executor.client import enabled as executor_enabled
+    if executor_enabled():
+        refuse("the protected writer is enabled")
+    if settings.ROOT_URLCONF != "config.urls":
+        refuse("an unexpected URL configuration is active")
+    from .management.commands.init_registration_review_metadata_local_dev import unexpected_review_routes
+    if unexpected_review_routes(settings.ROOT_URLCONF) or _mounted_role_management_routes(settings.ROOT_URLCONF):
+        refuse("a review or role-management route is mounted")
+    if getattr(settings, OPERATORS_SETTING, None):
+        refuse("the operator allowlist must come only from the process environment, not a settings module")
+    if not parse_operator_allowlist(os.environ.get(OPERATORS_SETTING)):
+        refuse("no valid operator allowlist is designated in the process environment")
+    try:
+        env_text = _env_file().read_text(encoding="utf-8")
+    except FileNotFoundError:
+        env_text = ""
+    if _ENV_KEY_LINE.search(env_text):
+        refuse("the operator allowlist must not be stored in backend/.env")
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT DATABASE(), @@transaction_isolation, SUBSTRING_INDEX(USER(), '@', -1), @@port")
+        selected, isolation, client_host, port = cursor.fetchone()
+    if (selected != DEVELOPMENT_DATABASE or isolation != "READ-COMMITTED" or client_host not in LOOPBACK
+            or str(port) != str(cfg.get("PORT"))):
+        refuse("the live connection differs from the reviewed local target")
 
 
 def _require_approved_target():
-    """Fail closed before any data read: the disposable MySQL test database only, for now."""
+    """Default deny, before any data read: the disposable test database or the exact development target."""
     test_db = getattr(settings, "REGISTRATION_TEST_DATABASE", "")
     # The process's settings module (manage.py --settings sets it); settings.SETTINGS_MODULE reads as
     # None inside override_settings. The decisive check is the connected database below.
     module = os.environ.get("DJANGO_SETTINGS_MODULE")
-    if not (module == "config.test_settings" and isinstance(test_db, str)
-            and test_db.startswith("test_ctug_registration_")):
-        if DEVELOPMENT_DATABASE_APPROVED is not True:
-            raise RoleChangeUnavailable("This protected procedure is approved only for the disposable test database "
-                                        "until D-85, D-93 and D-95 are approved.")
-        raise RoleChangeUnavailable("No approved target configuration exists.")
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT DATABASE()")
-        selected = cursor.fetchone()[0]
-    if selected != test_db or connection.settings_dict.get("HOST") not in {"localhost", "127.0.0.1", "::1"}:
-        raise RoleChangeUnavailable("The connected database is not the approved disposable test database.")
+    if module == "config.test_settings" and isinstance(test_db, str) and test_db.startswith("test_ctug_registration_"):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT DATABASE()")
+            selected = cursor.fetchone()[0]
+        if selected != test_db or connection.settings_dict.get("HOST") not in LOOPBACK:
+            raise RoleChangeUnavailable("The connected database is not the approved disposable test database.")
+        return "test"
+    if module == DEVELOPMENT_SETTINGS_MODULE:
+        _require_development_target()
+        return "development"
+    raise RoleChangeUnavailable("This protected procedure runs only against the disposable test database or the "
+                                "exactly verified local development database (D-93/D-95).")
 
 
-def _authenticate_operator(school_id, password):
+def _require_authorized(*, operator, target=None):
+    """Bypass resistance: the low-level mutators run only inside a configure_role transaction that passed
+    every gate and re-authenticated this operator (for this target, when one is involved)."""
+    current = _AUTHORIZED.get()
+    if (current is None or not transaction.get_connection(DEFAULT_DB_ALIAS).in_atomic_block
+            or current["operator"] != operator.pk or (target is not None and current["target"] != target.pk)):
+        raise RoleChangeUnavailable("Role configuration runs only through the protected procedure.")
+
+
+def _authenticate_operator(school_id, password, target_kind="test"):
     """Designated, active framework superuser with a usable password and NO Workspace role."""
-    designated = getattr(settings, OPERATORS_SETTING, ())
+    designated = _designated_operators(target_kind)
     if (type(school_id) is not str or not school_id or type(password) is not str or not password
-            or type(designated) not in (tuple, list, frozenset) or school_id not in designated):
+            or school_id not in designated):
         raise RoleChangeDenied("A designated framework operator is required.")
     try:
         operator = Account.objects.using(DEFAULT_DB_ALIAS).select_for_update().get(
@@ -114,6 +239,7 @@ def _matches(row, definition, service):
 
 def _ensure_governance(operator, services):
     """Create (first grant) or verify the Technical Super Admin role and its six bindings; never repair."""
+    _require_authorized(operator=operator)
     codes, definitions, role_definition = _governance_definitions()
     service = services["access_control"]
     existing = {p.permission_code: p for p in Permission.objects.using(DEFAULT_DB_ALIAS).select_for_update()
@@ -162,12 +288,14 @@ def _ensure_governance(operator, services):
 
 
 def _add(operator, target, role):
+    _require_authorized(operator=operator, target=target)
     row = AccountRole.objects.using(DEFAULT_DB_ALIAS).create(account=target, role=role, assigned_by=operator)
     record_access_audit_receipt(actor=operator, target=target, role=role, action=FRAMEWORK_ASSIGN_ACTION, old_value=None,
                                 new_value=snapshot(target.pk, role, row.pk), reason=ROLE_REASON)
 
 
 def _remove(operator, target, role, assignment):
+    _require_authorized(operator=operator, target=target)
     deleted, _ = AccountRole.objects.using(DEFAULT_DB_ALIAS).filter(pk=assignment.pk, account_id=target.pk,
                                                                  role_id=role.pk).delete()
     if deleted != 1:
@@ -177,14 +305,23 @@ def _remove(operator, target, role, assignment):
 
 
 def configure_role(*, operation, operator_school_id, operator_password, target_id, confirmation):
-    """Run one protected framework role change; returns a data-free result or raises a fixed refusal."""
+    """Run one protected framework role change; returns a data-free result or raises a fixed refusal.
+
+    It runs in a fresh context, so the mutators' authorization (set only after every gate and the operator's
+    re-authentication) can never outlive this call or leak to its caller."""
+    return contextvars.copy_context().run(
+        _configure_role, operation=operation, operator_school_id=operator_school_id,
+        operator_password=operator_password, target_id=target_id, confirmation=confirmation)
+
+
+def _configure_role(*, operation, operator_school_id, operator_password, target_id, confirmation):
     if operation not in OPERATIONS:
         raise RoleChangeUnavailable("Unknown operation.")
     if type(target_id) is not int or not 1 <= target_id <= 2_147_483_647:
         raise RoleChangeDenied("An existing account is required.")
     if confirmation != confirmation_for(operation, target_id):
         raise RoleChangeUnavailable("The exact confirmation for this operation and account is required.")
-    _require_approved_target()
+    target_kind = _require_approved_target()
     refuse_while_protected_writer_enabled()
     with writer_atomic():
         require_mysql_read_committed()
@@ -194,7 +331,8 @@ def configure_role(*, operation, operator_school_id, operator_password, target_i
         # is still authenticated and authorized below, and lock_state re-locks and validates the same rows.
         list(Service.objects.using(DEFAULT_DB_ALIAS).select_for_update()
              .filter(service_code__in=["access_control", "accounts"]).order_by("service_id").values_list("pk", flat=True))
-        operator = _authenticate_operator(operator_school_id, operator_password)
+        operator = _authenticate_operator(operator_school_id, operator_password, target_kind)
+        _AUTHORIZED.set({"operator": operator.pk, "target": target_id})  # this call's own context only
         if operator.pk == target_id:
             raise RoleChangeConflict("protected_account")
         services, accounts, assignments, held = lock_state([operator.pk, target_id])

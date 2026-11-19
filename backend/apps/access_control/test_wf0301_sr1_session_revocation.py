@@ -598,7 +598,8 @@ class SessionContractTests(Base):
         create = bootstrap.index("AccountRole.objects.create(account=target, role=role, assigned_by=actor)")
         self.assertLess(create, bootstrap.index("advance(target.pk)"))
         self.assertLess(bootstrap.index("advance(target.pk)"), bootstrap.index('action="technical_admin.bootstrap"'))
-        for function, text in ((framework_roles.configure_role, "session_revocation.advance(target_id)"),
+        # configure_role runs _configure_role in a fresh context (D-93/D-95 gate); the advance lives there.
+        for function, text in ((framework_roles._configure_role, "session_revocation.advance(target_id)"),
                                (role_assignment._change, "session_revocation.advance(target_id)"),
                                (account_status._change, "session_revocation.advance(target_id)"),
                                (password_reset.PasswordResetConfirmView.post, "session_revocation.advance(account.pk)")):

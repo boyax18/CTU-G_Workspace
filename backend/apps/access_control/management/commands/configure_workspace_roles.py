@@ -2,13 +2,15 @@
 
     manage.py configure_workspace_roles --operation grant-technical-super-admin --target-account-id 42
     manage.py configure_workspace_roles --operation grant-technical-super-admin --target-account-id 42 \
-        --apply --confirm WF-03.01:grant-technical-super-admin:42
+        --apply --confirm <the exact confirmation printed without --apply>
 
-Without --apply nothing is read or written: the exact confirmation is printed. With --apply an
+Without --apply nothing is read or written: the exact confirmation is printed (database-bound,
+`ctug_workspace:WF-03.01:<operation>:<id>`, for the local development target). With --apply an
 interactive terminal is required; the designated framework operator's School ID and password are
 read from the console (never from arguments, environment or files) and are never printed or stored.
-The procedure itself (apps.access_control.framework_roles) enforces every rule; at this stage it
-refuses every database except the disposable MySQL test database.
+The procedure itself (apps.access_control.framework_roles) enforces every rule: the disposable MySQL
+test database, or the local development database only when every D-93/D-95 gate condition holds
+(including WORKSPACE_ROLE_CONFIGURATION_OPERATORS set in the process environment, never in .env).
 """
 import getpass
 import sys

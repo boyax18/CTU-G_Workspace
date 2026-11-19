@@ -1,5 +1,14 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-93/D-95: development-database gate for the protected Superuser command
+
+- `framework_roles` replaces the unconditional `DEVELOPMENT_DATABASE_APPROVED` block with a default-deny development gate. It accepts `ctug_workspace` only when every condition is positively verified, in the configuration and on the live connection.
+- The confirmation is database-bound (`ctug_workspace:WF-03.01:<operation>:<id>`).
+- The operator allowlist comes only from the process environment, never from a settings module or `backend/.env`; no settings file was changed.
+- The low-level mutators refuse outside the protected procedure.
+- Tests: new `test_wf0301_d93_development_gate`. The one assertion that referenced the removed flag is updated. backend/apps/access_control/test_wf0301_d93_development_gate.py 11/11; affected regression of every apps.access_control and apps.accounts module (87 modules) 1971/1971, 0 failed, 0 errors, 0 skipped; manage.py check no issues.
+- **Not done:** no operator is designated, and nothing was run against `ctug_workspace`. The S0/S1 choice, D-95 evidence, D-99, an approved Instructor, a fresh backup and the first-grant authorization remain open. D-101 is OPEN; D-102 is not implemented; the WF-03.01 Human Approval is not recorded.
+
 ### 19 November 2026 — WF-03.01 SR-1 Stage B Gate 2 closure: real-account login verified
 
 - **Test A passed:** the owner ran it privately. Workspace login 200, session authenticated, role Admin (School Admin) with 6 effective permissions (current local provisioning), no Technical Super Admin, logout 200, then unauthenticated.

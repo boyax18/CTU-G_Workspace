@@ -26,6 +26,7 @@ import os
 from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS, connection
 
+from apps.accounts import session_revocation
 from apps.accounts.models import Account
 
 from .audit import record_access_audit_receipt
@@ -239,4 +240,7 @@ def configure_role(*, operation, operator_school_id, operator_password, target_i
             if not effective_holders([ADMIN, TECHNICAL], excluding=target_id).exists():
                 raise RoleChangeConflict("last_technical_super_admin")
             _remove(operator, target, technical, current[technical.pk])  # Admin and Instructor are kept
+        # D-83 / SR-1: exactly one advance per successful operation (a Technical Super Admin grant may add two
+        # roles); lock_state already holds the target's row lock, so no lock is added to the order.
+        session_revocation.advance(target_id)
     return {"account_id": target_id, "operation": operation}

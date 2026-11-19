@@ -28,7 +28,7 @@ from rest_framework import exceptions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
-from . import recovery_mail
+from . import recovery_mail, session_revocation
 from .email_identity import normalize_account_email
 from .models import Account
 from .session_auth import WorkspaceSessionAPI
@@ -384,6 +384,9 @@ class PasswordResetConfirmView(WorkspaceSessionAPI):
                 account.password_reset_token = None
                 account.password_reset_token_expires = None
                 account.save(update_fields=["password", "password_reset_token", "password_reset_token_expires"])
+                # SR-1: the new password already ends old sessions; the counter also means restoring an
+                # old password hash alone cannot revive them. _lock_eligible already holds this row's lock.
+                session_revocation.advance(account.pk)
                 recipient = account.email
                 # D-22: queued only if the password update commits.
                 transaction.on_commit(lambda: recovery_mail.enqueue(

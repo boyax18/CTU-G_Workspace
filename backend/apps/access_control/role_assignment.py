@@ -13,6 +13,8 @@ Default-off WORKSPACE_ROLE_ASSIGNMENT_ENABLED; refused while the protected write
 from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS
 
+from apps.accounts import session_revocation
+
 from .audit import record_access_audit_receipt
 from .models import AccountRole
 from .role_management import (
@@ -78,6 +80,8 @@ def _change(*, actor, target_id, assign, expected_present):
                 raise RoleChangeUnavailable("The role assignment could not be changed.")
             record_access_audit_receipt(actor=reviewer, target=target, role=admin, action=REVOKE_ACTION,
                                         old_value=snapshot(target_id, admin, removed), new_value=None, reason=ROLE_REASON)
+        # D-83 / SR-1: exactly one advance per successful change; lock_state already holds the target's row lock.
+        session_revocation.advance(target_id)
     return {"account_id": target_id, "role": ADMIN, "assigned": assign}
 
 

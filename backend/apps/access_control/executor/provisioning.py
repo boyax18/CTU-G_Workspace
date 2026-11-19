@@ -65,6 +65,10 @@ def execute_protected(bundle, trust, actor):
         binding.is_active, binding.granted_by = True, actor
         binding.save(update_fields=["is_active", "granted_by"])
     AccountRole.objects.create(account=target, role=role, assigned_by=actor)
+    # D-83 / SR-1 (dormant executor; not installed or activated): the bootstrap elevation ends the target's
+    # earlier sessions. This protected-lease operation already holds the target's row lock (wex-1 allows it).
+    from apps.accounts.session_revocation import advance
+    advance(target.pk)
     require(all(has_technical_authority(target, code) for code in CORE_PERMISSIONS))
     return record_access_audit_receipt(actor=actor, target=target, role=role, action="technical_admin.bootstrap",
         new_value={"account_id": target.pk, "role_id": role.pk, "is_active": True}, reason="assignment_change")

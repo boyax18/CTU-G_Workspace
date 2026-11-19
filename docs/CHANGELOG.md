@@ -1,5 +1,15 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 SR-1 Stage A: session revocation hardened against audit tampering (isolated implementation and tests)
+
+- SR-1 Stage A (19 Nov 2026): the session hash now binds the persistent accounts.session_revocation_version counter (v2 domain, no fallback) instead of the receipt-derived status_epoch; every approved session-ending event advances it once in the same transaction, so deleting, changing or forging receipts no longer revives a session.
+- New `apps/accounts/session_revocation.py` (`advance`). It is called once per operation by WF-02.05 suspension and reactivation, School Admin and Technical Super Admin grant and revoke (Technical Super Admin path and Superuser procedure), password-reset completion, and the dormant executor's `technical_admin.bootstrap` (D-83 reconciled).
+- Application guards: a stale full `save()` never writes the counter; ORM writes naming it are refused. The login view re-reads the counter after `login()`.
+- Migration `accounts/0006_account_session_revocation_version`: authored, and applied only to disposable test databases.
+- Tests: new `test_wf0301_sr1_session_revocation`. The SR-1 test is inverted. Four existing assertions that encoded the old hash contract are updated, and one fixture now signs in with the current row. backend/apps/access_control/test_wf0301_sr1_session_revocation.py 34/34; affected regression of every apps.access_control and apps.accounts module (86 modules) 1960/1960, 0 failed, 0 errors, 0 skipped; manage.py check no issues; makemigrations --check no changes (read-only migration-history check); no temporary account, grant, trigger or test database left behind.
+- SR-1a confirmed: CSRF polling keeps a revoked session row alive up to the 8-hour limit. It cannot authenticate after Stage A; the middleware is unchanged pending approval.
+- **Not done:** Migration 0006 is authored but NOT applied to ctug_workspace (still at 0005; the branch's application therefore fails closed there with MySQL 1054 until a controlled deployment is authorized); the trigger was tested only on disposable databases and is NOT installed; the authoritative ERD is NOT updated; restricted MySQL accounts, external checkpoints and the restore procedure are NOT activated. D-101 OPEN; D-102 not started; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 R-2: Option D phase 1 verification and prototypes (local development only)
 
 - Confirmed: the application connects to `ctug_workspace` as MySQL `root`, so audit receipts are append-only by convention only. **SR-1 confirmed (activation blocker):** deleting an account's latest suspension or role-change receipt moves its session epoch backwards and revives an unused revoked session. The proposed fix (a monotonic revocation epoch) needs separate approval.

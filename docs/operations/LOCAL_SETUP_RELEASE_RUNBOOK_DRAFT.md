@@ -136,6 +136,43 @@ owner's separate authorization (decision D-105). Never put passwords in the repo
   database. Take checkpoints only when no governance operation is running: a receipt that commits late with
   a lower ID makes a later verification fail closed. Cadence, key custody and storage need decision D-105.
 
+## 5D. Session-revocation counter (SR-1 Stage A; authored, NOT applied)
+
+Status: migration `accounts/0006_account_session_revocation_version` and the code that requires it are in the
+branch, but the migration is NOT applied to `ctug_workspace` (decision D-106). Until it is, this branch's
+application fails closed against `ctug_workspace` (MySQL 1054, unknown column). Do not run `migrate` there
+without the owner's separate authorization.
+
+Controlled deployment (future; OPEN):
+
+1. Back up the database; stop the application.
+2. Apply 0006 with the migration account. It adds one column, `BIGINT UNSIGNED NOT NULL DEFAULT 0`; existing
+   rows receive 0.
+3. Have the DBA install the non-decrease trigger. This needs the TRIGGER privilege, and `SUPER` or
+   `log_bin_trust_function_creators` because binary logging is on. Never grant TRIGGER to the runtime or
+   migration account.
+
+   ```sql
+   CREATE TRIGGER accounts_session_revocation_no_decrease BEFORE UPDATE ON accounts FOR EACH ROW
+   BEGIN
+     IF NEW.session_revocation_version < OLD.session_revocation_version THEN
+       SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'session_revocation_version cannot decrease';
+     END IF;
+   END
+   ```
+
+4. Start the application. Every existing session fails once (v2 hash, no fallback): users sign in again.
+   Optionally delete all `django_session` rows at the same time.
+
+Rollback: revert the application code first, then unapply 0006 (this drops the column and its values; drop
+the trigger first). Delete all `django_session` rows, because sessions under the old receipt-epoch hash could
+otherwise become valid again.
+
+Restore: a restore that also restores the counter can revive sessions that were revoked after the backup was
+taken. After every restore, delete all `django_session` rows. Then re-apply revocations recorded since the
+backup from the external operational record. The trigger does not stop a privileged administrator or a table
+reload.
+
 ## 6. Safe repository/archive checklist
 
 Do not distribute workspace source archives containing `.env`, `.git`, `.venv`, `node_modules`, local SQL backups, student data, test secrets, logs or build caches. Earlier reviewed source ZIP was reported to contain `.env`; treat that archive as sensitive. Prefer tracked-source export and a separately reviewed secrets configuration process. If secret values were shared outside trusted recipients, coordinate credential rotation. Never add a real `.env` to the repository.

@@ -199,11 +199,13 @@ class LoginView(WorkspaceSessionAPI):
         # Compute the response before creating the session, so a database error
         # never leaves behind a logged-in session and a failed API response.
         login(request._request, account)
-        # WF-02.05 D-66: login() has just bound the session to the current suspension epoch.
-        # Re-read eligibility AFTER that, from the database: a suspension committed before the
-        # epoch was read is seen here (sign-out, refuse); one committed after it changes the
-        # epoch, so this session already fails the next request's hash check.
-        if _workspace_account(Account.objects.filter(pk=account.pk).first()) is None:
+        # WF-02.05 D-66 / SR-1: login() has just bound the session to the session-revocation counter of
+        # the account row read during authentication. Re-read the row AFTER that: a session-ending change
+        # committed in between is seen here (ineligible, or a newer counter: sign-out, refuse); one committed
+        # after this read advances the counter, so this session already fails the next request's hash check.
+        current = Account.objects.filter(pk=account.pk).first()
+        if (_workspace_account(current) is None
+                or current.session_revocation_version != account.session_revocation_version):
             logout(request._request)
             return Response(
                 {"error": {"code": "invalid_credentials", "message": "Unable to sign in with these credentials."}},

@@ -20,6 +20,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.db import connection, connections
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import Resolver404, include, path, resolve
+from django.utils.crypto import salted_hmac
 from rest_framework.test import APIClient
 
 from apps.access_control.models import AccessAuditLog, AccountPermission, AccountRole, Permission, Role, RolePermission, Service
@@ -29,7 +30,7 @@ from . import account_status, session_auth
 from .account_status import (
     AccountStatusConflict, AccountStatusDenied, AccountStatusUnavailable, activate_account, status_epoch, suspend_account,
 )
-from .models import Account, UserProfile
+from .models import SESSION_HASH_SALT, Account, UserProfile
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("WF-02.05 tests require --settings=config.test_settings.")
@@ -74,9 +75,11 @@ class World:
 
 
 def snapshot(account):
-    """Everything WF-02.05 must leave untouched (all columns but is_active, plus roles and overrides)."""
+    """Everything WF-02.05 must leave untouched (all columns but is_active and, since SR-1 Stage A, the
+    session-revocation counter that each status change advances; plus roles and overrides)."""
     row = Account.objects.values().get(pk=account.pk)
     row.pop("is_active")
+    row.pop("session_revocation_version")
     return (row,
             sorted(AccountRole.objects.filter(account=account).values_list("role_id", "assigned_by_id")),
             sorted(AccountPermission.objects.filter(account=account).values_list("permission_id", "effect", "is_active")),
@@ -114,6 +117,7 @@ class AccountStatusServiceTests(TestCase):
                 self.assertEqual(self.activate(target), {"account_id": target.pk, "is_active": True})
                 self.assertTrue(Account.objects.get(pk=target.pk).is_active)
                 self.assertEqual(snapshot(target), before)
+                self.assertEqual(Account.objects.get(pk=target.pk).session_revocation_version, 2)  # SR-1: one per change
                 audits = list(AccessAuditLog.objects.filter(target_account=target).order_by("pk"))
                 self.assertEqual([a.action for a in audits], ["account.status.suspend", "account.status.activate"])
                 for audit, was in zip(audits, (True, False)):
@@ -386,9 +390,14 @@ class AccountStatusSessionTests(TestCase):
     def sessions_of(self, account):
         return [s for s in Session.objects.all() if s.get_decoded().get("_auth_user_id") == str(account.pk)]
 
-    def test_never_suspended_accounts_keep_djangos_own_session_hash(self):
+    def test_never_suspended_accounts_use_the_v2_session_hash_at_counter_zero(self):
         self.assertEqual(status_epoch(self.user.pk), 0)
-        self.assertEqual(self.user.get_session_auth_hash(), AbstractBaseUser._get_session_auth_hash(self.user))
+        # SR-1 Stage A: the v2 domain applies even at counter 0, so no hash equals Django's plain one.
+        expected = salted_hmac(SESSION_HASH_SALT, f"{AbstractBaseUser._get_session_auth_hash(self.user)}:0",
+                               algorithm="sha256").hexdigest()
+        self.assertEqual(self.user.session_revocation_version, 0)
+        self.assertEqual(self.user.get_session_auth_hash(), expected)
+        self.assertNotEqual(self.user.get_session_auth_hash(), AbstractBaseUser._get_session_auth_hash(self.user))
 
     def test_deactivation_ends_every_session_and_reactivation_revives_none(self):
         first, second, other = self.browser(), self.browser(), self.browser(self.bystander)

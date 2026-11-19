@@ -9,8 +9,9 @@ Two separate entry points share these rules; neither is an is_superuser shortcut
 
 Every change: one writer_atomic READ COMMITTED transaction with the WF-02.03/02.05 lock order, the
 eligibility rechecked inside the lock, exactly one account_roles insert or delete (the table has no
-active flag), one append-only audit receipt in the same transaction, and a session-epoch bump for the
-target (D-83; apps.accounts.account_status.status_epoch). No schema change, no audit.py change.
+active flag), one append-only audit receipt in the same transaction, and exactly one advance of the
+target's persistent session-revocation counter (D-83; SR-1 Stage A: apps.accounts.session_revocation).
+No audit.py change.
 """
 
 from django.db import DEFAULT_DB_ALIAS, transaction
@@ -25,7 +26,8 @@ ADMIN = "Admin"
 TECHNICAL = "Technical Super Admin"
 ADMIN_ASSIGNMENT_CODE = "access_control.admin_assignments.manage"
 
-# Audit actions (all also advance the target's session epoch, D-83).
+# Audit actions. Each successful change also advances the target's session-revocation counter once (D-83, SR-1);
+# the receipts are evidence only and no longer decide session validity (status_epoch is diagnostic).
 ASSIGN_ACTION = "account.role.assign"            # Technical Super Admin path
 REVOKE_ACTION = "account.role.revoke"
 FRAMEWORK_ASSIGN_ACTION = "framework.role.assign"   # Django Superuser procedure

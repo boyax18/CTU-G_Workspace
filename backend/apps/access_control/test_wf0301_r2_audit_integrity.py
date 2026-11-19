@@ -7,8 +7,9 @@ and dropped in cleanup; their passwords exist only in memory. Nothing here chang
 connection, backend/.env, any migration or any trigger.
 
 What each group shows, and its trust boundary:
-- SessionRevival: the session epoch is derived from audit receipts, so a database-privileged deletion of the
-  latest role-change receipt revives an UNUSED revoked session (SR-1, documented as a known vulnerability).
+- SessionRevival: SR-1 regression. Before SR-1 Stage A the session epoch was derived from audit receipts, so a
+  database-privileged deletion of the latest role-change receipt revived an UNUSED revoked session. The same
+  exploit now fails: the persistent per-account counter decides session validity, not the receipts.
 - LeastPrivilege: a runtime account with SELECT/INSERT/LOCK TABLES on the schema and UPDATE/DELETE on every
   table EXCEPT access_audit_logs runs the real governance paths, yet cannot change, delete, truncate or drop
   receipts, or create triggers, tables or users. It does NOT stop a database administrator.
@@ -174,7 +175,8 @@ class Harness(TransactionTestCase):
 
 
 class SessionRevivalTests(Harness):
-    """SR-1: status_epoch = latest suspension/role-change receipt ID, which is part of the session hash."""
+    """SR-1: the receipt-derived status_epoch (now diagnostic only) can still be moved backwards by deleting a
+    receipt, but the session hash binds Account.session_revocation_version, which receipts cannot change."""
 
     def revoked_holder(self):
         self.release()
@@ -190,17 +192,21 @@ class SessionRevivalTests(Harness):
         ok, response = self.authenticated(client)
         self.assertFalse(ok, response.content)
 
-    def test_known_vulnerability_sr1_deleting_the_revocation_receipt_revives_an_unused_revoked_session(self):
-        """KNOWN VULNERABILITY (R-2 SR-1, activation blocker). This test documents the current behaviour and must
-        be inverted when a revocation that cannot be undone by deleting a receipt is approved and implemented."""
+    def test_sr1_deleting_the_revocation_receipt_does_not_revive_an_unused_revoked_session(self):
+        """SR-1 regression (inverted by SR-1 Stage A, 19 Nov 2026). The original exploit, unchanged: sign in while
+        School Admin, revoke, then delete the revocation receipt with a privileged connection. The receipt-derived
+        epoch still moves backwards, but the session stays invalid because the counter did not move."""
         holder, client, revoke = self.revoked_holder()
         assign = AccessAuditLog.objects.filter(target_account=holder, action=framework_roles.FRAMEWORK_ASSIGN_ACTION).get()
         self.assertEqual(status_epoch(holder.pk), revoke.pk)
+        counter = Account.objects.get(pk=holder.pk).session_revocation_version
+        self.assertEqual(counter, 2)  # one advance for the grant, one for the revocation
         AccessAuditLog.objects.filter(pk=revoke.pk).delete()  # privileged test-only connection (disposable DB)
-        self.assertEqual(status_epoch(holder.pk), assign.pk)  # the epoch moved BACKWARDS
+        self.assertEqual(status_epoch(holder.pk), assign.pk)  # the diagnostic epoch moved BACKWARDS ...
+        self.assertEqual(Account.objects.get(pk=holder.pk).session_revocation_version, counter)  # ... the counter did not
         ok, response = self.authenticated(client)
-        self.assertTrue(ok, "SR-1 no longer reproduces: invert this test and record the fix")
-        self.assertEqual(response.json()["account"]["roles"], ["Instructor"])  # the revoked Admin role stays revoked
+        self.assertFalse(ok, "SR-1 regression: deleting a receipt revived a revoked session")
+        self.assertFalse(response.json()["authenticated"])
         self.assertFalse(AccountRole.objects.filter(account=holder, role__role_name="Admin").exists())
 
     def test_a_session_used_after_the_revocation_is_flushed_and_cannot_be_revived(self):

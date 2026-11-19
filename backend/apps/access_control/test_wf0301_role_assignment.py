@@ -20,6 +20,7 @@ from django.core.management.base import CommandError
 from django.db import connection, connections
 from django.test import Client, TestCase, TransactionTestCase, override_settings
 from django.urls import Resolver404, include, path, resolve
+from django.utils.crypto import salted_hmac
 from rest_framework.test import APIClient
 
 from apps.access_control import framework_roles, role_assignment
@@ -30,7 +31,7 @@ from apps.access_control.services import get_effective_permissions, has_permissi
 from apps.access_control.technical_admin import has_technical_authority
 from apps.access_control.writer_boundary import WriterBoundaryUnavailable
 from apps.accounts.account_status import status_epoch
-from apps.accounts.models import Account, UserProfile
+from apps.accounts.models import SESSION_HASH_SALT, Account, UserProfile
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("WF-03.01 tests require --settings=config.test_settings.")
@@ -299,7 +300,10 @@ class TechnicalSuperAdminAssignmentTests(TestCase):
     @staticmethod
     def signed_in(account):
         client = Client(enforce_csrf_checks=True)
-        client.force_login(account)
+        # SR-1 Stage A: force_login() binds the instance's session-revocation counter. An instance loaded before a
+        # session-ending change (here the class-level Technical Super Admin grant) carries the earlier counter and
+        # is correctly refused on the next request, so sign in with the current row.
+        client.force_login(Account.objects.get(pk=account.pk))
         client.cookies[settings.CSRF_COOKIE_NAME] = "e" * 32
         return client
 
@@ -473,9 +477,14 @@ class RoleChangeSessionTests(TestCase):
     def revoke(self):
         return role_assignment.revoke_school_admin(actor=self.tsa, target_id=self.user.pk, expected_present=True)
 
-    def test_accounts_without_changes_keep_djangos_own_session_hash(self):
+    def test_accounts_without_changes_use_the_v2_session_hash_at_counter_zero(self):
         self.assertEqual(status_epoch(self.bystander.pk), 0)
-        self.assertEqual(self.bystander.get_session_auth_hash(), AbstractBaseUser._get_session_auth_hash(self.bystander))
+        # SR-1 Stage A: the v2 domain applies even at counter 0, so no hash equals Django's plain one.
+        expected = salted_hmac(SESSION_HASH_SALT, f"{AbstractBaseUser._get_session_auth_hash(self.bystander)}:0",
+                               algorithm="sha256").hexdigest()
+        self.assertEqual(self.bystander.session_revocation_version, 0)
+        self.assertEqual(self.bystander.get_session_auth_hash(), expected)
+        self.assertNotEqual(self.bystander.get_session_auth_hash(), AbstractBaseUser._get_session_auth_hash(self.bystander))
 
     def test_elevation_and_revocation_end_sessions_and_re_adding_never_revives_them(self):
         first, second, other = self.browser(self.user), self.browser(self.user), self.browser(self.bystander)

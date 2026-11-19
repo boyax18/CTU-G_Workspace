@@ -201,7 +201,10 @@ class EmailMigrationTests(TransactionTestCase):
     def tearDown(self):
         # These are exclusively this test's synthetic fixtures.
         self.old_account.objects.all().delete()
-        MigrationExecutor(connection).migrate([("accounts", "0005_student_registration_otp")])
+        # Restore the CURRENT accounts leaf (not a hard-coded name): since SR-1 Stage A that is 0006, and stopping at
+        # 0005 would leave every later test without accounts.session_revocation_version.
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes("accounts"))
         super().tearDown()
 
     def test_forward_and_reverse_preserve_all_account_values(self):

@@ -217,20 +217,16 @@ class SessionEpochIntegrityTests(TestCase):
         self.assertNotEqual(current.get_session_auth_hash(), default)
         self.assertNotIn(default, list(current.get_session_auth_fallback_hash()))
 
-    def test_session_lookup_cost_is_one_indexed_aggregate_per_request(self):
+    def test_session_validation_reads_no_audit_receipts(self):
+        # SR-1 Stage A: the counter is loaded with the account row, so validating a session never consults
+        # access_audit_logs (the earlier contract cost one indexed MAX() aggregate there per request).
         self.cycle()
         with override_settings(ROOT_URLCONF="config.urls"):
             browser = Browser(self.user.school_id)
             with CaptureQueriesContext(connection) as queries:
                 self.assertTrue(browser.signed_in())
-        epoch_queries = [q["sql"] for q in queries if "MAX(" in q["sql"].upper() and "access_audit_logs" in q["sql"]]
-        self.assertEqual(len(epoch_queries), 1)
-        with connection.cursor() as cursor:
-            cursor.execute("EXPLAIN SELECT MAX(access_audit_log_id) FROM access_audit_logs "
-                           "WHERE target_account_id=%s AND action=%s", [self.user.pk, "account.status.suspend"])
-            columns = [c[0] for c in cursor.description]
-            plan = dict(zip(columns, cursor.fetchone()))
-        self.assertIsNotNone(plan.get("key"), plan)  # served by an index, not a table scan
+        self.assertEqual([q["sql"] for q in queries if "access_audit_logs" in q["sql"]], [])
+        self.assertEqual(Account.objects.get(pk=self.user.pk).session_revocation_version, 2)  # suspend + activate
 
 
 def conf(*patterns):

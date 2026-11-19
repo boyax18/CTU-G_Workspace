@@ -1,5 +1,18 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-102: owner decisions approved, protected scope finalized (documentation only)
+
+- The owner approved D-102 decisions OD-1 to OD-7. Recorded the approved design in `docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md` section 3:
+  - only the S0 (6 codes, 1 + 6 + 6 receipts) and S1 (9 codes, 1 + 9 + 9) governance states are accepted, field-exact;
+  - a separately confirmed `extend-technical-governance` operation turns S0 into S1;
+  - one designated operator per receipt block, which may differ between blocks;
+  - a target's own Deny refuses the grant;
+  - only `access_control.school_access.inspect`, `access_control.role_assignments.ordinary.manage` and `access_control.audit.school.read` are added;
+  - partial base profiles are refused, never repaired.
+- Recorded clarification C-1, the open lock-order inversion R-1 (needs a reviewed decision before real-database activation), R-2 and R-3, and planned test TC-039.
+- Updated the decision register (D-102), ADR-004, Access Control Gates, the Master Test/UAT Plan (TC-035, TC-039), the RTM and the WF-03.01 Workflow Catalogue entries (version 0.3.26). SRS and Use Case amendments are deferred to the implementation.
+- **Not done:** no protected code, test, catalogue, pin or database change. D-102 implementation is blocked until the D-101 independent sign-off (v2.1, then v2.2) and a separate authorization. D-101 OPEN; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01: five-area security verification and D-104 (documentation and evidence only)
 
 - Owner direction D-104: Permission Catalogue v2.2 is the current target specification; v2.1 is maintained only as its verified dependency. No runtime consumer was switched (all still read v2.0) and nothing was provisioned.

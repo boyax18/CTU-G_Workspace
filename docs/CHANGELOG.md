@@ -1,5 +1,18 @@
 # CTU-G Workspace — Development Changelog
 
+### 20 November 2026 — WF-03.01: first protected Technical Super Admin S0 grant (local development)
+
+- **Grant:** the owner-authorized protected command granted Technical Super Admin to account 9 (the development Instructor fixture), with operator account 2. The operator was designated only in the process environment and re-authenticated at the hidden prompt. An earlier attempt was refused because a different operator School ID was typed at the prompt; nothing changed.
+- **Verified read-only:**
+  - account 9 holds Instructor, School Admin and Technical Super Admin, with 12 effective permissions;
+  - one Technical Super Admin role, 6 governance permissions and 6 bindings only on that role;
+  - School Admin alone holds zero `access_control` permissions;
+  - the session counter went 0 → 1;
+  - receipts went 23 → 38; the original 23 are unchanged and the 15 new ones are in the expected order;
+  - the D-108 discontinuity is preserved.
+- **Post-grant regression:** 275/275 in 14 WF-03.01, catalogue and session modules, 0 failed, 0 errors, 0 skipped.
+- **Still open:** D-99 break-glass, D-101, D-102, D-87, Stage B-2. The WF-03.01 Human Approval is pending the owner's review.
+
 ### 20 November 2026 — WF-03.01 D-93/D-95: cold-connection correction of the development gate
 
 - **Defect:** the gate read `connection.isolation_level` before Django opened the connection, so a fresh `manage.py configure_workspace_roles` process raised `AttributeError` and refused every real grant (fail closed; nothing written). The earlier tests always had an open connection.

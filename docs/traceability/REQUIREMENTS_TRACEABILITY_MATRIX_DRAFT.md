@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | FR-REG-01..03 public registration | AT-01 | Student/Instructor backend route and tests described | I,T,U | Verify full browser/validation, field/privacy negative tests |
 | FR-REG-04..08 approvals and provisioning | AT-02 | Trusted approval service + inactive review API described | I,T,D,G,U | Authorize reviewer scope, exact code, negative/atomic audit API tests |
-| FR-AUTH-01..06 session, CSRF, lifecycle | AT-01,02,23; TC-041 | Django sessions/CSRF and React shell reported; session revocation bound to a persistent counter that receipts cannot change (SR-1 Stage A, tested in isolation, migration not applied to ctug_workspace; D-106) | I,T,U | Cross-browser session expiry, role revocation, cookie/origin tests; SR-1a middleware fix and real deployment pending |
+| FR-AUTH-01..06 session, CSRF, lifecycle | AT-01,02,23; TC-041 | Django sessions/CSRF and React shell reported; session revocation bound to a persistent counter that receipts cannot change (SR-1 Stage A, tested in isolation; migration 0006 applied locally with sessions cleared, Stage B Gate 2, TC-042; D-106) | I,T,U | Cross-browser session expiry, role revocation, cookie/origin tests; owner login Test A, SR-1a middleware fix and Stage B-2 pending |
 | FR-AUTH-07 rate-limit/auth events | AT-12 | Storage and event contract not approved | P,G | Design and privacy review, rate-limit tests |
 | FR-ACL-01..03,11 deny and object scope | AT-11,16,23 | Evaluator implementation/tested; no active catalogue | I,T,G,U | Service gating + module-specific ownership tests |
 | FR-ACL-04..10,12..14 protected governance | AT-03,06,07,08,09,10,14,15 | Historical C1/C2A planning, no approved grants | P,G | Role composition, catalogue manifest, impact/mutation/rollback |

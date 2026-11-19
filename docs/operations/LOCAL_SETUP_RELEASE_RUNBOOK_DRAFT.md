@@ -136,19 +136,63 @@ owner's separate authorization (decision D-105). Never put passwords in the repo
   database. Take checkpoints only when no governance operation is running: a receipt that commits late with
   a lower ID makes a later verification fail closed. Cadence, key custody and storage need decision D-105.
 
-## 5D. Session-revocation counter (SR-1 Stage A; authored, NOT applied)
+## 5D. Session-revocation counter (SR-1; migration 0006 applied locally on 19 Nov 2026, Stage B Gate 2)
 
-Status: migration `accounts/0006_account_session_revocation_version` and the code that requires it are in the
-branch, but the migration is NOT applied to `ctug_workspace` (decision D-106). Until it is, this branch's
-application fails closed against `ctug_workspace` (MySQL 1054, unknown column). Do not run `migrate` there
-without the owner's separate authorization.
+Status: `accounts/0006_account_session_revocation_version` is applied to the local `ctug_workspace` (Stage B
+Gate 2, 19 November 2026, decision D-106), and all existing sessions were cleared. The non-decrease trigger,
+the restricted MySQL accounts and the ERD update are NOT applied (Stage B-2, separate authorization). The owner's
+real-account login test (Test A) is still PENDING. Never run `migrate --fake`, a schema rollback or an in-place
+restore without the owner's separate authorization.
 
-Controlled deployment (future; OPEN):
+Local deployment record (Gates 1 and 2; non-sensitive JSON records are kept next to the backup, outside the
+repository, as `..._gate1_record.json` and `..._gate2_record.json`):
 
-1. Back up the database; stop the application.
-2. Apply 0006 with the migration account. It adds one column, `BIGINT UNSIGNED NOT NULL DEFAULT 0`; existing
-   rows receive 0.
-3. Have the DBA install the non-decrease trigger. This needs the TRIGGER privilege, and `SUPER` or
+- **Backup:** `C:\CTUG-Backups\ctug_workspace_pre0006_20261119T095807Z.sql`, 41,752 bytes, SHA-256
+  `093c5290181c085fcef37990cbe8d851f063037290450e9f45b8fb1f2cdcfcaf`. The folder and file are restricted to the owner's
+  Windows account and SYSTEM. The file holds real account data: never copy it into the repository.
+- **Restore verification (Gate 1):** restored into a new scratch schema. All 18 tables matched in row counts,
+  `CHECKSUM TABLE` and full row digests, and columns, foreign keys, indexes and constraints were identical. The
+  scratch schema was then dropped. **Not tested:** an in-place restore over `ctug_workspace`, and point-in-time
+  recovery from the binary logs.
+- **Rehearsal (Gate 1) and execution (Gate 2):**
+  - exactly two writes, the `ALTER TABLE … ADD COLUMN … CHECK` and one `django_migrations` row;
+  - a table rebuild, not an instant change (0.14 s at 6 rows);
+  - every other table, and the original account columns, unchanged;
+  - 6 accounts at counter 0, and 24 receipts unchanged (checkpoint head unchanged).
+- **Session cleanup (Gate 2):** all 5 `django_session` rows were deleted after verification; 0 remained.
+
+Verified backup procedure, for the next deployment. Put credentials in a temporary option file or a login path,
+never on the command line:
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqldump.exe" --defaults-extra-file=<temporary file> --single-transaction --source-data=2 --routines --triggers --events --hex-blob --no-tablespaces --default-character-set=utf8mb4 --set-gtid-purged=OFF --result-file="C:\CTUG-Backups\<name>.sql" ctug_workspace
+```
+
+- **Never add `--databases`.** The dump must contain no `CREATE DATABASE` or `USE`, so it can never restore over
+  `ctug_workspace` by accident.
+- `--source-data=2` takes a brief global read lock to read the binary-log position, so run it only when no other
+  connection exists.
+- **To prove a backup is restorable:**
+  1. Create a new, uniquely named schema.
+  2. Pass the raw dump bytes to `mysql.exe <schema>`, not through a PowerShell text pipeline.
+  3. Compare counts, checksums and row digests against the source.
+  4. Drop the scratch schema.
+
+Migration failure handling:
+
+- **Column added but migration not recorded:** MySQL commits DDL immediately, so the `ALTER` and the
+  `django_migrations` insert are separate steps. If the column exists but 0006 is not recorded, STOP. Compare the
+  column with its definition, then decide with the owner between `migrate --fake` and a restore. Never re-run
+  blindly.
+- **Application fails after the migration:** prefer a code-only rollback to the previous commit, leaving the column
+  in place (old code ignores it, and inserts use the default 0). **First delete all `django_session` rows:** the
+  old receipt-derived session hash is vulnerable to SR-1 and would accept unused older sessions.
+- **Restore over `ctug_workspace`:** it can overwrite newer data and reverse revocations, so it needs separate owner
+  approval.
+
+Stage B-2 (OPEN; required before any real Technical Super Admin provisioning):
+
+1. Have the DBA install the non-decrease trigger. This needs the TRIGGER privilege, and `SUPER` or
    `log_bin_trust_function_creators` because binary logging is on. Never grant TRIGGER to the runtime or
    migration account.
 
@@ -161,12 +205,12 @@ Controlled deployment (future; OPEN):
    END
    ```
 
-4. Start the application. Every existing session fails once (v2 hash, no fallback): users sign in again.
-   Optionally delete all `django_session` rows at the same time.
+2. Create the restricted runtime and migration accounts (section 5C) and a separate privileged test-runner
+   credential, then switch `backend/.env` (owner action).
+3. Start the application; confirm `CURRENT_USER()` and `SHOW GRANTS`.
 
-Rollback: revert the application code first, then unapply 0006 (this drops the column and its values; drop
-the trigger first). Delete all `django_session` rows, because sessions under the old receipt-epoch hash could
-otherwise become valid again.
+Schema rollback (unapplying 0006) drops the counter and the SR-1 protection with it. Avoid it: use the code-only
+rollback above. If it is ever approved, drop the trigger first, then delete all `django_session` rows.
 
 Restore: a restore that also restores the counter can revive sessions that were revoked after the backup was
 taken. After every restore, delete all `django_session` rows. Then re-apply revocations recorded since the

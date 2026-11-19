@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 SR-1 Stage B Gates 1 and 2: migration 0006 applied to the local database
+
+- **Gate 1:** a consistent backup of `ctug_workspace` was taken outside the repository (SHA-256 `093c5290…cdcfcaf`). It was restore-verified into a scratch schema (18/18 tables equal), and migration 0006 was rehearsed there. The isolated SR-1, D-85 and session suites passed 94/94.
+- **Gate 2:** migration 0006 was applied to the local `ctug_workspace` with two writes and a table rebuild. All 6 accounts were preserved at counter 0, and the 24 receipts, roles, permissions and bindings are unchanged. All 5 existing sessions were deleted, and the MySQL 1054 failure is resolved.
+- **Smoke tests:** old cookie refused, admin login page, and health/CSRF/session limits all passed. **Pending:** the owner's real-account login/logout test (Test A).
+- **Not done:** ERD update, trigger, restricted accounts, test-runner credential, SR-1a fix, and the restore procedure (in-place restore and point-in-time recovery not tested). D-101 is OPEN; D-102 is not implemented; the WF-03.01 Human Approval is not recorded.
+
 ### 19 November 2026 — WF-03.01 SR-1 Stage A: session revocation hardened against audit tampering (isolated implementation and tests)
 
 - SR-1 Stage A (19 Nov 2026): the session hash now binds the persistent accounts.session_revocation_version counter (v2 domain, no fallback) instead of the receipt-derived status_epoch; every approved session-ending event advances it once in the same transaction, so deleting, changing or forging receipts no longer revives a session.

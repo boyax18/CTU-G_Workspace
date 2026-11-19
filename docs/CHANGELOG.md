@@ -1,5 +1,13 @@
 # CTU-G Workspace — Development Changelog
 
+### 20 November 2026 — D-109: development Instructor fixture for WF-03.01 (local development)
+
+- **Why:** email delivery was unavailable (owner report), so the owner authorized one ORM-created Instructor fixture instead of bypassing the registration OTP.
+- **The fixture:** account 9, `DEV-*****41`, Approved and active, with the Instructor role only and a hashed password. No OTP, review, attestation or audit receipt was simulated. It is not a verified institutional Instructor.
+- **Before creating it:** the expired abandoned staged registration (row 22) was purged with `purge_student_registration_staging` (1 row), and a fresh backup was restore-verified (`6a26240f…`).
+- **Verified:** exactly 3 new rows; existing accounts, roles, permissions and the 23 receipts unchanged; no email sent; the application login and logout work; it meets the protected command's target rules.
+- **Not done:** no Technical Super Admin and no grant. Registration and approval rules are unchanged.
+
 ### 19 November 2026 — D-108: one-time legacy dummy account cleanup (local development)
 
 - **Owner-authorized exception to D-57/D-60:** deleted legacy Rejected account #1 (School ID `7241241`), its profile and its rejection receipt #15. One transaction, exactly 1 row each; every other row was verified unchanged and nothing is orphaned. The owner's email is free for a normal WF-01.02 Instructor registration.

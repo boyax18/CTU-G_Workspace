@@ -276,6 +276,11 @@ def _apply_phase_one(*, actor_account_id, confirmation):
             raise MetadataRefused("Another P1 initializer may be running.")
     try:
         with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
+            # WF-03.01 K-4 (owner-authorized 19 Nov 2026, Option A under R-1): lock the shared service rows
+            # FIRST, in service_id order, like every protected snapshot and role change. On a fresh database
+            # there are no service rows yet, so this locks nothing; the advisory lock above still serializes
+            # the initializers and every protected role path refuses without active services.
+            list(Service.objects.select_for_update().order_by("service_id"))
             try:
                 admin = Role.objects.select_for_update().get(role_name="Admin", is_active=True)
             except (Role.DoesNotExist, Role.MultipleObjectsReturned) as exc:

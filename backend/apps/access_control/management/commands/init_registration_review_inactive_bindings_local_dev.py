@@ -128,8 +128,10 @@ def _apply_phase_two(*, actor_account_id, confirmation):
             raise InactiveBindingRefused("Another registration metadata operation is running.")
     try:
         with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
-            # Lock the same Admin role and actor as P1, then services and
-            # permissions in their established ordering.
+            # WF-03.01 K-4 (owner-authorized 19 Nov 2026, Option A under R-1): lock the shared service
+            # rows FIRST, in service_id order, then the same Admin role and actor as P1, then the
+            # services (re-read) and permissions in their established ordering.
+            list(Service.objects.select_for_update().order_by("service_id"))
             try:
                 admin = Role.objects.select_for_update().get(role_name="Admin", is_active=True)
             except (Role.DoesNotExist, Role.MultipleObjectsReturned) as exc:

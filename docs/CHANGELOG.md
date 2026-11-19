@@ -1,5 +1,17 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 R-1 follow-up: K-4 and K-6 initializer lock order (local development only)
+
+- The P1, P2 and WF-02.05 initializer commands now lock the shared service rows first, inside their existing durable transactions and behind their unchanged advisory lock.
+- Covered cycles, each reproduced as a MySQL 1213 deadlock before the correction:
+  - K-4a: initializers vs Superuser role changes;
+  - K-4b: a P1 rerun vs a role change on the P1 actor;
+  - K-6: initializers vs the read-only P3D/P4 compensation previews, created by the R-1 snapshot change.
+- On a fresh database the P1 prelude locks nothing. The tests verify that competing protected paths then refuse or wait while holding nothing, that the advisory lock refuses concurrent initializers, and that bootstrap records and receipts are unchanged.
+- Tests: new `test_wf0301_k4_initializer_lock_order` 11/11 with the R-1 module 10/10 in three consecutive runs; affected regression 1910/1910 in 84 modules, 0 skipped; `manage.py check` and `makemigrations --check` clean.
+- The no-concurrent-initializer operating rule is kept as defence in depth; removing it needs an owner decision.
+- **Not done:** R-2 and R-3 remain open. No D-102, D-93/D-95 or D-87 work; nothing provisioned; D-101 OPEN; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 R-1: protected lock-order correction (local development only)
 
 - The protected P3B snapshot (shared by P3D and P4) and the Django-Superuser procedure (`framework_roles.configure_role`) now lock the shared service rows first, before the Admin role, the operator's account or any other overlapping row. Concurrent role changes and compensation now queue instead of deadlocking.

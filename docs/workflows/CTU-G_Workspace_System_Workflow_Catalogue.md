@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.26  |  19 November 2026  |  For stakeholder review
+Draft version 0.3.27  |  19 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
@@ -1938,6 +1938,21 @@ Proposals (owner/security approval required for each; none applied):
 
 The approved contract, with the receipt layout, P3B/P3D/P4 behaviour (D-85 compensation refusal and the P4 rollback scope unchanged) and the TC-039 test specification, is in docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md section 3. Still open: clarification C-1 (an existing holder's Deny during an extension); R-1, the lock-order inversion between p3b._snapshot (Admin role row before services) and role_management.lock_state (services before role rows), which can deadlock a concurrent grant or extension against P3D/P4 (InnoDB aborts one transaction, fail-safe) and needs an explicit reviewed decision before real-database activation; R-2, receipts append-only by service contract only outside executor mode; R-3, ordinary.manage has no ordinary-role path until D-100. SRS and Use Case amendments for the new protected operation are deferred to the D-102 implementation, because the behaviour is not implemented. framework_roles.py and the P3B command are unchanged and still read v2.0. D-101 is OPEN; nothing is provisioned; WF-03.01 Human Approval is not recorded.
 
+**D-102 C-1 owner approval — Deny preservation during an extension (19 November 2026, at 2b44d31; documentation only; implementation still blocked):** the owner approved C-1. An authorized S0-to-S1 extend-technical-governance operation may proceed despite an existing Technical Super Admin holder's account-specific Deny on one or more extension permissions, provided that:
+(1) every existing Deny stays unchanged;
+(2) every Deny keeps precedence over Grants and role-based permissions;
+(3) the extension never removes, modifies or overrides a Deny;
+(4) affected holders are identified and reported to the authorized operator;
+(5) audit evidence records the extension outcome and the affected holders;
+(6) the system never reports a Deny-blocked permission as effective;
+(7) the extension never becomes a bypass.
+
+C-1 applies only to extending a valid S0. OD-4 is unchanged: a new grant is still refused when the target has a Deny on a required permission. The design separates the global role-permission extension (3 permissions and 3 bindings), the untouched account-specific Deny rows, and each holder's derived effective permission (has_technical_authority).
+
+Evidence design: one framework.governance.deny_preserved receipt per affected holder, using the existing audit allowlist (account_id, permission_ids, effect Deny; reason access_review) and verified by P3B outside the OD-1 counts. The operator report is shown only after commit, only in the protected TTY session, with account IDs and permission codes only and no personal data or logging. Details are in docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md sections 3.4, 3.5 and 3.8.
+
+OD-1 to OD-7 are unchanged. Planned tests were added to TC-039 (not executed). R-1 and R-2 stay open. SRS and Use Case amendments are deferred to the implementation. D-101 is OPEN; D-102 implementation is blocked; nothing is provisioned; WF-03.01 Human Approval is not recorded.
+
 Authorization matrix (every row: separate owner approval required; production stays blocked):
 
 | Decision | Files | Existing behaviour | Proposed change | Security impact | Existing tests affected | New tests | Rollback / recovery | Schema / DBA |
@@ -2020,7 +2035,7 @@ Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
 AI Agent Guidelines Checklist: ☒ Inspect   ☒ Reconcile   ☒ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Checklist scope: Inspect, Reconcile and Approve cover the reconciled design (R-01 to R-16 and the owner authorizations). Implement, Test and Commit stay unchecked because WF-03.01 is incomplete; completed slices, each implemented, tested in the disposable test database and committed locally: stages A, B, C and E (b9dd69e), D-85 (0da2182), D-89 (14125f9; Permission Catalogue v2.1 overlay), D-103 (28d46e1; Permission Catalogue v2.2 overlay), the D-101 F-1 validator correction (9e259e7) and its documentation corrections (f9e19d3); v2.1 and v2.2 are validated specifications only, and v2.2 is the owner's target specification (D-104), not yet adopted. The 19 November 2026 five-area verification and provisioning-readiness record are documentation and evidence only; the D-101 independent sign-off gate is not passed. D-102: design approved by the owner (OD-1 to OD-7, 19 November 2026); its Implement, Test and Commit stay open until the D-101 sign-off and a separate implementation authorization.
+Checklist scope: Inspect, Reconcile and Approve cover the reconciled design (R-01 to R-16 and the owner authorizations). Implement, Test and Commit stay unchecked because WF-03.01 is incomplete; completed slices, each implemented, tested in the disposable test database and committed locally: stages A, B, C and E (b9dd69e), D-85 (0da2182), D-89 (14125f9; Permission Catalogue v2.1 overlay), D-103 (28d46e1; Permission Catalogue v2.2 overlay), the D-101 F-1 validator correction (9e259e7) and its documentation corrections (f9e19d3); v2.1 and v2.2 are validated specifications only, and v2.2 is the owner's target specification (D-104), not yet adopted. The 19 November 2026 five-area verification and provisioning-readiness record are documentation and evidence only; the D-101 independent sign-off gate is not passed. D-102: design approved by the owner (OD-1 to OD-7 and C-1, 19 November 2026); its Implement, Test and Commit stay open until the D-101 sign-off and a separate implementation authorization.
 
 Blocked by:
 - Updated owner authority requirements D-79/D-91/D-92; protected method and migration OPEN. Earlier D-80 to D-90 conflict with the latest role-bootstrap target and require engineering reconciliation;
@@ -4866,10 +4881,10 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | Control | Value |
 | --- | --- |
 | Document | CTU-G Workspace System Workflow Catalogue |
-| Version | 0.3.26 |
+| Version | 0.3.27 |
 | Date | 19 November 2026 |
 | Status | Working Draft — owner approval pending |
-| Scope | Latest change 0.3.26 (see Change log); workflow IDs unchanged |
+| Scope | Latest change 0.3.27 (see Change log); workflow IDs unchanged |
 | Approval | Human Approval recorded for 12 workflows (see the workflow register); all others, including WF-03.01, pending. Owner-stated implementation requirements/answers are documented without agent policy approval |
 
 ### Change log
@@ -4956,6 +4971,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.24 WF-03.01 D-101 documentation corrections D-1 and D-2 | 19 November 2026 | Owner authorized documentation-only corrections. D-1: the independent tamper-probe count is recorded as 39 genuine probes rejected, with the two second-read probes returning the pinned digest by design after the correction. D-2: the F-1 correction commit 9e259e79000be960569a55a82b8bc1841257dc37 and the corrected validator blob e176f9267b69baae7546d060064254d26a3e7df7a106b6505e941cb5b83d98b3 are recorded as the v2.1 review scope (14125f9 + 9e259e7). D-3 (stale role_assignment.py docstring) retained as informational. No source, test, pin or digest change; D-101 OPEN; sign-offs blank. | Independent reviewer pending |
 | 0.3.25 WF-03.01 five-area security verification and D-104 | 19 November 2026 | Owner directed that Permission Catalogue v2.2 is the current target specification (D-104; v2.1 dependency only; no consumer switch, no provisioning). Verified role-based authorization, the v2.0 → v2.1 → v2.2 chain and boundaries, and the F-1 correction (already committed in 9e259e7); D-101 evidence complete, independent sign-off not performed. Recorded D-102 and D-93/D-95 requirements and the remaining dependencies (docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md) and D-100 (ordinary roles; F-4). Synchronized SRS v0.4, Use Case v0.4.1 (.md and .docx), TC-016, RTM, ADR-004, the decision register, Access Control Gates, the D-101 records and CHANGELOG; title and control-table version fields updated. Tests: 1889/1889 in 82 access_control and accounts modules, frontend 19/19. No source, test, pin, digest or database change; D-101 OPEN; WF-03.01 Human Approval not recorded. | Independent reviewer pending |
 | 0.3.26 WF-03.01 D-102 owner decisions and approved design | 19 November 2026 | Owner approved D-102 decisions OD-1 to OD-7. Recorded the approved design: S0/S1 governance states only; explicit extend-technical-governance operation; one designated operator per receipt block, which may differ; target Deny refuses the grant; three-code extension with diagnostics.read and the accounts.* defaults excluded; partial base profiles refused; implementation after the D-101 sign-off. Also recorded clarification C-1 and risks R-1 (lock-order inversion, open), R-2 and R-3, and planned test TC-039. Updated the readiness record section 3, the decision register (D-102), ADR-004, Access Control Gates, TC-035/TC-039, the RTM and the CHANGELOG. SRS and Use Case are unchanged; amendments are deferred to the implementation. Documentation only; D-102 implementation blocked; D-101 OPEN; WF-03.01 Human Approval not recorded. | Owner (D-102 decisions); independent reviewer pending (D-101) |
+| 0.3.27 WF-03.01 D-102 C-1 Deny preservation | 19 November 2026 | The owner approved C-1: an S0-to-S1 extension may proceed despite an existing holder's Deny on an extension permission. Every Deny stays unchanged with precedence, is never removed, modified or overridden, and is never misreported as effective. Affected holders are reported to the operator after commit and recorded in per-holder deny-preservation receipts within the existing audit allowlist. OD-4 is unchanged for new grants, and OD-1 to OD-7 are unchanged. Updated the readiness record (sections 3.4, 3.5 and 3.8), the decision register (D-102), ADR-004, Access Control Gates, TC-039 (C-1 cases planned), the RTM and the CHANGELOG. Documentation only; D-102 implementation blocked; D-101 OPEN; WF-03.01 Human Approval not recorded. | Owner (C-1); independent reviewer pending (D-101) |
 
 | 0.3.8 requirements-only draft for unstarted workflows | 17 November 2026 | Updated only unstarted drafts in WF-05, WF-06, WF-07, WF-08 and WF-11.01 to reflect SRS v0.4 and Use Case Specification v0.4.1. Proposed Student Semester Onboarding and WF-08 subflow descriptions have no approved IDs; current registered IDs/titles remain unchanged. Standardized unstarted checklist footers. Historical started WF-01.01–06 and WF-02.01–03 specification bodies and register statuses preserved byte-exact; no owner/AI approvals or implementation evidence added. No code, ERD, migration, permission or repository write. | Awaiting stakeholder review and individual Inspect/Reconcile |
 

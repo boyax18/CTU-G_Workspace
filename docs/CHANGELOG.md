@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-102 C-1: Deny preservation policy approved (documentation only)
+
+- The owner approved C-1: an authorized S0-to-S1 `extend-technical-governance` operation may proceed despite an existing Technical Super Admin holder's account-specific Deny on an extension permission. Every Deny stays unchanged and keeps precedence, and the extension never removes, modifies or overrides it. Affected holders are reported to the authorized operator and recorded in audit evidence, and a Deny-blocked permission is never reported as effective. OD-4 is unchanged: a new grant is still refused when the target has a Deny.
+- Recorded the design in `docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md` (sections 3.4, 3.5 and 3.8): the separation of the role extension, account-specific Denies and derived effective permissions; per-holder `framework.governance.deny_preserved` receipts within the existing audit allowlist; and an operator report shown only after commit in the protected TTY session, with no personal data. Planned C-1 tests were added to TC-039.
+- Synchronized the decision register (D-102), ADR-004, Access Control Gates, the RTM and the WF-03.01 Workflow Catalogue entries (version 0.3.27). SRS and Use Case amendments are deferred to the implementation.
+- **Not done:** no protected code, test, catalogue, pin or database change. D-102 implementation is blocked until the D-101 independent sign-off (v2.1, then v2.2) and a separate authorization. R-1 and R-2 stay open. D-101 OPEN; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 D-102: owner decisions approved, protected scope finalized (documentation only)
 
 - The owner approved D-102 decisions OD-1 to OD-7. Recorded the approved design in `docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md` section 3:

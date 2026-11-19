@@ -30,7 +30,7 @@ from apps.accounts.models import Account
 
 from .audit import record_access_audit_receipt
 from .catalogue.validation_v2 import validate_manifest
-from .models import AccountRole, Permission, Role, RolePermission
+from .models import AccountRole, Permission, Role, RolePermission, Service
 from .role_management import (
     ADMIN, ADMIN_ASSIGNMENT_CODE, FRAMEWORK_ASSIGN_ACTION, FRAMEWORK_REVOKE_ACTION, INSTRUCTOR, ROLE_REASON, TECHNICAL,
     RoleChangeConflict, RoleChangeDenied, RoleChangeUnavailable, admin_revocation_refusal, effective_holders,
@@ -187,6 +187,12 @@ def configure_role(*, operation, operator_school_id, operator_password, target_i
     refuse_while_protected_writer_enabled()
     with writer_atomic():
         require_mysql_read_committed()
+        # WF-03.01 R-1 K-5 (owner-authorized 19 Nov 2026): lock the shared service rows BEFORE the operator's
+        # account, in lock_state's order, so this procedure and the P3B/P3D/P4 snapshot (which may lock other
+        # account rows through its joins) never wait on each other. A lock is not authentication: the operator
+        # is still authenticated and authorized below, and lock_state re-locks and validates the same rows.
+        list(Service.objects.using(DEFAULT_DB_ALIAS).select_for_update()
+             .filter(service_code__in=["access_control", "accounts"]).order_by("service_id").values_list("pk", flat=True))
         operator = _authenticate_operator(operator_school_id, operator_password)
         if operator.pk == target_id:
             raise RoleChangeConflict("protected_account")

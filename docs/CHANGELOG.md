@@ -1,5 +1,13 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 R-1: protected lock-order correction (local development only)
+
+- The protected P3B snapshot (shared by P3D and P4) and the Django-Superuser procedure (`framework_roles.configure_role`) now lock the shared service rows first, before the Admin role, the operator's account or any other overlapping row. Concurrent role changes and compensation now queue instead of deadlocking.
+- Covered cycles: K-1 (Admin role), K-2 (actor account), K-3 (Admin assignments) and K-5 (operator account, through a plan-dependent join lock), each reproduced as a MySQL 1213 deadlock before the correction.
+- Unchanged: authentication, authorization, the D-85 compensation refusal, the P4 rollback scope, D-102 (OD-1 to OD-7, C-1), Deny handling, atomicity and receipts.
+- Tests: new `test_wf0301_r1_lock_order` 10/10 (three consecutive runs); affected regression 1899/1899 in 83 modules, 0 skipped; `manage.py check` and `makemigrations --check` clean.
+- **Not done:** K-4 (P1, P2 and WF-02.05 initializers; no concurrent reruns) and R-2 remain open. No D-102, D-93/D-95 or D-87 work; nothing provisioned; D-101 OPEN; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 D-102 C-1: Deny preservation policy approved (documentation only)
 
 - The owner approved C-1: an authorized S0-to-S1 `extend-technical-governance` operation may proceed despite an existing Technical Super Admin holder's account-specific Deny on an extension permission. Every Deny stays unchanged and keeps precedence, and the extension never removes, modifies or overrides it. Affected holders are reported to the authorized operator and recorded in audit evidence, and a Deny-blocked permission is never reported as effective. OD-4 is unchanged: a new grant is still refused when the target has a Deny.

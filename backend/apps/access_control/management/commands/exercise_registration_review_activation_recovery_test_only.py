@@ -241,6 +241,11 @@ def school_account_scope_codes():
 
 def _snapshot(*, actor_id, expected_ids, active):
     """Lock and validate every in-scope row, P1/P2 receipts, and impact scope."""
+    # WF-03.01 R-1 (Option A, owner-authorized 19 Nov 2026): lock the shared service rows FIRST, in the
+    # service_id order role_management.lock_state uses, so a concurrent role change and this snapshot
+    # serialize on them instead of deadlocking over the Admin role, the actor's account, the Admin
+    # assignments or the overrides. The rows are re-read and validated below unchanged; no write.
+    list(Service.objects.select_for_update().order_by("service_id"))
     try:
         admin = Role.objects.select_for_update().get(role_name="Admin", is_active=True)
         actor = p1._actor(actor_id)

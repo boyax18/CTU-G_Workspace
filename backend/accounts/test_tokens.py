@@ -49,7 +49,7 @@ class TokenLifecycleTests(APITestCase):
             "jti": uuid.uuid4().hex,
             "exp": timezone.now() + timedelta(minutes=30),
         }
-        forged = jwt.encode(payload, "not-the-real-secret", algorithm="HS256")
+        forged = jwt.encode(payload, "not-the-real-secret-0123456789abcdef", algorithm="HS256")
         self.bearer(forged)
         self.assertEqual(self.client.get("/api/auth/me/").status_code, 401)
 

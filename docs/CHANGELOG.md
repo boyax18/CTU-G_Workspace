@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01 D-101: independent reviewer handoff (documentation only)
+
+- Added section 19 to `docs/security/WF-03.01_D-89_CATALOGUE_V2_1_INTEGRITY_REVIEW_PACKAGE.md`: what the reviewer approves (v2.1, then v2.2) and what is out of scope, the evidence status (rechecked versus agent-reported), the exact bytes (SHA-256 and Git blob IDs of the 19 in-scope artefacts), PowerShell-safe and Git commands, the checklist mapping, decision criteria and post-sign-off prohibitions.
+- Verified at `b015936`: in-scope files unchanged since `14125f9`, `28d46e1` and `9e259e7`; all pins and both effective digests match; section 12 command 101/101; F-1 regression 4/4; R-1 + K-4/K-6 + D-85 37/37.
+- **Not done:** no review or sign-off (D-101 OPEN); no source, test, catalogue or pin change; D-102 blocked.
+
 ### 19 November 2026 — WF-03.01 R-1 follow-up: K-4 and K-6 initializer lock order (local development only)
 
 - The P1, P2 and WF-02.05 initializer commands now lock the shared service rows first, inside their existing durable transactions and behind their unchanged advisory lock.

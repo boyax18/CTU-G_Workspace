@@ -1,5 +1,14 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — WF-03.01: five-area security verification and D-104 (documentation and evidence only)
+
+- Owner direction D-104: Permission Catalogue v2.2 is the current target specification; v2.1 is maintained only as its verified dependency. No runtime consumer was switched (all still read v2.0) and nothing was provisioned.
+- Verified role-based authorization, the v2.0 → v2.1 → v2.2 chain (v2.2: 10 services, 95 permissions, 6 roles, 106 bindings, Admin 32, Technical Super Admin 13; only indices 97, 98 and 102 differ from v2.0) and the F-1 correction already committed in `9e259e7`. Effective digests are unchanged.
+- Added `docs/security/WF-03.01_PROTECTED_PROVISIONING_READINESS.md`, with the D-102 and D-93/D-95 requirements and the remaining dependencies. Recorded D-100 (ordinary roles, F-4) and D-104 in the decision register.
+- Synchronized the WF-03.01 Workflow Catalogue entries (version 0.3.25), SRS v0.4, Use Case v0.4.1 (.md and .docx), TC-016, RTM, ADR-004, Access Control Gates and the D-101 records.
+- Tests: 82 access_control and accounts modules, 1889/1889 (0 skipped); frontend role-assignment and navigation 19/19.
+- **Not done:** no independent D-101 sign-off (D-101 OPEN); D-102, D-93/D-95, D-87 and provisioning not implemented; WF-03.01 Human Approval not recorded.
+
 ### 19 November 2026 — WF-03.01 D-101: documentation corrections D-1 and D-2 (documentation only)
 
 - D-2: recorded the F-1 correction commit `9e259e79000be960569a55a82b8bc1841257dc37` (corrected `validation_v2_1.py` blob `e176f9267b69baae7546d060064254d26a3e7df7a106b6505e941cb5b83d98b3`) and the review scope (v2.1 = `14125f9` + `9e259e7`; v2.2 = `28d46e1`) in the pre-review, review package section 17, workflow catalogue and decision register.

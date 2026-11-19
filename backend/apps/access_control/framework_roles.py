@@ -31,7 +31,7 @@ import os
 import re
 
 from django.conf import settings
-from django.db import DEFAULT_DB_ALIAS, connection, connections, transaction
+from django.db import DEFAULT_DB_ALIAS, DatabaseError, connection, connections, transaction
 
 from apps.accounts import session_revocation
 from apps.accounts.models import Account
@@ -139,6 +139,16 @@ def _require_development_target():
     if (connection.vendor != "mysql" or cfg.get("ENGINE") != "django.db.backends.mysql"
             or cfg.get("NAME") != DEVELOPMENT_DATABASE or cfg.get("HOST") not in LOOPBACK):
         refuse("not the local MySQL development database")
+    # Connect only now, after the configuration checks above have proven the exact local target: a fresh Django
+    # connection has no isolation_level until it is established. Any failure is a fixed refusal that carries no
+    # driver message, host or credential (the original error is not chained).
+    connected = True
+    try:
+        connection.ensure_connection()
+    except DatabaseError:
+        connected = False
+    if not connected:
+        refuse("the database connection could not be established")
     if connection.isolation_level != "read committed":
         refuse("the isolation level is not READ COMMITTED")
     if any(getattr(settings, flag, False) is not False for flag in CONFLICTING_FLAGS):

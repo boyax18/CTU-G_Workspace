@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 20 November 2026 — WF-03.01 D-93/D-95: cold-connection correction of the development gate
+
+- **Defect:** the gate read `connection.isolation_level` before Django opened the connection, so a fresh `manage.py configure_workspace_roles` process raised `AttributeError` and refused every real grant (fail closed; nothing written). The earlier tests always had an open connection.
+- **Fix:** `connection.ensure_connection()` is called only after the configuration-only checks, so the gate never connects to an unapproved target. A connection failure is a fixed, detail-free refusal.
+- **Tests:** test_wf0301_d93_development_gate 17/17 (6 new cold-connection regressions, which fail with the original AttributeError when the fix is removed); affected regression of every apps.access_control and apps.accounts module (87 modules) 1977/1977, 0 failed, 0 errors, 0 skipped.
+- **Not done:** no grant, and nothing was run against `ctug_workspace`.
+
 ### 20 November 2026 — D-109: development Instructor fixture for WF-03.01 (local development)
 
 - **Why:** email delivery was unavailable (owner report), so the owner authorized one ORM-created Instructor fixture instead of bypassing the registration OTP.

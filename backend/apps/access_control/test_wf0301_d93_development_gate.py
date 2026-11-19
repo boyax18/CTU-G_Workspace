@@ -9,6 +9,7 @@ here connects to, reads or writes ctug_workspace, and no MySQL account, grant or
 import contextlib
 import os
 import tempfile
+import threading
 import warnings
 from io import StringIO
 from pathlib import Path
@@ -18,8 +19,8 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import connection, transaction
-from django.test import TestCase, override_settings
+from django.db import OperationalError, connection, connections, transaction
+from django.test import TestCase, TransactionTestCase, override_settings
 
 from apps.access_control import framework_roles
 from apps.access_control.models import Role
@@ -206,3 +207,104 @@ class DevelopmentGateTests(TestCase):
         with self.assertRaises(RoleChangeUnavailable), transaction.atomic():
             framework_roles._add(self.instructor, self.instructor, role)  # a different operator
         self.assertEqual(roles_of(self.student), ["Student"])
+
+
+class ColdConnectionGateTests(TransactionTestCase):
+    """Regression (fix of 20 Nov 2026): the gate must work from a NEVER-OPENED connection, as in a fresh
+    manage.py process. Each check runs in a worker thread, whose Django connection is new and unconnected (asserted),
+    so it lacks connection-dependent state such as isolation_level until the gate establishes it."""
+
+    development = DevelopmentGateTests.development
+    configure = DevelopmentGateTests.configure
+
+    def setUp(self):
+        self.test_db = settings.REGISTRATION_TEST_DATABASE
+        assert self.test_db != "ctug_workspace"
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.env_file = Path(directory.name) / ".env"
+        self.env_file.write_text("DB_NAME=placeholder\n", encoding="utf-8")
+        self.w = World()
+        self.instructor = self.w.account("0093101", "Instructor")
+
+    def tearDown(self):
+        connections.close_all()
+
+    def cold(self, fn):
+        out = {}
+
+        def target():
+            try:
+                out["cold_before"] = connection.connection is None and not hasattr(connection, "isolation_level")
+                out["value"] = fn()
+            except Exception as exc:  # returned to the test
+                out["value"] = exc
+            finally:
+                out["connected_after"] = connection.connection is not None
+                connections.close_all()
+        thread = threading.Thread(target=target, daemon=True)
+        thread.start()
+        thread.join(60)
+        self.assertFalse(thread.is_alive(), "the worker did not finish")
+        self.assertTrue(out["cold_before"], "the worker must start with a never-opened connection")
+        return out
+
+    def test_the_gate_establishes_a_cold_connection_and_recognizes_the_development_target(self):
+        with self.development():
+            out = self.cold(framework_roles._require_approved_target)
+        self.assertEqual(out["value"], "development")  # no AttributeError
+        self.assertTrue(out["connected_after"])
+
+    def test_the_protected_grant_succeeds_from_a_cold_connection(self):
+        with self.development():
+            out = self.cold(lambda: self.configure("grant-school-admin", self.instructor))
+        self.assertEqual(out["value"], {"account_id": self.instructor.pk, "operation": "grant-school-admin"})
+        self.assertEqual(roles_of(self.instructor), ["Admin", "Instructor"])
+
+    def test_cold_refusals_write_nothing_and_a_wrong_target_is_never_connected(self):
+        for label, kwargs, connects in (("database name", dict(database="ctug_workspace"), False),
+                                        ("DEBUG off", dict(DEBUG=False), False),
+                                        ("missing allowlist", dict(drop=("WORKSPACE_ROLE_CONFIGURATION_OPERATORS",)), True),
+                                        ("review flag", dict(WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True), True)):
+            with self.subTest(condition=label):
+                before = state()
+                with self.development(**kwargs):
+                    out = self.cold(lambda: self.configure("grant-technical-super-admin", self.instructor))
+                self.assertIsInstance(out["value"], RoleChangeUnavailable)
+                self.assertEqual(out["connected_after"], connects)  # configuration refusals connect to nothing
+                self.assertEqual(state(), before)
+
+    def test_unauthorized_operator_and_wrong_confirmation_are_refused_from_a_cold_connection(self):
+        before = state()
+        with self.development(env={"WORKSPACE_ROLE_CONFIGURATION_OPERATORS": "SOMEONE-ELSE"}):
+            denied = self.cold(lambda: self.configure("grant-technical-super-admin", self.instructor))
+        with self.development():
+            wrong = self.cold(lambda: self.configure(
+                "grant-technical-super-admin", self.instructor,
+                confirmation=f"WF-03.01:grant-technical-super-admin:{self.instructor.pk}"))
+        self.assertIsInstance(denied["value"], RoleChangeDenied)
+        self.assertIsInstance(wrong["value"], RoleChangeUnavailable)
+        self.assertEqual(state(), before)
+
+    def test_a_connection_failure_is_a_fixed_refusal_without_details(self):
+        failure = OperationalError(1045, "Access denied for user 'secret-user'@'db-host' (using password: YES)")
+
+        def attempt():
+            with patch.object(connection, "ensure_connection", side_effect=failure):
+                return framework_roles._require_approved_target()
+        with self.development():
+            out = self.cold(attempt)
+        error = out["value"]
+        self.assertIsInstance(error, RoleChangeUnavailable)
+        self.assertIn("could not be established", str(error))
+        for secret in ("Access denied", "secret-user", "db-host", "password"):
+            self.assertNotIn(secret, str(error))
+        self.assertIsNone(error.__cause__)
+        self.assertIsNone(error.__context__)  # the driver error is not chained
+
+    def test_the_low_level_mutators_refuse_from_a_cold_connection(self):
+        role = Role.objects.get(role_name="Admin")
+        before = state()
+        out = self.cold(lambda: framework_roles._add(self.w.root, self.instructor, role))
+        self.assertIsInstance(out["value"], RoleChangeUnavailable)
+        self.assertEqual(state(), before)

@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 19 November 2026 — D-108: one-time legacy dummy account cleanup (local development)
+
+- **Owner-authorized exception to D-57/D-60:** deleted legacy Rejected account #1 (School ID `7241241`), its profile and its rejection receipt #15. One transaction, exactly 1 row each; every other row was verified unchanged and nothing is orphaned. The owner's email is free for a normal WF-01.02 Instructor registration.
+- **Fresh backup first:** `ctug_workspace_pre_account1_cleanup_20261119T124535Z.sql` (SHA-256 `e3f79fa2…`), restore-verified, stored outside the repository.
+- **Audit discontinuity, documented:** receipt IDs skip 15, and the earlier checkpoint fingerprint now verifies as MISMATCH. D-57 and D-60 remain the rules.
+- **No code, ERD, schema, privilege or role change.**
+
 ### 19 November 2026 — WF-03.01 D-107: S0-first Technical Super Admin provisioning (decision and readiness)
 
 - **Owner decision (local development only):** the first Technical Super Admin grant may create S0, the six existing v2.0 governance codes. The three S1 codes are deferred to the D-102 extension (OD-2, OD-7). D-101 stays OPEN, and OD-7 is not bypassed.

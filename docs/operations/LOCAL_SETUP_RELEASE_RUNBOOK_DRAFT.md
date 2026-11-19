@@ -160,6 +160,13 @@ repository, as `..._gate1_record.json` and `..._gate2_record.json`):
   - every other table, and the original account columns, unchanged;
   - 6 accounts at counter 0, and 24 receipts unchanged (checkpoint head unchanged).
 - **Session cleanup (Gate 2):** all 5 `django_session` rows were deleted after verification; 0 remained.
+- **Legacy account cleanup (D-108, 19 November 2026):**
+  - **Exception:** a one-time owner exception to D-57/D-60 deleted account #1, its profile and its rejection
+    receipt #15, in one transaction (1 row each; every other row verified unchanged).
+  - **Backup first:** `C:\CTUG-Backups\ctug_workspace_pre_account1_cleanup_20261119T124535Z.sql`, SHA-256 `e3f79fa2f55d861a8008707d07de6f6f152ef519f8d8e2be768715a27ccd2c13`,
+    restore-verified; evidence `..._record.json` kept next to it.
+  - **Superseded backup:** the pre-0006 backup above no longer represents the current database.
+  - **Checkpoint:** the earlier fingerprint now verifies as MISMATCH (documented discontinuity).
 
 Verified backup procedure, for the next deployment. Put credentials in a temporary option file or a login path,
 never on the command line:

@@ -25,6 +25,8 @@ import DashboardNavigation, { DashboardNavLink } from './DashboardNavigation';
 import DashboardIcon from './DashboardIcon';
 import PageHeader, { Breadcrumbs } from './PageHeader';
 import UserMenu from './UserMenu';
+import RoleContextSwitcher from './RoleContextSwitcher';
+import { ROLE_CONTEXT_SWITCHING_ENABLED } from '../../features/dashboard/roleContextConfig';
 
 interface Props {
   children: ReactNode;
@@ -39,6 +41,9 @@ interface Props {
   signOut: () => Promise<void>;
   signingOut: boolean;
   signOutError: string;
+  switchingRole: boolean;
+  roleSwitchError: string;
+  switchRole: (roleId: number) => void;
 }
 
 const DESKTOP = '(min-width: 1024px)';
@@ -56,6 +61,7 @@ function AcademicPeriod({ className }: { className: string }) {
 
 export default function DashboardShell({
   children, session, view, viewPermitted, subpage, openSubpage, navigate, signOut, signingOut, signOutError,
+  switchingRole, roleSwitchError, switchRole,
 }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false);
   // Desktop expand/collapse lives in memory only (only the theme may use localStorage).
@@ -65,7 +71,8 @@ export default function DashboardShell({
   const sidebar = useRef<HTMLElement>(null);
   const returnFocus = useRef(false);
   const item = getDashboardItem(view);
-  const roles = session.account.roles.join(' · ') || 'Assigned account';
+  const active = session.role_context?.choices.find((r) => r.role_id === session.role_context?.active_role_id);
+  const roles = active ? (active.role_name === 'Admin' ? 'School Admin' : active.role_name) : session.account.roles.join(' · ') || 'Assigned account';
   const utilities = getVisibleNavGroups(session.permissions, 'utility').flatMap((group) => group.items);
 
   const closeDrawer = (restore: boolean) => {
@@ -200,6 +207,14 @@ export default function DashboardShell({
           </button>
         </div>
 
+        {ROLE_CONTEXT_SWITCHING_ENABLED && session.role_context?.enabled &&
+          (session.role_context.choices.length > 1 || session.role_context.active_role_id === null) &&
+          session.role_context.choices.length > 0 && (
+            <div className={rail ? 'lg:hidden' : ''}>
+              <RoleContextSwitcher context={session.role_context} switching={switchingRole}
+                error={roleSwitchError} onSwitch={switchRole} />
+            </div>
+          )}
         <DashboardNavigation permissions={session.permissions} active={view} navigate={goTo} collapsed={rail} />
 
         <div className="dashboard-sidebar-divider mt-auto border-t pt-4">

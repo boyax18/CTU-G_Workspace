@@ -18,6 +18,9 @@ from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from apps.access_control.models import AccountRole
+from .active_role_context import (
+    SESSION_ROLE_KEY, available_roles, bind_role_scope, context_enabled, initial_role_id,
+)
 from apps.access_control.services import get_effective_permissions
 from apps.access_control.ordinary_role_runtime import (
     ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
@@ -142,7 +145,7 @@ def _workspace_account(user):
     return user
 
 
-def _account_payload(account):
+def _account_payload(account, *, active_role_id=None):
     roles = sorted(set(AccountRole.objects.filter(
         account_id=account.pk,
         account__is_active=True,
@@ -155,6 +158,20 @@ def _account_payload(account):
     if runtime_enforcement_enabled():
         verified = verified_ordinary_roles_for(account.pk)
         roles = [r for r in roles if r not in ORDINARY_ROLE_NAMES or r in verified]
+    if context_enabled():
+        choices = available_roles(account.pk)
+        chosen = next((choice for choice in choices
+                       if choice["role_id"] == active_role_id), None)
+        with bind_role_scope(account.pk, chosen["role_id"] if chosen else None):
+            codes = sorted(get_effective_permissions(account))
+        return {
+            "account": {"school_id": account.school_id,
+                        "roles": [choice["role_name"] for choice in choices]},
+            "permissions": codes,
+            "role_context": {"enabled": True,
+                             "active_role_id": chosen["role_id"] if chosen else None,
+                             "choices": choices},
+        }
     return {
         "account": {"school_id": account.school_id, "roles": roles},
         # Point-in-time UI hints, NEVER authorization or session-stored grants.
@@ -199,7 +216,10 @@ class LoginView(WorkspaceSessionAPI):
                 {"error": {"code": "invalid_credentials", "message": "Unable to sign in with these credentials."}},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
-        payload = _account_payload(account)
+        # Prepare a least-privileged active context before login. The new session
+        # stores only a role ID; each permission query validates it again.
+        selected = initial_role_id(account.pk) if context_enabled() else None
+        payload = _account_payload(account, active_role_id=selected)
         if not payload["account"]["roles"]:
             return Response(
                 {"error": {"code": "invalid_credentials", "message": "Unable to sign in with these credentials."}},
@@ -208,6 +228,8 @@ class LoginView(WorkspaceSessionAPI):
         # Compute the response before creating the session, so a database error
         # never leaves behind a logged-in session and a failed API response.
         login(request._request, account)
+        if context_enabled():
+            request.session[SESSION_ROLE_KEY] = selected
         # WF-02.05 D-66 / SR-1: login() has just bound the session to the session-revocation counter of
         # the account row read during authentication. Re-read the row AFTER that: a session-ending change
         # committed in between is seen here (ineligible, or a newer counter: sign-out, refuse); one committed
@@ -244,4 +266,6 @@ class SessionView(WorkspaceSessionAPI):
         account = _workspace_account(get_user(request._request))
         if account is None:
             return Response({"authenticated": False})
-        return Response({"authenticated": True, **_account_payload(account)})
+        selected = request.session.get(SESSION_ROLE_KEY) if context_enabled() else None
+        return Response({"authenticated": True,
+                         **_account_payload(account, active_role_id=selected)})

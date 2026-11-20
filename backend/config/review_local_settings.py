@@ -81,3 +81,10 @@ WORKSPACE_ORDINARY_APPOINTMENT_REGISTRY_ENABLED = (
 WORKSPACE_ORDINARY_APPOINTMENT_RUNTIME_ENFORCEMENT_ENABLED = (
     os.environ.get("CTUG_APPOINTMENT_RUNTIME_LOCAL_ACK") == "LOCAL_WF0301_D111"
 )
+
+# WF-03.01 D-113. Session-selected role restriction; independent default-OFF
+# local-only gate. No settings/DB/permission provisioning is authorized here.
+WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = (
+    os.environ.get("CTUG_ROLE_CONTEXT_LOCAL_ACK") == "LOCAL_WF0301_D113"
+)
+MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware"]

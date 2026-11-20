@@ -6,7 +6,8 @@ import ThemeProvider from '../contexts/ThemeProvider';
 import { DashboardContext } from '../contexts/DashboardContext';
 import type { DashboardSubpage } from '../contexts/DashboardContext';
 import DashboardShell from '../components/dashboard/DashboardShell';
-import { getWorkspaceSession } from '../features/auth/session';
+import { getWorkspaceSession, switchWorkspaceRole } from '../features/auth/session';
+import { ROLE_CONTEXT_SWITCHING_ENABLED } from '../features/dashboard/roleContextConfig';
 import { signOutMessage, signOutWorkspace } from '../features/auth/signOut';
 import { useSessionRevalidation } from '../hooks/useSessionRevalidation';
 import type { AuthenticatedWorkspaceSession } from '../features/auth/session';
@@ -34,6 +35,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [subpage, setSubpage] = useState<DashboardSubpage | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
+  const [switchingRole, setSwitchingRole] = useState(false);
+  const [roleSwitchError, setRoleSwitchError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +113,28 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     setSigningOut(false);
   }, [signingOut]);
 
+  const switchRole = useCallback(async (roleId: number) => {
+    if (!ROLE_CONTEXT_SWITCHING_ENABLED || switchingRole || state.status !== 'ready'
+        || !state.session.role_context?.choices.some((r) => r.role_id === roleId)) return;
+    setSwitchingRole(true);
+    setRoleSwitchError('');
+    try {
+      const updated = await switchWorkspaceRole(roleId);
+      // Use only freshly returned server permission hints after a confirmed switch.
+      setState({ status: 'ready', session: updated });
+      window.history.replaceState(null, '', getDashboardHref('overview'));
+      setView('overview');
+      setSearch(window.location.search);
+      setSubpage(null);
+    } catch {
+      // A POST outcome may be ambiguous; refresh from server before trusting it.
+      setRoleSwitchError('Role switch not confirmed. Check your session and try again.');
+      recheckSession();
+    } finally {
+      setSwitchingRole(false);
+    }
+  }, [switchingRole, state, recheckSession]);
+
   const session = state.status === 'ready' ? state.session : null;
   const value = useMemo(
     () => session ? { session, view, navigate, search, openSubpage, subpage, setSubpage } : null,
@@ -162,6 +187,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           signOut={signOut}
           signingOut={signingOut}
           signOutError={signOutError}
+          switchingRole={switchingRole}
+          roleSwitchError={roleSwitchError}
+          switchRole={(roleId) => { void switchRole(roleId); }}
         >
           {children}
         </DashboardShell>

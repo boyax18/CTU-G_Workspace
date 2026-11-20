@@ -11,6 +11,7 @@ from django.db import DEFAULT_DB_ALIAS
 from django.db.models import Exists, OuterRef, Q
 
 from apps.accounts.models import Account
+from apps.accounts.active_role_context import context_enabled, selected_scope, allowed_role_ids
 
 from .models import AccountPermission, AccountRole, Permission, RolePermission
 from .ordinary_role_runtime import (
@@ -29,6 +30,18 @@ def _authorized_permissions(account_id):
         account__request_status="Approved",
         role__is_active=True,
     )
+    # D-113: active context restricts the role sources themselves. An absent,
+    # stale or cross-account context denies all access (not the union fallback).
+    selected_ids = None
+    if context_enabled():
+        scope = selected_scope()
+        if scope is None or scope.account_id != account_id:
+            return Permission.objects.using(DEFAULT_DB_ALIAS).none()
+        selected_ids = allowed_role_ids(account_id, scope.role_id)
+        if not selected_ids:
+            return Permission.objects.using(DEFAULT_DB_ALIAS).none()
+        eligible_assignments = eligible_assignments.filter(role_id__in=selected_ids)
+
     overrides = AccountPermission.objects.using(DEFAULT_DB_ALIAS).filter(
         account_id=account_id, permission_id=OuterRef("pk"), is_active=True,
     )
@@ -38,6 +51,8 @@ def _authorized_permissions(account_id):
         role__is_active=True,
         role__account_assignments__account_id=account_id,
     )
+    if selected_ids is not None:
+        role_grants = role_grants.filter(role_id__in=selected_ids)
     # D-111: only independently verified, current ordinary assignments can
     # contribute role permissions. The mapping is fetched afresh on EVERY
     # evaluator invocation, never from session roles or cached request claims.
@@ -60,6 +75,9 @@ def _authorized_permissions(account_id):
                          ~Q(Exists(ordinary_bound_code))))
     else:
         grant_source = Q(Exists(overrides.filter(effect="Grant"))) | Q(Exists(role_grants))
+
+    if selected_ids is not None:
+        grant_source = Q(Exists(role_grants))
 
     return (
         Permission.objects.using(DEFAULT_DB_ALIAS)

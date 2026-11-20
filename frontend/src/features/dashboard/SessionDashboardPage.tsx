@@ -142,6 +142,11 @@ function Profile() {
       <dl className="grid gap-6 text-sm sm:grid-cols-2">
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">CTU-G ID</dt><dd className="dashboard-heading mt-2 font-semibold">{account.school_id}</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Assigned roles</dt><dd className="dashboard-heading mt-2 font-semibold">{account.roles.join(', ') || 'None'}</dd></div>
+        {session.role_context?.enabled && (
+          <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Active role context</dt>
+            <dd className="dashboard-heading mt-2 font-semibold">{
+              session.role_context.choices.find((r) => r.role_id === session.role_context?.active_role_id)?.role_name ?? 'Select a role'
+            }</dd></div>)}
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Session status</dt><dd className="dashboard-heading mt-2 font-semibold">Authenticated</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Effective permission hints</dt><dd className="dashboard-heading mt-2 font-semibold">{permissions.length}</dd></div>
       </dl>

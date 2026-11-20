@@ -21,7 +21,8 @@ from apps.access_control.role_management import (
 from apps.access_control.test_wf0301_role_assignment import World, configure, roles_of, GATES, API
 from apps.accounts.models import Account
 
-GATES_D100 = {**GATES, "WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED": True}
+GATES_D100 = {**GATES, "WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED": True,
+              "WORKSPACE_ORDINARY_APPOINTMENT_RUNTIME_ENFORCEMENT_ENABLED": True}
 
 
 @override_settings(ROOT_URLCONF="config.review_sandbox_urls", **GATES_D100)
@@ -122,6 +123,11 @@ class OrdinaryRoleTests(TestCase):
         self.assertIsNone(rows[self.instructor.pk]["advisor_action"])
         self.assertEqual(set(rows[self.student.pk]),
                          {"account_id", "school_id", "full_name", "roles", "treasurer_action", "advisor_action"})
+
+    def test_new_grants_require_continuous_appointment_guard(self):
+        with override_settings(WORKSPACE_ORDINARY_APPOINTMENT_RUNTIME_ENFORCEMENT_ENABLED=False):
+            with patch.object(role_assignment, "appointment_verified_for", return_value=True):
+                self.assertEqual(self.post(self.student, "treasurer", "assign", False).status_code, 503)
 
     def test_release_conf_and_nonreview_settings_never_mount_or_activate_ordinary_roles(self):
         with self.assertRaises(Resolver404):

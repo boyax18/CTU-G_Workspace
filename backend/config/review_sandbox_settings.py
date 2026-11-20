@@ -82,3 +82,12 @@ WORKSPACE_ORDINARY_APPOINTMENT_REGISTRY_ENABLED = (
 )
 # No settings module enables WORKSPACE_ORDINARY_APPOINTMENT_EVIDENCE_ENABLED.
 # Grants remain denied even if this staging endpoint is later examined.
+
+# WF-03.01 D-111: default-OFF continuous appointment enforcement. Even if
+# ordinary role assignment gets enabled, the D-100 service blocks NEW grants
+# until this is explicitly activated under an approved isolated rollout.
+# Do NOT enable before the D-110 migration, independent reviewer policy and
+# deferred security regression tests are complete.
+WORKSPACE_ORDINARY_APPOINTMENT_RUNTIME_ENFORCEMENT_ENABLED = (
+    os.environ.get("CTUG_APPOINTMENT_RUNTIME_SANDBOX_ACK") == "SANDBOX_WF0301_D111"
+)

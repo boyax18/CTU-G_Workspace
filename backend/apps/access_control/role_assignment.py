@@ -18,6 +18,7 @@ from apps.accounts import session_revocation
 
 from .audit import record_access_audit_receipt
 from .ordinary_appointment_evidence import appointment_verified_for
+from .ordinary_role_runtime import runtime_enforcement_enabled
 from .models import AccountRole, Role
 from .role_management import (
     ADMIN, ADMIN_ASSIGNMENT_CODE, ASSIGN_ACTION, INSTRUCTOR, REVOKE_ACTION, ROLE_REASON, TECHNICAL,
@@ -160,6 +161,10 @@ def _ordinary_change(*, actor, target_id, role_name, assign, expected_present):
         if (current is not None) is not expected_present:
             raise RoleChangeConflict("state_changed")
         if assign:
+            # Never issue a NEW privileged role while its continuous per-request
+            # access guard is disabled. Existing role revocation remains possible.
+            if not runtime_enforcement_enabled():
+                raise RoleChangeUnavailable("Appointment runtime enforcement is required.")
             # The verifier is intentionally default-deny until an independent
             # approved appointment source exists. No caller-provided proof.
             if appointment_verified_for(

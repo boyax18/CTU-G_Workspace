@@ -19,6 +19,9 @@ from rest_framework.views import APIView
 
 from apps.access_control.models import AccountRole
 from apps.access_control.services import get_effective_permissions
+from apps.access_control.ordinary_role_runtime import (
+    ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
+)
 from .models import Account
 from .views import RegistrationJSONParser
 
@@ -146,6 +149,12 @@ def _account_payload(account):
         account__request_status="Approved",
         role__is_active=True,
     ).values_list("role__role_name", flat=True)))
+    # These are only UI role labels; backend actions still enforce the fresh
+    # effective permissions. Never advertise an invalid ordinary appointment
+    # as an active responsibility when the D-111 runtime gate is enabled.
+    if runtime_enforcement_enabled():
+        verified = verified_ordinary_roles_for(account.pk)
+        roles = [r for r in roles if r not in ORDINARY_ROLE_NAMES or r in verified]
     return {
         "account": {"school_id": account.school_id, "roles": roles},
         # Point-in-time UI hints, NEVER authorization or session-stored grants.

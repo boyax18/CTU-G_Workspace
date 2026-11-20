@@ -13,6 +13,9 @@ from django.db.models import Exists, OuterRef, Q
 from apps.accounts.models import Account
 
 from .models import AccountPermission, AccountRole, Permission, RolePermission
+from .ordinary_role_runtime import (
+    ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +38,35 @@ def _authorized_permissions(account_id):
         role__is_active=True,
         role__account_assignments__account_id=account_id,
     )
+    # D-111: only independently verified, current ordinary assignments can
+    # contribute role permissions. The mapping is fetched afresh on EVERY
+    # evaluator invocation, never from session roles or cached request claims.
+    # The gate is staged and default-off, but ordinary NEW grants are blocked
+    # unless it is on (see role_assignment.py).
+    if runtime_enforcement_enabled():
+        verified = verified_ordinary_roles_for(account_id)
+        blocked = ORDINARY_ROLE_NAMES.difference(verified)
+        if blocked:
+            role_grants = role_grants.exclude(role__role_name__in=blocked)
+        # An account-specific Grant must not be a backdoor around an invalid
+        # Treasurer/Advisor appointment. Any code bound to an ordinary role is
+        # guarded. A distinct, independently granted non-ordinary role can still
+        # confer a shared code through role_grants, with Deny precedence intact.
+        ordinary_bound_code = RolePermission.objects.using(DEFAULT_DB_ALIAS).filter(
+            permission_id=OuterRef("pk"), role__role_name__in=ORDINARY_ROLE_NAMES,
+        )
+        grant_source = (Q(Exists(role_grants)) |
+                        (Q(Exists(overrides.filter(effect="Grant"))) &
+                         ~Q(Exists(ordinary_bound_code))))
+    else:
+        grant_source = Q(Exists(overrides.filter(effect="Grant"))) | Q(Exists(role_grants))
+
     return (
         Permission.objects.using(DEFAULT_DB_ALIAS)
         .filter(service__is_active=True)
         .filter(Exists(eligible_assignments))
         .filter(~Exists(overrides.filter(effect="Deny")))
-        .filter(Q(Exists(overrides.filter(effect="Grant"))) | Q(Exists(role_grants)))
+        .filter(grant_source)
     )
 
 

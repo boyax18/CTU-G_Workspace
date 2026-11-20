@@ -1,7 +1,7 @@
 """WF-03.01 Role assignments API for the Technical Super Admin (owner-approved stage B, 18 Nov 2026).
 
-Isolated URLconf (role_assignment_urls); NOT mounted by config.urls, review_local_urls or
-review_sandbox_urls — mounting it is a separately authorized protected change. Every view subclasses
+Isolated URLconf (role_assignment_urls); mounted ONLY by review_local_urls and
+review_sandbox_urls behind independent default-off settings; NEVER by config.urls. Every view subclasses
 RegistrationReviewAPI on purpose: explicit CSRF, bounded JSON, no-store headers, error mapping, and the
 existing release safeguard already refuses any mounted RegistrationReviewAPI route outside the
 reviewed local modes. Default-off WORKSPACE_ROLE_ASSIGNMENT_ENABLED. Django authorizes every request:

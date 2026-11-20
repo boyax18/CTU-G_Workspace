@@ -435,14 +435,26 @@ class TechnicalSuperAdminAssignmentTests(TestCase):
 
     def test_release_surface_is_isolated_and_reported(self):
         from apps.access_control.management.commands.init_registration_review_metadata_local_dev import unexpected_review_routes
-        for conf in ("config.urls", "config.review_local_urls", "config.review_sandbox_urls"):
-            with self.subTest(conf=conf), self.assertRaises(Resolver404):
-                resolve(API, urlconf=conf)
+        # Default URLconf is still clean. Only the two localhost review configurations mount the API.
+        with self.assertRaises(Resolver404):
+            resolve(API, urlconf="config.urls")
+        for conf in ("config.review_local_urls", "config.review_sandbox_urls"):
+            with self.subTest(conf=conf):
+                self.assertEqual(resolve(API, urlconf=conf).url_name, "role-assignments-list")
+                self.assertEqual(resolve(f"{API}1/school-admin/assign/", urlconf=conf).url_name,
+                                 "role-assignments-assign-school-admin")
+                self.assertEqual(resolve(f"{API}1/school-admin/revoke/", urlconf=conf).url_name,
+                                 "role-assignments-revoke-school-admin")
+                self.assertTrue(any("role-assignments" in route for route in unexpected_review_routes(conf)))
         self.assertEqual(len(unexpected_review_routes(URLCONF)), 3)
         self.assertEqual(unexpected_review_routes("config.urls"), [])
-        for name in ("config.settings", "config.review_local_settings", "config.review_sandbox_settings"):
-            source = open(f"config/{name.split('.')[1]}.py", encoding="utf-8").read()
-            self.assertNotIn("WORKSPACE_ROLE_ASSIGNMENT_ENABLED", source)
+        base = open("config/settings.py", encoding="utf-8").read()
+        self.assertNotIn("WORKSPACE_ROLE_ASSIGNMENT_ENABLED", base)
+        for name, marker in (("review_local_settings", "CTUG_ROLE_ASSIGNMENT_LOCAL_ACK"),
+                             ("review_sandbox_settings", "CTUG_ROLE_ASSIGNMENT_SANDBOX_ACK")):
+            source = open(f"config/{name}.py", encoding="utf-8").read()
+            self.assertIn("WORKSPACE_ROLE_ASSIGNMENT_ENABLED", source)
+            self.assertIn(marker, source)
             self.assertNotIn("WORKSPACE_ROLE_CONFIGURATION_OPERATORS", source)
 
 

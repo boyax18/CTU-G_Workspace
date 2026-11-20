@@ -36,6 +36,11 @@ WORKSPACE_REGISTRATION_APPROVAL_ENABLED = True
 # local mode only. config.settings keeps WORKSPACE_ACCOUNT_STATUS_ENABLED absent (off); the protected
 # writer still refuses; the accounts.school_accounts.* rows must exist (governed tooling) to act.
 WORKSPACE_ACCOUNT_STATUS_ENABLED = True
+# WF-03.01 D-87: separate opt-in, NEVER enabled by the general sandbox marker.
+# Intentionally defaults to False until the deferred WF-03 tests are performed.
+WORKSPACE_ROLE_ASSIGNMENT_ENABLED = (
+    os.environ.get("CTUG_ROLE_ASSIGNMENT_SANDBOX_ACK") == "SANDBOX_WF0301_D87"
+)
 
 # No external emails or password reset activity in demos.
 # WF-02.04 D-54/D-62 (owner-authorized 18 Nov 2026): a rejection needs the durable encrypted

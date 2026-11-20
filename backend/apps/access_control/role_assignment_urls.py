@@ -1,8 +1,8 @@
 """WF-03.01 isolated URLconf for Technical Super Admin role assignments.
 
-Proposed mount point: api/v1/admin/role-assignments/, ONLY in the owner-authorized local-review and
-sandbox URLconfs, which is a separately authorized protected change (not done in this stage). It is
-never included by config.urls; the release safeguard reports these RegistrationReviewAPI routes.
+Mounted at api/v1/admin/role-assignments/ ONLY in local-review and sandbox URLconfs,
+behind their separate default-off opt-in flags. It is NEVER included by config.urls; the
+release safeguard reports these RegistrationReviewAPI routes if inspected.
 """
 
 from django.urls import path

@@ -1,0 +1,41 @@
+// CTU-G Workspace — AR-6C5B.2 OUTBOX PROPOSAL v2 (2026-11-10)
+// NOT APPROVED OR MIGRATED. DO NOT modify docs/database/full_schema.dbml yet.
+// This is a standalone addition to the official ERD, pending campus owner approval.
+// References the EXISTING access_audit_logs table: access_audit_log_id int PK.
+// Field sizes and MySQL/Django mapping require migration SQL review.
+// IMPORTANT: "Delivered" means accepted by the configured email backend,
+// NOT that the recipient's inbox received or read the message.
+
+Table registration_notification_outbox {
+  outbox_id bigint [pk, increment]
+  decision_audit_log_id int [not null, unique, note: 'One event per committed review audit event; immutable; FK PROTECT']
+  template_code varchar(64) [not null, note: 'Allowlist: registration.approved or registration.rejected']
+  template_version int [not null, default: 1, note: 'Stable template rendering across retries']
+
+  // Authenticated per-event envelope encryption. No plaintext address in DB/logs.
+  // The authentication tag is stored with encrypted_recipient.
+  // Values NULL together after approved secure erasure; or for missing recipients.
+  encrypted_recipient varbinary(1024) [note: 'AES-256-GCM ciphertext plus authentication tag']
+  recipient_nonce binary(12) [note: 'Fresh cryptographic nonce for this event']
+  wrapped_data_key varbinary(512) [note: 'Per-event data key wrapped outside the DB by a managed KEK']
+  encryption_key_version varchar(64) [note: 'Key identifier for unwrap/rotation, not a secret']
+  recipient_erased_at datetime
+
+  delivery_status enum('Pending', 'Leased', 'Retry', 'Delivered', 'Dead') [not null, default: 'Pending']
+  attempt_count int [not null, default: 0]
+  next_attempt_at datetime [note: 'UTC; required for Pending/Retry, null in terminal states']
+  lease_expires_at datetime [note: 'UTC; only populated while Leased']
+  lease_token varchar(64) [note: 'Random, unguessable claim token; only populated while Leased']
+  last_failure_code varchar(64) [note: 'Allowlisted reason code; never SMTP body or exception']
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at datetime
+  delivered_at datetime [note: 'UTC; email backend accepted the message, not guaranteed inbox delivery']
+
+  indexes {
+    (delivery_status, next_attempt_at) [name: 'outbox_due_idx']
+    (delivery_status, lease_expires_at) [name: 'outbox_lease_idx']
+  }
+}
+
+// ON DELETE PROTECT/RESTRICT in Django; never CASCADE audit events.
+Ref: registration_notification_outbox.decision_audit_log_id > access_audit_logs.access_audit_log_id

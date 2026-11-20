@@ -1,9 +1,17 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import Button from '../../../components/common/Button';
 import Input from '../../../components/common/Input';
 import Reveal from '../../../components/common/Reveal';
+import ApiErrorNotice from '../../../components/common/ApiErrorNotice';
 import { EyeIcon, EyeOffIcon } from '../../../components/common/Icons';
+import { ApiError, initializeCSRF } from '../../../api/client';
+import { getWorkspaceSession } from '../../auth/session';
+import type { AuthenticatedWorkspaceSession } from '../../auth/session';
+import { signOutMessage, signOutWorkspace } from '../../auth/signOut';
+import { useSessionRevalidation } from '../../../hooks/useSessionRevalidation';
+import { describeLoginFailure, LOGIN_APPROVAL_HINT, LOGIN_UNCONFIRMED, notCompletedMessage } from '../../auth/loginFeedback';
+import type { LoginRecovery } from '../../auth/loginFeedback';
 import { REGISTER_PATH } from '../../../utils/constants';
 import { GLASS } from '../../../utils/styles';
 
@@ -13,10 +21,7 @@ export interface LoginCredentials {
 }
 
 interface HomeLoginFormProps {
-  /**
-   * Called with validated credentials. Not provided yet: connect this to
-   * authService (Django REST API) in the authentication phase.
-   */
+  /** Called with validated credentials; resolves after the session is established. */
   onSubmit?: (credentials: LoginCredentials) => Promise<void>;
 }
 
@@ -25,6 +30,8 @@ interface FormErrors {
   password?: string;
 }
 
+const DASHBOARD_PATH = '/dashboard';
+
 export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
   const [schoolId, setSchoolId] = useState('');
   const [password, setPassword] = useState('');
@@ -32,22 +39,86 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState('');
+  const [failure, setFailure] = useState<ApiError | null>(null);
+  const [approvalHint, setApprovalHint] = useState(false);
+  const [recovery, setRecovery] = useState<LoginRecovery>(null);
+  const [retryWait, setRetryWait] = useState(0);
+  const [signedIn, setSignedIn] = useState<AuthenticatedWorkspaceSession | null>(null);
   const submitting = useRef(false);
+
+  // WF-01.03 P-03: a browser that already holds a valid session is offered the
+  // dashboard instead of a second sign-in. A failed check simply keeps the form.
+  useEffect(() => {
+    if (!onSubmit) return;
+    let cancelled = false;
+    getWorkspaceSession()
+      .then((session) => { if (!cancelled && session.authenticated) setSignedIn(session); })
+      .catch(() => { /* keep the sign-in form */ });
+    return () => { cancelled = true; };
+  }, [onSubmit]);
+
+  // WF-01.04 P-03: keep the signed-in card truthful when another tab signs out
+  // (or signs in) or this tab is shown again. A failed read changes nothing.
+  useSessionRevalidation(() => {
+    if (!onSubmit || submitting.current) return;
+    getWorkspaceSession()
+      .then((session) => setSignedIn(session.authenticated ? session : null))
+      .catch(() => { /* keep the current card */ });
+  });
+
+  useEffect(() => {
+    if (retryWait <= 0) return;
+    const timer = window.setTimeout(() => setRetryWait((wait) => Math.max(0, wait - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [retryWait]);
+
+  const resetFeedback = () => {
+    setNotice('');
+    setFailure(null);
+    setApprovalHint(false);
+    setRecovery(null);
+  };
 
   const validate = (): FormErrors => {
     const next: FormErrors = {};
-    if (!schoolId.trim()) next.schoolId = 'Please enter your School ID.';
+    if (!schoolId.trim()) next.schoolId = 'Please enter your CTU-G ID.';
     if (!password) next.password = 'Please enter your password.';
     return next;
   };
 
+  const showFailure = async (problem: unknown) => {
+    const result = describeLoginFailure(problem);
+    // Never keep a password after a failed attempt.
+    setPassword('');
+    setShowPassword(false);
+    if (result.recovery === 'confirm') {
+      // The POST may have created a session: read it (GET) before claiming failure.
+      try {
+        const session = await getWorkspaceSession();
+        if (session.authenticated) {
+          window.location.assign(DASHBOARD_PATH);
+          return;
+        }
+        setFailure(new ApiError(notCompletedMessage(result.error), result.error.status, result.error.code, {}, { requestId: result.error.requestId }));
+      } catch {
+        setFailure(new ApiError(LOGIN_UNCONFIRMED, 0, 'network_error', {}, { requestId: result.error.requestId }));
+      }
+      setRecovery(null);
+      return;
+    }
+    setFailure(result.error);
+    setApprovalHint(result.approvalHint);
+    setRecovery(result.recovery);
+    if (result.recovery === 'wait') setRetryWait(result.wait);
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (submitting.current) return;
+    if (submitting.current || retryWait > 0) return;
 
     const found = validate();
     setErrors(found);
-    setNotice('');
+    resetFeedback();
     if (Object.keys(found).length > 0) return;
 
     if (!onSubmit) {
@@ -59,28 +130,91 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
     setLoading(true);
     try {
       await onSubmit({ schoolId: schoolId.trim(), password });
-    } catch {
-      setNotice('Sign-in could not be completed. Please try again.');
+    } catch (problem) {
+      await showFailure(problem);
     } finally {
       submitting.current = false;
       setLoading(false);
     }
   };
 
+  const refreshSecurity = async () => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setLoading(true);
+    try {
+      await initializeCSRF();
+      resetFeedback();
+      setNotice('Security check refreshed. Enter your password and sign in again.');
+    } catch (problem) {
+      setFailure(problem instanceof ApiError ? problem : new ApiError(LOGIN_UNCONFIRMED));
+    } finally {
+      submitting.current = false;
+      setLoading(false);
+    }
+  };
+
+  // WF-01.04 P-01: confirm uncertain results with a session read; never guess.
+  const signOut = async () => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setLoading(true);
+    resetFeedback();
+    try {
+      const outcome = await signOutWorkspace();
+      if (outcome === 'signed_out') {
+        setSignedIn(null);
+        window.setTimeout(() => document.getElementById('school-id')?.focus(), 0);
+      } else {
+        setFailure(new ApiError(signOutMessage(outcome)));
+      }
+    } finally {
+      submitting.current = false;
+      setLoading(false);
+    }
+  };
+
+  if (signedIn) {
+    return (
+      <Reveal id="login" direction="right" delay={200} className={`w-full max-w-xl rounded-2xl p-6 sm:p-8 lg:max-w-md ${GLASS}`}>
+        <h2 className="fg-strong text-lg font-semibold">Welcome Back</h2>
+        <p role="status" className="fg-body mt-2 text-sm">
+          You’re signed in as <span className="fg-strong font-semibold">{signedIn.account.school_id}</span>.
+        </p>
+        {failure && <ApiErrorNotice error={failure} />}
+        <div className="mt-5 flex flex-col gap-3">
+          <Button fullWidth onClick={() => window.location.assign(DASHBOARD_PATH)}>Continue to Dashboard</Button>
+          <Button variant="outline" fullWidth loading={loading} onClick={() => void signOut()}>
+            {loading ? 'Signing out…' : 'Sign Out'}
+          </Button>
+        </div>
+      </Reveal>
+    );
+  }
+
   return (
     <Reveal id="login" direction="right" delay={200} className={`w-full max-w-xl rounded-2xl p-6 sm:p-8 lg:max-w-md ${GLASS}`}>
       <h2 className="fg-strong text-lg font-semibold">Welcome Back</h2>
       <p className="fg-muted mt-1 text-xs">Sign in to access your campus services.</p>
 
-      <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4" aria-busy={loading}>
+        {failure && (
+          <ApiErrorNotice error={failure}>
+            {approvalHint && <p>{LOGIN_APPROVAL_HINT}</p>}
+            {recovery === 'security' && (
+              <Button type="button" disabled={loading} onClick={() => void refreshSecurity()}>Refresh security check</Button>
+            )}
+          </ApiErrorNotice>
+        )}
         <Input
           id="school-id"
-          label="School ID"
+          label="CTU-G ID"
           type="text"
           autoComplete="username"
-          placeholder="Enter your School ID"
+          placeholder="Enter your CTU-G ID"
+          maxLength={50}
           value={schoolId}
-          onChange={(e) => setSchoolId(e.target.value)}
+          onChange={(e) => { setSchoolId(e.target.value); setErrors((current) => ({ ...current, schoolId: undefined })); }}
           error={errors.schoolId}
         />
         <Input
@@ -89,8 +223,9 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
           type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           placeholder="Enter your password"
+          maxLength={256}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => { setPassword(e.target.value); setErrors((current) => ({ ...current, password: undefined })); }}
           error={errors.password}
           rightAdornment={
             <button
@@ -105,9 +240,11 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
           }
         />
 
-        <Button type="submit" fullWidth loading={loading}>
+        <Button type="submit" fullWidth loading={loading} disabled={retryWait > 0}
+          aria-describedby={retryWait > 0 ? 'login-retry-wait' : undefined}>
           {loading ? 'Signing in…' : 'Sign In'}
         </Button>
+        {retryWait > 0 && <p id="login-retry-wait" className="fg-muted text-xs">Try again in {retryWait} seconds.</p>}
 
         {notice && (
           <p role="status" className="notice rounded-lg px-3 py-2 text-xs">
@@ -116,6 +253,7 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
         )}
       </form>
 
+      <p className="mt-3 text-center text-xs"><a className="link-accent" href="/forgot-password">Forgot Password?</a></p>
       {REGISTER_PATH && (
         <p className="fg-muted mt-5 text-center text-xs">
           Don’t have an account?{' '}

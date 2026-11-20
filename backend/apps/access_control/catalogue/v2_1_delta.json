@@ -1,0 +1,41 @@
+{
+  "schema_version": "catalogue-delta-v2.1",
+  "base": {
+    "manifest_version": "catalogue-v2.0",
+    "path": "backend/apps/access_control/catalogue/v2_0.json",
+    "sha256": "a7e2705236a37522b77468fd4154113d19e7e64bc479cfa420c41d7744a2548b"
+  },
+  "addendum": {
+    "path": "docs/architecture/AR-3B2A-ADDENDUM-v2.1.md",
+    "sha256": "78a3c7e2e0afd07a7c4c052e13f3503378076dc7f487d9ecf3bf1dc940e1afb7"
+  },
+  "result": {
+    "schema_version": "static-catalogue-v2.1",
+    "manifest_version": "catalogue-v2.1",
+    "source_revision": "v2.1-review-1"
+  },
+  "operations": [
+    {
+      "op": "move_default_binding",
+      "permission_code": "access_control.role_assignments.ordinary.manage",
+      "from_role": "Admin",
+      "to_role": "Technical Super Admin"
+    },
+    {
+      "op": "restate_role_eligibility",
+      "role_name": "Admin",
+      "old": "Approved school-admin promotion; retain eligible pre-existing Instructor membership.",
+      "new": "Approved active Instructor promoted through a protected role procedure; retains Instructor."
+    },
+    {
+      "op": "restate_role_eligibility",
+      "role_name": "Technical Super Admin",
+      "old": "Protected governance assignment; complete Super Admin profile also requires Admin.",
+      "new": "Granted or revoked only by the Django Superuser through the protected procedure; requires approved active Instructor and Admin; retains both."
+    }
+  ],
+  "independent_review": {
+    "status": "OPEN",
+    "note": "Independent approval or signing of the addendum pin not performed."
+  }
+}

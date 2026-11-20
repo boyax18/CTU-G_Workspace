@@ -1,0 +1,3 @@
+# Task 2 verification dependency. No private keys or trust roots are included.
+# Reuses the version already pinned by requirements-outbox.txt.
+cryptography==46.0.4

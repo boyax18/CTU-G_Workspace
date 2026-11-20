@@ -15,8 +15,27 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+
+from apps.accounts.registration_review_api import (
+    PendingRegistrationDetailView,
+    PendingRegistrationRequestsView,
+)
 
 urlpatterns = [
+    path('api/v1/auth/', include('apps.accounts.urls')),
+    # WF-02.01 (D-31) list and WF-02.02 (D-37) detail: the ONLY two review routes, both GET-only and
+    # behind the same read switch (default off). Approve/reject (WF-02.03/02.04) remain unmounted;
+    # never include the isolated review URLconf here.
+    path(
+        'api/v1/admin/registration-requests/',
+        PendingRegistrationRequestsView.as_view(),
+        name='registration-review-pending',
+    ),
+    path(
+        'api/v1/admin/registration-requests/<int:account_id>/',
+        PendingRegistrationDetailView.as_view(),
+        name='registration-review-detail',
+    ),
     path('admin/', admin.site.urls),
 ]

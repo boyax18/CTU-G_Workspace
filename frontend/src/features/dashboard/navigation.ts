@@ -12,6 +12,7 @@
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig.ts';
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig.ts';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig.ts';
+import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -20,6 +21,7 @@ export type DashboardView =
   // Account operations
   | 'registration-review'
   | 'account-directory'
+  | 'appointment-evidence'
   // Academic (own)
   | 'my-subjects'
   | 'my-clearance'
@@ -129,6 +131,13 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     // WF-02.05 (D-69, D-70): live only when its switch is on; Django still decides access.
     requiredAny: ['accounts.school_accounts.read'], integration: ACCOUNT_STATUS_ENABLED ? 'shell' : planned,
     description: 'Eligible school accounts and their status.' },
+
+  // D-112: recording/reviewing campus appointment evidence is SCHOOL operation,
+  // not Access Control Management. Exact stored permissions drive visibility.
+  { id: 'appointment-evidence', label: 'Appointment evidence', icon: 'clipboard', group: 'account-operations',
+    requiredAny: ['access_control.appointments.record', 'access_control.appointments.verify'],
+    integration: APPOINTMENT_MANAGEMENT_ENABLED ? 'shell' : planned,
+    description: 'Record and independently review official appointments; never assign roles here.' },
 
   { id: 'my-subjects', label: 'My subjects', icon: 'book', group: 'academic',
     requiredAny: ['academic.profile.self.read'], integration: planned,

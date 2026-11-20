@@ -9,7 +9,10 @@ from django.urls import path
 
 from .role_assignment_api import AssignSchoolAdminView, RevokeSchoolAdminView, RoleAssignmentListView
 from .ordinary_role_assignment_api import OrdinaryRoleChangeView, OrdinaryRoleListView
-from .appointment_registry_api import AppointmentReviewQueueView, AppointmentReviewView, AppointmentSubmitView
+from .appointment_registry_api import (
+    AppointmentCandidateView, AppointmentMySubmissionsView, AppointmentVerifiedQueueView,
+    AppointmentReviewQueueView, AppointmentReviewView, AppointmentSubmitView,
+)
 
 urlpatterns = [
     path("", RoleAssignmentListView.as_view(), name="role-assignments-list"),
@@ -18,6 +21,10 @@ urlpatterns = [
     # D-104: separate default-off School Admin appointment evidence registry;
     # independent recorder/verifier permissions are NOT provisioned.
     path("appointments/", AppointmentSubmitView.as_view(), name="ordinary-appointment-submit"),
+    # D-112: exact ID lookup, recorder status and revocation queue. All default-off.
+    path("appointments/candidate/", AppointmentCandidateView.as_view(), name="ordinary-appointment-candidate"),
+    path("appointments/my-submissions/", AppointmentMySubmissionsView.as_view(), name="ordinary-appointment-submissions"),
+    path("appointments/verified/", AppointmentVerifiedQueueView.as_view(), name="ordinary-appointment-verified"),
     path("appointments/review-queue/", AppointmentReviewQueueView.as_view(), name="ordinary-appointment-review-queue"),
     path("appointments/<int:appointment_id>/<str:action>/", AppointmentReviewView.as_view(), name="ordinary-appointment-review"),
     # D-100: extra default-off authorization gate; no Technical Super Admin or base-role writer.

@@ -162,7 +162,10 @@ def _ordinary_change(*, actor, target_id, role_name, assign, expected_present):
         if assign:
             # The verifier is intentionally default-deny until an independent
             # approved appointment source exists. No caller-provided proof.
-            if appointment_verified_for(target_account_id=target_id, role_name=role_name) is not True:
+            if appointment_verified_for(
+                target_account_id=target_id, role_name=role_name,
+                assigning_account_id=reviewer.pk, for_grant=True,
+            ) is not True:
                 raise RoleChangeUnavailable("An independently verified appointment is required.")
             row = AccountRole.objects.using(DEFAULT_DB_ALIAS).create(account=target, role=role, assigned_by=reviewer)
             record_access_audit_receipt(actor=reviewer, target=target, role=role, action=ASSIGN_ACTION,

@@ -64,3 +64,11 @@ WORKSPACE_PUBLIC_BASE_URL = "http://localhost:5173"  # locmem + loopback only; n
 WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED = (
     os.environ.get("CTUG_ORDINARY_ROLE_ASSIGNMENT_LOCAL_ACK") == "LOCAL_WF0301_D100"
 )
+
+# WF-03.01 D-110: evidence registrar/reviewer API staged; independent permission
+# and campus-authority policy still unapproved. Leave env marker UNSET.
+WORKSPACE_ORDINARY_APPOINTMENT_REGISTRY_ENABLED = (
+    os.environ.get("CTUG_APPOINTMENT_REGISTRY_LOCAL_ACK") == "LOCAL_WF0301_D110"
+)
+# No settings module enables WORKSPACE_ORDINARY_APPOINTMENT_EVIDENCE_ENABLED.
+# Grants remain denied even if this staging endpoint is later examined.

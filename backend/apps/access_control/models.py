@@ -212,3 +212,73 @@ class AccessAuditLog(models.Model):
 
     class Meta:
         db_table = "access_audit_logs"
+
+
+class OrdinaryAppointment(models.Model):
+    """Reviewable evidence of an external campus appointment, NOT a role grant.
+
+    Status is controlled only through the gated appointment_registry service.
+    The document digest is an integrity reference, never proof on its own.
+    """
+
+    STATUS_CHOICES = [
+        ("Submitted", "Submitted"),
+        ("Verified", "Verified"),
+        ("Rejected", "Rejected"),
+        ("Revoked", "Revoked"),
+    ]
+    ROLE_CHOICES = [("Treasurer", "Treasurer"), ("SSG Advisor", "SSG Advisor")]
+
+    appointment_id = models.AutoField(primary_key=True)
+    account = models.ForeignKey(
+        settings.AUTH_USER_MODEL, db_column="account_id", on_delete=models.PROTECT,
+        related_name="ordinary_appointments",
+    )
+    role_name = models.CharField(max_length=50, choices=ROLE_CHOICES)
+    document_sha256 = models.CharField(max_length=64)
+    valid_from = models.DateTimeField()
+    valid_until = models.DateTimeField()
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="Submitted")
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, db_column="submitted_by", on_delete=models.PROTECT,
+        related_name="ordinary_appointments_submitted", editable=False,
+    )
+    submitted_at = models.DateTimeField(auto_now_add=True, editable=False)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, db_column="reviewed_by", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="ordinary_appointments_reviewed", editable=False,
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True, editable=False)
+    revoked_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, db_column="revoked_by", on_delete=models.PROTECT,
+        null=True, blank=True, related_name="ordinary_appointments_revoked", editable=False,
+    )
+    revoked_at = models.DateTimeField(null=True, blank=True, editable=False)
+    # Traceability lives on the appointment row, not in the protected audit.py
+    # snapshot contract (D-84). Each FK refers to an append-only audit receipt.
+    submission_receipt = models.ForeignKey(
+        "access_control.AccessAuditLog", db_column="submission_receipt_id",
+        on_delete=models.PROTECT, null=True, blank=True, editable=False,
+        related_name="submitted_appointment_evidence",
+    )
+    review_receipt = models.ForeignKey(
+        "access_control.AccessAuditLog", db_column="review_receipt_id",
+        on_delete=models.PROTECT, null=True, blank=True, editable=False,
+        related_name="reviewed_appointment_evidence",
+    )
+    revocation_receipt = models.ForeignKey(
+        "access_control.AccessAuditLog", db_column="revocation_receipt_id",
+        on_delete=models.PROTECT, null=True, blank=True, editable=False,
+        related_name="revoked_appointment_evidence",
+    )
+
+    class Meta:
+        db_table = "ordinary_appointments"
+        constraints = [
+            models.UniqueConstraint(fields=["account", "role_name", "document_sha256"],
+                                    name="ordinary_appt_document_unique"),
+        ]
+        indexes = [
+            models.Index(fields=["account", "role_name", "status"], name="ordinary_appt_lookup"),
+            models.Index(fields=["status", "valid_until"], name="ordinary_appt_expiry"),
+        ]

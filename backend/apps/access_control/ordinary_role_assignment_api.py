@@ -52,7 +52,7 @@ def _ordinary_accounts(actor):
             .exclude(pk=actor.pk).filter(Exists(base)).filter(~Exists(privileged)))
 
 
-def _actions(roles, account_id):
+def _actions(roles, account_id, assigning_account_id):
     # These are DISPLAY HINTS, not grants: the service checks the exact state
     # under a row lock. No forged client claim can open the evidence gate.
     result = {}
@@ -63,7 +63,9 @@ def _actions(roles, account_id):
             result[role] = None
         elif role in role_set:
             result[role] = "revoke"
-        elif appointment_verified_for(target_account_id=account_id, role_name=role) is True:
+        elif appointment_verified_for(
+            target_account_id=account_id, role_name=role, assigning_account_id=assigning_account_id,
+        ) is True:
             result[role] = "assign"
         else:
             result[role] = None
@@ -95,7 +97,7 @@ class OrdinaryRoleListView(OrdinaryRoleAssignmentAPI):
         results = []
         for account in rows[:PAGE_SIZE]:
             roles = _active_roles(account.pk)
-            actions = _actions(roles, account.pk)
+            actions = _actions(roles, account.pk, actor.pk)
             results.append({
                 "account_id": account.pk, "school_id": account.school_id,
                 "full_name": _full_name(account), "roles": roles,

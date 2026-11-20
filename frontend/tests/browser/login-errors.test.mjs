@@ -8,7 +8,7 @@ const signedIn = { authenticated: true, account: { school_id: '2026001', roles: 
 const loginError = (code) => ({ error: { code, message: privateText } });
 
 async function signIn(page, id = '2026001', password = 'Copper!River7392') {
-  await page.getByLabel('School ID or Staff ID', { exact: true }).fill(id);
+  await page.getByLabel('CTU-G ID', { exact: true }).fill(id);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign In', exact: true }).last().press('Enter');
 }
@@ -25,7 +25,7 @@ test('wrong credentials show the shared message, approval hint and reference, an
     assert.match(text, new RegExp(reference));
     assert.ok(!(await page.locator('body').innerText()).includes(privateText));
     assert.equal(await page.getByLabel('Password', { exact: true }).inputValue(), '');
-    assert.equal(await page.getByLabel('School ID or Staff ID', { exact: true }).inputValue(), '2026001');
+    assert.equal(await page.getByLabel('CTU-G ID', { exact: true }).inputValue(), '2026001');
     assert.equal(seen.mutations.length, 1);
     assert.deepEqual(Object.keys(seen.mutations[0].body).sort(), ['password', 'school_id']);
   }, '/');
@@ -96,7 +96,7 @@ test('an existing session is offered the dashboard, and Sign Out returns to the 
     assert.match(await page.locator('#login').innerText(), /2026001/);
     await page.getByRole('button', { name: 'Continue to Dashboard' }).waitFor();
     await page.getByRole('button', { name: 'Sign Out', exact: true }).last().press('Enter');
-    await page.getByLabel('School ID or Staff ID', { exact: true }).waitFor();
+    await page.getByLabel('CTU-G ID', { exact: true }).waitFor();
     assert.deepEqual(seen.mutations.map((m) => m.path), ['/api/v1/auth/logout/']);
   }, '/');
 });

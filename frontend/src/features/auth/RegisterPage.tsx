@@ -137,7 +137,7 @@ export default function RegisterPage() {
                 {recovery === 'security' && <Button type="button" disabled={loading} onClick={() => void recover('security')}>Refresh security check</Button>}
                 {(needsStatus || recovery === 'check_status') && <Button type="button" disabled={loading} onClick={() => void recover('status')}>Check registration status</Button>}
                 {failure.code === 'conflict' && <div className="space-y-2">
-                  <p>Check both your {data.requested_role === 'Instructor' ? 'Staff ID' : 'School ID'} and email, then try again. If you already submitted an application, wait for its review.</p>
+                  <p>Check both your CTU-G ID and email, then try again. If you already submitted an application, wait for its review.</p>
                   <p>Already have an approved account? <a href="/" className="link-accent underline">Sign in</a>.</p>
                 </div>}
                 {needsStatus && <Button type="button" disabled={loading} onClick={() => { setNeedsStatus(false); setFailure(null); setData(current => ({ ...current, password: '', password_confirmation: '' })); }}>Restart registration</Button>}
@@ -160,12 +160,12 @@ export default function RegisterPage() {
                 <fieldset className="min-w-0">
                   <legend className={sectionHeading}>01 — Login Credentials</legend>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    {field('school_id', data.requested_role === 'Instructor' ? 'Staff ID' : 'School ID', 7, 'username', true)}
+                    {field('school_id', 'CTU-G ID', 7, 'username', true)}
                     {field('email', 'Email', 150, 'email', true, 'email')}
                     {field('password', 'Password', 128, 'new-password', true, 'password')}
                     {field('password_confirmation', 'Confirm Password', 128, 'new-password', true, 'password')}
                   </div>
-                  <p id="register-credentials-hint" className="fg-muted mt-3 text-xs leading-relaxed">{data.requested_role === 'Instructor' ? 'Staff ID must contain 1–7 digits. Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your name, staff ID, or email.' : 'School ID must contain 1–7 digits. Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your name, school ID, or email.'}</p>
+                  <p id="register-credentials-hint" className="fg-muted mt-3 text-xs leading-relaxed">CTU-G ID must contain 1–7 digits. Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your name, CTU-G ID, or email.</p>
                 </fieldset>
 
                 <fieldset className="min-w-0">

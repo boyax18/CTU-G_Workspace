@@ -17,7 +17,7 @@ test('Instructor OTP status uses the shared Student conflict message for an untr
   }, verifyPath);
 });
 
-test('Instructor Staff ID form has no school section and requires OTP before School Admin confirmation', async () => {
+test('Instructor CTU-G ID form has no school section and requires OTP before School Admin confirmation', async () => {
   await scene(({ path, respond }) => path.endsWith('/verify/') ? respond({ status: 'completed', requested_role: 'Instructor' }) : respond(saved, 202), async (page, seen) => {
     await fillRegistration(page, 'Instructor');
     assert.equal(await page.getByText('03 — School Information', { exact: true }).count(), 0);
@@ -49,10 +49,10 @@ for (const options of [
       const alert = page.getByRole('alert').first();
       await alert.waitFor();
       assert.ok((await alert.innerText()).includes(API_MESSAGES.conflict));
-      assert.match(await alert.innerText(), /Check both your Staff ID and email, then try again/);
+      assert.match(await alert.innerText(), /Check both your CTU-G ID and email, then try again/);
       assert.match(await alert.innerText(), /wait for its review/);
       assert.doesNotMatch(await alert.innerText(), /PRIVATE|We did not send|Password reset is not available|School Admin office/);
-      assert.equal(await page.getByLabel('Staff ID *', { exact: true }).inputValue(), '1234567');
+      assert.equal(await page.getByLabel('CTU-G ID *', { exact: true }).inputValue(), '1234567');
       assert.equal(await page.getByLabel('Email *', { exact: true }).inputValue(), 'fictional@example.edu');
       assert.equal(await page.getByLabel('Password *', { exact: true }).inputValue(), '');
       assert.equal(await page.getByLabel('Confirm Password *', { exact: true }).inputValue(), '');
@@ -161,11 +161,11 @@ test('Instructor delivery failure uses shared bounded resend recovery and countd
   }, '/register');
 });
 
-test('Student-style cancellation returns Instructor to the Staff ID form', async () => {
+test('Student-style cancellation returns Instructor to the CTU-G ID form', async () => {
   await scene(({ path, respond }) => path.endsWith('/cancel/') ? respond({ status: 'cancelled', requested_role: 'Instructor' }) : respond(saved, 202), async (page, seen) => {
     await page.getByRole('button', { name: 'Cancel registration', exact: true }).press('Enter');
     await page.waitForURL('**/register?requested_role=Instructor');
-    await page.getByLabel('Staff ID *', { exact: true }).waitFor();
+    await page.getByLabel('CTU-G ID *', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Register as', { exact: true }).inputValue(), 'Instructor');
     assert.equal(seen.mutations.length, 1);
     assert.equal(seen.mutations[0].path, '/api/v1/auth/register/cancel/');

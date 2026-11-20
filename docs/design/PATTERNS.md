@@ -54,12 +54,12 @@ Test at 360, 768, 1024 and 1440px. No horizontal page scroll at 360px. Only tabl
 
 ## 3. Forms and validation (Standard, matching the current registration and login forms)
 
-1. **Labels are always visible** above the field. Placeholders are optional examples ("Enter your School ID"), never the label.
+1. **Labels are always visible** above the field. Placeholders are optional examples ("Enter your CTU-G ID"), never the label.
 2. **Required marking:** append ` *` to required labels and ` (optional)` to optional ones, and say once near the top: "Fields marked * are required." (`fg-muted text-xs`).
 3. **Helper text:** below the field or group, `fg-muted mt-3 text-xs leading-relaxed`, linked with `aria-describedby` (see `register-credentials-hint`).
 4. **Validation timing:** validate **on submit**. When a field changes, clear that field's error (and the form-level failure). Don't validate on every keystroke. Don't add blur validation to existing approved forms.
 5. **On a failed submit:** set field errors, show an `ApiErrorNotice` summary ("Check the highlighted registration fields."), pass `announceError={false}` to the fields, and **focus the first invalid field**.
-6. **Error messages** are specific and actionable, in the shape "what is wrong + how to fix it": "Please enter your School ID.", "Enter the six-digit code from your email." Never "Invalid input".
+6. **Error messages** are specific and actionable, in the shape "what is wrong + how to fix it": "Please enter your CTU-G ID.", "Enter the six-digit code from your email." Never "Invalid input".
 7. **The submit button stays enabled**. Disable it only while a request is in flight, while a throttle countdown runs, or while a hard prerequisite is missing (for example, no code has been delivered yet). A disabled button needs visible text that explains why ("Try again in 42 seconds.").
 8. **Double-submit guard:** an `inFlight` ref plus the `loading` state. Wrap fields in `<fieldset disabled={loading}>` while submitting, and set `aria-busy` on the form.
 9. **Secrets:** clear password and OTP inputs after conflict, security, delivery or uncertain outcomes. Keep the safe values so the user can correct them.
@@ -124,7 +124,7 @@ Say in plain language what failed and offer a recovery action ("We could not ver
 <div className="overflow-x-auto">
   <table className="w-full min-w-[580px] text-left text-sm">
     <thead><tr className="dashboard-muted border-b text-xs uppercase tracking-wide">
-      <th scope="col" className="px-2 py-3">School ID</th>…</tr></thead>
+      <th scope="col" className="px-2 py-3">CTU-G ID</th>…</tr></thead>
     <tbody><tr className="border-b last:border-0">
       <td className="dashboard-heading px-2 py-3 font-semibold">…</td>…</tr></tbody>
   </table>
@@ -160,7 +160,7 @@ The key column is first and `font-semibold`. Dates are muted. Actions are compac
 | Buttons | Start with a verb and name the result: "Refresh list", "Resend code", "Return to overview", "Confirm rejection". No "OK", "Submit" or "Yes" |
 | In progress | Present participle + `…` (U+2026, not three dots): "Signing in…", "Requesting verification…" |
 | Confirmations | Title phrased as a question ("Confirm approval?") + a consequence sentence |
-| Product terms | **School ID** (students), **Staff ID** (instructors), **School Admin**, **Workspace**, **CTU-G Workspace**, **sign in / sign out** (not log in or log out), "registration", "verification code" |
+| Product terms | **CTU-G ID** (all account roles), **School Admin**, **Workspace**, **CTU-G Workspace**, **sign in / sign out** (not log in or log out), "registration", "verification code" |
 | Brand and campus | Import `BRAND_NAME` and `CAMPUS_NAME` from `utils/constants.ts`. Don't retype them |
 | Tone | Plain, calm and factual. Second person ("your account"). No exclamation marks, jokes or blame |
 | Security copy | Never confirm whether an ID or email exists. Reuse: "We could not complete this registration. Please check your information or contact support." Don't invent support contacts (the official contact is pending owner input) |

@@ -22,7 +22,7 @@ const row = (n) => ({
   requested_role: 'Student', created_at: '2026-11-10T09:15:00+08:00', email_verified: true,
 });
 const detail = (id, overrides = {}) => ({
-  account_id: id, school_id: '7242001', id_label: 'School ID',
+  account_id: id, school_id: '7242001', id_label: 'CTU-G ID',
   name: { first: 'Maria', middle: 'Luz', last: 'Santos', suffix: null }, full_name: 'Maria Luz Santos',
   email: 'maria.santos@example.edu', requested_role: 'Student', request_status: 'Pending',
   created_at: '2026-11-10T09:15:00+08:00',
@@ -94,7 +94,7 @@ test('a reviewer picks a fixed reason, confirms in a destructive dialog, and rej
     await dialog.waitFor();
     assert.equal(await focusedText(page), 'Cancel', 'Cancel first and focused');
     const text = await dialog.innerText();
-    assert.ok(text.includes(`Reject Maria Luz Santos (School ID 7242001) with the reason “${IDENTITY}”?`));
+    assert.ok(text.includes(`Reject Maria Luz Santos (CTU-G ID 7242001) with the reason “${IDENTITY}”?`));
     assert.ok(text.includes('deletes the applicant\'s account and registration data'));
     assert.ok(text.includes('queues a rejection email to maria.santos@example.edu'));
     const confirm = dialog.getByRole('button', { name: 'Confirm rejection' });

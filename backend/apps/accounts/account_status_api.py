@@ -26,7 +26,6 @@ from .registration_review_api import (
 
 QUERY_FIELDS = frozenset({"page", "q", "status"})
 STATUSES = {"active": True, "inactive": False}
-ID_LABELS = {"Instructor": "Staff ID"}
 
 
 def _reserved_role_ids():
@@ -50,8 +49,7 @@ def _roles(account):
 
 
 def _id_label(account):
-    role = getattr(account.requested_role, "role_name", None)
-    return ID_LABELS.get(role, "School ID")
+    return "CTU-G ID"
 
 
 # WF-02.06 D-74 (owner-approved 18 Nov 2026): the ONLY audit events a school-account reader may see,

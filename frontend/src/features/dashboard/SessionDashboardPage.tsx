@@ -138,7 +138,7 @@ function Profile() {
     <section className="dashboard-panel rounded-2xl border p-6 sm:p-8" aria-labelledby="profile-details">
       <h2 id="profile-details" className="dashboard-heading mb-6 text-lg font-semibold">Account details</h2>
       <dl className="grid gap-6 text-sm sm:grid-cols-2">
-        <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">School ID</dt><dd className="dashboard-heading mt-2 font-semibold">{account.school_id}</dd></div>
+        <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">CTU-G ID</dt><dd className="dashboard-heading mt-2 font-semibold">{account.school_id}</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Assigned roles</dt><dd className="dashboard-heading mt-2 font-semibold">{account.roles.join(', ') || 'None'}</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Session status</dt><dd className="dashboard-heading mt-2 font-semibold">Authenticated</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Effective permission hints</dt><dd className="dashboard-heading mt-2 font-semibold">{permissions.length}</dd></div>

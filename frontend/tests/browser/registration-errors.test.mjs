@@ -59,7 +59,7 @@ test('missing or expired session shows restart with no code input or automatic w
 
 test('generic registration conflict retains safe inputs, clears passwords and never identifies a field', async () => {
   await scene(({ respond }) => respond(failure('conflict'), 409), async (page, seen) => {
-    await page.getByLabel('School ID *', { exact: true }).fill('1234567');
+    await page.getByLabel('CTU-G ID *', { exact: true }).fill('1234567');
     await page.getByLabel('Email *', { exact: true }).fill('fictional@example.edu');
     await page.getByLabel('First Name *', { exact: true }).fill('Test');
     await page.getByLabel('Last Name *', { exact: true }).fill('Applicant');
@@ -70,8 +70,8 @@ test('generic registration conflict retains safe inputs, clears passwords and ne
     const alert = await page.getByRole('alert').first().innerText();
     assert.equal(new URL(page.url()).pathname, '/register');
     assert.match(alert, /We could not complete this registration\. Please check your information or contact support\./);
-    assert.match(alert, /Check both your School ID and email/);
-    assert.doesNotMatch(alert, /School ID (?:is |has been )?already|email (?:is |has been )?already|PRIVATE/i);
+    assert.match(alert, /Check both your CTU-G ID and email/);
+    assert.doesNotMatch(alert, /CTU-G ID (?:is |has been )?already|email (?:is |has been )?already|PRIVATE/i);
     assert.equal(await page.getByRole('button', { name: 'Review registration details' }).count(), 0);
     assert.equal(await page.getByRole('link', { name: 'Sign in', exact: true }).getAttribute('href'), '/');
     assert.equal(await page.getByLabel('Email *', { exact: true }).inputValue(), 'fictional@example.edu');
@@ -231,7 +231,7 @@ test('R-08: registration validation is announced once by the summary, with field
     await page.getByRole('button', { name: 'Proceed Email Verification', exact: true }).press('Enter');
     await page.getByRole('alert').first().waitFor();
     assert.equal(await page.getByRole('alert').count(), 1);
-    const id = page.getByLabel('School ID *', { exact: true });
+    const id = page.getByLabel('CTU-G ID *', { exact: true });
     assert.equal(await id.getAttribute('aria-invalid'), 'true');
     assert.equal(await id.getAttribute('aria-describedby'), 'register-credentials-hint register-school_id-error');
     assert.equal(seen.mutations.length, 0);

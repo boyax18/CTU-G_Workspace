@@ -161,5 +161,5 @@ class Command(BaseCommand):
 
         self.stdout.write("SANDBOX SEEDED: one demo Admin, two pending demo accounts, "
                           "one active demo Student, three active Admin grants, three audit receipts.")
-        self.stdout.write("SANDBOX LOGIN: School ID SANDBOX-ADMIN-001 (use the unique password entered).")
+        self.stdout.write("SANDBOX LOGIN: CTU-G ID SANDBOX-ADMIN-001 (use the unique password entered).")
         self.stdout.write("Original ctug_workspace database was not selected or written.")

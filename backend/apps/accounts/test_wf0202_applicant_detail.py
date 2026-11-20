@@ -114,7 +114,7 @@ class ApplicantDetailTests(TestCase):
         self.assertEqual(response.status_code, 200, response.content)
         self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(response.json(), {
-            "account_id": target.pk, "school_id": "7240001", "id_label": "School ID",
+            "account_id": target.pk, "school_id": "7240001", "id_label": "CTU-G ID",
             "name": {"first": "Maria", "middle": "Luz", "last": "Santos", "suffix": "Jr."},
             "full_name": "Maria Luz Santos Jr.", "email": "maria.santos@example.edu",
             "requested_role": "Student", "request_status": "Pending", "created_at": target.created_at.isoformat(),
@@ -126,7 +126,7 @@ class ApplicantDetailTests(TestCase):
     def test_instructor_detail_uses_staff_id_and_employment(self):
         target = self.applicant("0012345", role=self.instructor, middle_name="")
         body = self.get(detail(target.pk)).json()
-        self.assertEqual((body["id_label"], body["school_id"], body["requested_role"]), ("Staff ID", "0012345", "Instructor"))
+        self.assertEqual((body["id_label"], body["school_id"], body["requested_role"]), ("CTU-G ID", "0012345", "Instructor"))
         self.assertEqual(body["institutional_check"], {"subject": "employment", "verified_by_workspace": False})
         self.assertIsNone(body["name"]["middle"])
 

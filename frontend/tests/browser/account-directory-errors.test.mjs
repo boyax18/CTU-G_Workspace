@@ -13,7 +13,7 @@ const ACTIVATE = 'accounts.school_accounts.activate';
 const API = '/api/v1/admin/school-accounts/';
 const VIEW = '/dashboard?view=account-directory';
 const session = (permissions) => ({ authenticated: true, account: { school_id: 'ADMIN-001', roles: ['Admin'] }, permissions });
-const item = (id, overrides = {}) => ({ account_id: id, school_id: `72430${String(id % 100).padStart(2, '0')}`, id_label: 'School ID',
+const item = (id, overrides = {}) => ({ account_id: id, school_id: `72430${String(id % 100).padStart(2, '0')}`, id_label: 'CTU-G ID',
   full_name: `Person ${id} Reyes`, roles: ['Student'], is_active: true, ...overrides });
 const detail = (id, overrides = {}) => ({ ...item(id), name: { first: 'Person', middle: null, last: 'Reyes', suffix: null },
   request_status: 'Approved', created_at: '2026-11-10T09:15:00+08:00', can_reactivate: true,
@@ -54,7 +54,7 @@ function server({ permissions = [READ, SUSPEND, ACTIVATE], detailFor = (id) => d
     if (path === API) {
       state.lists.push(new URL(request.url()).search);
       return respond({ results: [item(8101), item(8102, { is_active: false, roles: ['Treasurer'] }),
-        item(8103, { id_label: 'Staff ID', school_id: '0012345', roles: ['Instructor'] })], page: 1, page_size: 20, has_next: false });
+        item(8103, { id_label: 'CTU-G ID', school_id: '0012345', roles: ['Instructor'] })], page: 1, page_size: 20, has_next: false });
     }
     const one = path.match(/^\/api\/v1\/admin\/school-accounts\/(\d+)\/$/);
     if (one) {
@@ -81,12 +81,12 @@ test('directory lists eligible accounts with status in words, filters on the ser
   await scene(fake.handle, async (page) => {
     await page.getByRole('heading', { name: 'School accounts', level: 2 }).waitFor();
     const list = await page.getByRole('list', { name: 'School accounts' }).innerText();
-    for (const text of ['Person 8101 Reyes', 'Active', 'Inactive', 'Treasurer', 'Staff ID 0012345']) assert.ok(list.includes(text), text);
-    await page.getByLabel('Search School ID, Staff ID or name').fill('reyes');
+    for (const text of ['Person 8101 Reyes', 'Active', 'Inactive', 'Treasurer', 'CTU-G ID 0012345']) assert.ok(list.includes(text), text);
+    await page.getByLabel('Search CTU-G ID or name').fill('reyes');
     await page.getByLabel('Status').selectOption('inactive');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await until(() => fake.state.lists.some((q) => q.includes('q=reyes') && q.includes('status=inactive')), 'filtered list');
-    await page.getByRole('link', { name: 'View account for School ID 7243001' }).click();
+    await page.getByRole('link', { name: 'View account for CTU-G ID 7243001' }).click();
     await page.getByRole('heading', { name: 'Person 8101 Reyes', level: 2 }).waitFor();
     const main = await page.locator('main').innerText();
     assert.ok(main.includes('Active: can sign in') && main.includes('Roles') && main.includes('managed separately'));

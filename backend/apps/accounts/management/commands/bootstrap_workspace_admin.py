@@ -46,9 +46,9 @@ class Command(BaseCommand):
             "This operation creates a NEW approved Workspace Admin, not a Django Superuser."
         ))
         self.stdout.write("Pending Student/Instructor registrations remain unchanged.")
-        operator_id = input("Existing Django Superuser school ID: ").strip()
+        operator_id = input("Existing Django Superuser CTU-G ID: ").strip()
         operator_password = getpass.getpass("Django Superuser password (hidden): ")
-        new_school_id = input("NEW Workspace Admin school ID: ").strip()
+        new_school_id = input("NEW Workspace Admin CTU-G ID: ").strip()
         new_email = input("NEW Workspace Admin email: ").strip()
         new_password = getpass.getpass("NEW Workspace Admin password (hidden): ")
         password_confirmation = getpass.getpass("Confirm NEW Admin password (hidden): ")

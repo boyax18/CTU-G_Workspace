@@ -39,8 +39,8 @@ const DEFAULT_FILTERS: Filters = { q: '', role: '', proof: '', sort: 'submitted'
 const SORT_LABELS: Record<PendingApplicationSort, string> = {
   submitted: 'Oldest submitted first',
   '-submitted': 'Newest submitted first',
-  school_id: 'School ID, ascending',
-  '-school_id': 'School ID, descending',
+  school_id: 'CTU-G ID, ascending',
+  '-school_id': 'CTU-G ID, descending',
 };
 const NO_PROOF = 'No email proof on record';
 
@@ -108,7 +108,7 @@ const reviewLinkClass = 'dashboard-accent inline-flex min-h-11 items-center gap-
 
 /** A real link (new tab works); a plain click opens the detail inside this view. */
 function ReviewLink({ item, onOpen }: { item: PendingRegistrationItem; onOpen: (id: number) => void }) {
-  const label = item.requested_role === 'Instructor' ? 'Staff ID' : 'School ID';
+  const label = 'CTU-G ID';
   const follow = (event: MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
@@ -232,7 +232,7 @@ export default function PendingApplicationsPanel() {
         <form role="search" aria-label="Pending applications" noValidate onSubmit={applyFilters}
           className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
           <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium sm:col-span-2 lg:col-span-1">
-            Search School ID or name
+            Search CTU-G ID or name
             <input ref={searchRef} type="search" value={draft.q} maxLength={PENDING_APPLICATION_SEARCH_MAX}
               autoComplete="off" spellCheck={false} placeholder="e.g. 7240001 or Santos"
               aria-describedby={searchError ? `${searchErrorId} ${searchHint}` : searchHint}
@@ -268,7 +268,7 @@ export default function PendingApplicationsPanel() {
             </select>
           </label>
           <p id={searchHint} className="dashboard-muted text-xs sm:col-span-2 lg:col-span-4">
-            School IDs match from the start; names match any part. Select Apply filters or press Enter to search.
+            CTU-G IDs match from the start; names match any part. Select Apply filters or press Enter to search.
           </p>
           {searchError && (
             // Existing tokens only: --db-error is still Proposed (TOKENS.md §1.4). Not colour-only.
@@ -318,7 +318,7 @@ export default function PendingApplicationsPanel() {
                   <caption className="sr-only">Pending applications, page {page}</caption>
                   <thead>
                     <tr className="dashboard-muted border-b text-xs uppercase tracking-wide">
-                      <th scope="col" className="px-2 py-3">School ID</th>
+                      <th scope="col" className="px-2 py-3">CTU-G ID</th>
                       <th scope="col" className="px-2 py-3">Name</th>
                       <th scope="col" className="px-2 py-3">Requested role</th>
                       <th scope="col" className="px-2 py-3">Submitted</th>

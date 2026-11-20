@@ -65,7 +65,7 @@ test('rejects unexpected or sensitive fields instead of forwarding them to the U
   assert.throws(() => parsePendingRegistrationPage(payload));
 });
 
-test('rejects invalid role, school ID and missing required fields', () => {
+test('rejects invalid role, CTU-G ID and missing required fields', () => {
   for (const entry of [
     { ...example().results[0], requested_role: 'Admin' },
     { ...example().results[0], school_id: '' },
@@ -315,7 +315,7 @@ test('WF-02.01 list client, when enabled, issues exactly one GET and never a wri
 
 // ---- WF-02.02 Verify and review applicant information (P-07) ----
 const detailExample = (overrides = {}) => ({
-  account_id: 910001, school_id: '7240001', id_label: 'School ID',
+  account_id: 910001, school_id: '7240001', id_label: 'CTU-G ID',
   name: { first: 'Maria', middle: null, last: 'Santos', suffix: null }, full_name: 'Maria Santos',
   email: 'maria@example.edu', requested_role: 'Student', request_status: 'Pending',
   created_at: '2026-11-10T09:15:00+08:00',
@@ -343,10 +343,10 @@ test('WF-02.02 parser accepts the four evidence states and both roles', () => {
   const noEmail = detailExample({ email: null, email_evidence: { state: 'no_email', verified_at: null } });
   assert.equal(contract.parseApplicantDetail(noEmail, 910001).email, null);
   const instructor = detailExample({
-    school_id: '0012345', id_label: 'Staff ID', requested_role: 'Instructor',
+    school_id: '0012345', id_label: 'CTU-G ID', requested_role: 'Instructor',
     institutional_check: { subject: 'employment', verified_by_workspace: false }, data_notes: ['missing_profile'],
   });
-  assert.equal(contract.parseApplicantDetail(instructor, 910001).id_label, 'Staff ID');
+  assert.equal(contract.parseApplicantDetail(instructor, 910001).id_label, 'CTU-G ID');
 });
 
 test('WF-02.02 parser refuses extra, inconsistent or sensitive fields', () => {
@@ -354,7 +354,7 @@ test('WF-02.02 parser refuses extra, inconsistent or sensitive fields', () => {
     detailExample({ password_hash: 'x' }),
     detailExample({ token: 'x' }),
     detailExample({ account_id: 910002 }),
-    detailExample({ id_label: 'Staff ID' }),
+    detailExample({ id_label: 'ID' }),
     detailExample({ request_status: 'Approved' }),
     detailExample({ requested_role: 'Admin' }),
     detailExample({ email_evidence: { state: 'verified', verified_at: null } }),

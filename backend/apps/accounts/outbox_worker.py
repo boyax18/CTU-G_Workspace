@@ -224,7 +224,7 @@ def _message_for(row):
         return (
             "CTU-G Workspace: Registration approved",
             "Your CTU-G Workspace registration has been approved. "
-            "You may now sign in using your School ID and password.\n\n"
+            "You may now sign in using your CTU-G ID and password.\n\n"
             "If you did not request an account, contact your campus office.",
         )
     if row.template_code == "registration.rejected":

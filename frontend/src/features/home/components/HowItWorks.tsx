@@ -2,7 +2,7 @@ import Reveal from '../../../components/common/Reveal';
 import { GLASS } from '../../../utils/styles';
 
 const STEPS = [
-  { title: 'Sign in', description: 'Use your School ID and password to access your account.' },
+  { title: 'Sign in', description: 'Use your CTU-G ID and password to access your account.' },
   { title: 'Open your services', description: 'See the modules your authorized account allows.' },
   { title: 'Stay informed', description: 'Read general campus information on the public pages.' },
 ];

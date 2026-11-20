@@ -81,7 +81,7 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
 
   const validate = (): FormErrors => {
     const next: FormErrors = {};
-    if (!schoolId.trim()) next.schoolId = 'Please enter your School ID or Staff ID.';
+    if (!schoolId.trim()) next.schoolId = 'Please enter your CTU-G ID.';
     if (!password) next.password = 'Please enter your password.';
     return next;
   };
@@ -208,10 +208,10 @@ export default function HomeLoginForm({ onSubmit }: HomeLoginFormProps) {
         )}
         <Input
           id="school-id"
-          label="School ID or Staff ID"
+          label="CTU-G ID"
           type="text"
           autoComplete="username"
-          placeholder="Enter your School ID or Staff ID"
+          placeholder="Enter your CTU-G ID"
           maxLength={50}
           value={schoolId}
           onChange={(e) => { setSchoolId(e.target.value); setErrors((current) => ({ ...current, schoolId: undefined })); }}

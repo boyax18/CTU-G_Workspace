@@ -352,7 +352,7 @@ class RejectRegistrationRequestView(RegistrationReviewAPI):
         return Response({"account_id": decided_id, "status": "Rejected", "notification": "queued"})
 
 
-ID_LABELS = {"Student": "School ID", "Instructor": "Staff ID"}
+ID_LABELS = dict.fromkeys(("Student", "Instructor"), "CTU-G ID")
 INSTITUTIONAL_SUBJECT = {"Student": "enrollment", "Instructor": "employment"}
 MAX_ACCOUNT_ID = 2_147_483_647
 

@@ -33,7 +33,7 @@ class Command(BaseCommand):
                 raise ValueError()
             client = decode(Path(options["client_config"]).read_bytes())
             with override_settings(WORKSPACE_EXECUTOR_CLIENTS={"protected": client}):
-                actor = input("Enrolled operator school ID: ").strip()
+                actor = input("Enrolled operator CTU-G ID: ").strip()
                 proof = authenticate_actor(actor, getpass.getpass("Operator password: "), kind="protected")["proof"]
                 envelope = request(operation, {"bundle": bundle}, proof)
                 envelope.update(request_id=bundle["request"]["request_id"], nonce=bundle["request"]["nonce"])

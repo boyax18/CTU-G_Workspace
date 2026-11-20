@@ -10,7 +10,7 @@ from rest_framework.views import exception_handler
 from apps.access_control.writer_boundary import WriterBoundaryUnavailable
 from .services import RegistrationUnavailable
 
-INSTRUCTOR_STAFF_ID_ERROR = "Staff ID must contain 1 to 7 digits only."
+INSTRUCTOR_STAFF_ID_ERROR = "CTU-G ID must contain 1 to 7 digits only."
 INSTRUCTOR_SCHOOL_FIELDS_ERROR = "Student-only school information is not accepted for Instructor registration."
 ERRORS = {
     "validation_error": (400, "Check the submitted registration details."),
@@ -40,7 +40,7 @@ STATUS_CODES = {
     415: "unsupported_media_type", 429: "throttled", 500: "server_error", 503: "registration_unavailable",
 }
 FIELDS = {
-    "school_id": "School ID must contain 1 to 7 digits only.", "email": "Enter a valid email address.",
+    "school_id": "CTU-G ID must contain 1 to 7 digits only.", "email": "Enter a valid email address.",
     "first_name": "Enter a valid first name.", "middle_name": "Enter a valid middle name.",
     "last_name": "Enter a valid last name.", "suffix": "Enter a valid suffix.",
     "requested_role": "Select Student or Instructor.",

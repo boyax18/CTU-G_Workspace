@@ -6,7 +6,7 @@
 
 Without --apply nothing is read or written: the exact confirmation is printed (database-bound,
 `ctug_workspace:WF-03.01:<operation>:<id>`, for the local development target). With --apply an
-interactive terminal is required; the designated framework operator's School ID and password are
+interactive terminal is required; the designated framework operator's CTU-G ID and password are
 read from the console (never from arguments, environment or files) and are never printed or stored.
 The procedure itself (apps.access_control.framework_roles) enforces every rule: the disposable MySQL
 test database, or the local development database only when every D-93/D-95 gate condition holds
@@ -40,7 +40,7 @@ class Command(BaseCommand):
             raise CommandError("The exact confirmation for this operation and account is required.")
         if not sys.stdin.isatty():
             raise CommandError("An interactive terminal is required for the operator's re-authentication.")
-        operator = input("Designated framework operator School ID: ").strip()
+        operator = input("Designated framework operator CTU-G ID: ").strip()
         password = getpass.getpass("Operator password: ")
         try:
             result = configure_role(operation=operation, operator_school_id=operator, operator_password=password,

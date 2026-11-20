@@ -32,10 +32,10 @@ export const API_MESSAGES: Record<string, string> = {
   recovery_code_invalid: 'The code is incorrect or has expired.',
   reset_session_invalid: 'Your verification has expired. Request a new code.',
 };
-const STAFF_ID_ERROR = 'Staff ID must contain 1 to 7 digits only.';
+const STAFF_ID_ERROR = 'CTU-G ID must contain 1 to 7 digits only.';
 const INSTRUCTOR_FIELDS_ERROR = 'Student-only school information is not accepted for Instructor registration.';
 const FIELD_MESSAGES: Record<string, string> = {
-  school_id: 'School ID must contain 1 to 7 digits only.', email: 'Enter a valid email address.',
+  school_id: 'CTU-G ID must contain 1 to 7 digits only.', email: 'Enter a valid email address.',
   first_name: 'Enter a valid first name.', middle_name: 'Enter a valid middle name.',
   last_name: 'Enter a valid last name.', suffix: 'Enter a valid suffix.',
   requested_role: 'Select Student or Instructor.', password: 'Choose a stronger password using the requirements shown.',

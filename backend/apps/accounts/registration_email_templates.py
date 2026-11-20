@@ -76,7 +76,7 @@ def render_decision_email(*, approved, rejection_code=None):
 
     reason_text = f"\nReason: {reason}\n" if reason else ""
     further = (
-        "You can now sign in using your registered School ID and password."
+        "You can now sign in using your registered CTU-G ID and password."
         if approved else
         "You may submit a new registration by completing the registration form again."
     )

@@ -276,7 +276,7 @@ class AccountStatusHTTPTests(TestCase):
         self.assertEqual(ids, {self.student.pk, self.instructor.pk, self.inactive.pk})  # not pending, admins or self
         row = next(r for r in rows if r["account_id"] == self.instructor.pk)
         self.assertEqual(set(row), {"account_id", "school_id", "id_label", "full_name", "roles", "is_active"})
-        self.assertEqual((row["id_label"], row["roles"], row["is_active"]), ("Staff ID", ["Instructor"], True))
+        self.assertEqual((row["id_label"], row["roles"], row["is_active"]), ("CTU-G ID", ["Instructor"], True))
         self.assertNotIn("password", response.content.decode())
         self.assertEqual({r["account_id"] for r in self.client.get(API, {"status": "inactive"}).json()["results"]},
                          {self.inactive.pk})

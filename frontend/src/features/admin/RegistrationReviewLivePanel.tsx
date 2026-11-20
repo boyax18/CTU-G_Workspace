@@ -110,7 +110,7 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
           reason as RegistrationReviewRejectionCode,
         );
       }
-      setNotice(`Server confirmed ${selection.action === 'approve' ? 'approval' : 'rejection and account removal'} of School ID ${selection.item.school_id}.`);
+      setNotice(`Server confirmed ${selection.action === 'approve' ? 'approval' : 'rejection and account removal'} of CTU-G ID ${selection.item.school_id}.`);
       setSelection(null);
       setReason('');
       setListing({ status: 'loading' });
@@ -146,8 +146,8 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
         </div>
         <div className="my-4 flex flex-wrap gap-3">
           <label className="dashboard-muted flex flex-col gap-1 text-xs">
-            Filter School ID on this page
-            <input value={search} maxLength={50} onChange={(event) => setSearch(event.target.value)} placeholder="School ID" className="dashboard-panel w-52 rounded-lg border px-3 py-2 text-sm" />
+            Filter CTU-G ID on this page
+            <input value={search} maxLength={50} onChange={(event) => setSearch(event.target.value)} placeholder="CTU-G ID" className="dashboard-panel w-52 rounded-lg border px-3 py-2 text-sm" />
           </label>
           <label className="dashboard-muted flex flex-col gap-1 text-xs">
             Filter requested role on this page
@@ -167,7 +167,7 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[590px] text-left text-sm">
-              <thead><tr className="dashboard-muted border-b text-xs uppercase tracking-wide"><th scope="col" className="px-2 py-3">School ID</th><th scope="col" className="px-2 py-3">Requested role</th><th scope="col" className="px-2 py-3">Submitted</th><th scope="col" className="px-2 py-3">Actions</th></tr></thead>
+              <thead><tr className="dashboard-muted border-b text-xs uppercase tracking-wide"><th scope="col" className="px-2 py-3">CTU-G ID</th><th scope="col" className="px-2 py-3">Requested role</th><th scope="col" className="px-2 py-3">Submitted</th><th scope="col" className="px-2 py-3">Actions</th></tr></thead>
               <tbody>{filtered.map((item) => (
                 <tr key={item.account_id} className="border-b last:border-0">
                   <td className="dashboard-heading px-2 py-3 font-semibold">{item.school_id}</td>
@@ -192,7 +192,7 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
       {selection && (
         <section role="dialog" aria-modal="true" aria-labelledby="review-decision-heading" className="dashboard-panel rounded-2xl border-2 border-emerald-600 p-5">
           <h3 id="review-decision-heading" className="dashboard-heading text-lg font-bold">Confirm {selection.action === 'approve' ? 'approval' : 'rejection'}?</h3>
-          <p className="dashboard-muted mt-2 text-sm">School ID {selection.item.school_id} · {selection.item.requested_role}. This is a real account action and will be audited.</p>
+          <p className="dashboard-muted mt-2 text-sm">CTU-G ID {selection.item.school_id} · {selection.item.requested_role}. This is a real account action and will be audited.</p>
           {selection.action === 'reject' && (
             <p className="dashboard-muted mt-2 text-sm">Rejection removes this applicant’s account and profile. The decision stays in the audit history. They can register again using the standard form.</p>
           )}

@@ -22,7 +22,7 @@ const listPage = (number, hasNext) => ({
   page: number, page_size: 20, has_next: hasNext,
 });
 const detail = (id, overrides = {}) => ({
-  account_id: id, school_id: '7240001', id_label: 'School ID',
+  account_id: id, school_id: '7240001', id_label: 'CTU-G ID',
   name: { first: 'Maria', middle: 'Luz', last: 'Santos', suffix: null }, full_name: 'Maria Luz Santos',
   email: 'maria.santos@example.edu', requested_role: 'Student', request_status: 'Pending',
   created_at: '2026-11-10T09:15:00+08:00',
@@ -64,10 +64,10 @@ test('a reviewer opens one application read-only: three panels, exact evidence w
   const fake = server();
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
-    await page.getByRole('link', { name: 'Review application for School ID 7240001' }).click();
+    await page.getByRole('link', { name: 'Review application for CTU-G ID 7240001' }).click();
     await page.getByRole('heading', { name: 'Maria Luz Santos', level: 2 }).waitFor();
     assert.ok(page.url().endsWith('applicant=5001'));
-    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews / School ID 7240001');
+    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews / CTU-G ID 7240001');
     assert.equal(await page.locator('h1').innerText(), 'Applicant reviews');
     // Focus moves to the applicant heading for keyboard and screen-reader users.
     assert.ok(await page.getByRole('heading', { name: 'Maria Luz Santos', level: 2 }).evaluate((el) => el === document.activeElement));
@@ -98,7 +98,7 @@ test('Back restores filters, sort and page without refetching, and returns focus
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByText('Page 2', { exact: true }).waitFor();
     const before = fake.state.lists.length;
-    await page.getByRole('link', { name: 'Review application for School ID 7240021' }).click();
+    await page.getByRole('link', { name: 'Review application for CTU-G ID 7240021' }).click();
     await page.getByRole('heading', { level: 2, name: 'Maria Luz Santos' }).waitFor();
     await page.getByRole('button', { name: 'Back to pending applications' }).click();
     await page.getByText('Page 2', { exact: true }).waitFor();
@@ -119,13 +119,13 @@ test('Back restores filters, sort and page without refetching, and returns focus
   }, VIEW);
 });
 
-test('every evidence state, the Instructor Staff ID and missing data have their own wording', async () => {
+test('every evidence state, the Instructor CTU-G ID and missing data have their own wording', async () => {
   const cases = {
     5101: [detail(5101, { email_evidence: { state: 'no_proof', verified_at: null } }), 'No email proof on record', 'unconfirmed'],
     5102: [detail(5102, { email: 'now@example.edu', email_evidence: { state: 'address_changed', verified_at: null } }), 'Email address changed after verification', 'different address'],
     5103: [detail(5103, { email: null, email_evidence: { state: 'no_email', verified_at: null } }), 'No email address on record', 'no email address'],
     5104: [detail(5104, {
-      school_id: '0012345', id_label: 'Staff ID', requested_role: 'Instructor', full_name: null,
+      school_id: '0012345', id_label: 'CTU-G ID', requested_role: 'Instructor', full_name: null,
       name: { first: null, middle: null, last: null, suffix: null }, data_notes: ['missing_profile'],
       institutional_check: { subject: 'employment', verified_by_workspace: false },
     }), 'Institutional eligibility not verified by CTU-G Workspace', 'employment or appointment'],
@@ -141,9 +141,9 @@ test('every evidence state, the Instructor Staff ID and missing data have their 
       if (id !== '5104') assert.ok(!main.includes('Email ownership verified'), `${id} must not claim verification`);
     }
     const main = await page.locator('main').innerText();
-    assert.ok(main.includes('Staff ID') && main.includes('0012345') && main.includes('Name not recorded'));
+    assert.ok(main.includes('CTU-G ID') && main.includes('0012345') && main.includes('Name not recorded'));
     assert.ok(main.includes('No name record exists for this application.'));
-    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews / Staff ID 0012345');
+    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews / CTU-G ID 0012345');
   }, VIEW);
 });
 
@@ -197,7 +197,7 @@ test('keyboard: the Review link is reachable and Enter opens the application', a
   const fake = server();
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
-    const link = page.getByRole('link', { name: 'Review application for Staff ID 7240002' });
+    const link = page.getByRole('link', { name: 'Review application for CTU-G ID 7240002' });
     await link.focus();
     await page.keyboard.press('Enter');
     await page.getByRole('heading', { name: 'Maria Luz Santos', level: 2 }).waitFor();

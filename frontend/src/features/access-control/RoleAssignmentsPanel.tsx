@@ -149,7 +149,7 @@ export default function RoleAssignmentsPanel() {
         </div>
         <form role="search" aria-label="Role assignments" noValidate onSubmit={search} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium">
-            Search School ID, Staff ID or name
+            Search CTU-G ID or name
             <input ref={searchRef} type="search" value={draft} maxLength={ROLE_SEARCH_MAX} autoComplete="off" spellCheck={false}
               aria-invalid={searchError ? true : undefined} aria-describedby={searchError ? `${ids}-search-error` : undefined}
               onChange={(e) => { setDraft(e.target.value); setSearchError(''); }} className={`${fieldClass} w-full`} />
@@ -188,7 +188,7 @@ export default function RoleAssignmentsPanel() {
               <li key={item.account_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
                   <p className="dashboard-heading break-words text-sm font-semibold">{item.full_name ?? 'Name not recorded'}</p>
-                  <p className="dashboard-muted text-xs">ID {item.school_id} · Roles: {item.roles.length ? item.roles.join(', ') : 'none'}</p>
+                  <p className="dashboard-muted text-xs">CTU-G ID {item.school_id} · Roles: {item.roles.length ? item.roles.join(', ') : 'none'}</p>
                   {item.restriction && <p className="dashboard-muted mt-1 text-xs">{RESTRICTION_TEXT[item.restriction]}</p>}
                 </div>
                 {item.school_admin_action && (
@@ -227,7 +227,7 @@ export default function RoleAssignmentsPanel() {
         )}>
         {target && (
           <>
-            <p className="dashboard-heading">{pending?.action === 'revoke' ? 'Remove School Admin from' : 'Give School Admin to'} {name} (ID {target.school_id})?</p>
+            <p className="dashboard-heading">{pending?.action === 'revoke' ? 'Remove School Admin from' : 'Give School Admin to'} {name} (CTU-G ID {target.school_id})?</p>
             <p className="dashboard-muted">
               {pending?.action === 'revoke'
                 ? 'They lose School Admin operations and keep the Instructor role. They are signed out on every device. It is audited.'

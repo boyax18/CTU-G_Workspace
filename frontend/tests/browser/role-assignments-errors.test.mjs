@@ -59,7 +59,7 @@ test('the Technical Super Admin sees Access control → Role assignments with ro
     assert.equal(await page.getByRole('button', { name: 'Make School Admin for Teacher 9101 Reyes' }).count(), 1);
     assert.equal(await page.getByRole('button', { name: 'Remove School Admin for Teacher 9102 Reyes' }).count(), 1);
     assert.equal(await page.getByRole('button', { name: /School Admin for Teacher 910[34]/ }).count(), 0);
-    await page.getByLabel('Search School ID, Staff ID or name').fill('reyes');
+    await page.getByLabel('Search CTU-G ID or name').fill('reyes');
     await page.getByRole('button', { name: 'Search accounts' }).click();
     await until(() => fake.state.lists.some((q) => q.includes('q=reyes')), 'search');
   }, VIEW);

@@ -66,7 +66,7 @@ async function submitCode(page) {
 
 async function fillRegistration(page, role = 'Student') {
   await page.getByLabel('Register as', { exact: true }).selectOption(role);
-  await page.getByLabel(role === 'Instructor' ? 'Staff ID *' : 'School ID *', { exact: true }).fill('1234567');
+  await page.getByLabel('CTU-G ID *', { exact: true }).fill('1234567');
   await page.getByLabel('Email *', { exact: true }).fill('fictional@example.edu');
   await page.getByLabel('First Name *', { exact: true }).fill('Test');
   await page.getByLabel('Last Name *', { exact: true }).fill('Applicant');

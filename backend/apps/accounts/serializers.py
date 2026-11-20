@@ -49,7 +49,7 @@ class RegistrationSerializer(serializers.Serializer):
     def validate_school_id(self, value):
         if not re.fullmatch(r"[0-9]{1,7}", value):
             raise serializers.ValidationError(
-                "School ID must contain 1 to 7 digits only."
+                "CTU-G ID must contain 1 to 7 digits only."
             )
         return value
 

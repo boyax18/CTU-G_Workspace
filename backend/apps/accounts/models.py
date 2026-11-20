@@ -47,7 +47,7 @@ class AccountManager(BaseUserManager):
                 "Unsupported account creation fields: " + ", ".join(sorted(extra_fields))
             )
         if not isinstance(school_id, str) or not school_id.strip():
-            raise ValueError("School ID is required.")
+            raise ValueError("CTU-G ID is required.")
 
         school_id = self.model.normalize_username(school_id.strip())
         school_id = self.model._meta.get_field("school_id").clean(school_id, None)

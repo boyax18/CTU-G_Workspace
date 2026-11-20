@@ -14,6 +14,13 @@ class RoleContextSwitchView(WorkspaceSessionAPI):
         if not context_enabled():
             return Response({"error": {"code": "role_context_unavailable",
                                        "message": "Role switching is not activated."}}, status=503)
+        # Defense in depth: isolated URL wiring or middleware ordering must
+        # never make role switching usable against a protected executor that
+        # cannot validate the active-role authority context.
+        from apps.access_control.executor.client import enabled as executor_enabled
+        if executor_enabled():
+            return Response({"error": {"code": "role_context_unavailable",
+                                       "message": "Role context is not available."}}, status=503)
         account = _workspace_account(get_user(request._request))
         if account is None:
             return Response({"error": {"code": "authentication_required",

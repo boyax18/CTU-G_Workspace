@@ -14,7 +14,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import Account
 from apps.accounts.registration_review_api import (
-    MAX_ACCOUNT_ID, NAME_FIELDS, PAGE_SIZE, RegistrationReviewAPI, ReviewBurstThrottle, ReviewListThrottle,
+    MAX_ACCOUNT_ID, NAME_FIELDS, PAGE_SIZE, RegistrationReviewAPI, ReviewAPIUnavailable, ReviewBurstThrottle, ReviewListThrottle,
     _full_name, _search_terms, _single,
 )
 
@@ -29,6 +29,16 @@ QUERY_FIELDS = frozenset({"page", "q"})
 
 
 class RoleAssignmentAPI(RegistrationReviewAPI):
+    def initial(self, request, *args, **kwargs):
+        # D-115: every isolated WF-03.01 UI/API operation (including GET)
+        # refuses when the protected writer is active. The separate executor
+        # does not yet understand these role/appointment operations or D-113
+        # session role scoping. Service-level write guards remain authoritative.
+        from apps.access_control.executor.client import enabled as executor_enabled
+        if executor_enabled():
+            raise ReviewAPIUnavailable()
+        return super().initial(request, *args, **kwargs)
+
     def review_gate_open(self):
         return gate_open()
 

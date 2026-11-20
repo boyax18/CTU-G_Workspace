@@ -19,7 +19,8 @@ from django.core.exceptions import ImproperlyConfigured
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from backend/.env.
-load_dotenv(BASE_DIR / ".env")
+if os.environ.get("WORKSPACE_DEPLOYMENT_SETTINGS") != "1":
+    load_dotenv(BASE_DIR / ".env")
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -33,10 +34,21 @@ def required_environment_variable(name):
 
 SECRET_KEY = required_environment_variable("DJANGO_SECRET_KEY")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# WF-01.06 (D-18, D-29): DEBUG, cookie flags, HTTPS, trusted origins, CORS and
+# session limits come from validated environment variables. DEBUG is off unless
+# DJANGO_DEBUG=1; the "production" profile requires HTTPS and Secure cookies.
+# See config/security_settings.py and docs/operations/LOCAL_SETUP_RELEASE_RUNBOOK_DRAFT.md.
+from .security_settings import build_security_settings
 
-ALLOWED_HOSTS = []
+globals().update(build_security_settings(os.environ))
+
+# Comma-separated hosts Django will serve. Add LAN IPs/hostnames here so other
+# devices on the network can reach the app through the Vite dev server proxy.
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.environ.get("WORKSPACE_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
+    if host.strip()
+]
 
 
 # Application definition
@@ -51,15 +63,34 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    #third party apps
+    'rest_framework',
+    'corsheaders',
+
+    # CTU-G Workspace apps
+    'apps.accounts.apps.AccountsConfig',
+    'apps.access_control.apps.AccessControlConfig',
+    'apps.academic.apps.AcademicConfig',
+    'apps.finance.apps.FinanceConfig',
+    'apps.clearance.apps.ClearanceConfig',
+    'apps.group_rating.apps.GroupRatingConfig',
+    'apps.announcements.apps.AnnouncementsConfig',
+    'apps.notifications.apps.NotificationsConfig',
+    'apps.support.apps.SupportConfig',
+    'apps.reports.apps.ReportsConfig',
 ]
 
+AUTH_USER_MODEL = 'accounts.Account'
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # WF-01.06 P-01: idle and absolute session expiry, before any view runs.
+    'apps.accounts.session_timeout.SessionTimeoutMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -87,12 +118,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django.db.backends.mysql",
         "NAME": required_environment_variable("DB_NAME"),
         "USER": required_environment_variable("DB_USER"),
         "PASSWORD": required_environment_variable("DB_PASSWORD"),
         "HOST": required_environment_variable("DB_HOST"),
         "PORT": required_environment_variable("DB_PORT"),
+        # Native TIMESTAMP must use the same UTC session as Django's conversions.
+        "OPTIONS": {"init_command": "SET time_zone = '+00:00'"},
     }
 }
 
@@ -139,4 +172,68 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
 # Email
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Console email during development; opt-in SMTP for Gmail delivery.
+WORKSPACE_PASSWORD_RESET_ENABLED = os.environ.get("WORKSPACE_PASSWORD_RESET_ENABLED", "0") == "1"
+WORKSPACE_EMAIL_SMTP_ENABLED = os.environ.get("WORKSPACE_EMAIL_SMTP_ENABLED", "0") == "1"
+WORKSPACE_PUBLIC_BASE_URL = os.environ.get("WORKSPACE_PUBLIC_BASE_URL", "http://localhost:5173").rstrip("/")
+PASSWORD_RESET_TIMEOUT = 1800  # 30 minutes
+from email.utils import formataddr, parseaddr
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError as SenderValidationError
+
+_sender_raw = os.environ.get("WORKSPACE_EMAIL_FROM", "ctuginatilanextensioncampus@gmail.com")
+if any(ch in _sender_raw for ch in "\r\n"):
+    raise ImproperlyConfigured("Invalid WORKSPACE_EMAIL_FROM address.")
+_sender_address = parseaddr(_sender_raw)[1]
+try:
+    validate_email(_sender_address)
+except SenderValidationError as exc:
+    raise ImproperlyConfigured("Invalid WORKSPACE_EMAIL_FROM address.") from exc
+DEFAULT_FROM_EMAIL = formataddr(("CTU-G Workspace", _sender_address))
+# An explicit deployment hostname allowlist is mandatory for production email links.
+WORKSPACE_EMAIL_PUBLIC_HOSTS = frozenset(
+    host.strip().lower() for host in
+    os.environ.get("WORKSPACE_EMAIL_PUBLIC_HOSTS", "").split(",") if host.strip()
+)
+WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", "0"
+) == "1"
+WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED", "0"
+) == "1"
+WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED", "0"
+) == "1"
+# WF-02.01 (D-31): read-only pending-applications list; off unless explicitly "1".
+# It never enables approve/reject, which stay unmounted and separately gated.
+WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", "0"
+) == "1"
+EMAIL_BACKEND = (
+    "django.core.mail.backends.smtp.EmailBackend"
+    if WORKSPACE_EMAIL_SMTP_ENABLED
+    else "django.core.mail.backends.console.EmailBackend"
+)
+if WORKSPACE_EMAIL_SMTP_ENABLED:
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = required_environment_variable("WORKSPACE_EMAIL_USERNAME")
+    EMAIL_HOST_PASSWORD = required_environment_variable("WORKSPACE_EMAIL_APP_PASSWORD")
+
+# AR-6C5B.4: development-only durable email intent; disabled by default.
+# The key WORKSPACE_OUTBOX_KEK_V1_B64 is read only when encrypting a recipient.
+WORKSPACE_REGISTRATION_OUTBOX_ENABLED = os.environ.get("WORKSPACE_REGISTRATION_OUTBOX_ENABLED", "0") == "1"
+WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION = os.environ.get("WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION", "v1")
+
+# WF-01.01 defaults implement the catalogue suggestions; policy sign-off is separate.
+STUDENT_REGISTRATION_OTP_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_OTP_SECONDS", "600"))
+STUDENT_REGISTRATION_RESEND_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_RESEND_SECONDS", "60"))
+STUDENT_REGISTRATION_MAX_RESENDS = int(os.environ.get("STUDENT_REGISTRATION_MAX_RESENDS", "3"))
+STUDENT_REGISTRATION_MAX_ATTEMPTS = int(os.environ.get("STUDENT_REGISTRATION_MAX_ATTEMPTS", "5"))
+STUDENT_REGISTRATION_STAGE_SECONDS = int(os.environ.get("STUDENT_REGISTRATION_STAGE_SECONDS", "1800"))
+STUDENT_REGISTRATION_STAGING_KEY = os.environ.get("STUDENT_REGISTRATION_STAGING_KEY", SECRET_KEY)
+EMAIL_TIMEOUT = 10
+
+# Public support only. Empty means "Contact the School Admin office".
+WORKSPACE_REGISTRATION_SUPPORT_CONTACT = os.environ.get("WORKSPACE_REGISTRATION_SUPPORT_CONTACT", "")

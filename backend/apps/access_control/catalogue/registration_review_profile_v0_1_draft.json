@@ -1,0 +1,46 @@
+{
+  "schema_version": "ctug-registration-review-activation-profile/v0.1",
+  "profile_id": "AR-6C7C-REGISTRATION-REVIEW-V0.1-DRAFT",
+  "status": "DRAFT_UNAPPROVED",
+  "source": {
+    "manifest_version": "catalogue-v2.0",
+    "source_revision": "v2.0-review-1",
+    "manifest_sha256": "12746bcb7b5b73041606768b9641ced10cec75fec0c6ea7d1b9dae16f3f6f315"
+  },
+  "allowlist": {
+    "services": [
+      "accounts",
+      "access_control"
+    ],
+    "permissions": [
+      "accounts.registration_requests.read",
+      "accounts.registration_requests.approve",
+      "accounts.registration_requests.reject"
+    ],
+    "role_bindings": [
+      {
+        "role_name": "Admin",
+        "permission_code": "accounts.registration_requests.read"
+      },
+      {
+        "role_name": "Admin",
+        "permission_code": "accounts.registration_requests.approve"
+      },
+      {
+        "role_name": "Admin",
+        "permission_code": "accounts.registration_requests.reject"
+      }
+    ]
+  },
+  "gates": {
+    "metadata_initialization": "BLOCKED",
+    "role_grants": "BLOCKED",
+    "service_activation": "BLOCKED",
+    "api_activation": "BLOCKED"
+  },
+  "approval": {
+    "system_owner": null,
+    "security_reviewer": null,
+    "change_ticket": null
+  }
+}

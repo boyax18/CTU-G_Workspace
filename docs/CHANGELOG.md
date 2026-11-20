@@ -1,5 +1,13 @@
 # CTU-G Workspace — Development Changelog
 
+### 20 November 2026 — WF-03.01: final closeout reconciliation
+
+- **D-87:** API activation deferred; the role-assignment API stays unmounted. Live API/UI operation is untested; the API and page are verified only in disposable databases and mocked browsers.
+- **D-98:** resolved; both pre-existing findings fixed without behaviour change: ThemeToggle.tsx:17 (no-useless-assignment error; the unused initial value was removed) and RegistrationReviewLivePanel.tsx:74 (useMemo dependency warning; the derived row list moved inside the memo, which now depends on the listing state).
+- **D-100:** scope reconciled; ordinary-role assignment (Treasurer, SSG Advisor) stays in WF-03.01, separate from WF-02.03 initial base-role assignment. Not implemented and deferred; no new workflow ID.
+- **Verification:** `npm run lint` 0 problems; `tsc -p tsconfig.app.json --noEmit` clean; `npm test` 217/217, 0 failed, 0 skipped; `npm run build` succeeded; backend regression 1977/1977 in 87 apps.access_control and apps.accounts modules, 0 failed, 0 errors, 0 skipped.
+- **Still open:** D-99, D-100, D-101, D-102, D-87 activation, Stage B-2. The WF-03.01 Human Approval is pending the owner's review.
+
 ### 20 November 2026 — WF-03.01: first protected Technical Super Admin S0 grant (local development)
 
 - **Grant:** the owner-authorized protected command granted Technical Super Admin to account 9 (the development Instructor fixture), with operator account 2. The operator was designated only in the process environment and re-authenticated at the hidden prompt. An earlier attempt was refused because a different operator School ID was typed at the prompt; nothing changed.

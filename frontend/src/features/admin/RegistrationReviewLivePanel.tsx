@@ -71,8 +71,10 @@ function AuthorizedReviewPanel({ permissions, routeRoot }: { permissions: readon
     return () => { cancelled = true; };
   }, [page, refreshVersion, routeRoot]);
 
-  const rows = listing.status === 'ready' ? listing.data.results : [];
-  const filtered = useMemo(() => filterCurrentPage(rows, search, roleFilter), [rows, search, roleFilter]);
+  const filtered = useMemo(
+    () => filterCurrentPage(listing.status === 'ready' ? listing.data.results : [], search, roleFilter),
+    [listing, search, roleFilter],
+  );
   const canApprove = mayShowDecision(permissions, 'approve');
   const canReject = mayShowDecision(permissions, 'reject');
 

@@ -14,7 +14,7 @@ export default function ThemeToggle() {
   const index = OPTIONS.findIndex((o) => o.value === preference);
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    let next = index;
+    let next: number;
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (index + 1) % OPTIONS.length;
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (index - 1 + OPTIONS.length) % OPTIONS.length;
     else return;

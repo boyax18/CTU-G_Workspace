@@ -267,5 +267,12 @@ class SessionView(WorkspaceSessionAPI):
         if account is None:
             return Response({"authenticated": False})
         selected = request.session.get(SESSION_ROLE_KEY) if context_enabled() else None
+        # D-116: an existing authenticated browser session may predate local
+        # opt-in. Select its least-privileged CURRENT role once; never silently
+        # replace an explicitly selected role that has since been revoked.
+        if context_enabled() and SESSION_ROLE_KEY not in request.session:
+            selected = initial_role_id(account.pk)
+            if selected is not None:
+                request.session[SESSION_ROLE_KEY] = selected
         return Response({"authenticated": True,
                          **_account_payload(account, active_role_id=selected)})

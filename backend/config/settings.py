@@ -237,3 +237,30 @@ EMAIL_TIMEOUT = 10
 
 # Public support only. Empty means "Contact the School Admin office".
 WORKSPACE_REGISTRATION_SUPPORT_CONTACT = os.environ.get("WORKSPACE_REGISTRATION_SUPPORT_CONTACT", "")
+
+
+# WF-03.01 D-116: explicitly opted-in, localhost-only role context in the NORMAL
+# development profile. No role grants, executor operations or database writes.
+# The review/sandbox overlays retain their separate D-113 opt-in gates.
+_WORKSPACE_NORMAL_ROLE_CONTEXT_ACK = (
+    os.environ.get("CTUG_ROLE_CONTEXT_NORMAL_DEV_ACK") == "LOCAL_ONLY_WF0301_D116"
+)
+if _WORKSPACE_NORMAL_ROLE_CONTEXT_ACK:
+    if (
+        os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings"
+        or os.environ.get("WORKSPACE_DEPLOYMENT_SETTINGS") == "1"
+        or DEBUG is not True
+        or DATABASES["default"]["ENGINE"] != "django.db.backends.mysql"
+        or DATABASES["default"]["NAME"] != "ctug_workspace"
+        or DATABASES["default"].get("HOST") not in {"localhost", "127.0.0.1", "::1"}
+        or not ALLOWED_HOSTS
+        or any(host not in {"localhost", "127.0.0.1", "[::1]"} for host in ALLOWED_HOSTS)
+    ):
+        raise ImproperlyConfigured(
+            "Normal role switching requires the local DEBUG profile, local "
+            "ctug_workspace MySQL, and loopback-only ALLOWED_HOSTS."
+        )
+WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = _WORKSPACE_NORMAL_ROLE_CONTEXT_ACK
+if WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED:
+    # After authentication + session timeout, before any API view permission checks.
+    MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware"]

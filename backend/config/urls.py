@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from apps.accounts.active_role_context_api import RoleContextSwitchView
+
 from apps.accounts.registration_review_api import (
     PendingRegistrationDetailView,
     PendingRegistrationRequestsView,
@@ -24,6 +26,10 @@ from apps.accounts.registration_review_api import (
 
 urlpatterns = [
     path('api/v1/auth/', include('apps.accounts.urls')),
+    # D-116: normal development route; view denies with 503 unless the
+    # explicit local role-context gate is on, and refuses protected executor.
+    path('api/v1/auth/role-context/', RoleContextSwitchView.as_view(),
+         name='workspace-role-context-switch-normal'),
     # WF-02.01 (D-31) list and WF-02.02 (D-37) detail: the ONLY two review routes, both GET-only and
     # behind the same read switch (default off). Approve/reject (WF-02.03/02.04) remain unmounted;
     # never include the isolated review URLconf here.

@@ -3,13 +3,15 @@
  * Lists approved Instructor and School Admin accounts the server says this actor may see and offers
  * exactly one change per account: make an approved Instructor a School Admin, or remove School Admin
  * (the Instructor role always stays). Technical Super Admin is never granted or removed here (Django
- * Superuser only), and ordinary roles are not offered until the catalogue revision is approved.
+ * Superuser only), and ordinary-role controls remain separately gated pending independent appointment evidence and S1 governance adoption.
  * Buttons are hints; Django re-checks the profile, the exact permission and every rule inside the
  * lock. One POST per confirmation, never repeated; an uncertain result pauses until reload.
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import Modal from '../../components/common/Modal';
+import OrdinaryRoleAssignmentsPanel from './OrdinaryRoleAssignmentsPanel.tsx';
+import { ORDINARY_ROLE_ENABLED } from './ordinaryRoleAssignmentApi.ts';
 import { changeSchoolAdmin, listRoleAssignments } from './roleAssignmentApi.ts';
 import { ROLE_SEARCH_MAX, normalizeRoleSearch } from './roleAssignmentContract.ts';
 import type { RoleAssignmentItem, RoleAssignmentPage, RoleRestriction, SchoolAdminAction } from './roleAssignmentContract.ts';
@@ -62,7 +64,7 @@ function changeFailure(code: string): Problem {
   }
 }
 
-export default function RoleAssignmentsPanel() {
+export default function RoleAssignmentsPanel({ permissions }: { permissions: readonly string[] }) {
   const ids = useId();
   const searchRef = useRef<HTMLInputElement>(null);
   const noticeRef = useRef<HTMLDivElement>(null);
@@ -139,6 +141,7 @@ export default function RoleAssignmentsPanel() {
 
   return (
     <div className="space-y-5">
+      {ORDINARY_ROLE_ENABLED && permissions.includes('access_control.role_assignments.ordinary.manage') && <OrdinaryRoleAssignmentsPanel />}
       <section className="dashboard-panel rounded-2xl border p-4 sm:p-6" aria-labelledby={`${ids}-title`} aria-busy={loading}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">

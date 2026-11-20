@@ -445,8 +445,9 @@ class TechnicalSuperAdminAssignmentTests(TestCase):
                                  "role-assignments-assign-school-admin")
                 self.assertEqual(resolve(f"{API}1/school-admin/revoke/", urlconf=conf).url_name,
                                  "role-assignments-revoke-school-admin")
+                self.assertEqual(resolve(f"{API}ordinary/", urlconf=conf).url_name, "role-assignments-ordinary-list")
                 self.assertTrue(any("role-assignments" in route for route in unexpected_review_routes(conf)))
-        self.assertEqual(len(unexpected_review_routes(URLCONF)), 3)
+        self.assertEqual(len(unexpected_review_routes(URLCONF)), 5)
         self.assertEqual(unexpected_review_routes("config.urls"), [])
         base = open("config/settings.py", encoding="utf-8").read()
         self.assertNotIn("WORKSPACE_ROLE_ASSIGNMENT_ENABLED", base)

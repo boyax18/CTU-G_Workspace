@@ -194,7 +194,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
   { id: 'role-assignments', label: 'Role assignments', icon: 'users', group: 'access-control',
     // WF-03.01 (D-86, D-87): live only when its switch is on; Django still decides access.
     requiredAny: ['access_control.admin_assignments.manage'], integration: ROLE_ASSIGNMENT_ENABLED ? 'shell' : planned,
-    description: 'School Admin role assignments under protected governance.' },
+    description: 'School Admin assignments and separately gated ordinary role responsibilities.' },
   { id: 'role-permissions', label: 'Role permissions', icon: 'key', group: 'access-control',
     requiredAny: ['access_control.role_permissions.manage'], integration: planned,
     description: 'Permissions granted to ordinary roles.' },

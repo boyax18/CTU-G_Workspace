@@ -22,6 +22,10 @@ from .models import AccountPermission, AccountRole, Role, RolePermission, Servic
 from .writer_boundary import WriterBoundaryUnavailable, writer_atomic
 
 INSTRUCTOR = "Instructor"
+STUDENT = "Student"
+TREASURER = "Treasurer"
+SSG_ADVISOR = "SSG Advisor"
+ORDINARY_ASSIGNMENT_CODE = "access_control.role_assignments.ordinary.manage"
 ADMIN = "Admin"
 TECHNICAL = "Technical Super Admin"
 ADMIN_ASSIGNMENT_CODE = "access_control.admin_assignments.manage"
@@ -48,7 +52,7 @@ class RoleChangeConflict(Exception):
     """A fixed, data-free reason for a target the actor may manage."""
 
     REASONS = frozenset({"state_changed", "not_eligible", "protected_account", "last_school_admin",
-                         "last_technical_super_admin"})
+                         "last_technical_super_admin", "last_role"})
 
     def __init__(self, reason):
         self.reason = reason if reason in self.REASONS else "state_changed"

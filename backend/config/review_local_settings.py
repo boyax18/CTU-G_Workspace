@@ -58,3 +58,9 @@ WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = False
 # WF-02.04 D-54: the reason-bearing v2 rejection template (rendered only from the audit snapshot).
 WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = True
 WORKSPACE_PUBLIC_BASE_URL = "http://localhost:5173"  # locmem + loopback only; never an external URL
+
+# WF-03.01 D-100: separate opt-in; ordinary evidence adapter is default-deny.
+# Leave this OFF until D-101/D-102 permission adoption, evidence integration, and deferred tests.
+WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED = (
+    os.environ.get("CTUG_ORDINARY_ROLE_ASSIGNMENT_LOCAL_ACK") == "LOCAL_WF0301_D100"
+)

@@ -68,3 +68,9 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 # Make this an unmistakable development-only config. Backend is bound to
 # 127.0.0.1:8001 by the operator's runserver command, not by this setting.
 DEBUG = True
+
+# WF-03.01 D-100: separate opt-in; ordinary evidence adapter is default-deny.
+# Leave this OFF until D-101/D-102 permission adoption, evidence integration, and deferred tests.
+WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED = (
+    os.environ.get("CTUG_ORDINARY_ROLE_ASSIGNMENT_SANDBOX_ACK") == "SANDBOX_WF0301_D100"
+)

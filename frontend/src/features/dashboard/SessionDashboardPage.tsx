@@ -171,7 +171,7 @@ export default function SessionDashboardPage() {
   // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
   if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
   // WF-03.01 (D-86): Technical Super Admin role assignments; Django rechecks every request.
-  if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel />;
+  if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel permissions={permissions} />;
 
   return <ModuleUnavailable onBack={back} />;
 }

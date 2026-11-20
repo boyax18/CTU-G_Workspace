@@ -47,6 +47,23 @@ _ENUM_FIELDS = {
     }),
 }
 _STATE_FIELDS = _ID_FIELDS | _ID_LIST_FIELDS | frozenset(_ENUM_FIELDS) | frozenset({"is_active", "account_deleted"})
+
+# WF-02.03 D-45 (owner-authorized narrow change, 17 Nov 2026). ONLY the account-approval event's
+# new_value may, and must, carry the reviewer's eligibility attestation as four flat, fixed
+# fields derived server-side by the approval service. The audit row's actor is the reviewer,
+# its target the applicant, and its created_at the attestation time; no free text, nesting,
+# documents or personal data are accepted. Every other event keeps the original allowlist.
+APPROVAL_ACTION = "account.registration.approve"
+_APPROVAL_ENUMS = {
+    "email_evidence": frozenset({"verified"}),
+    "eligibility_subject": frozenset({"enrollment", "employment"}),
+    "eligibility_source": frozenset({"ctu_main_system_records", "institutional_employment_records"}),
+}
+_APPROVAL_FIELDS = frozenset(_APPROVAL_ENUMS) | frozenset({"eligibility_confirmed"})
+_APPROVAL_PAIRS = frozenset({
+    ("enrollment", "ctu_main_system_records"),
+    ("employment", "institutional_employment_records"),
+})
 _ACTION_PATTERN = re.compile(r"[A-Za-z][A-Za-z0-9_.:-]*", re.ASCII)
 
 
@@ -75,15 +92,20 @@ def _valid_id(value):
     return type(value) is int and 1 <= value <= MAX_ID
 
 
-def _state(value, field):
+def _state(value, field, approval_attestation=False):
     if value is None:
         return None
     if type(value) is not dict or any(type(key) is not str for key in value):
         _invalid(field, "Provide a plain authorization-state object or null.")
-    if value.keys() - _STATE_FIELDS:
+    allowed = _STATE_FIELDS | _APPROVAL_FIELDS if approval_attestation else _STATE_FIELDS
+    if value.keys() - allowed:
         _invalid(field, "The snapshot contains unsupported fields.")
     for key, item in value.items():
-        if key in _ID_FIELDS:
+        if key in _APPROVAL_ENUMS:
+            valid = type(item) is str and item in _APPROVAL_ENUMS[key]
+        elif key == "eligibility_confirmed":
+            valid = item is True
+        elif key in _ID_FIELDS:
             valid = item is None or _valid_id(item)
         elif key in _ID_LIST_FIELDS:
             valid = type(item) is list and len(item) <= MAX_ID_LIST_ITEMS and all(_valid_id(entry) for entry in item)
@@ -129,7 +151,15 @@ def _record_access_audit_id(*, actor, action, target=None, role=None, permission
                 _invalid("reason", "Use a supported non-sensitive audit reason code.")
 
         previous = _state(old_value, "old_value")
-        following = _state(new_value, "new_value")
+        approval = action == APPROVAL_ACTION
+        following = _state(new_value, "new_value", approval_attestation=approval)
+        if approval and (
+            target is None
+            or following is None
+            or not _APPROVAL_FIELDS <= following.keys()
+            or (following["eligibility_subject"], following["eligibility_source"]) not in _APPROVAL_PAIRS
+        ):
+            _invalid("new_value", "The approval event requires a complete eligibility attestation.")
         actor_id = _reference_id(actor, Account, "actor", required=True)
         target_id = _reference_id(target, Account, "target")
         role_id = _reference_id(role, Role, "role")

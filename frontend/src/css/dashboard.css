@@ -1,44 +1,236 @@
-/* Shared Workspace shell. Uses existing CTU-G ThemeProvider; no global public-page changes. */
+/* Shared Workspace shell (Dashboard Shell v0.1, visual refinement 17 Nov 2026).
+   Dashboard-scoped semantic tokens (--db-*) for the three ThemeProvider appearances. Where a
+   value matches the public site it aliases the public token from theme.css, so both surfaces
+   stay one palette; dashboard components never use the public surface classes directly. */
 .dashboard-app {
-  --db-background: #f2f6f3;
-  --db-panel: #ffffff;
-  --db-edge: #dae6dd;
-  --db-text: #1a3025;
-  --db-muted: #62746a;
-  --db-topbar: rgba(255,255,255,.92);
+  /* Light: the public mint gradient with a soft top-left highlight and a gentle green depth corner. */
+  --db-background:
+    radial-gradient(ellipse at 15% 0%, rgba(255, 255, 255, .65), transparent 55%),
+    radial-gradient(ellipse at 100% 100%, rgba(187, 247, 208, .45), transparent 60%),
+    linear-gradient(160deg, var(--bg-from) 0%, var(--bg-via) 55%, var(--bg-to) 100%);
+  --db-panel: rgba(252, 254, 253, .94);          /* data surfaces: tables, forms, menus (lightly mint-tinted) */
+  --db-glass: rgba(255, 255, 255, .66);          /* overview surfaces only */
+  /* Depth tokens: a soft two-part shadow and a 1px top-edge sheen, like the public glass edge. */
+  --db-shadow: 0 1px 2px rgba(10, 62, 34, .06), 0 12px 32px -12px rgba(10, 62, 34, .18);
+  --db-sheen: inset 0 1px 0 rgba(255, 255, 255, .7);
+  --db-glass-border: rgba(255, 255, 255, .78);
+  --db-glass-shadow: 0 18px 36px -14px rgba(20, 83, 45, .22), 0 6px 12px -8px rgba(20, 83, 45, .12);
+  --db-edge: rgba(21, 128, 61, .16);
+  --db-text: var(--fg-strong);
+  --db-muted: var(--fg-muted);
+  --db-topbar: var(--header-bg);
+  --db-topbar-border: var(--header-border);
+  --db-accent: var(--accent-hover);              /* #166534: green text on the deeper mint corner stays AA */
+  --db-accent-soft: var(--accent-soft);
+  --db-button: var(--accent);
+  --db-button-hover: var(--accent-hover);
+  --db-outline-border: var(--accent);
+  --db-focus: #15803d;                           /* 3:1+ on every light surface (AUDIT A-04) */
+  --db-error: #b91c1c;
+  --db-chip: rgba(21, 128, 61, .12);
+  --db-chip-fg: #14532d;
+  --db-sidebar: linear-gradient(180deg, rgba(255, 255, 255, .74), rgba(236, 253, 245, .62)); /* frosted, lg+ */
+  --db-sidebar-solid: #f4faf6;                   /* drawer and no-blur fallback */
+  --db-sidebar-edge: rgba(21, 128, 61, .14);
+  --db-sidebar-text: var(--fg-body);
+  --db-sidebar-strong: var(--fg-strong);
+  --db-sidebar-muted: var(--fg-muted);
+  --db-sidebar-hover: rgba(21, 128, 61, .08);
+  --db-sidebar-active: rgba(21, 128, 61, .13);
+  --db-sidebar-active-fg: #14532d;
+  --db-sidebar-bar: var(--accent);
+  --db-scrim: rgba(9, 39, 27, .55);
+  /* Feedback blocks (TOKENS §1.4, Current since WF-02.03). Text stays --db-text/--db-error/--db-warning-fg. */
+  --db-success-bg: #e3f3e8;
+  --db-success-edge: #78ba96;
+  --db-error-bg: #fef2f2;
+  --db-error-edge: #fca5a5;
+  --db-warning-bg: #fffbeb;
+  --db-warning-edge: #fcd34d;
+  --db-warning-fg: #78350f;
   background: var(--db-background);
+  background-attachment: fixed;
   color: var(--db-text);
 }
+/* System default on a dark OS: forest green, matching the public green theme. Layers from back to
+   front: deep-to-emerald background, public green-glass header, deeper sidebar, emerald glass cards,
+   deep data panels. Emerald lifts never exceed the public #215b39, so muted text stays AA. */
 .dark .dashboard-app {
-  --db-background: #101c17;
-  --db-panel: #182820;
-  --db-edge: #345044;
-  --db-text: #e9f5ec;
-  --db-muted: #b3c8ba;
-  --db-topbar: rgba(24,40,32,.94);
+  --db-background:
+    radial-gradient(ellipse at 85% 0%, rgba(33, 91, 57, .85), transparent 55%),
+    radial-gradient(ellipse at 0% 100%, rgba(10, 36, 22, .9), transparent 60%),
+    linear-gradient(160deg, #102e1d 0%, #143823 45%, #1a4a2e 75%, #18452c 100%);
+  --db-panel: rgba(13, 40, 26, .95);
+  --db-glass: rgba(24, 70, 44, .50);
+  --db-shadow: 0 1px 2px rgba(0, 20, 10, .25), 0 12px 32px -12px rgba(0, 20, 10, .55);
+  --db-sheen: inset 0 1px 0 rgba(255, 255, 255, .06);
+  --db-glass-border: rgba(255, 255, 255, .14);
+  --db-glass-shadow: 0 20px 30px -10px rgba(0, 20, 10, .45);
+  --db-edge: rgba(134, 239, 172, .14);
+  --db-accent: var(--fg-accent);
+  /* White text on the dark-theme --accent-hover (#16a34a) is only 3.30:1; #166534 is 7.13:1 (AUDIT A-21).
+     Dashboard-only: System-dark and Dark (theme-black inherits this block). Public .btn-primary is unchanged. */
+  --db-button-hover: #166534;
+  --db-muted: var(--fg-body);                    /* --fg-muted is borderline on green (AUDIT A-03) */
+  --db-focus: #86efac;
+  --db-error: #fca5a5;
+  --db-chip: rgba(74, 222, 128, .16);
+  --db-chip-fg: #d3f9de;
+  --db-outline-border: rgba(74, 222, 128, .60);
+  --db-sidebar: linear-gradient(180deg, rgba(13, 41, 26, .86), rgba(18, 52, 33, .80));
+  --db-sidebar-solid: #123321;
+  --db-sidebar-edge: rgba(255, 255, 255, .12);
+  --db-sidebar-hover: rgba(255, 255, 255, .08);
+  --db-sidebar-muted: var(--fg-body);            /* --fg-muted is 4.2:1 on the identity card (AUDIT A-03) */
+  --db-sidebar-active: rgba(74, 222, 128, .16);
+  --db-sidebar-active-fg: #dcfce7;
+  --db-sidebar-bar: #86efac;
+  --db-scrim: rgba(3, 18, 10, .62);
+  --db-success-bg: #244e35;
+  --db-success-edge: #3f7a58;
+  --db-error-bg: rgba(248, 113, 113, .12);
+  --db-error-edge: rgba(248, 113, 113, .45);
+  --db-warning-bg: rgba(251, 191, 36, .12);
+  --db-warning-edge: rgba(251, 191, 36, .45);
+  --db-warning-fg: #fcd34d;
 }
-.dashboard-sidebar { background: linear-gradient(175deg, #0b5039 0%, #093c2d 58%, #062e24 100%); color: white; }
-.dashboard-nav-link { color: rgba(240,253,244,.84); }
-.dashboard-nav-link:hover { background: rgba(255,255,255,.11); color: white; }
-.dashboard-nav-active, .dashboard-nav-active:hover { background: rgba(255,255,255,.19); color: #ffffff; box-shadow: inset 3px 0 #87e9ad; }
-.dashboard-topbar { background: var(--db-topbar); border-color: var(--db-edge); backdrop-filter: blur(12px); }
+/* Explicit Dark: deeper black, mirroring the public black theme, with a quiet charcoal lift (no green). */
+.dark.theme-black .dashboard-app {
+  --db-background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, .045), transparent 55%),
+    linear-gradient(180deg, #000000 0%, #060606 55%, #0b0b0b 100%);
+  --db-panel: linear-gradient(180deg, rgba(20, 20, 20, .96), rgba(14, 14, 14, .96));
+  --db-glass: rgba(255, 255, 255, .055);
+  --db-shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px -12px rgba(0, 0, 0, .6);
+  --db-sheen: inset 0 1px 0 rgba(255, 255, 255, .04);
+  --db-glass-border: rgba(255, 255, 255, .10);
+  --db-glass-shadow: 0 20px 30px -10px rgba(0, 0, 0, .80);
+  --db-edge: rgba(255, 255, 255, .10);
+  --db-chip: rgba(74, 222, 128, .14);
+  --db-sidebar: linear-gradient(180deg, rgba(12, 12, 12, .86), rgba(20, 20, 20, .82));
+  --db-sidebar-solid: #0b0b0b;
+  --db-sidebar-edge: rgba(255, 255, 255, .10);
+  --db-sidebar-hover: rgba(255, 255, 255, .07);
+  --db-sidebar-active: rgba(74, 222, 128, .14);
+  --db-scrim: rgba(0, 0, 0, .70);
+}
+
+/* Default borders inside the dashboard use the edge token (Tailwind's default is currentColor).
+   Base layer, so any explicit border-color utility still wins. */
+@layer base {
+  .dashboard-app *, .dashboard-app ::before, .dashboard-app ::after { border-color: var(--db-edge); }
+}
+
+/* ---------- Sidebar (frosted at lg+, opaque drawer below for legibility and mobile performance) ---------- */
+.dashboard-sidebar {
+  background: var(--db-sidebar-solid);
+  color: var(--db-sidebar-text);
+  border-right: 1px solid var(--db-sidebar-edge);
+}
+@media (min-width: 1024px) {
+  .dashboard-sidebar {
+    background: var(--db-sidebar);
+    box-shadow: var(--db-sheen);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    backdrop-filter: blur(18px) saturate(1.2);
+  }
+}
+.dashboard-sidebar-strong { color: var(--db-sidebar-strong); }
+.dashboard-sidebar-card { background: var(--db-sidebar-hover); border: 1px solid var(--db-sidebar-edge); }
+.dashboard-sidebar-divider { border-color: var(--db-sidebar-edge); }
+.dashboard-nav-link { color: var(--db-sidebar-text); }
+.dashboard-nav-link:hover { background: var(--db-sidebar-hover); color: var(--db-sidebar-strong); }
+.dashboard-nav-active, .dashboard-nav-active:hover {
+  background: var(--db-sidebar-active); color: var(--db-sidebar-active-fg); box-shadow: inset 3px 0 var(--db-sidebar-bar);
+}
+.dashboard-nav-group { color: var(--db-sidebar-muted); }
+.dashboard-nav-soon { background: var(--db-chip); color: var(--db-chip-fg); }
+.dashboard-scrim { background: var(--db-scrim); }
+
+/* ---------- Header ---------- */
+.dashboard-topbar {
+  background: var(--db-topbar);
+  border-color: var(--db-topbar-border);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  backdrop-filter: blur(18px) saturate(1.3);
+}
 .dashboard-topbar-icon { color: var(--db-text); }
-.dashboard-topbar-icon:hover { background: var(--db-edge); }
+.dashboard-topbar-icon:hover { background: var(--db-accent-soft); }
 .dashboard-identity { border-color: var(--db-edge); }
-.dashboard-panel { background: var(--db-panel); border-color: var(--db-edge); box-shadow: 0 8px 30px rgba(10,62,34,.035); }
+
+/* ---------- Surfaces ---------- */
+/* Data surfaces stay nearly solid: tables, forms, filters, financial and admin screens, menus. */
+.dashboard-panel { background: var(--db-panel); border-color: var(--db-edge); box-shadow: var(--db-sheen), var(--db-shadow); }
+/* Overview-only frosted surface (welcome widgets, module cards). Never for data screens. */
+.dashboard-glass {
+  background: var(--db-glass);
+  border: 1px solid var(--db-glass-border);
+  box-shadow: var(--db-sheen), var(--db-glass-shadow);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
 .dashboard-heading { color: var(--db-text); }
 .dashboard-muted { color: var(--db-muted); }
-.dashboard-eyebrow { color: #147647; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; }
-.dark .dashboard-eyebrow { color: #a3e0b7; }
-.dashboard-primary-link { background: #147647; color: #fff; }
-.dashboard-primary-link:hover { background: #0b5039; }
-.dashboard-hero { background: linear-gradient(115deg, #0e543a 0%, #116d48 65%, #228a5b 100%); }
-.dashboard-hero-ring { border: 65px solid rgba(255,255,255,.065); pointer-events: none; }
-.dashboard-placeholder-icon { background: #e3f3e8; color: #146a43; }
-.dark .dashboard-placeholder-icon { background: #244e35; color: #d3f9de; }
-.dashboard-module-card:hover { border-color: #78ba96; box-shadow: 0 14px 28px rgba(12,75,39,.08); }
+.dashboard-accent { color: var(--db-accent); }
+.dashboard-error { color: var(--db-error); }
+.dashboard-eyebrow { color: var(--db-accent); font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; }
+
+/* ---------- Buttons ---------- */
+.dashboard-primary-link { background: var(--db-button); color: #fff; }
+.dashboard-primary-link:hover { background: var(--db-button-hover); }
+.dashboard-outline-button { color: var(--db-accent); border-color: var(--db-outline-border); }
+.dashboard-outline-button:hover:not(:disabled) { background: var(--db-accent-soft); }
+
+/* ---------- Welcome banner: campus photo under an accessible forest-green overlay ----------
+   The overlay alone keeps white text at 4.5:1+ even over a pure-white image pixel at any crop. */
+.dashboard-hero {
+  background-color: #0e543a;
+  background-image:
+    linear-gradient(115deg, rgba(8, 52, 36, .94) 0%, rgba(11, 72, 49, .90) 55%, rgba(14, 86, 58, .88) 100%),
+    var(--db-hero-photo, none);
+  background-size: cover;
+  background-position: center 40%;
+}
+.dashboard-hero-ring { border: 65px solid rgba(255, 255, 255, .05); pointer-events: none; }
+.dashboard-hero-eyebrow { color: #dcfce7; }
+.dashboard-hero-text { color: #ecfdf5; }
+.dashboard-hero-button { border-color: rgba(255, 255, 255, .45); background: rgba(255, 255, 255, .06); color: #fff; }
+.dashboard-hero-button:hover { background: rgba(0, 0, 0, .18); }  /* darkens, so hover never lowers contrast */
+
+/* ---------- Feedback blocks (role="alert" for errors, role="status" otherwise; never color-only) ---------- */
+.dashboard-success { background: var(--db-success-bg); border-color: var(--db-success-edge); color: var(--db-text); }
+.dashboard-error-block { background: var(--db-error-bg); border-color: var(--db-error-edge); color: var(--db-text); }
+.dashboard-warning { background: var(--db-warning-bg); border-color: var(--db-warning-edge); color: var(--db-warning-fg); }
+
+/* ---------- Modal dialog (components/common/Modal.tsx, COMPONENTS §6) ----------
+   Native <dialog> in the top layer: the page behind is inert. Level-4 shadow; 200ms enter. */
+.dashboard-dialog {
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  color: var(--db-text);
+  box-shadow: var(--db-sheen), 0 24px 48px -16px rgba(0, 0, 0, .35);
+}
+.dashboard-dialog::backdrop { background: var(--db-scrim, rgba(9, 39, 27, .55)); }
+.dashboard-dialog[open] { animation: dashboard-dialog-in 200ms var(--ease-out, ease-out); }
+@keyframes dashboard-dialog-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-dialog[open] { animation: dashboard-dialog-fade 200ms ease; }
+  @keyframes dashboard-dialog-fade { from { opacity: 0; } }
+}
+
+/* ---------- Small pieces ---------- */
+.dashboard-placeholder-icon { background: var(--db-chip); color: var(--db-chip-fg); }
+.dashboard-module-card:hover { border-color: var(--db-outline-border); }
 .dashboard-skip-link { position: fixed; z-index: 100; top: -100px; left: 1rem; background: white; color: #123524; padding: .65rem 1rem; border-radius: .4rem; }
 .dashboard-skip-link:focus { top: .8rem; }
+
+/* No backdrop-filter support: fall back to the solid surfaces (text never sits on raw transparency). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Same specificity as the theme blocks, so the fallback also applies in both dark themes. */
+  .dashboard-app, .dark .dashboard-app, .dark.theme-black .dashboard-app {
+    --db-glass: var(--db-panel); --db-sidebar: var(--db-sidebar-solid); --db-topbar: var(--db-panel);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .dashboard-app *, .dashboard-app *::before, .dashboard-app *::after { transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }

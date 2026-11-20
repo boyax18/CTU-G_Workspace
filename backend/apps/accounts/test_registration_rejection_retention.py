@@ -23,6 +23,7 @@ from apps.access_control.models import (
 )
 
 from .models import Account, UserProfile
+from .rejection_test_support import REJECTION_READY, fresh_test_key, verified_email
 from .registration_review import (
     RegistrationReviewDenied,
     reject_registration,
@@ -40,6 +41,8 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith(
 @override_settings(
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False,
+    # WF-02.04 D-54/D-55 (owner-approved test correction): rejection needs the durable outbox.
+    **REJECTION_READY,
 )
 class RejectedRegistrationRetentionTests(TestCase):
     """Remove fresh applicants while retaining immutable rejection evidence."""
@@ -76,12 +79,16 @@ class RejectedRegistrationRetentionTests(TestCase):
         )
 
     def setUp(self):
-        self.target = Account.objects.create_user(
+        import os
+        key = patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()})
+        key.start()
+        self.addCleanup(key.stop)
+        self.target = verified_email(Account.objects.create_user(
             school_id="9000002",
             email="test-applicant@example.edu",
             password="Mango!Library7392",
             requested_role=self.student_role,
-        )
+        ), "test-applicant@example.edu")
         self.profile = UserProfile.objects.create(
             account=self.target, first_name="Test", last_name="Applicant"
         )

@@ -10,6 +10,7 @@ import re
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, transaction
+from django.db.models import Max
 
 from apps.accounts.models import Account
 from apps.access_control.audit import record_access_audit_receipt
@@ -80,6 +81,59 @@ def _eligible_admin_ids(admin):
     return frozenset(item.account_id for item in assignments)
 
 
+def _governed_school_accounts(*, permission_rows, binding_rows, services, admin, actor):
+    """WF-02.05 stage 3A (owner-authorized Option A, 18 Nov 2026): the ONLY rows tolerated beyond
+    the registration-review scope are the three governed accounts.school_accounts.* definitions and
+    their Admin bindings, in one exact phase state (definitions only, inactive or active bindings),
+    each proven by its own append-only WF-02.05 receipts recorded after the P4 activation. Anything
+    else (a fourth or differing definition, a foreign role, a partial or tampered state, a receipt
+    without its row) is refused, as before. Returns them so callers can prove they are untouched.
+    """
+    from . import provision_school_accounts_local_dev as s3
+
+    registration_ids = {row.pk for row in permission_rows if row.permission_code in p1.PERMISSION_CODES}
+    extra = {row.permission_code: row for row in permission_rows if row.pk not in registration_ids}
+    extra_bindings = [row for row in binding_rows if row.permission_id not in registration_ids]
+    receipts = AccessAuditLog.objects.select_for_update().filter(action__in=tuple(s3.EVENTS.values()))
+    if not extra:
+        if extra_bindings or receipts.exists():
+            raise ActivationExerciseRefused("Unexpected or missing catalogue rows.")
+        return {}, []
+    released = (AccessAuditLog.objects.filter(action__in=(SERVICE_ACTIVATE, BINDING_ACTIVATE))
+                .aggregate(last=Max("pk"))["last"])
+    if released is None or receipts.filter(pk__lte=released).exists():
+        raise ActivationExerciseRefused("School-account rows must be provisioned after the registration release.")
+    try:
+        s3._verify_metadata(extra, s3.catalogue_definitions(), services[s3.SERVICE_CODE], actor)
+        if extra_bindings:
+            states = {row.is_active for row in extra_bindings}
+            if len(states) != 1:
+                raise ActivationExerciseRefused("Partially active school-account bindings.")
+            s3._verify_bindings(extra_bindings, extra, admin, actor, active=states.pop())
+        elif receipts.filter(action__in=(s3.EVENTS["bindings"], s3.EVENTS["activate"])).exists():
+            raise ActivationExerciseRefused("School-account binding receipts without bindings.")
+    except s3.SchoolAccountsProvisionRefused as exc:
+        raise ActivationExerciseRefused("Unexpected or missing catalogue rows.") from exc
+    return extra, extra_bindings
+
+
+def _assert_no_stranded_suspensions():
+    """Compensation is one-way (P4 cannot re-activate after it). Refuse it while any account is still
+    deactivated through WF-02.05, because the rollback would leave it with no governed path back."""
+    latest = (AccessAuditLog.objects.filter(action__startswith="account.status.", target_account_id__isnull=False)
+              .values("target_account_id").annotate(last=Max("pk")))
+    for row in latest:
+        event = AccessAuditLog.objects.get(pk=row["last"])
+        if event.action == "account.status.suspend" and Account.objects.filter(
+                pk=row["target_account_id"], is_active=False).exists():
+            raise ActivationExerciseRefused("An account deactivated through WF-02.05 would be stranded; compensation refused.")
+
+
+def school_account_scope_codes():
+    from . import provision_school_accounts_local_dev as s3
+    return frozenset(s3.CODES)
+
+
 def _snapshot(*, actor_id, expected_ids, active):
     """Lock and validate every in-scope row, P1/P2 receipts, and impact scope."""
     try:
@@ -97,7 +151,9 @@ def _snapshot(*, actor_id, expected_ids, active):
     permission_rows = list(Permission.objects.select_for_update().order_by("permission_id"))
     services = {item.service_code: item for item in service_rows}
     permissions = {item.permission_code: item for item in permission_rows}
-    if (len(service_rows) != 2 or len(permission_rows) != 3
+    registration_rows = [item for item in permission_rows if item.permission_code in p1.PERMISSION_CODES]
+    permissions = {item.permission_code: item for item in registration_rows}
+    if (len(service_rows) != 2 or len(registration_rows) != 3
             or set(services) != set(p1.SERVICE_CODES)
             or set(permissions) != set(p1.PERMISSION_CODES)):
         raise ActivationExerciseRefused("Unexpected or missing catalogue rows.")
@@ -118,7 +174,18 @@ def _snapshot(*, actor_id, expected_ids, active):
     except Exception as exc:
         raise ActivationExerciseRefused("P1 audit evidence differs.") from exc
 
-    binding_rows = list(RolePermission.objects.select_for_update().order_by("role_permission_id"))
+    all_bindings = list(RolePermission.objects.select_for_update().order_by("role_permission_id"))
+    extra, extra_bindings = _governed_school_accounts(
+        permission_rows=permission_rows, binding_rows=all_bindings,
+        services=services, admin=admin, actor=actor,
+    )
+    if len(permission_rows) != 3 + len(extra):
+        raise ActivationExerciseRefused("Unexpected or missing catalogue rows.")
+    if active:
+        _assert_no_stranded_suspensions()
+    # The registration-review scope and every check on it are exactly as before; P3B/P4 operate
+    # only on these three bindings and never on the governed school-account rows.
+    binding_rows = [item for item in all_bindings if item not in extra_bindings]
     bindings = {item.permission_id: item for item in binding_rows}
     expected_permission_ids = {item.pk for item in permissions.values()}
     if (len(binding_rows) != 3
@@ -190,13 +257,19 @@ def _verify_receipts(*, event_service, event_binding, actor, admin,
 def _assert_effective_permissions(expected_ids, *, active):
     """Explicitly check every test account; fail on any unintended new grant."""
     target_codes = frozenset(p1.PERMISSION_CODES)
+    # WF-02.05: the governed school-account codes are effective only for the exact Admin scope,
+    # only while their bindings are active AND the shared services are active; never otherwise.
+    school_codes = school_account_scope_codes()
+    school_bindings = list(RolePermission.objects.filter(permission__permission_code__in=school_codes))
+    school_live = active and len(school_bindings) == 3 and all(b.is_active for b in school_bindings)
     accounts = list(Account.objects.order_by("account_id"))
     if len(accounts) > 100:
         raise ActivationExerciseRefused("This exercise is limited to at most 100 test accounts.")
     for account in accounts:
-        effective = get_effective_permissions(account) & target_codes
+        granted = get_effective_permissions(account)
         expected = target_codes if active and account.pk in expected_ids else frozenset()
-        if effective != expected:
+        expected_school = school_codes if school_live and account.pk in expected_ids else frozenset()
+        if granted & target_codes != expected or granted & school_codes != expected_school:
             raise ActivationExerciseRefused("Unexpected effective permission detected.")
 
 

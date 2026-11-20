@@ -15,12 +15,27 @@ from .models import Account, UserProfile
 from .outbox_crypto import OutboxCryptoUnavailable, decrypt_recipient
 from .outbox_models import RegistrationNotificationOutbox
 from .registration_review import (
-    RegistrationReviewDenied, approve_registration, reject_registration,
+    RegistrationRejectionNotAllowed, RegistrationReviewDenied, approve_registration, reject_registration,
 )
 from .registration_outbox import RegistrationOutboxError, record_registration_decision_outbox
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("Outbox tests require --settings=config.test_settings.")
+
+# WF-02.03 (D-44/D-45): approval needs verified email ownership and the reviewer's attestation.
+STUDENT_ATTESTATION = {"confirmed": True, "source": "ctu_main_system_records"}
+INSTRUCTOR_ATTESTATION = {"confirmed": True, "source": "institutional_employment_records"}
+APPROVAL_BODY = {"eligibility_confirmed": True, "eligibility_source": "ctu_main_system_records"}
+
+
+def with_email_proof(account, email):
+    """Record OTP proof for the account's current address, as WF-01.01/01.02 registration does."""
+    from django.utils import timezone
+    type(account).objects.filter(pk=account.pk).update(
+        email=email, email_verified_at=timezone.now(), email_verified_address=email,
+    )
+    account.refresh_from_db()
+    return account
 
 
 @override_settings(
@@ -57,10 +72,10 @@ class RegistrationOutboxTests(TestCase):
 
     def setUp(self):
         self.email = "recipient@example.edu"
-        self.target = Account.objects.create_user(
+        self.target = with_email_proof(Account.objects.create_user(
             school_id="OUTBOX-STUDENT", email=self.email,
             password="Strong!Enrollment6283", requested_role=self.student_role,
-        )
+        ), self.email)
         # Random test-only key never written to Git or a database.
         self.key_env = patch.dict(os.environ, {
             "WORKSPACE_OUTBOX_KEK_V1_B64": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
@@ -81,7 +96,7 @@ class RegistrationOutboxTests(TestCase):
 
     def test_approval_atomically_stores_encrypted_pending_event(self):
         with patch("apps.accounts.registration_review.schedule_registration_decision_email_after_commit") as legacy:
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         legacy.assert_not_called()
         row = RegistrationNotificationOutbox.objects.get()
         audit = AccessAuditLog.objects.get()
@@ -97,6 +112,7 @@ class RegistrationOutboxTests(TestCase):
         self.assertTrue(self.target.is_active)
         self.assertEqual(self.target.request_status, "Approved")
 
+    @override_settings(WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True)  # WF-02.04 D-54 test correction
     def test_rejection_stores_pending_event_and_deletes_account(self):
         reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="identity_mismatch")
         row = RegistrationNotificationOutbox.objects.get()
@@ -106,11 +122,35 @@ class RegistrationOutboxTests(TestCase):
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.reject")
 
+    def _writer_row(self, recipient_email):
+        """The outbox writer's own disposition for an unusable address (no decision involved)."""
+        audit = AccessAuditLog.objects.create(
+            actor_account=self.reviewer, target_account=self.target, action="account.registration.approve",
+            old_value={"request_status": "Pending"}, new_value={"request_status": "Approved"},
+        )
+        pk = record_registration_decision_outbox(audit_log_id=audit.pk, target_account_id=self.target.pk,
+                                                 approved=True, recipient_email=recipient_email)
+        return RegistrationNotificationOutbox.objects.get(pk=pk)
+
+    def _assert_refused_unchanged(self):
+        self.target.refresh_from_db()
+        self.assertEqual((self.target.request_status, self.target.is_active), ("Pending", False))
+        self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
+
+    @override_settings(WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True)
     def test_missing_email_is_a_dead_record_without_ciphertext(self):
+        # WF-02.04 D-55 (revised, owner-approved rewrite): a rejection without a verified recipient is
+        # refused with nothing written, so no decision creates a recipient-less row any more.
         self.target.email = None
         self.target.save(update_fields=["email"])
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
-        row = RegistrationNotificationOutbox.objects.get()
+        with self.assertRaises(RegistrationRejectionNotAllowed) as caught:
+            reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
+        self.assertEqual(caught.exception.reason, "recipient_unverified")
+        self._assert_refused_unchanged()
+        # The writer's safe Dead disposition stays covered: no ciphertext, no plaintext, not due.
+        row = self._writer_row(None)
         self.assertEqual(row.delivery_status, "Dead")
         self.assertEqual(row.last_failure_code, "recipient_unavailable")
         self.assertIsNone(row.encrypted_recipient)
@@ -118,14 +158,24 @@ class RegistrationOutboxTests(TestCase):
         self.assertIsNone(row.wrapped_data_key)
         self.assertIsNone(row.next_attempt_at)
 
+    @override_settings(WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True)
     def test_invalid_historical_email_is_dead(self):
+        # WF-02.04 D-55 (revised, owner-approved rewrite): an address changed after verification
+        # (here not even a valid address) refuses the rejection with nothing written.
         self.target.email = "not-an-address"
         self.target.save(update_fields=["email"])
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
-        self.assertEqual(RegistrationNotificationOutbox.objects.get().delivery_status, "Dead")
+        with self.assertRaises(RegistrationRejectionNotAllowed) as caught:
+            reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
+        self.assertEqual(caught.exception.reason, "recipient_unverified")
+        self._assert_refused_unchanged()
+        # The writer still never encrypts an invalid address: a terminal Dead row without ciphertext.
+        row = self._writer_row("not-an-address")
+        self.assertEqual((row.delivery_status, row.last_failure_code), ("Dead", "recipient_unavailable"))
+        self.assertIsNone(row.encrypted_recipient)
+        self.assertNotIn(b"not-an-address", bytes(row.encrypted_recipient or b""))
 
     def test_tampered_associated_data_cannot_decrypt(self):
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         row = RegistrationNotificationOutbox.objects.get()
         with self.assertRaises(OutboxCryptoUnavailable):
             decrypt_recipient(
@@ -149,7 +199,7 @@ class RegistrationOutboxTests(TestCase):
     def test_missing_key_fails_closed_and_rolls_back_decision(self):
         with patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": ""}):
             with self.assertRaises(OutboxCryptoUnavailable):
-                approve_registration(actor=self.reviewer, target_id=self.target.pk)
+                approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")
         self.assertFalse(self.target.is_active)
@@ -160,7 +210,7 @@ class RegistrationOutboxTests(TestCase):
     def test_outbox_insert_error_rolls_back_status_role_and_audit(self):
         with patch("apps.accounts.registration_review.record_registration_decision_outbox", side_effect=RuntimeError("outbox unavailable")):
             with self.assertRaises(RuntimeError):
-                approve_registration(actor=self.reviewer, target_id=self.target.pk)
+                approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")
         self.assertFalse(self.target.is_active)
@@ -168,6 +218,7 @@ class RegistrationOutboxTests(TestCase):
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
         self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
 
+    @override_settings(WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True)  # WF-02.04 D-54 test correction
     def test_receipt_failure_rolls_back_without_outbox(self):
         with patch("apps.accounts.registration_review.record_access_audit_receipt", side_effect=RuntimeError("audit unavailable")):
             with self.assertRaises(RuntimeError):
@@ -178,19 +229,20 @@ class RegistrationOutboxTests(TestCase):
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
 
     def test_second_review_is_refused_without_duplicate_audit_or_outbox(self):
-        approve_registration(actor=self.reviewer, target_id=self.target.pk)
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         with self.assertRaises(RegistrationReviewDenied):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
         self.assertEqual(RegistrationNotificationOutbox.objects.count(), 1)
 
     def test_outbox_disabled_keeps_original_no_outbox_behavior(self):
         with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
                                WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk)
+            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
+    @override_settings(WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True)  # WF-02.04 D-54 test correction
     def test_account_delete_failure_rolls_back_profile_audit_and_outbox(self):
         profile = UserProfile.objects.create(account=self.target, first_name="Synthetic")
 

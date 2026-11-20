@@ -134,11 +134,23 @@ def statements(ordinary="wex_ordinary", protected="wex_protected", notifications
                     requirements.append(f"IF NOT wex_lease(1) AND ({condition}) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='protected state refused'; END IF;")
             body = " ".join(requirements)
             if table == "registration_notification_outbox" and event == "UPDATE":
-                immutable = ("outbox_id", "decision_audit_log_id", "template_code", "template_version", "encrypted_recipient",
-                             "recipient_nonce", "wrapped_data_key", "encryption_key_version", "recipient_erased_at", "created_at")
+                immutable = ("outbox_id", "decision_audit_log_id", "template_code", "template_version", "created_at")
+                # WF-02.04 D-57 (owner-authorized 18 Nov 2026): the notifications principal may change
+                # the recipient envelope ONLY to erase it, in one UPDATE that moves a leased row to a
+                # terminal state; an erased row can never be reopened. Everything else stays immutable.
+                recipient = ("encrypted_recipient", "recipient_nonce", "wrapped_data_key",
+                             "encryption_key_version", "recipient_erased_at")
+                erasure = ("OLD.recipient_erased_at IS NULL AND NEW.recipient_erased_at IS NOT NULL"
+                           " AND OLD.delivery_status='Leased' AND NEW.delivery_status IN ('Delivered','Dead')"
+                           " AND NEW.encrypted_recipient IS NULL AND NEW.recipient_nonce IS NULL"
+                           " AND NEW.wrapped_data_key IS NULL AND NEW.encryption_key_version IS NULL")
                 body = (f"IF BINARY SUBSTRING_INDEX(USER(),'@',1)='{notifications}' THEN IF "
                         + " OR ".join(f"NOT(NEW.{field} <=> OLD.{field})" for field in immutable)
-                        + " THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='immutable notification evidence'; END IF; ELSE " + body + " END IF;")
+                        + " THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='immutable notification evidence'; END IF; IF ("
+                        + " OR ".join(f"NOT(NEW.{field} <=> OLD.{field})" for field in recipient)
+                        + f") AND NOT ({erasure}) THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='recipient erasure only at a terminal transition'; END IF;"
+                        " IF OLD.recipient_erased_at IS NOT NULL AND NEW.delivery_status NOT IN ('Delivered','Dead')"
+                        " THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='erased notification cannot be reopened'; END IF; ELSE " + body + " END IF;")
             result.append(f"CREATE TRIGGER wex_{table}_{event.lower()} BEFORE {event} ON {identifier(table)} FOR EACH ROW BEGIN " + body + " END")
     result.append("""CREATE TRIGGER wex_audit_link AFTER INSERT ON access_audit_logs FOR EACH ROW
       INSERT INTO wex_audits(request_id,audit_id) VALUES(@wex_request,NEW.access_audit_log_id)""")
@@ -186,7 +198,9 @@ def grants(schema, runtime, ordinary, protected, recovery, notifications="wex_no
     result.append(f"GRANT INSERT ON {db}.wex_recovery_events TO '{recovery}'@'localhost'")
     for table in ("registration_notification_outbox", "access_audit_logs"):
         result.append(f"GRANT SELECT ON {db}.{table} TO '{notifications}'@'localhost'")
-    columns = "delivery_status,attempt_count,next_attempt_at,lease_expires_at,lease_token,last_failure_code,updated_at,delivered_at"
+    columns = ("delivery_status,attempt_count,next_attempt_at,lease_expires_at,lease_token,last_failure_code,updated_at,delivered_at,"
+               # WF-02.04 D-57: erasure columns only; the trigger allows them solely as a terminal erasure.
+               "encrypted_recipient,recipient_nonce,wrapped_data_key,encryption_key_version,recipient_erased_at")
     result.append(f"GRANT UPDATE({columns}) ON {db}.registration_notification_outbox TO '{notifications}'@'localhost'")
     # No principal gets DDL, GRANT OPTION, ROLE_ADMIN, trigger/routine management,
     # audit deletion, evidence deletion or access to another schema.

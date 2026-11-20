@@ -4,6 +4,7 @@ import '../css/theme.css';
 import '../css/dashboard.css';
 import ThemeProvider from '../contexts/ThemeProvider';
 import { DashboardContext } from '../contexts/DashboardContext';
+import type { DashboardSubpage } from '../contexts/DashboardContext';
 import DashboardShell from '../components/dashboard/DashboardShell';
 import { getWorkspaceSession } from '../features/auth/session';
 import { signOutMessage, signOutWorkspace } from '../features/auth/signOut';
@@ -29,6 +30,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
   const [refresh, setRefresh] = useState(0);
   const [view, setView] = useState<DashboardView>(() => getDashboardView(window.location.search));
+  const [search, setSearch] = useState(() => window.location.search);
+  const [subpage, setSubpage] = useState<DashboardSubpage | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState('');
 
@@ -44,7 +47,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   useEffect(() => {
-    const onHistory = () => setView(getDashboardView(window.location.search));
+    const onHistory = () => {
+      setView(getDashboardView(window.location.search));
+      setSearch(window.location.search);
+    };
     window.addEventListener('popstate', onHistory);
     return () => window.removeEventListener('popstate', onHistory);
   }, []);
@@ -54,8 +60,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const nextUrl = getDashboardHref(next);
     window.history.pushState(null, '', nextUrl);
     setView(next);
+    setSearch(window.location.search);
+    setSubpage(null);
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [state]);
+
+  // A page inside the current view (WF-02.02 applicant detail). Only adds query parameters to
+  // the same, already-permitted view; the view itself and every API call stay server-checked.
+  const openSubpage = useCallback((params: Record<string, string> | null) => {
+    const base = getDashboardHref(view);
+    const extra = params ? new URLSearchParams(params).toString() : '';
+    const nextUrl = extra ? `${base}${base.includes('?') ? '&' : '?'}${extra}` : base;
+    window.history.pushState(null, '', nextUrl);
+    setSearch(window.location.search);
+    if (!params) setSubpage(null);
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [view]);
 
   // WF-01.04 P-02/P-03/P-04: re-read the server session when another tab signs
   // out, this tab becomes visible, a cached page is restored, or a protected API
@@ -92,8 +112,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const session = state.status === 'ready' ? state.session : null;
   const value = useMemo(
-    () => session ? { session, view, navigate } : null,
-    [session, view, navigate],
+    () => session ? { session, view, navigate, search, openSubpage, subpage, setSubpage } : null,
+    [session, view, navigate, search, openSubpage, subpage],
   );
 
   if (state.status !== 'ready' || !session || !value) {
@@ -101,7 +121,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <ThemeProvider>
         <div className="dashboard-app flex min-h-screen items-center justify-center px-6">
           <section className="dashboard-panel w-full max-w-md rounded-2xl border p-7 shadow-lg" aria-live="polite">
-            <p className="mb-2 text-sm font-bold text-emerald-700">CTU-G Workspace</p>
+            <p className="dashboard-accent mb-2 text-sm font-bold">CTU-G Workspace</p>
             {state.status === 'loading' && (
               <><h1 className="dashboard-heading text-xl font-semibold">Checking your session…</h1>
                 <p className="dashboard-muted mt-2 text-sm">Your workspace will appear after verification.</p></>
@@ -135,6 +155,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <DashboardShell
           session={session}
           view={view}
+          viewPermitted={canOpenDashboardView(view, session.permissions)}
+          subpage={subpage}
+          openSubpage={openSubpage}
           navigate={navigate}
           signOut={signOut}
           signingOut={signingOut}

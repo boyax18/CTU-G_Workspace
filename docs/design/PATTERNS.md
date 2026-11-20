@@ -22,16 +22,17 @@ Each section is `screen-section scroll-mt-16` (fills the viewport under the 64px
 ### 1.3 Dashboard view (Current: `features/dashboard/SessionDashboardPage.tsx`)
 
 ```tsx
+// The shell renders <Breadcrumbs/> and <PageHeader title={item.label} description={item.description}/>.
 <div className="space-y-5">
-  <div>
-    <p className="dashboard-eyebrow">Administration · Account Management</p>
-    <h2 className="dashboard-heading mt-1 text-2xl font-bold sm:text-3xl">Pending registrations</h2>
-    <p className="dashboard-muted mt-2 text-sm">One-sentence purpose.</p>
-  </div>
-  <section className="dashboard-panel rounded-2xl border p-4 sm:p-6" aria-labelledby="…">…</section>
+  <section className="dashboard-panel rounded-2xl border p-4 sm:p-6" aria-labelledby="…">
+    <h2 id="…" className="dashboard-heading text-lg font-semibold">Pending applications</h2>
+    …
+  </section>
 </div>
 ```
-The shell supplies the `h1` (topbar) and the `<main>`. Views start at `h2`. The eyebrow names the area, using `·` as the separator.
+**Surfaces:** the dashboard sits on the public mint / forest-green / black gradient. Use `.dashboard-panel` (nearly solid) for every data surface: tables, forms, filters, financial and administrative screens, menus and states. Use `.dashboard-glass` only on the overview (welcome widgets and module cards). Text never sits directly on raw transparency without a verified composited contrast check, and blur falls back to solid colours where it is unsupported.
+
+The shell (Dashboard Shell v0.1) supplies the global header, the breadcrumb/context row and the page `h1` from the navigation registry (label and description), plus the `<main>`. Views never render their own page title: they start at `h2` for their sections. Use `.dashboard-eyebrow` only for small group labels inside a view (for example the module groups on the dashboard).
 
 ## 2. Responsive rules
 
@@ -133,10 +134,11 @@ The key column is first and `font-semibold`. Dates are muted. Actions are compac
 
 ## 7. Permission-gated UI (project rule)
 
-- Navigation items and module cards appear only when the session holds the item's **exact permission code** (`getVisibleDashboardItems`). Never gate by role name.
+- Navigation items and module cards appear only when the session holds the item's **exact permission code** (`getVisibleDashboardItems`, `getVisibleNavGroups`). Never gate by role name. Groups follow Dashboard Shell v0.1 (Overview, Account operations, Academic, Finance, Teaching, Clearance, Academic services, Financial management, Reports, Academic configuration, Clearance oversight, Campus, Access control, Security & audit, System operations, Account); a group with no permitted link is hidden, and a multi-role session sees each module once.
+- A School Admin never sees Access control, Security & audit or System operations links: those groups use governance codes bound only to the Technical Super Admin role. A Super Admin sees School Admin operations only through the Admin role's grants.
 - Inside a view, an action the user cannot perform is **disabled**, not hidden, when its presence matters for context (Approve or Reject in the queue). Hide it when it would only confuse.
 - Make it clear that UI hints are hints: "Role names and permission hints never authorize an API call. Django verifies access on every protected request."
-- Planned or unconnected modules are labelled with text ("Soon", "Integration pending"), not just greyed out.
+- Planned or unconnected modules are labelled with text ("Soon") in the sidebar, the module cards and the page header, and open the `ModuleUnavailable` state, never a page that looks like it works. A direct URL to a module the session lacks shows `AccessDenied` with the neutral title "Section unavailable".
 - Feature gates (`*_ENABLED` constants in `features/admin/*Gate.ts`) decide whether a view exists at all. Don't bypass them in UI work.
 
 ## 8. Accessibility (non-negotiable)

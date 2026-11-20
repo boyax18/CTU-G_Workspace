@@ -12,7 +12,7 @@ Sources: `frontend/src/css/theme.css` (public surface and shared tokens) and `fr
 
 - The preference is stored in `localStorage['ctug-theme']`. Nothing else is stored.
 - While switching, `html.theme-transition` fades colors for 350ms. Don't add your own theme transitions.
-- The dashboard has only light and dark token sets: `.dark .dashboard-app` applies to both dark themes. `theme-black` does not change dashboard tokens.
+- The dashboard has **three** token sets that mirror the public themes: `.dashboard-app` (Light), `.dark .dashboard-app` (forest-green System-dark) and `.dark.theme-black .dashboard-app` (black Dark). Where a value matches the public site, the `--db-*` token aliases the public variable (for example `--db-text: var(--fg-strong)`), so both surfaces stay one palette.
 - Dark mode is a hand-mapped token set. Never invert colors or use `filter: invert`.
 
 ## 1. Color
@@ -22,7 +22,7 @@ Sources: `frontend/src/css/theme.css` (public surface and shared tokens) and `fr
 | Family | Values in use |
 | --- | --- |
 | Green (brand) | `#14532d` green-900 · `#166534` green-800 · `#15803d` green-700 (**primary**) · `#16a34a` green-600 · `#4ade80` green-400 · `#86efac` green-300 |
-| Dashboard green | `#062e24` · `#093c2d` · `#0b5039` · `#0e543a` · `#116d48` · `#147647` (**dashboard primary**) · `#146a43` · `#228a5b` · `#78ba96` · `#87e9ad` · `#a3e0b7` · `#d3f9de` · `#e3f3e8` · `#244e35` |
+| Dashboard green | Since 17 Nov 2026 the dashboard uses the public greens through `--db-*` aliases (primary = `--accent` `#15803d`). Remaining dashboard-only greens: banner overlay `#0e543a` with rgba stops of `#083424`, `#0b4831` and `#0e563a`; dark text accents `#86efac` · `#dcfce7` · `#d3f9de`; light chip text `#14532d`; sidebar solids `#f4faf6` · `#123321` |
 | Neutral (light) | `#111827` gray-900 · `#374151` gray-700 · `#4b5563` gray-600 · `#9ca3af` gray-400 |
 | Neutral (green-dark) | `#f3faf5` · `#c5d6ca` · `#9fb6a6` · `#86a08f` |
 | Neutral (black) | `#fafafa` · `#b8b8b8` · `#8c8c8c` · `#707070` · `#0e0e0e` · `#000000` |
@@ -39,22 +39,22 @@ Use the **class** column in JSX and the **variable** column in CSS.
 | Text primary (headings, values) | `--fg-strong` | `.fg-strong` | `--db-text` / `.dashboard-heading` |
 | Text secondary (body copy) | `--fg-body` | `.fg-body` | `--db-text` (body inherits) |
 | Text muted (helper text, captions, meta) | `--fg-muted` | `.fg-muted` | `--db-muted` / `.dashboard-muted` |
-| Accent text and links | `--fg-accent` | `.fg-accent`, `.link-accent` | `.dashboard-eyebrow` color (`#147647` / dark `#a3e0b7`) |
-| Primary action background | `--accent` | `.btn-primary` | `.dashboard-primary-link` (`#147647`, hover `#0b5039`) |
+| Accent text and links | `--fg-accent` | `.fg-accent`, `.link-accent` | `--db-accent` / `.dashboard-accent`, `.dashboard-eyebrow` |
+| Primary action background | `--accent` | `.btn-primary` | `--db-button` / `.dashboard-primary-link` (= `--accent`, hover `--accent-hover`) |
 | Primary hover | `--accent-hover` | (built into `.btn-primary`) | (built in) |
 | Text on primary | `--on-accent` (`#fff`) | — | `#fff` |
-| Accent tint (chips, active nav) | `--accent-soft` | `.chip-accent`, `.nav-link[aria-current]` | `.dashboard-placeholder-icon` |
-| Surface (card, panel) | `--glass-bg` + `--glass-border` | `.surface-glass` | `--db-panel` + `--db-edge` / `.dashboard-panel` |
-| Page background | `--bg-from` (under photo) | `.app-bg` + `.site-bg` | `--db-background` / `.dashboard-app` |
+| Accent tint (chips, active nav) | `--accent-soft` | `.chip-accent`, `.nav-link[aria-current]` | `--db-chip` / `.dashboard-placeholder-icon`, `--db-sidebar-active` / `.dashboard-nav-active` |
+| Surface (card, panel) | `--glass-bg` + `--glass-border` | `.surface-glass` | Data: `--db-panel` + `--db-edge` / `.dashboard-panel`. Overview only: `--db-glass` / `.dashboard-glass` (dashboard-specific; never use `.surface-glass` in the dashboard) |
+| Page background | `--bg-from` (under photo) | `.app-bg` + `.site-bg` | `--db-background` (the public `--bg-from → --bg-via → --bg-to` gradient, no photo) / `.dashboard-app` |
 | Header or topbar | `--header-bg` | `.surface-header`, `.surface-footer` | `--db-topbar` / `.dashboard-topbar` |
-| Border, divider | `--glass-border`, `--field-border` | — | `--db-edge` (Tailwind `border` inside `.dashboard-app` takes the current color; set `border-color` with `.dashboard-panel`) |
+| Border, divider | `--glass-border`, `--field-border` | — | `--db-edge` (a base-layer rule makes every plain `border` inside `.dashboard-app` use it; explicit border-color utilities still win) |
 | Field | `--field-bg`, `--field-border`, `--field-focus`, `--field-ring`, `--placeholder` | `.field`, `.field-error` | `.dashboard-panel` on the input + `border` |
-| Error text | `--fg-error` | `.fg-error` | **Proposed** `--db-error` (AUDIT A-02) |
+| Error text | `--fg-error` | `.fg-error` | `--db-error` / `.dashboard-error` (Current) |
 | Warning or notice block | `--notice-bg`, `--notice-fg` | `.notice` | current: `border-amber-300 bg-amber-50 text-amber-950` (preview banner only) |
-| Success | **none**: see 1.4 | — | current: `text-emerald-700` (fails in dark mode, AUDIT A-01) |
+| Success | **none**: see 1.4 | — | `--db-accent` text + an icon (AUDIT A-01 fixed) |
 | Info | **none**: see 1.4 | — | — |
-| Focus ring | `--accent-bright` outline | `.btn:focus-visible`, `.field:focus` | `focus-visible:outline-emerald-700` (cards); `outline-white` (sidebar) |
-| Overlay scrim | — | — | `bg-[#09271b]/70` (mobile sidebar) |
+| Focus ring | `--accent-bright` outline | `.btn:focus-visible`, `.field:focus` | `--db-focus` via `focus-visible:outline-[color:var(--db-focus)]` (the `color:` hint is required) everywhere, including the sidebar; `outline-white` only on the always-dark welcome banner |
+| Overlay scrim | — | — | `--db-scrim` / `.dashboard-scrim` (mobile drawer) |
 
 ### 1.3 Token values per theme (public, `theme.css`)
 
@@ -66,7 +66,7 @@ Use the **class** column in JSX and the **variable** column in CSS.
 | `--fg-accent` | `#15803d` | `#86efac` | `#86efac` (inherits) |
 | `--fg-error` | `#dc2626` | `#f87171` | `#f87171` (inherits) |
 | `--accent` | `#15803d` | `#15803d` | `#15803d` |
-| `--accent-hover` | `#166534` | `#16a34a` | `#16a34a` |
+| `--accent-hover` | `#166534` | `#16a34a` (white text 3.30:1: fails AA for the public `.btn-primary` hover, AUDIT A-21, still open; the dashboard no longer uses it for buttons) | `#16a34a` (same) |
 | `--accent-bright` | `#16a34a` | `#4ade80` | `#4ade80` |
 | `--accent-soft` | `rgba(21,128,61,.12)` | `rgba(74,222,128,.16)` | inherits |
 | `--glass-bg` | `rgba(255,255,255,.28)` | `rgba(255,255,255,.09)` | `rgba(255,255,255,.05)` |
@@ -83,24 +83,42 @@ Other tokens (`--header-*`, `--pill-*`, `--secondary-*`, `--outline-*`, `--toggl
 
 ### 1.4 Dashboard tokens (`dashboard.css`)
 
-| Token | Light | Dark (both dark themes) |
-| --- | --- | --- |
-| `--db-background` | `#f2f6f3` | `#101c17` |
-| `--db-panel` | `#ffffff` | `#182820` |
-| `--db-edge` | `#dae6dd` | `#345044` |
-| `--db-text` | `#1a3025` | `#e9f5ec` |
-| `--db-muted` | `#62746a` | `#b3c8ba` |
-| `--db-topbar` | `rgba(255,255,255,.92)` | `rgba(24,40,32,.94)` |
-| Sidebar | `linear-gradient(175deg,#0b5039 0%,#093c2d 58%,#062e24 100%)`, white text, in both themes | same |
-| Hero | `linear-gradient(115deg,#0e543a 0%,#116d48 65%,#228a5b 100%)`, white text | same |
+Current values (visual refinement and colour-depth refinement, 17 Nov 2026). `var(--x)` means the public token of the same theme.
 
-**Proposed** feedback tokens. Add them to `dashboard.css` under `.dashboard-app` and `.dark .dashboard-app` the first time a task needs them. Every text pair below passes AA (ratios measured 16 Nov 2026: error on its block 5.91 light and 8.12 dark on the panel; warning text 8.75 light and 10.68 dark; success text on its block 4.92 light and 6.75 dark).
+| Token | Light | System-dark (green) | Dark (black) |
+| --- | --- | --- | --- |
+| `--db-background` | `radial-gradient(ellipse at 15% 0%, rgba(255,255,255,.65), transparent 55%)`, `radial-gradient(ellipse at 100% 100%, rgba(187,247,208,.45), transparent 60%)`, then the public mint `linear-gradient(160deg, var(--bg-from), var(--bg-via), var(--bg-to))` | `radial-gradient(ellipse at 85% 0%, rgba(33,91,57,.85), transparent 55%)` (emerald lift), `radial-gradient(ellipse at 0% 100%, rgba(10,36,22,.9), transparent 60%)` (deep shade), `linear-gradient(160deg, #102e1d, #143823 45%, #1a4a2e 75%, #18452c)` | `radial-gradient(ellipse at 20% 0%, rgba(255,255,255,.045), transparent 55%)` (charcoal lift), `linear-gradient(180deg, #000, #060606 55%, #0b0b0b)`; no green |
+| `--db-panel` (data surfaces) | `rgba(252,254,253,.94)` (lightly mint-tinted) | `rgba(13,40,26,.95)` | `linear-gradient(180deg, rgba(20,20,20,.96), rgba(14,14,14,.96))` |
+| `--db-glass` / `--db-glass-border` (overview only) | `rgba(255,255,255,.66)` / `rgba(255,255,255,.78)` | `rgba(24,70,44,.50)` (emerald-tinted) / `rgba(255,255,255,.14)` | `rgba(255,255,255,.055)` / `rgba(255,255,255,.10)` |
+| `--db-shadow` (**new**) | `0 1px 2px rgba(10,62,34,.06), 0 12px 32px -12px rgba(10,62,34,.18)` | `… rgba(0,20,10,.25), … rgba(0,20,10,.55)` | `… rgba(0,0,0,.4), … rgba(0,0,0,.6)` |
+| `--db-sheen` (**new**) | `inset 0 1px 0 rgba(255,255,255,.7)` | `… rgba(255,255,255,.06)` | `… rgba(255,255,255,.04)` |
+| `--db-edge` | `rgba(21,128,61,.16)` | `rgba(134,239,172,.14)` (green-tinted edge) | `rgba(255,255,255,.10)` |
+| `--db-text` | `var(--fg-strong)` `#111827` | `var(--fg-strong)` `#f3faf5` | `var(--fg-strong)` `#fafafa` |
+| `--db-muted` | `var(--fg-muted)` `#4b5563` | `var(--fg-body)` `#c5d6ca` | `var(--fg-body)` `#b8b8b8` |
+| `--db-topbar` / `--db-topbar-border` | `var(--header-bg)` / `var(--header-border)` | same | same |
+| `--db-accent` | `var(--accent-hover)` `#166534` (green text stays AA on the deeper mint corner; buttons keep `#15803d`) | `var(--fg-accent)` `#86efac` | `#86efac` |
+| `--db-button` / hover | `var(--accent)` `#15803d` / `var(--accent-hover)` `#166534` (white text 5.02:1 / 7.13:1) | `var(--accent)` `#15803d` / **`#166534`** (fixed 18 Nov 2026, AUDIT A-21: was `var(--accent-hover)` `#16a34a`, 3.30:1) | inherits System-dark: `#15803d` / **`#166534`** |
+| `--db-focus` | `#15803d` | `#86efac` | `#86efac` |
+| `--db-error` | `#b91c1c` | `#fca5a5` | `#fca5a5` |
+| `--db-chip` / `--db-chip-fg` | `rgba(21,128,61,.12)` / `#14532d` | `rgba(74,222,128,.16)` / `#d3f9de` | `rgba(74,222,128,.14)` / `#d3f9de` |
+| `--db-sidebar` (frosted, ≥1024px) | `linear-gradient(180deg, rgba(255,255,255,.74), rgba(236,253,245,.62))` | `linear-gradient(180deg, rgba(13,41,26,.86), rgba(18,52,33,.80))` (deeper than the header) | `linear-gradient(180deg, rgba(12,12,12,.86), rgba(20,20,20,.82))` (charcoal) |
+| `--db-sidebar-solid` (drawer, no-blur fallback) | `#f4faf6` | `#123321` | `#0b0b0b` |
+| `--db-sidebar-text` / `-strong` / `-muted` | `var(--fg-body)` / `var(--fg-strong)` / `var(--fg-muted)` | `var(--fg-body)` / `var(--fg-strong)` / `var(--fg-body)` | same as green |
+| `--db-sidebar-active` / `-active-fg` / `-bar` | `rgba(21,128,61,.13)` / `#14532d` / `var(--accent)` | `rgba(74,222,128,.16)` / `#dcfce7` / `#86efac` | `rgba(74,222,128,.14)` / `#dcfce7` / `#86efac` |
+| `--db-scrim` | `rgba(9,39,27,.55)` | `rgba(3,18,10,.62)` | `rgba(0,0,0,.70)` |
+| Welcome banner (`.dashboard-hero`) | campus photo under `linear-gradient(115deg, rgba(8,52,36,.94), rgba(11,72,49,.90), rgba(14,86,58,.88))`, white text | same | same |
+
+Blur: header 18px, frosted sidebar 18px, `.dashboard-glass` 16px. Without `backdrop-filter` support, `--db-glass`, `--db-sidebar` and `--db-topbar` fall back to the solid values in **all three** themes (the fallback rule uses the same selectors as the theme blocks). The mobile drawer never blurs.
+
+**Depth and layering (17 Nov 2026).** Layers from back to front: background gradient → header (the public header glass, unchanged) → sidebar → overview glass cards → data panels. Why the two new tokens: `--db-shadow` replaces a single hard-coded, near-invisible panel shadow and must differ per theme (green-tinted in Light and System-dark, pure black in Dark); `--db-sheen` is the 1px top-edge highlight of the public glass, applied inside `.dashboard-panel`, `.dashboard-glass` and the frosted sidebar. Contrast limits: in System-dark every emerald lift stays at or below the public `#215b39` (page-level muted text `#c5d6ca` would drop below AA on anything lighter); in Light the background is never darker than about `#d0f5dc`, which is why `--db-accent` text uses `#166534`; in Dark the charcoal never exceeds about `#141414`.
+
+Feedback tokens. **Current** (WF-02.03, 17 Nov 2026) for success, error and warning: defined in `dashboard.css` under `.dashboard-app` (Light) and `.dark .dashboard-app` (both dark themes) and used through `.dashboard-success`, `.dashboard-error-block` and `.dashboard-warning` (COMPONENTS §5). The info pair is still **Proposed**; add it the first time a task needs it. Every text pair below passes AA (ratios measured 16 Nov 2026: error on its block 5.91 light and 8.12 dark on the panel; warning text 8.75 light and 10.68 dark; success text on its block 4.92 light and 6.75 dark).
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
-| `--db-accent` | `#147647` (5.66:1) | `#86efac` (10.97:1) | Accent text, success text, "Open module space" link |
+| `--db-accent` | **Current**, see the table above | | Accent text, success text, eyebrows |
 | `--db-success-bg` / `--db-success-edge` | `#e3f3e8` / `#78ba96` | `#244e35` / `#3f7a58` | Success block |
-| `--db-error` | `#b91c1c` (6.47:1) | `#fca5a5` (8.12:1) | Error text |
+| `--db-error` | **Current**, see the table above | | Error text |
 | `--db-error-bg` / `--db-error-edge` | `#fef2f2` / `#fca5a5` | `rgba(248,113,113,.12)` / `rgba(248,113,113,.45)` | Error block |
 | `--db-warning-bg` / `--db-warning-edge` / `--db-warning-fg` | `#fffbeb` / `#fcd34d` / `#78350f` | `rgba(251,191,36,.12)` / `rgba(251,191,36,.45)` / `#fcd34d` | Warning or preview block |
 | `--db-info-bg` / `--db-info-edge` | `#f2f6f3` / `#dae6dd` | `#101c17` / `#345044` | Neutral info block (text in `--db-text`) |
@@ -121,11 +139,12 @@ Public backgrounds are really photo + overlay + glass, so these ratios are appro
 | `--placeholder` | 2.54 ❌ | 3.61 ❌ | 4.24 ❌ |
 | White on `--accent` (primary button) | 5.02 ✅ | 5.02 ✅ | 5.02 ✅ |
 | `--notice-fg` on `--notice-bg` | 6.84 ✅ | 7.06 ✅ | ✅ |
-| `--db-text` / `--db-muted` on `--db-panel` | 14.06 / 4.97 ✅ | 13.74 / 8.72 ✅ | — |
-| `--db-muted` on `--db-background` | 4.56 ✅ (borderline) | ✅ | — |
-| `text-emerald-700` on `--db-panel` | 5.48 ✅ | **2.81 ❌** | — |
-| White on `.dashboard-primary-link` | 5.66 ✅ | 5.66 ✅ | — |
-| Sidebar text on the sidebar gradient | 11.83 ✅ | same | — |
+| Every dashboard text pair: header, frosted sidebar and drawer, breadcrumbs, headings, muted text, badges, table cells, labels, buttons, user menu | ≥ 4.5 ✅ | ≥ 4.5 ✅ | ≥ 4.5 ✅ |
+| Welcome banner text and button over **any** photo crop (worst case: a pure-white or pure-black pixel under the overlay, plus the ring) | ≥ 4.5 ✅ | ≥ 4.5 ✅ | ≥ 4.5 ✅ |
+| `--db-focus` outline against the surfaces it sits on | ≥ 3 ✅ | ≥ 3 ✅ | ≥ 3 ✅ |
+| White on `.dashboard-primary-link` (`--accent`) | 5.02 ✅ | 5.02 ✅ | 5.02 ✅ |
+
+Dashboard rows are browser-verified 17 Nov 2026: composited through every translucent layer, 360/768/1024/1440 px, all three themes (`tests/browser/contrastProbe.mjs`). The previous dashboard failure (`text-emerald-700` at 2.81:1 on dark panels, AUDIT A-01) no longer occurs.
 
 Placeholders are allowed to be low-contrast only because a visible label always exists. Never put required information in a placeholder.
 
@@ -190,7 +209,7 @@ Base unit: **4px** (the Tailwind spacing scale). Allowed steps for new code: `0.
 | Button groups | `gap-2` (table rows, compact), `gap-3` (dialog or recovery actions) |
 | Section vertical rhythm (public) | `py-14 md:py-16`; form pages `py-10 sm:py-14` |
 
-**Fixed sizes:** public header `h-16` (64px). Dashboard topbar `h-[76px]`. Sidebar `w-[272px]`. Icon chips `h-10 w-10` (public) and `h-11 w-11`/`h-12 w-12` (dashboard). Logo `h-9 w-9` (header, footer) and `h-10 w-10` (sidebar).
+**Fixed sizes:** public header `h-16` (64px). Dashboard global header `h-16` (64px; the sidebar starts below it at ≥1024px). Sidebar `w-[272px]`, collapsed rail `w-20` (80px). Icon chips `h-10 w-10` (public) and `h-11 w-11`/`h-12 w-12` (dashboard). Logo `h-9 w-9` (header, footer) and `h-10 w-10` (sidebar).
 
 ## 4. Border radius
 
@@ -214,7 +233,7 @@ Base unit: **4px** (the Tailwind spacing scale). Allowed steps for new code: `0.
 | 4 | `0 24px 48px -16px rgba(0,0,0,.35)` | Floating menus (`.mobile-menu`); `0 10px 24px -8px rgba(0,0,0,.35)` on `.to-top` |
 | Header | `--header-shadow` → `--header-shadow-scrolled` when `.is-scrolled` | Sticky header |
 
-The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. Use level 4 for a **Proposed** modal dialog.
+The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. The `Modal` dialog (`.dashboard-dialog`, **Current**) uses level 4 on top of `--db-sheen`.
 
 ## 6. Z-index scale
 
@@ -225,8 +244,8 @@ The dashboard state panels (loading, signed-out) use Tailwind `shadow-lg`. Use l
 | `30` | Sticky dashboard topbar | `.dashboard-topbar` |
 | `40` | Floating buttons, mobile scrim | `.to-top`, dashboard mobile overlay |
 | `50` | Sticky public header, dashboard sidebar | `.surface-header`, `.dashboard-sidebar` |
-| `60` | Dropdowns and menus anchored to the header | `.mobile-menu` |
-| `70` | **Proposed:** modal scrim + dialog | (new Modal) |
+| `60` | Dropdowns and menus anchored to the header | `.mobile-menu`, dashboard user menu (`z-[60]`) |
+| `70` | Modal scrim + dialog. The **Current** `Modal` is a native `<dialog>` in the browser top layer, so it needs no z-index; keep `70` for any non-native overlay | `components/common/Modal.tsx` (top layer) |
 | `80` | **Proposed:** toasts | (new Toast) |
 | `100` | Skip link (always on top) | `.dashboard-skip-link` |
 
@@ -234,6 +253,7 @@ Use only these values. Dropdowns inside page content need no z-index above `10`,
 
 ## 7. Icons
 
+- Dashboard icon names (Current): home, user, users, wallet, clipboard, book, bell, settings, calendar, chart, receipt, lock, key, list, activity, star, menu, close, chevron, chevronDown, signout, shield, sidebar.
 - These are inline SVG components, with no icon library. Public icons are in `components/common/Icons.tsx` and dashboard icons in `components/dashboard/DashboardIcon.tsx`. Add new icons to the matching file in the same style.
 - Style: 24×24 `viewBox`, `fill="none"`, `stroke="currentColor"`, `strokeWidth 1.8`, round caps and joins, `aria-hidden`.
 - Sizes: **20px** default (public); **19px** in the dashboard; **18px** inside fields; **14–15px** inline with `text-xs` text and in the theme toggle.

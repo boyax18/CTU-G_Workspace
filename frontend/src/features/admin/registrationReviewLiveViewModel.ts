@@ -11,13 +11,12 @@ export const REGISTRATION_REJECT = 'accounts.registration_requests.reject';
 
 export type PageRoleFilter = 'All' | RegistrationReviewRole;
 
-/** Role names and session permission hints affect presentation only. */
+/** Session permission hints affect presentation only; role names are never consulted (WF-02.01 R-10). */
 export function mayShowReviewPanel(
-  roles: readonly string[],
   permissions: readonly string[],
   apiEnabled: boolean,
 ): boolean {
-  return apiEnabled && roles.includes('Admin') && permissions.includes(REGISTRATION_READ);
+  return apiEnabled && permissions.includes(REGISTRATION_READ);
 }
 
 export function mayShowDecision(

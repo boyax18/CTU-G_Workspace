@@ -18,6 +18,7 @@ from apps.access_control.models import (
     RolePermission, Service,
 )
 from .models import Account
+from .rejection_test_support import rejection_outbox
 
 
 if (
@@ -26,6 +27,21 @@ if (
     or settings.DATABASES["default"]["NAME"] == "ctug_workspace"
 ):
     raise ImproperlyConfigured("P4 contract tests require the disposable MySQL test settings.")
+
+# WF-02.03 (D-44/D-45): approval needs verified email ownership and the reviewer's attestation.
+STUDENT_ATTESTATION = {"confirmed": True, "source": "ctu_main_system_records"}
+INSTRUCTOR_ATTESTATION = {"confirmed": True, "source": "institutional_employment_records"}
+APPROVAL_BODY = {"eligibility_confirmed": True, "eligibility_source": "ctu_main_system_records"}
+
+
+def with_email_proof(account, email):
+    """Record OTP proof for the account's current address, as WF-01.01/01.02 registration does."""
+    from django.utils import timezone
+    type(account).objects.filter(pk=account.pk).update(
+        email=email, email_verified_at=timezone.now(), email_verified_address=email,
+    )
+    account.refresh_from_db()
+    return account
 
 
 class RegistrationReviewP4LiveRoutingLockTests(SimpleTestCase):
@@ -84,10 +100,10 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.client.force_login(self.admin)
         self.csrf = "a" * 32
         self.client.cookies[settings.CSRF_COOKIE_NAME] = self.csrf
-        self.pending = Account.objects.create_user(
+        self.pending = with_email_proof(Account.objects.create_user(
             school_id="P4-CONTRACT-PENDING", password="ValidTestOnly!4021",
             requested_role=self.student_role,
-        )
+        ), "p4.pending@example.edu")
 
     def post(self, action, body, *, csrf=True, origin=None):
         headers = {}
@@ -113,12 +129,14 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertIn("no-store", response["Cache-Control"])
         self.assertTrue(response["Content-Type"].startswith("application/json"))
         payload = response.json()
-        self.assertEqual(set(payload), {"results", "page", "page_size"})
+        self.assertEqual(set(payload), {"results", "page", "page_size", "has_next"})  # WF-02.01 D-33
+        self.assertIs(payload["has_next"], False)
         self.assertEqual(payload["page"], 1)
         self.assertEqual(payload["page_size"], 20)
         self.assertEqual(len(payload["results"]), 1)
         item = payload["results"][0]
-        self.assertEqual(set(item), {"account_id", "school_id", "requested_role", "created_at"})
+        # WF-02.01 D-32: name and proof state added; still no email address.
+        self.assertEqual(set(item), {"account_id", "school_id", "full_name", "requested_role", "created_at", "email_verified"})
         self.assertEqual(item["account_id"], self.pending.pk)
         self.assertEqual(item["school_id"], "P4-CONTRACT-PENDING")
         self.assertEqual(item["requested_role"], "Student")
@@ -138,7 +156,9 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertEqual(len(first["results"]), 20)
         self.assertEqual(len(second["results"]), 1)
         self.assertEqual(second["page_size"], 20)
-        self.assertEqual(third, {"results": [], "page": 3, "page_size": 20})
+        self.assertIs(first["has_next"], True)
+        self.assertIs(second["has_next"], False)
+        self.assertEqual(third, {"results": [], "page": 3, "page_size": 20, "has_next": False})
         self.assertEqual(len({row["account_id"] for row in first["results"] + second["results"]}), 21)
 
     def test_pending_list_rejects_unsupported_filters_and_pages(self):
@@ -160,8 +180,8 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
             [self.pending.pk],
         )
 
-    def test_approve_empty_json_returns_exact_decision_and_audit(self):
-        response = self.post("approve", {})
+    def test_approve_with_attestation_returns_exact_decision_and_audit(self):
+        response = self.post("approve", APPROVAL_BODY)
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Approved"})
         self.pending.refresh_from_db()
@@ -181,10 +201,12 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertEqual(response.status_code, 400, response.content)
         self.assert_not_decided()
 
+    @rejection_outbox()  # WF-02.04 D-54 test correction
     def test_reject_one_of_four_codes_returns_exact_decision_without_role(self):
         response = self.post("reject", {"rejection_code": "identity_mismatch"})
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Rejected"})
+        # WF-02.04 D-54: the exact decision now states that the email is queued (never delivered).
+        self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Rejected", "notification": "queued"})
         self.assertFalse(Account.objects.filter(pk=self.pending.pk).exists())
         self.assertFalse(AccountRole.objects.filter(account=self.pending).exists())
         audit = AccessAuditLog.objects.get()
@@ -200,14 +222,14 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assert_not_decided()
 
     def test_no_csrf_and_bad_origin_never_mutate_account(self):
-        self.assertEqual(self.post("approve", {}, csrf=False).status_code, 403)
-        self.assertEqual(self.post("approve", {}, origin="https://invalid.example").status_code, 403)
+        self.assertEqual(self.post("approve", APPROVAL_BODY, csrf=False).status_code, 403)
+        self.assertEqual(self.post("approve", APPROVAL_BODY, origin="https://invalid.example").status_code, 403)
         self.assert_not_decided()
 
     def test_deactivated_review_gate_refuses_both_read_and_write(self):
         with override_settings(WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=False):
             self.assertEqual(self.client.get("/").status_code, 503)
-            self.assertEqual(self.post("approve", {}).status_code, 503)
+            self.assertEqual(self.post("approve", APPROVAL_BODY).status_code, 503)
         self.assert_not_decided()
 
     def test_deny_override_blocks_approval_even_with_active_role_permission(self):
@@ -215,5 +237,5 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         AccountPermission.objects.create(
             account=self.admin, permission=permission, effect="Deny", is_active=True,
         )
-        self.assertEqual(self.post("approve", {}).status_code, 403)
+        self.assertEqual(self.post("approve", APPROVAL_BODY).status_code, 403)
         self.assert_not_decided()

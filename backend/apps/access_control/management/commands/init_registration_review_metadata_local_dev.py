@@ -10,9 +10,12 @@ import re
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, connections, transaction
-from django.urls import NoReverseMatch, reverse
+from django.urls import URLPattern, URLResolver, get_resolver, get_urlconf
 
 from apps.accounts.models import Account
+from apps.accounts.registration_review_api import (
+    PendingRegistrationDetailView, PendingRegistrationRequestsView, RegistrationReviewAPI,
+)
 from apps.access_control.audit import record_access_audit_receipt
 from apps.access_control.models import (
     AccessAuditLog, AccountPermission, AccountRole, Permission,
@@ -38,6 +41,107 @@ TEST_CONFIRM = "AR-6C7D7:DISPOSABLE-TEST:P1"
 
 class MetadataRefused(RuntimeError):
     pass
+
+
+# WF-02.01 (owner-authorized 17 Nov 2026, Option A) and WF-02.02 (D-41, owner-authorized
+# 17 Nov 2026). Before the review release, exactly TWO read-only registration-review routes may be
+# mounted, each at most once, each bound directly to its exact view class with no as_view()
+# overrides, GET/HEAD/OPTIONS only and no write handler:
+#   1. WF-02.01 pending list   api/v1/admin/registration-requests/                  (PendingRegistrationRequestsView)
+#   2. WF-02.02 applicant detail api/v1/admin/registration-requests/<int:account_id>/ (PendingRegistrationDetailView)
+# The detail is tolerated only alongside the list. Approve, reject, bulk, a moved, renamed,
+# re-typed or subclassed route, a second mount, or any other review route is refused (fail closed).
+READ_ONLY_LIST_ROUTE = "api/v1/admin/registration-requests/"
+READ_ONLY_LIST_NAME = "registration-review-pending"
+READ_ONLY_DETAIL_ROUTE = "api/v1/admin/registration-requests/<int:account_id>/"
+READ_ONLY_DETAIL_NAME = "registration-review-detail"
+READ_ONLY_LIST_METHODS = ("get", "head", "options")
+_APPROVED_READ_ROUTES = (
+    ("list", READ_ONLY_LIST_ROUTE, READ_ONLY_LIST_NAME, PendingRegistrationRequestsView),
+    ("detail", READ_ONLY_DETAIL_ROUTE, READ_ONLY_DETAIL_NAME, PendingRegistrationDetailView),
+)
+_WRITE_HANDLERS = ("post", "put", "patch", "delete")
+# WF-02.05 stage 3 (owner-authorized 18 Nov 2026): account-status routes are recognized by every
+# layer too (class, module, route name and path marker), so an opaque wrapper on a school-accounts
+# path is refused like one on a registration-requests path. Nothing here is newly tolerated.
+_REVIEW_NAME_PREFIXES = ("registration-review", "bulk-review", "bulk-registration-review", "school-accounts")
+_REVIEW_ROUTE_MARKERS = ("registration-requests", "school-accounts")
+_REVIEW_MODULE_PREFIXES = (
+    "apps.accounts.registration_review", "apps.accounts.registration_bulk", "apps.accounts.account_status",
+)
+
+
+def _walk_url_patterns(patterns, prefix=""):
+    for entry in patterns:
+        if isinstance(entry, URLResolver):
+            yield from _walk_url_patterns(entry.url_patterns, prefix + str(entry.pattern))
+        elif isinstance(entry, URLPattern):
+            yield prefix + str(entry.pattern), entry
+        else:
+            yield prefix + "<uninspectable>", None
+
+
+def _approved_read_route(route, entry, view_class):
+    """Return 'list' or 'detail' when this entry is exactly an approved read route, else None."""
+    for kind, approved_route, approved_name, approved_class in _APPROVED_READ_ROUTES:
+        if (
+            route == approved_route
+            and entry.name == approved_name
+            and view_class is approved_class
+            and tuple(view_class.http_method_names) == READ_ONLY_LIST_METHODS
+            and not any(hasattr(view_class, handler) for handler in _WRITE_HANDLERS)
+            and not getattr(entry.callback, "initkwargs", None)
+        ):
+            return kind
+    return None
+
+
+def unexpected_review_routes(urlconf=None):
+    """Return a description of every mounted review route except the two approved read routes.
+
+    An empty list means only the read-only list, optionally with the read-only detail (or
+    nothing), is mounted. Inspection errors and unknown entries are reported as unexpected,
+    never ignored.
+    """
+    try:
+        patterns = get_resolver(urlconf if urlconf is not None else get_urlconf()).url_patterns
+        entries = list(_walk_url_patterns(patterns))
+    except Exception as exc:  # fail closed: an unreadable URLconf is not "nothing mounted"
+        return [f"URLconf could not be inspected ({type(exc).__name__})"]
+    unexpected, seen = [], {"list": 0, "detail": 0}
+    for route, entry in entries:
+        if entry is None:
+            unexpected.append(route)
+            continue
+        callback = entry.callback
+        view_class = getattr(callback, "view_class", None) or getattr(callback, "cls", None)
+        module = getattr(view_class or callback, "__module__", "") or ""
+        name = entry.name or ""
+        is_review = (
+            (isinstance(view_class, type) and issubclass(view_class, RegistrationReviewAPI))
+            or module.startswith(_REVIEW_MODULE_PREFIXES)
+            or name.startswith(_REVIEW_NAME_PREFIXES)
+            or any(marker in route for marker in _REVIEW_ROUTE_MARKERS)
+        )
+        if not is_review:
+            continue
+        kind = _approved_read_route(route, entry, view_class)
+        if kind is not None:
+            seen[kind] += 1
+            if seen[kind] == 1:
+                continue
+        unexpected.append(f"{route} ({name or 'unnamed'})")
+    if seen["detail"] and not seen["list"]:
+        unexpected.append(f"{READ_ONLY_DETAIL_ROUTE} (detail without the approved list)")
+    return unexpected
+
+
+def refuse_unless_only_read_only_list(error_class, message):
+    """Shared P1/P3C guard: only the two read routes are tolerated, and only while their switch is off."""
+    if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", False) is not False:
+        raise error_class("The WF-02.01 pending-list switch must remain off before release.")
+    if unexpected_review_routes():
+        raise error_class(message)
 
 
 def _expected():
@@ -83,12 +187,7 @@ def _target(confirm):
     if (getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_API_ENABLED", False) is not False
             or getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False) is not False):
         raise MetadataRefused("Registration Review backend flags must both remain False.")
-    try:
-        route = reverse("registration-review-pending")
-    except NoReverseMatch:
-        pass
-    else:
-        raise MetadataRefused("Registration Review URL is already mounted: refuse P1.")
+    refuse_unless_only_read_only_list(MetadataRefused, "Registration Review URL is already mounted: refuse P1.")
     with db.cursor() as cursor:
         cursor.execute("SELECT DATABASE()")
         selected = cursor.fetchone()[0]

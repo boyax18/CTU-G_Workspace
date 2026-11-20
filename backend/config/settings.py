@@ -204,6 +204,11 @@ WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = os.environ.get(
 WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = os.environ.get(
     "WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED", "0"
 ) == "1"
+# WF-02.01 (D-31): read-only pending-applications list; off unless explicitly "1".
+# It never enables approve/reject, which stay unmounted and separately gated.
+WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = os.environ.get(
+    "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", "0"
+) == "1"
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
     if WORKSPACE_EMAIL_SMTP_ENABLED

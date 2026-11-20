@@ -8,10 +8,9 @@ A passing report is not authorization to execute operational activation.
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, transaction
-from django.urls import NoReverseMatch, reverse
-
 from apps.access_control.management.commands import (
     exercise_registration_review_activation_recovery_test_only as p3b,
+    init_registration_review_metadata_local_dev as p1,
     report_registration_review_activation_readiness as p3a,
 )
 from apps.access_control.models import (
@@ -56,12 +55,9 @@ def inspect_operational_gate(*, actor_account_id, expected_admin_account_ids):
         if (getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_API_ENABLED", False)
                 or getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False)):
             raise OperationalGateRefused("The Registration Review feature is already enabled.")
-        try:
-            reverse("registration-review-pending")
-        except NoReverseMatch:
-            pass
-        else:
-            raise OperationalGateRefused("Registration Review route is already mounted.")
+        # WF-02.01 Option A: only the GET-only pending list may be mounted, and only while
+        # its switch is off; any decision or unknown review route still refuses.
+        p1.refuse_unless_only_read_only_list(OperationalGateRefused, "Registration Review route is already mounted.")
 
     return {
         "actor_account_id": actor_account_id,

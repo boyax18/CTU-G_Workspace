@@ -36,11 +36,14 @@ const example = () => ({
   results: [{
     account_id: 910001,
     school_id: '9900001',
+    full_name: 'Fictional Applicant',
     requested_role: 'Student',
     created_at: '2026-11-10T09:15:00+08:00',
+    email_verified: false,
   }],
   page: 1,
   page_size: 20,
+  has_next: false,
 });
 
 // Response payloads are supplied by fake data, not by HTTP.
@@ -50,8 +53,8 @@ test('parses the exact minimal pending-list envelope', () => {
 });
 
 test('allows empty pages without inventing a total count', () => {
-  assert.deepEqual(parsePendingRegistrationPage({ results: [], page: 100, page_size: 20 }), {
-    results: [], page: 100, page_size: 20,
+  assert.deepEqual(parsePendingRegistrationPage({ results: [], page: 100, page_size: 20, has_next: false }), {
+    results: [], page: 100, page_size: 20, has_next: false,
   });
 });
 
@@ -219,4 +222,170 @@ test('mock UI and dashboard are not modified or coupled to real client', () => {
   assert.doesNotMatch(dashboard, /registrationReviewApi(?:Contract)?['".]/);
   const gate = readFileSync(new URL('../src/features/admin/registrationReviewPreviewGate.ts', import.meta.url), 'utf8');
   assert.match(gate, /= false;/);
+});
+
+// ---- WF-02.01 View pending applications (P-07) ----
+const { PENDING_APPLICATIONS_LIST_ENABLED, PENDING_APPLICATIONS_ROUTE_ROOT } = await import('../src/features/admin/pendingApplicationsConfig.ts');
+const LIST_ROOT = '/api/v1/admin/registration-requests/';
+
+test('WF-02.01 list switch is off by default and targets the one mounted route', () => {
+  assert.equal(PENDING_APPLICATIONS_LIST_ENABLED, false);
+  assert.equal(PENDING_APPLICATIONS_ROUTE_ROOT, LIST_ROOT);
+});
+
+test('WF-02.01 query builder sends only validated server-side search, filters and sort', () => {
+  assert.deepEqual(buildPendingReviewRequest(LIST_ROOT, 1, {}), { method: 'GET', path: `${LIST_ROOT}?page=1&status=Pending` });
+  assert.deepEqual(
+    buildPendingReviewRequest(LIST_ROOT, 3, { q: '  maria santos ', role: 'Instructor', proof: 'legacy', sort: '-submitted' }),
+    { method: 'GET', path: `${LIST_ROOT}?page=3&status=Pending&q=maria%20santos&role=Instructor&proof=legacy&sort=-submitted` },
+  );
+  assert.equal(buildPendingReviewRequest(LIST_ROOT, 1, { q: '   ' }).path, `${LIST_ROOT}?page=1&status=Pending`);
+  assert.match(buildPendingReviewRequest(LIST_ROOT, 1, { q: '50%_&x=1' }).path, /q=50%25_%26x%3D1$/);
+});
+
+test('WF-02.01 query builder refuses malformed or unsupported values before any request', () => {
+  for (const query of [
+    { q: '1'.repeat(51) }, { q: 'Ñame' }, { q: 'a\nb' }, { q: 'a b c d e f' },
+    { role: 'Admin' }, { role: 'student' }, { proof: 'yes' }, { sort: 'created_at' },
+    { status: 'Approved' }, { page: 2 }, null, [],
+  ]) {
+    assert.throws(() => buildPendingReviewRequest(LIST_ROOT, 1, query), undefined, JSON.stringify(query));
+  }
+  assert.equal(contract.normalizePendingSearch('  7240  '), '7240');
+  assert.equal(contract.normalizePendingSearch(''), '');
+});
+
+test('WF-02.01 parser requires an accurate has_next and typed name/proof fields', () => {
+  const full = (overrides = {}) => ({
+    ...example(),
+    results: Array.from({ length: 20 }, (_, i) => ({ ...example().results[0], account_id: 1000 + i })),
+    has_next: true,
+    ...overrides,
+  });
+  assert.equal(parsePendingRegistrationPage(full()).has_next, true);
+  assert.throws(() => parsePendingRegistrationPage({ ...example(), has_next: true }), undefined, 'has_next with a short page');
+  for (const hasNext of [undefined, 'false', 0, null]) {
+    const payload = { ...example(), has_next: hasNext };
+    if (hasNext === undefined) delete payload.has_next;
+    assert.throws(() => parsePendingRegistrationPage(payload));
+  }
+  for (const patch of [
+    { email_verified: 'true' }, { email_verified: 1 }, { email_verified: undefined },
+    { full_name: '' }, { full_name: 42 }, { full_name: 'x'.repeat(401) },
+  ]) {
+    const payload = example();
+    Object.assign(payload.results[0], patch);
+    if ('email_verified' in patch && patch.email_verified === undefined) delete payload.results[0].email_verified;
+    assert.throws(() => parsePendingRegistrationPage(payload), undefined, JSON.stringify(patch));
+  }
+  const nameless = example();
+  nameless.results[0].full_name = null;
+  assert.equal(parsePendingRegistrationPage(nameless).results[0].full_name, null);
+});
+
+test('WF-02.01 list client refuses without ANY request while switched off', async () => {
+  let called = 0;
+  const before = globalThis.fetch;
+  globalThis.fetch = async () => { called += 1; throw new Error('Should never be called'); };
+  try {
+    await assert.rejects(api.listPendingApplications(1, { q: 'x' }), (error) => error.code === 'review_unavailable' && error.status === 503);
+    assert.equal(called, 0);
+  } finally {
+    globalThis.fetch = before;
+  }
+});
+
+test('WF-02.01 list client, when enabled, issues exactly one GET and never a write', async () => {
+  const calls = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (path, init) => {
+    calls.push({ path, method: init.method, credentials: init.credentials, cache: init.cache });
+    return { ok: true, status: 200, json: async () => example() };
+  };
+  try {
+    const page = await api.listPendingApplications(2, { role: 'Student' }, true);
+    assert.equal(page.results[0].school_id, '9900001');
+  } finally {
+    globalThis.fetch = before;
+  }
+  assert.deepEqual(calls, [{
+    path: `${LIST_ROOT}?page=2&status=Pending&role=Student`, method: 'GET', credentials: 'same-origin', cache: 'no-store',
+  }]);
+});
+
+// ---- WF-02.02 Verify and review applicant information (P-07) ----
+const detailExample = (overrides = {}) => ({
+  account_id: 910001, school_id: '7240001', id_label: 'School ID',
+  name: { first: 'Maria', middle: null, last: 'Santos', suffix: null }, full_name: 'Maria Santos',
+  email: 'maria@example.edu', requested_role: 'Student', request_status: 'Pending',
+  created_at: '2026-11-10T09:15:00+08:00',
+  email_evidence: { state: 'verified', verified_at: '2026-11-10T09:20:00+08:00' },
+  institutional_check: { subject: 'enrollment', verified_by_workspace: false },
+  data_notes: [],
+  ...overrides,
+});
+
+test('WF-02.02 applicant query value is validated before any request', () => {
+  assert.equal(contract.parseApplicantId('910001'), 910001);
+  for (const raw of [null, '', '0', '-1', '01', '1.5', 'abc', '1e3', ' 1', '2147483648', '99999999999']) {
+    assert.equal(contract.parseApplicantId(raw), null, String(raw));
+  }
+  assert.deepEqual(contract.buildApplicantDetailRequest(LIST_ROOT, 12), { method: 'GET', path: `${LIST_ROOT}12/` });
+  assert.throws(() => contract.buildApplicantDetailRequest(LIST_ROOT, 0));
+  assert.throws(() => contract.buildApplicantDetailRequest('//evil.invalid/api/', 12));
+});
+
+test('WF-02.02 parser accepts the four evidence states and both roles', () => {
+  assert.equal(contract.parseApplicantDetail(detailExample(), 910001).email_evidence.state, 'verified');
+  for (const state of ['no_proof', 'address_changed']) {
+    assert.equal(contract.parseApplicantDetail(detailExample({ email_evidence: { state, verified_at: null } }), 910001).email_evidence.state, state);
+  }
+  const noEmail = detailExample({ email: null, email_evidence: { state: 'no_email', verified_at: null } });
+  assert.equal(contract.parseApplicantDetail(noEmail, 910001).email, null);
+  const instructor = detailExample({
+    school_id: '0012345', id_label: 'Staff ID', requested_role: 'Instructor',
+    institutional_check: { subject: 'employment', verified_by_workspace: false }, data_notes: ['missing_profile'],
+  });
+  assert.equal(contract.parseApplicantDetail(instructor, 910001).id_label, 'Staff ID');
+});
+
+test('WF-02.02 parser refuses extra, inconsistent or sensitive fields', () => {
+  const bad = [
+    detailExample({ password_hash: 'x' }),
+    detailExample({ token: 'x' }),
+    detailExample({ account_id: 910002 }),
+    detailExample({ id_label: 'Staff ID' }),
+    detailExample({ request_status: 'Approved' }),
+    detailExample({ requested_role: 'Admin' }),
+    detailExample({ email_evidence: { state: 'verified', verified_at: null } }),
+    detailExample({ email_evidence: { state: 'no_proof', verified_at: '2026-11-10T09:20:00+08:00' } }),
+    detailExample({ email_evidence: { state: 'confirmed', verified_at: null } }),
+    detailExample({ email: null }),
+    detailExample({ email_evidence: { state: 'no_email', verified_at: null } }),
+    detailExample({ institutional_check: { subject: 'enrollment', verified_by_workspace: true } }),
+    detailExample({ institutional_check: { subject: 'employment', verified_by_workspace: false } }),
+    detailExample({ name: { first: 'A', middle: null, last: 'B' } }),
+    detailExample({ data_notes: ['unknown'] }),
+    detailExample({ data_notes: ['missing_profile', 'missing_profile'] }),
+    detailExample({ email: 'not-an-email' }),
+  ];
+  for (const payload of bad) assert.throws(() => contract.parseApplicantDetail(payload, 910001), undefined, JSON.stringify(payload).slice(0, 80));
+});
+
+test('WF-02.02 client refuses without any request while the read switch is off, and only GETs when on', async () => {
+  const calls = [];
+  const before = globalThis.fetch;
+  globalThis.fetch = async (path, init) => {
+    calls.push({ path, method: init.method });
+    return { ok: true, status: 200, json: async () => detailExample({ account_id: 12 }) };
+  };
+  try {
+    await assert.rejects(api.getPendingApplication(12), (error) => error.code === 'review_unavailable');
+    assert.equal(calls.length, 0);
+    const detail = await api.getPendingApplication(12, true);
+    assert.equal(detail.account_id, 12);
+  } finally {
+    globalThis.fetch = before;
+  }
+  assert.deepEqual(calls, [{ path: `${LIST_ROOT}12/`, method: 'GET' }]);
 });

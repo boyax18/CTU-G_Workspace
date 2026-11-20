@@ -55,6 +55,30 @@ class RegistrationReviewRoutingSafetyTests(TestCase):
         )
         self.assertEqual(match.url_name, expected_name)
 
+  def test_wf0201_only_the_read_only_list_is_mounted(self):
+    # D-31: the pending list is the only review route in config.urls.
+    match = resolve("/api/v1/admin/registration-requests/", urlconf="config.urls")
+    self.assertEqual(match.url_name, "registration-review-pending")
+    self.assertEqual(match.func.view_class.http_method_names, ["get", "head", "options"])
+    for route in (
+      "/api/v1/admin/registration-requests/1/approve/",
+      "/api/v1/admin/registration-requests/1/reject/",
+      "/api/v1/admin/registration-requests/bulk/",
+    ):
+      with self.subTest(route=route), self.assertRaises(Resolver404):
+        resolve(route, urlconf="config.urls")
+
+  def test_wf0201_list_gate_defaults_off(self):
+    # Checked in source so a developer's backend/.env cannot change the result.
+    from pathlib import Path
+    source = (Path(settings.BASE_DIR) / "config" / "settings.py").read_text(encoding="utf-8")
+    self.assertIn(
+      'WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = os.environ.get(\n'
+      '    "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", "0"\n) == "1"',
+      source,
+    )
+    self.assertIsInstance(settings.WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED, bool)
+
   def test_existing_authentication_route_remains_available(self):
     match = resolve(
       "/api/v1/auth/session/",

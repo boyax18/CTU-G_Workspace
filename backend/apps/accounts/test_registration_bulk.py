@@ -13,6 +13,7 @@ from apps.access_control.models import (
     RolePermission, Service,
 )
 from .models import Account
+from .rejection_test_support import REJECTION_READY, fresh_test_key, verified_email
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("Bulk review tests require config.test_settings.")
@@ -24,7 +25,9 @@ if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
     WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED=True,
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False,
-    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
+    # WF-02.04 D-54/D-55 (owner-approved test correction): bulk rejection uses the same
+    # single-account service, which now needs the durable outbox and a verified recipient.
+    **REJECTION_READY,
 )
 class BulkRegistrationReviewTests(TestCase):
     @classmethod
@@ -53,6 +56,10 @@ class BulkRegistrationReviewTests(TestCase):
             cls.permissions[action] = perm
 
     def setUp(self):
+        import os
+        key = patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()})
+        key.start()
+        self.addCleanup(key.stop)
         cache.clear()
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.reviewer)
@@ -62,10 +69,10 @@ class BulkRegistrationReviewTests(TestCase):
         self.two = self.new_target("BULK-STUDENT-2")
 
     def new_target(self, school_id, role=None):
-        return Account.objects.create_user(
+        return verified_email(Account.objects.create_user(
             school_id=school_id, password="Copper!River7293",
             requested_role=role or self.student,
-        )
+        ), f"{school_id.lower()}@example.edu")
 
     def post(self, payload, *, csrf=True):
         return self.client.post(
@@ -79,16 +86,31 @@ class BulkRegistrationReviewTests(TestCase):
             request["rejection_code"] = reason
         return request
 
-    def test_two_approvals_are_individually_audited(self):
+    def test_bulk_approval_never_approves_without_individual_attestation(self):
+        # WF-02.03 D-44/D-45 (owner decision, 17 Nov 2026): bulk approval cannot carry a
+        # per-applicant eligibility attestation, so the service refuses every item, even for
+        # applicants with verified email proof. Bulk approval is a separate future workflow.
+        from django.utils import timezone
+        for target, email in ((self.one, "bulk.one@example.edu"), (self.two, "bulk.two@example.edu")):
+            Account.objects.filter(pk=target.pk).update(
+                email=email, email_verified_at=timezone.now(), email_verified_address=email,
+            )
         response = self.post(self.request_for())
         self.assertEqual(response.status_code, 200, response.content)
         data = response.json()
-        self.assertEqual(data["counts"]["Approved"], 2)
-        self.assertFalse(data["interrupted"])
-        self.assertEqual(AccountRole.objects.filter(account_id__in=[self.one.pk, self.two.pk]).count(), 2)
-        self.assertEqual(AccessAuditLog.objects.count(), 2)
-        self.one.refresh_from_db()
-        self.assertEqual(self.one.request_status, "Approved")
+        self.assertEqual(data["counts"]["Approved"], 0)
+        self.assertEqual(data["counts"]["Skipped"], 2)
+        self.assertFalse(AccountRole.objects.filter(account_id__in=[self.one.pk, self.two.pk]).exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        for target in (self.one, self.two):
+            target.refresh_from_db()
+            self.assertEqual(target.request_status, "Pending")
+            self.assertFalse(target.is_active)
+        # The request contract offers no way to supply an attestation either.
+        forged = {**self.request_for(), "eligibility_confirmed": True,
+                  "eligibility_source": "ctu_main_system_records"}
+        self.assertEqual(self.post(forged).status_code, 400)
+        self.assertFalse(AccessAuditLog.objects.exists())
 
     def test_rejection_deletes_accounts_and_preserves_audit(self):
         response = self.post(self.request_for("reject"))
@@ -105,9 +127,9 @@ class BulkRegistrationReviewTests(TestCase):
         self.assertEqual(first_page.status_code, 200, first_page.content)
         ids = [row["account_id"] for row in first_page.json()["results"]]
         self.assertEqual(len(ids), 20)
-        response = self.post(self.request_for(ids=ids))
+        response = self.post(self.request_for("reject", ids=ids))
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json()["counts"]["Approved"], 20)
+        self.assertEqual(response.json()["counts"]["Rejected"], 20)
         self.assertEqual(Account.objects.filter(request_status="Pending").count(), 3)
 
     def test_repeated_target_is_invalid_before_writes(self):
@@ -135,15 +157,15 @@ class BulkRegistrationReviewTests(TestCase):
     def test_stale_target_is_skipped_without_extra_audit(self):
         self.one.request_status, self.one.is_active = "Approved", True
         self.one.save(update_fields=["request_status", "is_active"])
-        response = self.post(self.request_for())
+        response = self.post(self.request_for("reject"))
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["counts"]["Skipped"], 1)
-        self.assertEqual(response.json()["counts"]["Approved"], 1)
+        self.assertEqual(response.json()["counts"]["Rejected"], 1)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
-    def test_replay_does_not_reapprove_or_reaudit(self):
-        self.assertEqual(self.post(self.request_for()).status_code, 200)
-        response = self.post(self.request_for())
+    def test_replay_does_not_redecide_or_reaudit(self):
+        self.assertEqual(self.post(self.request_for("reject")).status_code, 200)
+        response = self.post(self.request_for("reject"))
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(response.json()["counts"]["Skipped"], 2)
         self.assertEqual(AccessAuditLog.objects.count(), 2)
@@ -152,10 +174,10 @@ class BulkRegistrationReviewTests(TestCase):
         three = self.new_target("BULK-STUDENT-3")
         self.two.request_status = "Rejected"
         self.two.save(update_fields=["request_status"])
-        response = self.post(self.request_for(ids=[self.one.pk, self.two.pk, three.pk]))
+        response = self.post(self.request_for("reject", ids=[self.one.pk, self.two.pk, three.pk]))
         self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual([row["outcome"] for row in response.json()["results"]],
-                         ["Approved", "Skipped", "Approved"])
+                         ["Rejected", "Skipped", "Rejected"])
         self.assertEqual(AccessAuditLog.objects.count(), 2)
 
     def test_missing_csrf_rejected(self):
@@ -219,31 +241,31 @@ class BulkRegistrationReviewTests(TestCase):
             return real_check(view, request, permission)
 
         with patch.object(registration_bulk_api.BulkRegistrationReviewView, "require_actor", check):
-            response = self.post(self.request_for())
+            response = self.post(self.request_for("reject"))
         self.assertEqual(response.status_code, 200, response.content)
         data = response.json()
         self.assertTrue(data["interrupted"])
-        self.assertEqual(data["counts"]["Approved"], 1)
+        self.assertEqual(data["counts"]["Rejected"], 1)
         self.assertEqual(data["remaining"], 1)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
     def test_single_account_unavailability_interrupts_with_true_counts(self):
         from . import registration_bulk
-        real = registration_bulk.approve_registration
+        real = registration_bulk.reject_registration
         attempts = {"count": 0}
 
-        def decide(*, actor, target_id):
+        def decide(*, actor, target_id, rejection_code):
             attempts["count"] += 1
             if attempts["count"] == 2:
                 from .registration_review import RegistrationReviewUnavailable
                 raise RegistrationReviewUnavailable()
-            return real(actor=actor, target_id=target_id)
+            return real(actor=actor, target_id=target_id, rejection_code=rejection_code)
 
-        with patch.object(registration_bulk, "approve_registration", side_effect=decide):
-            response = self.post(self.request_for())
+        with patch.object(registration_bulk, "reject_registration", side_effect=decide):
+            response = self.post(self.request_for("reject"))
         self.assertEqual(response.status_code, 200, response.content)
         data = response.json()
-        self.assertEqual(data["counts"]["Approved"], 1)
+        self.assertEqual(data["counts"]["Rejected"], 1)
         self.assertEqual(data["counts"]["Failed"], 1)
         self.assertTrue(data["interrupted"])
         self.assertEqual(AccessAuditLog.objects.count(), 1)
@@ -265,21 +287,21 @@ class BulkRegistrationReviewTests(TestCase):
 
     def test_unexpected_second_decision_failure_stops_truthfully(self):
         from . import registration_bulk
-        real = registration_bulk.approve_registration
+        real = registration_bulk.reject_registration
         count = {"n": 0}
 
-        def decide(*, actor, target_id):
+        def decide(*, actor, target_id, rejection_code):
             count["n"] += 1
             if count["n"] == 2:
                 raise RuntimeError("private diagnostic")
-            return real(actor=actor, target_id=target_id)
+            return real(actor=actor, target_id=target_id, rejection_code=rejection_code)
 
-        with patch.object(registration_bulk, "approve_registration", side_effect=decide):
-            response = self.post(self.request_for())
+        with patch.object(registration_bulk, "reject_registration", side_effect=decide):
+            response = self.post(self.request_for("reject"))
         self.assertEqual(response.status_code, 200, response.content)
         data = response.json()
         self.assertTrue(data["interrupted"])
-        self.assertEqual(data["counts"]["Approved"], 1)
+        self.assertEqual(data["counts"]["Rejected"], 1)
         self.assertEqual(data["counts"]["Failed"], 1)
         self.assertNotIn("private diagnostic", response.content.decode())
         self.assertEqual(AccessAuditLog.objects.count(), 1)

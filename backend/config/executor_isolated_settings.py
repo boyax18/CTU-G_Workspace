@@ -34,4 +34,7 @@ DATABASES = {"default": _db}
 DEBUG = False
 ALLOWED_HOSTS = ["testserver", "localhost"]
 WORKSPACE_REGISTRATION_APPROVAL_ENABLED = True
-WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = True
+# WF-02.04 D-61 (owner-authorized 18 Nov 2026, partial retirement): rejected-account
+# reapplication is disabled in the executor too, so no Rejected account can be revived through
+# it. The code, routes and protocol handler stay until a separately authorized removal.
+WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED = False

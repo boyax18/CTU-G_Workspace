@@ -1,0 +1,35 @@
+{
+  "schema_version": "catalogue-delta-v2.2",
+  "base": {
+    "manifest_version": "catalogue-v2.1",
+    "effective_digest": "1adb16465e9d32712f890a95ee13dd5f21f4441790715aeaf91aa10c53183362",
+    "addendum_sha256": "78a3c7e2e0afd07a7c4c052e13f3503378076dc7f487d9ecf3bf1dc940e1afb7"
+  },
+  "addendum": {
+    "path": "docs/architecture/AR-3B2A-ADDENDUM-v2.2.md",
+    "sha256": "4285837e51f5331bb54fab50246c25d4efb0bbd65905a567368ba7e6681f8fdd"
+  },
+  "result": {
+    "schema_version": "static-catalogue-v2.2",
+    "manifest_version": "catalogue-v2.2",
+    "source_revision": "v2.2-review-1"
+  },
+  "operations": [
+    {
+      "op": "move_default_binding",
+      "permission_code": "access_control.school_access.inspect",
+      "from_role": "Admin",
+      "to_role": "Technical Super Admin"
+    },
+    {
+      "op": "move_default_binding",
+      "permission_code": "access_control.audit.school.read",
+      "from_role": "Admin",
+      "to_role": "Technical Super Admin"
+    }
+  ],
+  "independent_review": {
+    "status": "OPEN",
+    "note": "Independent approval or signing of the addendum pin not performed (D-101)."
+  }
+}

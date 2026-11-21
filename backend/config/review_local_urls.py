@@ -17,4 +17,6 @@ urlpatterns = [
     path("api/v1/admin/role-permissions/", include("apps.access_control.role_permission_urls")),
     # WF-03.03 individual Grants; independently gated and isolated.
     path("api/v1/admin/account-grants/", include("apps.access_control.account_grant_urls")),
+    # WF-03.04 individual Deny / revoke; independently gated isolated routes.
+    path("api/v1/admin/account-restrictions/", include("apps.access_control.account_restriction_urls")),
 ]

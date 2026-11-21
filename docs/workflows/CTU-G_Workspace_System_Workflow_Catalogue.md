@@ -2212,45 +2212,62 @@ Next flow: WF-03.04. Do not start until Approved is ticked.
 
 #### WF-03.04 — Deny or revoke account-specific permission
 
+**Implementation checkpoint (21 November 2026, source staged; not tested or activated):** Added an independent, default-off restrictions API and Technical Super Admin screen for account-specific Deny, individual Grant revocation, and explicit Deny removal. Existing writer authority, primary MySQL transaction, delegation and append-only audit contracts are reused. The new writer checks the expected override and role scope *inside* the governance transaction and removes stale role-scope mappings when a Grant ends. A Deny affects the entire account, including all active role contexts, per the existing evaluator. Source stage only; no migration applied and no role, service, grant, or authorization modified. Consolidated tests and final Human Approval remain pending.
+
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | Technical Super Admin, active `access_control.account_permissions.manage`, approved delegation scope and protected writer |
+| Trigger | Authorized management of an approved, active ordinary account's direct permission override |
+| Preconditions | Authenticated approved actor, verified active Technical Super Admin context, approved delegation for the exact non-governance permission, eligible ordinary target; active role context; authorized WF-03.03 scope migration and evaluator; independent WF-03.04 gates |
+| Result | Exact account permission becomes Deny, an individual Grant is deactivated, or a Deny is explicitly removed; matching role-scope mapping cleared; one append-only audit receipt |
+| Status | Source implemented and staged; disabled by default; installation/commit/activation/tests pending |
 
 #### Main flow
 
-Not yet inspected.
+1. Technical Super Admin opens the independently gated Account restrictions page and searches by CTU-G ID.
+2. Backend authorizes the request and returns a bounded approved-account directory.
+3. Admin opens one account and sees eligible permissions, current override effect, and role-scope hints.
+4. Admin chooses Deny, Revoke Grant, or Remove Deny (only where the current state permits).
+5. UI warns that a Deny applies across active role contexts and removing a Deny may restore role-granted access.
+6. Admin confirms, submitting the exact action and last observed effect/scope as concurrency preconditions.
+7. Backend rechecks management authority, reviewed delegation, target status and protected writer under a durable transaction.
+8. Backend locks the override and role scope, rejects stale state, and writes the requested change; role-scope hint is cleared when a scoped Grant ends.
+9. Backend appends one audited action without broadening the pinned audit schema; the UI requires a fresh directory read before allowing another mutation.
 
 #### Alternative flows
 
-Not yet inspected.
+A. No active override: Deny may create a new record; revoke/remove actions reject without creating a placeholder.
+B. Existing Grant: Deny replaces the Grant or Revoke Grant disables it. Neither changes the role's shared permissions.
+C. Existing Deny: Remove Deny disables it; effective role-based access may return. A second Deny request is rejected as stale.
+D. Active-role switching: the Deny remains account-wide; a revoked scoped Grant cannot be inherited in a different context.
+E. Stale or mismatched effect/scope, concurrent writer, missing migration, inactive gate or executor mode: reject/503/409 without a partial mutation.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1–3 | Unapproved actor, self-target, reserved/admin account, or wrong permission | 403/404; no account data or mutation |
+| 4–7 | Unsupported action, unapproved delegation or governance permission | 400/403/503; no mutation |
+| 6–8 | Override changed after loading, including role-scope change | HTTP 409; require reload |
+| 7–9 | Missing migration, invalid DB state, audit/writer failure | Fail closed, transaction rollback; no claimed success |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-03.01 active-role context; WF-03.02 approved delegation; WF-03.03 scoped Grant storage and authorized migration.
 
-Feeds: Not yet inspected.
+Feeds: WF-03.05 effective permission evaluation; WF-03.06 audit review.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☒ Inspect   ☒ Reconcile   ☒ Approve (staged implementation)   ☒ Implement (source prepared)   ☐ Test   ☐ Commit (owner pending)
 
-Blocked by: Unknown – needs confirmation
+Blocked by: Owner-approved 0005 migration, independently reviewed delegation and S1 authorization, protected-executor feature parity, gates and consolidated WF-03 tests.
 
-Evidence level: Unknown – needs confirmation
+Evidence level: Source prepared against `5428c08`; no application test, migration or live activation evidence.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-03.05. Do not start until Approved is ticked.
+Next flow: WF-03.05; only implementation planning until final verification and Human Approval.
 
 #### WF-03.05 — Evaluate effective permissions and service state
 

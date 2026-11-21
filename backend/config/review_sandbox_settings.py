@@ -121,3 +121,13 @@ WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED = (
 WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED = (
     os.environ.get("CTUG_WF0303_SANDBOX_EVALUATION_ACK") == "SANDBOX_WF0303_EVALUATION"
 )
+
+# WF-03.04: isolated account-wide Denies and individual Grant/Deny removal.
+# Explicit independent review/mutation gates. Requires owner-approved 0005,
+# scoped Grant evaluation, delegated authority and protected writer parity.
+WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED = (
+    os.environ.get("CTUG_WF0304_SANDBOX_ACK") == "SANDBOX_WF0304"
+)
+WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED = (
+    os.environ.get("CTUG_WF0304_SANDBOX_MUTATION_ACK") == "SANDBOX_WF0304_MUTATIONS"
+)

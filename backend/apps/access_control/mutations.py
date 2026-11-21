@@ -332,3 +332,90 @@ def grant_account_permission_for_role(*, actor, target, role, permission,
             old_value=previous, new_value=_override_snapshot(current), reason=reason,
         )
     return True
+
+
+class AccountRestrictionStateConflict(Exception):
+    """The observed override or role scope changed before a locked write."""
+
+
+def change_account_restriction(*, actor, target, permission, action,
+                               expected_effect, expected_scope_role_id,
+                               reason="permission_change"):
+    """WF-03.04: Deny, revoke a direct Grant, or remove an explicit Deny.
+
+    Denies are account-wide under the existing evaluator, even if a person
+    switches roles. Removing a Grant or a Deny deactivates the same override,
+    NOT a role permission. Only approved delegated, non-governance codes and
+    ordinary targets may be changed. A scoped-Grant's mapping is cleared in
+    the same durable MySQL transaction; the old role is retained on the audit
+    receipt. This function never silently enables an existing Grant.
+    """
+    if type(action) is not str or action not in {"deny", "revoke_grant", "remove_deny"}:
+        raise PermissionManagementValidationError("Unsupported restriction action.")
+    if (expected_effect is not None and
+            (type(expected_effect) is not str or expected_effect not in {"Grant", "Deny"})):
+        raise PermissionManagementValidationError("Invalid expected override effect.")
+    if (expected_scope_role_id is not None and
+            (type(expected_scope_role_id) is not int or not 1 <= expected_scope_role_id <= 2_147_483_647)):
+        raise PermissionManagementValidationError("Invalid expected role scope.")
+    if (getattr(settings, "WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED", False) is not True
+            or getattr(settings, "WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED", False) is not True):
+        raise DelegationPolicyUnavailable("Account restrictions are not enabled.")
+    from apps.accounts.active_role_context import context_enabled
+    from .executor.client import enabled as executor_enabled
+    if executor_enabled() or not context_enabled():
+        raise WriterBoundaryUnavailable("Role context / protected writer is unavailable.")
+    _pk(target, Account)
+    # _management_context rechecks exact actor authority, delegation and
+    # approved target state *while holding the governance transaction lock*.
+    with _management_context(actor, permission, ACCOUNT_PERMISSION_MANAGE, target=target) as context:
+        _reason(reason)
+        row = AccountPermission.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(
+            account=context.target, permission=context.permission,
+        ).first()
+        mapping = None
+        if row is not None:
+            mapping = AccountPermissionRoleScope.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(
+                account_permission=row,
+            ).first()
+        actual_effect = row.effect if row is not None and row.is_active else None
+        actual_role_id = mapping.role_id if actual_effect == "Grant" and mapping is not None else None
+        if actual_effect != expected_effect or actual_role_id != expected_scope_role_id:
+            raise AccountRestrictionStateConflict("The override changed; reload before continuing.")
+        if (action == "deny" and actual_effect == "Deny") or (
+            action == "revoke_grant" and actual_effect != "Grant"
+        ) or (action == "remove_deny" and actual_effect != "Deny"):
+            raise AccountRestrictionStateConflict("The selected action is no longer available.")
+        old = _override_snapshot(row) if row is not None else None
+        old_role = Role.objects.using(DEFAULT_DB_ALIAS).filter(pk=actual_role_id).first() if actual_role_id else None
+        if row is None:
+            # Only the explicit Deny operation may create an override.
+            if action != "deny":
+                raise AccountRestrictionStateConflict("No active override exists.")
+            row = AccountPermission.objects.using(DEFAULT_DB_ALIAS).create(
+                account=context.target, permission=context.permission,
+                effect="Deny", is_active=True, assigned_by=context.actor,
+            )
+        else:
+            row.is_active = action == "deny"
+            row.updated_at = CurrentTimestamp()
+            update_fields = ["is_active", "updated_at"]
+            if action == "deny":
+                row.effect, row.assigned_by = "Deny", context.actor
+                update_fields += ["effect", "assigned_by"]
+            row.save(using=DEFAULT_DB_ALIAS, update_fields=update_fields)
+        if mapping is not None:
+            # Role-scoped grant data must NOT outlive its Grant as a stale
+            # authorization hint. Removal is transactional with the audit.
+            mapping.delete(using=DEFAULT_DB_ALIAS)
+        audit_action = {
+            "deny": "account_permission.deny",
+            "revoke_grant": "account_permission.grant.deactivate",
+            "remove_deny": "account_permission.deny.deactivate",
+        }[action]
+        audit.record_access_audit(
+            actor=context.actor, target=context.target, role=old_role,
+            permission=context.permission, action=audit_action,
+            old_value=old, new_value=_override_snapshot(row), reason=reason,
+        )
+    return True

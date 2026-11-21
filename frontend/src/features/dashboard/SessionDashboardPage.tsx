@@ -19,6 +19,8 @@ import RolePermissionsPanel from '../access-control/RolePermissionsPanel';
 import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig';
 import AccountGrantsPanel from '../access-control/AccountGrantsPanel';
 import { ACCOUNT_GRANTS_ENABLED } from '../access-control/accountGrantConfig';
+import AccountRestrictionsPanel from '../access-control/AccountRestrictionsPanel';
+import { ACCOUNT_RESTRICTIONS_ENABLED } from '../access-control/accountRestrictionConfig';
 import AppointmentManagementPanel from '../access-control/AppointmentManagementPanel';
 import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig';
@@ -194,6 +196,8 @@ export default function SessionDashboardPage() {
   if (view === 'role-permissions' && ROLE_PERMISSION_MANAGEMENT_ENABLED) return <RolePermissionsPanel permissions={permissions} />;
   // WF-03.03: exact account-specific Grants; no role-wide permission changes.
   if (view === 'account-overrides' && ACCOUNT_GRANTS_ENABLED) return <AccountGrantsPanel permissions={permissions} />;
+  // WF-03.04: account-wide Deny and direct Grant/Deny removal; backend rechecks access.
+  if (view === 'account-restrictions' && ACCOUNT_RESTRICTIONS_ENABLED) return <AccountRestrictionsPanel permissions={permissions} />;
 
   return <ModuleUnavailable onBack={back} />;
 }

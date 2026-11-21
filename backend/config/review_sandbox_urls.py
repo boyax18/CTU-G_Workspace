@@ -29,4 +29,6 @@ urlpatterns = [
     path("api/v1/admin/account-restrictions/", include("apps.access_control.account_restriction_urls")),
     # WF-03.05: read-only role-context effective permissions and service-state inspector.
     path("api/v1/admin/effective-access/", include("apps.access_control.effective_access_urls")),
+    # WF-03.06: isolated read-only audit-history API; exact permission + default-off gate.
+    path("api/v1/admin/access-audit/", include("apps.access_control.access_audit_urls")),
 ]

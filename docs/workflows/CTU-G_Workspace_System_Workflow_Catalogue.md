@@ -2328,43 +2328,54 @@ Next flow: WF-03.06 for staged feature development; defer consolidated tests and
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | Technical Super Admin with active Technical Super Admin role context and exact `access_control.audit.read` effective permission. |
+| Trigger | Authorized reviewer opens **Access audit logs**, filters events, pages through results, and opens one event for controlled before/after details. |
+| Preconditions | Approved active account with Admin + Technical Super Admin, active accounts and access-control services, isolated review URL configuration and independent audit-read gate. Unsupported protected-executor configuration refuses access. |
+| Result | Read-only, bounded audit history from the existing `access_audit_logs` table; no writer changes, audit record edits, grants, or migrations. |
+| Status | Source implementation prepared for local commit; tests and activation deferred until consolidated WF-03 verification. |
 
 #### Main flow
 
-Not yet inspected.
+1. Authorized Technical Super Admin opens the **Access audit logs** dashboard entry in an eligible active-role context.
+2. Backend rechecks the signed-in session, exact effective `access_control.audit.read` permission, composite Technical Super Admin authority, required services, isolated gate, and protected-executor boundary.
+3. Reviewer optionally enters exact actor/target CTU-G IDs, an exact audit action code, and UTC from/to dates (maximum 366-day range when both dates are provided).
+4. Backend uses bounded 20-row pages with descending recorded time and audit ID; the UI does not request full log exports.
+5. Reviewer opens an event to view its actor/target CTU-G ID, role, permission, controlled reason code, and controlled before/after state.
+6. Before showing snapshots, the reader revalidates them against the existing `audit.py` state allowlist. Invalid legacy JSON is redacted, never sent verbatim.
+7. Further pages and details require new server-side authorization. The reader never creates, edits or deletes audit records.
 
 #### Alternative flows
 
-Not yet inspected.
+- No matching history: return an empty page without disclosing unfiltered records.
+- Filters cleared: begin a fresh query, not a cached authorization decision.
+- Old audit row contains noncanonical state or reason: redact unsupported values, preserving only approved metadata.
+- Audit log references a deleted account: this schema uses protected foreign keys; no synthetic replacement identities are created.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1–2 | Gate disabled, unsupported executor, inactive service, unauthorized or expired session | Fail closed (401/403/503) with no audit data. |
+| 3–4 | Invalid filters, repeated query field, date window too wide or out-of-range page | Reject with 400; no expensive unrestricted query. |
+| 5–6 | Audit ID absent, malformed historical JSON or database error | 404 for absent ID; redact invalid snapshot; 503 on database failure. |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-03.01 active-role context and Technical Super Admin authorization; WF-03.02–03.05 mutation/effective-permission infrastructure; existing append-only `access_audit_logs` writer and v2 permission catalogue.
 
-Feeds: Not yet inspected.
+Feeds: WF-12 security audit and final consolidated WF-03 testing.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☒ Inspect   ☒ Reconcile   ☒ Approve (source-only scope)   ☒ Implement (package prepared)   ☐ Test   ☐ Commit (owner pending)
 
-Blocked by: Unknown – needs confirmation
+Blocked by: Feature activation, exact permission provisioning, protected executor parity, final governance approval and deferred WF-03 regression. Read-only implementation remains isolated and default OFF.
 
-Evidence level: Unknown – needs confirmation
+Evidence level: Source prepared against commit `16dcddc`; no migration, live activation, application tests or runtime verification performed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-04.01. Do not start until Approved is ticked.
+Next flow: WF-04.01 only after required verification and Human Approval; consolidated WF-03 testing is deferred but not deleted.
 
 ### WF-04  Profile Management
 

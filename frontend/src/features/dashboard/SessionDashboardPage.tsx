@@ -200,6 +200,8 @@ export default function SessionDashboardPage() {
   if (view === 'account-restrictions' && ACCOUNT_RESTRICTIONS_ENABLED) return <AccountRestrictionsPanel permissions={permissions} />;
   // WF-03.05: read-only effective access and service state inspection.
   if (view === 'access-reviews' && EFFECTIVE_ACCESS_INSPECT_ENABLED) return <EffectiveAccessPanel permissions={permissions} />;
+  // WF-03.06: read-only, default-off audit history for Technical Super Admin.
+  if (view === 'access-audit' && ACCESS_AUDIT_ENABLED) return <AccessAuditPanel permissions={permissions} />;
 
   return <ModuleUnavailable onBack={back} />;
 }

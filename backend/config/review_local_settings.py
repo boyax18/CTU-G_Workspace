@@ -128,3 +128,9 @@ WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED = (
 WORKSPACE_WF0305_EFFECTIVE_ACCESS_INSPECT_ENABLED = (
     os.environ.get("CTUG_WF0305_LOCAL_INSPECT_ACK") == "LOCAL_WF0305_INSPECT"
 )
+
+# WF-03.06 read-only audit history; requires exact audit.read in Technical Super
+# Admin role context and no protected executor. Default OFF until approved.
+WORKSPACE_WF0306_AUDIT_HISTORY_ENABLED = (
+    os.environ.get("CTUG_WF0306_AUDIT_LOCAL_ACK") == "LOCAL_WF0306_AUDIT_READ"
+)

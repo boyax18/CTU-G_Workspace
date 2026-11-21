@@ -226,7 +226,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     description: 'Service activation under protected governance.' },
 
   { id: 'access-audit', label: 'Access audit logs', icon: 'lock', group: 'security-audit',
-    requiredAny: ['access_control.audit.read'], integration: planned,
+    requiredAny: ['access_control.audit.read'], integration: ACCESS_AUDIT_ENABLED ? 'shell' : planned,
     description: 'Access-control audit history.' },
   { id: 'access-reviews', label: 'Access reviews', icon: 'lock', group: 'security-audit',
     requiredAny: ['access_control.effective_permissions.inspect'], integration: EFFECTIVE_ACCESS_INSPECT_ENABLED ? 'shell' : planned,

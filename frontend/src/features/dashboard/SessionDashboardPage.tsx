@@ -198,6 +198,8 @@ export default function SessionDashboardPage() {
   if (view === 'account-overrides' && ACCOUNT_GRANTS_ENABLED) return <AccountGrantsPanel permissions={permissions} />;
   // WF-03.04: account-wide Deny and direct Grant/Deny removal; backend rechecks access.
   if (view === 'account-restrictions' && ACCOUNT_RESTRICTIONS_ENABLED) return <AccountRestrictionsPanel permissions={permissions} />;
+  // WF-03.05: read-only effective access and service state inspection.
+  if (view === 'access-reviews' && EFFECTIVE_ACCESS_INSPECT_ENABLED) return <EffectiveAccessPanel permissions={permissions} />;
 
   return <ModuleUnavailable onBack={back} />;
 }

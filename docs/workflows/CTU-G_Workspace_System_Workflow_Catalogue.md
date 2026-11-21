@@ -2273,43 +2273,56 @@ Next flow: WF-03.05; only implementation planning until final verification and H
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | Authorized Technical Super Admin with exact `access_control.effective_permissions.inspect` in the selected Technical Super Admin session context. Other users remain subject to the existing evaluator at every protected API. |
+| Trigger | Authorized inspector searches for an approved account by CTU-G ID, selects a currently eligible assigned role, and opens its effective-access snapshot. |
+| Preconditions | Approved active target and authorized actor; selected role belongs to target; `access_control` and `accounts` services active; explicit local inspection gate and active-role-context feature enabled; protected executor disabled for this isolated API. |
+| Result | Read-only current effective permissions for selected role, including stored Technical Super Admin inheritance, account-wide Denies, role-scoped Grants (only when separately enabled), and service availability. No account, service, permission or session mutation. |
+| Status | Staged implementation (not tested, not activated, awaiting owner installation/commit) |
 
 #### Main flow
 
-Not yet inspected.
+1. Authorized Technical Super Admin opens **Access reviews** in the dashboard while their active role context has the inspection permission.
+2. Search approved, active accounts by CTU-G ID prefix (capped results, no sensitive account data).
+3. Choose target and an eligible active assigned role. Invalid or revoked role contexts are not offered.
+4. Backend rechecks session, Technical Super Admin composite profile, exact effective inspection permission, active `accounts` and `access_control` services, local flag and protected-executor boundary.
+5. Read-only evaluator binds target role context for a single response, then restores the original actor context. The evaluator remains the *same* `get_effective_permissions` used by protected actions.
+6. Show effective permission codes, service active/inactive states, explicit Deny indicators, recorded role grants and the permitted role-inheritance IDs. Treat these as explanatory snapshots, never authorization tokens.
+7. Role changes or refreshing the snapshot require another server evaluation. All actual protected actions still call `has_permission` with current stored state.
 
 #### Alternative flows
 
-Not yet inspected.
+- Permission or service revoked while viewing: refreshed read uses the new state; inactive services yield no effective permissions from that service.
+- Missing, unassigned, inactive or invalid target role: refuse the inspection (404) and do not fall back to all roles.
+- Account-specific Grant scope migration not authorized: scoped Grant gate remains OFF; no new scope-table query is required for this inspector; grants do not escape selected-role evaluation.
+- Appointment invalidity (where the D-111 runtime gate is enabled): role context excludes unverified Treasurer/SSG Advisor; no forged role access.
+- No matching account: return an empty bounded search result, not an unprotected directory.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 1–4 | No actor permission, invalid session, unsupported executor or disabled gate | 401/403/503, fail closed with no inspection data |
+| 2–3 | Malformed search, stale target or unassigned role | 400/404, no union-role fallback |
+| 4–6 | Database unavailable or catalogue exceeds bounded read limits | 503; no grants or mutations |
+| 5–7 | Role, Deny, Grant or service state changes between reads | Snapshot is informational only; re-evaluate on refresh/action, never authorize from stale UI |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-03.01 active-role context, D-111/D-114 appointment and eligibility gates; WF-03.02 role grants; WF-03.03 scoped Grants and authorized migration; WF-03.04 explicit Deny precedence; existing `access_control.services` evaluator.
 
-Feeds: Not yet inspected.
+Feeds: WF-03.06 audit review; runtime permission checks across all protected APIs.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☒ Inspect   ☒ Reconcile   ☒ Approve (source-only scope)   ☒ Implement (source prepared)   ☐ Test   ☐ Commit (owner pending)
 
-Blocked by: Unknown – needs confirmation
+Blocked by: Existing D-101/D-102 governance, protected executor parity, approved migration and feature activation; consolidated WF-03 testing. New inspector is isolated and default-OFF; no service-activation writer is added.
 
-Evidence level: Unknown – needs confirmation
+Evidence level: Source prepared against `7360c39`, not tested or activated. Existing evaluator (`services.py`) already enforces service `is_active`, selected role, and active account-wide Deny per protected request.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-03.06. Do not start until Approved is ticked.
+Next flow: WF-03.06 for staged feature development; defer consolidated tests and final approval.
 
 #### WF-03.06 — Record and review access-control changes
 

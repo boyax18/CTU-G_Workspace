@@ -16,6 +16,7 @@ import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentMan
 import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig.ts';
 import { ACCOUNT_GRANTS_ENABLED } from '../access-control/accountGrantConfig.ts';
 import { ACCOUNT_RESTRICTIONS_ENABLED } from '../access-control/accountRestrictionConfig.ts';
+import { EFFECTIVE_ACCESS_INSPECT_ENABLED } from '../access-control/effectiveAccessConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -228,7 +229,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     requiredAny: ['access_control.audit.read'], integration: planned,
     description: 'Access-control audit history.' },
   { id: 'access-reviews', label: 'Access reviews', icon: 'lock', group: 'security-audit',
-    requiredAny: ['access_control.effective_permissions.inspect'], integration: planned,
+    requiredAny: ['access_control.effective_permissions.inspect'], integration: EFFECTIVE_ACCESS_INSPECT_ENABLED ? 'shell' : planned,
     description: 'Inspect an account’s effective permissions.' },
 
   { id: 'system-health', label: 'System health', icon: 'activity', group: 'system-operations',

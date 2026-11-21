@@ -121,3 +121,10 @@ WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED = (
 WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED = (
     os.environ.get("CTUG_WF0304_LOCAL_MUTATION_ACK") == "LOCAL_WF0304_MUTATIONS"
 )
+
+# WF-03.05: read-only effective access / service state inspector, default OFF.
+# Requires exact Technical Super Admin inspection permission and active role context.
+# No service activation or permission mutation capability is exposed here.
+WORKSPACE_WF0305_EFFECTIVE_ACCESS_INSPECT_ENABLED = (
+    os.environ.get("CTUG_WF0305_LOCAL_INSPECT_ACK") == "LOCAL_WF0305_INSPECT"
+)

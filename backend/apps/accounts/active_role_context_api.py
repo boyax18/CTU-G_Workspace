@@ -18,7 +18,8 @@ class RoleContextSwitchView(WorkspaceSessionAPI):
         # never make role switching usable against a protected executor that
         # cannot validate the active-role authority context.
         from apps.access_control.executor.client import enabled as executor_enabled
-        if executor_enabled():
+        from django.conf import settings
+        if executor_enabled() and getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is not True:
             return Response({"error": {"code": "role_context_unavailable",
                                        "message": "Role context is not available."}}, status=503)
         account = _workspace_account(get_user(request._request))

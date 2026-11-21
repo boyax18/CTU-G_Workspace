@@ -253,6 +253,43 @@ class Executor:
             function = mutations.grant_role_permission if operation.endswith("grant") else mutations.revoke_role_permission
             return function(actor=actor, role=Role.objects.get(pk=p["role_id"]), permission=permission,
                             reason=p["reason"], expected_active=p.get("expected_active"))
+        # WF-03.03/04: new exact operations are intentionally distinct from
+        # the historical unscoped account_permission operations. They are
+        # unavailable in every existing executor profile by default.
+        if operation in {"account_permission.scoped_grant", "account_permission.restrict"}:
+            require(getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is True)
+            require(getattr(settings, "WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED", False) is True)
+            common = {"actor_id", "target_id", "permission_id", "reason", "selected_role_id"}
+            grant_fields = common | {"role_id", "expected_active"}
+            restriction_fields = common | {"action", "expected_effect", "expected_scope_role_id"}
+            require(set(p) == (grant_fields if operation.endswith("scoped_grant") else restriction_fields))
+            require(type(p["target_id"]) is int and 0 < p["target_id"] <= 2_147_483_647)
+            require(type(p["selected_role_id"]) is int and 0 < p["selected_role_id"] <= 2_147_483_647)
+            # Actor proof authenticates the account, not a role-name claim.
+            # Rebuild the requested role context from current assigned roles
+            # before permission evaluation and inside the ledger transaction.
+            from apps.accounts.active_role_context import available_roles, bind_role_scope
+            require(any(r["role_id"] == p["selected_role_id"] and r["role_name"] == "Technical Super Admin"
+                        for r in available_roles(actor_id)))
+            from apps.access_control.technical_admin import has_technical_authority
+            with bind_role_scope(actor_id, p["selected_role_id"]):
+                require(has_technical_authority(actor, "access_control.account_permissions.manage"))
+                target = Account.objects.get(pk=p["target_id"])
+                if operation.endswith("scoped_grant"):
+                    require(type(p["role_id"]) is int and 0 < p["role_id"] <= 2_147_483_647)
+                    require(p["expected_active"] is False)
+                    return mutations.grant_account_permission_for_role(
+                        actor=actor, target=target, role=Role.objects.get(pk=p["role_id"]),
+                        permission=permission, expected_active=p["expected_active"], reason=p["reason"])
+                require(type(p["action"]) is str and p["action"] in {"deny", "revoke_grant", "remove_deny"})
+                require(p["expected_effect"] is None or
+                        type(p["expected_effect"]) is str and p["expected_effect"] in {"Grant", "Deny"})
+                require(p["expected_scope_role_id"] is None or
+                        type(p["expected_scope_role_id"]) is int and 0 < p["expected_scope_role_id"] <= 2_147_483_647)
+                return mutations.change_account_restriction(
+                    actor=actor, target=target, permission=permission,
+                    action=p["action"], expected_effect=p["expected_effect"],
+                    expected_scope_role_id=p["expected_scope_role_id"], reason=p["reason"])
         functions = {"account_permission.grant": mutations.grant_account_permission,
                      "account_permission.deny": mutations.deny_account_permission,
                      "account_permission.deactivate": mutations.deactivate_account_override}

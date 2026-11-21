@@ -22,4 +22,26 @@ DEBUG = False
 ALLOWED_HOSTS = _runtime_config["allowed_hosts"]
 SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 3600
-MIDDLEWARE = [*MIDDLEWARE, "apps.access_control.executor.client.ExecutorProofMiddleware"]  # noqa: F405
+# The runtime is deliberately not authorized to activate WF-03 by .env.
+# Only an explicit validated deployment config may opt in, after the scope
+# table is fenced and the executor and runtime are upgraded together.
+ACCESS_CONTROL_DELEGATION_POLICY = _runtime_config.get("delegation_policy", {})
+WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED = _runtime_config.get("wf03_executor_account_writes_enabled", False)
+WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = _runtime_config.get("wf03_active_role_context_enabled", False)
+WORKSPACE_WF0303_ACCOUNT_GRANTS_ENABLED = _runtime_config.get("wf0303_account_grants_enabled", False)
+WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED = _runtime_config.get("wf0303_account_grant_mutations_enabled", False)
+WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED = _runtime_config.get("wf0304_account_restrictions_enabled", False)
+WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED = _runtime_config.get("wf0304_account_restriction_mutations_enabled", False)
+WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED = _runtime_config.get("wf0303_scoped_grant_evaluation_enabled", False)
+for _wf03_toggle in (WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED,
+                     WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED,
+                     WORKSPACE_WF0303_ACCOUNT_GRANTS_ENABLED,
+                     WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED,
+                     WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED,
+                     WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED,
+                     WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED):
+    if type(_wf03_toggle) is not bool:
+        raise ImproperlyConfigured("WF-03 runtime toggles must be explicit booleans.")
+# Middleware remains inert with default-off role-context configuration.
+MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware",
+              "apps.access_control.executor.client.ExecutorProofMiddleware"]  # noqa: F405

@@ -281,9 +281,30 @@ def grant_account_permission_for_role(*, actor, target, role, permission,
     from .ordinary_role_runtime import (
         ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
     )
-    if executor_enabled() or not context_enabled():
-        raise WriterBoundaryUnavailable("The current writer/role context cannot safely grant scoped permissions.")
-    # This is a separate, local-only surface; no executor protocol expansion.
+    if not context_enabled():
+        raise WriterBoundaryUnavailable("An active role context is required for scoped Grants.")
+    if executor_enabled():
+        from .executor.runtime import active_operation
+        operation = "account_permission.scoped_grant"
+        if active_operation() != operation:
+            if getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is not True:
+                raise WriterBoundaryUnavailable("Scoped Grant executor integration is disabled.")
+            from apps.accounts.active_role_context import selected_scope
+            from .executor.client import LOCAL, remote_call
+            selected = selected_scope()
+            actor_id = _pk(actor, Account)
+            if selected is None or selected.account_id != actor_id or type(selected.role_id) is not int:
+                raise WriterBoundaryUnavailable("An authenticated role context is required.")
+            remote = remote_call(operation, {
+                "actor_id": actor_id, "target_id": _pk(target, Account),
+                "role_id": _pk(role, Role), "permission_id": _pk(permission, Permission),
+                "reason": reason, "selected_role_id": selected.role_id,
+                "expected_active": expected_active,
+            })
+            if remote is not LOCAL:
+                return remote
+    # On the executor, the role scope is rechecked and bound by the dispatcher
+    # inside the signed, ledger-owned transaction before this local body runs.
     _pk(target, Account)
     _pk(role, Role)
     with _management_context(actor, permission, ACCOUNT_PERMISSION_MANAGE,
@@ -367,8 +388,29 @@ def change_account_restriction(*, actor, target, permission, action,
         raise DelegationPolicyUnavailable("Account restrictions are not enabled.")
     from apps.accounts.active_role_context import context_enabled
     from .executor.client import enabled as executor_enabled
-    if executor_enabled() or not context_enabled():
-        raise WriterBoundaryUnavailable("Role context / protected writer is unavailable.")
+    if not context_enabled():
+        raise WriterBoundaryUnavailable("An active role context is required for restrictions.")
+    if executor_enabled():
+        from .executor.runtime import active_operation
+        operation = "account_permission.restrict"
+        if active_operation() != operation:
+            if getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is not True:
+                raise WriterBoundaryUnavailable("Restriction executor integration is disabled.")
+            from apps.accounts.active_role_context import selected_scope
+            from .executor.client import LOCAL, remote_call
+            selected = selected_scope()
+            actor_id = _pk(actor, Account)
+            if selected is None or selected.account_id != actor_id or type(selected.role_id) is not int:
+                raise WriterBoundaryUnavailable("An authenticated role context is required.")
+            remote = remote_call(operation, {
+                "actor_id": actor_id, "target_id": _pk(target, Account),
+                "permission_id": _pk(permission, Permission), "reason": reason,
+                "selected_role_id": selected.role_id, "action": action,
+                "expected_effect": expected_effect,
+                "expected_scope_role_id": expected_scope_role_id,
+            })
+            if remote is not LOCAL:
+                return remote
     _pk(target, Account)
     # _management_context rechecks exact actor authority, delegation and
     # approved target state *while holding the governance transaction lock*.

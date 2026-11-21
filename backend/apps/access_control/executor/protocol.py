@@ -9,7 +9,8 @@ from apps.access_control.protected_requests import canonical, require, _hex, _id
 DOMAIN = b"CTUG:EXECUTOR:ACTOR:v1\x00"
 ORDINARY = frozenset({"registration.approve", "registration.reject", "role.assign",
     "role_permission.grant", "role_permission.revoke", "account_permission.grant",
-    "account_permission.deny", "account_permission.deactivate", "registration.submit",
+    "account_permission.deny", "account_permission.deactivate",
+    "account_permission.scoped_grant", "account_permission.restrict", "registration.submit",
     "registration.reapply"})
 PROTECTED = frozenset({"technical_role.provision", "technical_admin.bootstrap", "bootstrap.initial_admin"})
 PUBLIC = frozenset({"registration.submit", "registration.reapply"})

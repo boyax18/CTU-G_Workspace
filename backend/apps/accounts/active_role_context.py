@@ -110,7 +110,7 @@ class ActiveRoleContextMiddleware:
         # not adopted the session-selected role contract. Refuse rather than
         # letting an unscoped executor operation bypass the UI role boundary.
         from apps.access_control.executor.client import enabled as executor_enabled
-        if executor_enabled():
+        if executor_enabled() and getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is not True:
             from django.http import JsonResponse
             from django.utils.cache import patch_cache_control
             response = JsonResponse({"error": {"code": "role_context_unavailable",

@@ -25,6 +25,20 @@ if type(WORKSPACE_FIRST_ADMIN_BOOTSTRAP_ENABLED) is not bool:
 WORKSPACE_REGISTRATION_OUTBOX_ENABLED = _executor_config.get("outbox_enabled", False)
 ACCESS_CONTROL_DELEGATION_POLICY = _executor_config.get("delegation_policy", {})
 WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_POLICY = _executor_config.get("ordinary_assignment_policy", {})
+# Explicitly disabled until the new role-scope table has a matching SQL fence
+# and runtime/ordinary executor use the same approved delegation policy.
+WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED = _executor_config.get("wf03_executor_account_writes_enabled", False)
+WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = _executor_config.get("wf03_active_role_context_enabled", False)
+WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED = _executor_config.get("wf0303_account_grant_mutations_enabled", False)
+WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED = _executor_config.get("wf0304_account_restriction_mutations_enabled", False)
+WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED = _executor_config.get("wf0303_scoped_grant_evaluation_enabled", False)
+for _wf03_toggle in (WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED,
+                     WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED,
+                     WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED,
+                     WORKSPACE_WF0304_ACCOUNT_RESTRICTION_MUTATIONS_ENABLED,
+                     WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED):
+    if type(_wf03_toggle) is not bool:
+        raise ValueError("WF-03 executor toggles must be explicit booleans.")
 
 # Plain transport exceptions exist only in the independently identity-checked
 # second-server harness. Production must validate the MySQL server over TLS.

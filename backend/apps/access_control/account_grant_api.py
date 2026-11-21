@@ -77,7 +77,8 @@ class AccountGrantAPI(RegistrationReviewAPI):
 
     def initial(self, request, *args, **kwargs):
         # No account-permission protocols for the protected executor/profile.
-        if executor_enabled():
+        if (executor_enabled() and
+                getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is not True):
             raise ReviewAPIUnavailable()
         return super().initial(request, *args, **kwargs)
 

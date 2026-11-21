@@ -10,7 +10,8 @@ from apps.access_control.protected_requests import require
 VERSION = "wex-1"
 TABLES = ("wex_control", "wex_requests", "wex_audits", "wex_recovery_events")
 FENCED = ("accounts", "users", "roles", "services", "permissions", "account_roles",
-          "role_permissions", "account_permissions", "access_audit_logs", "registration_notification_outbox")
+          "role_permissions", "account_permissions", "account_permission_role_scopes",
+          "access_audit_logs", "registration_notification_outbox")
 
 
 def identifier(value):
@@ -115,6 +116,22 @@ def statements(ordinary="wex_ordinary", protected="wex_protected", notifications
                     condition = f"wex_governance({row}.permission_id) OR EXISTS(SELECT 1 FROM roles WHERE role_id={row}.role_id AND wex_reserved(role_name))"
                 elif table == "account_permissions":
                     condition = f"wex_governance({row}.permission_id) OR EXISTS(SELECT 1 FROM account_roles a JOIN roles r ON r.role_id=a.role_id WHERE a.account_id={row}.account_id AND wex_reserved(r.role_name))"
+                elif table == "account_permission_role_scopes":
+                    # A role scope may only be created/changed by the exact
+                    # scoped-Grant operation, or deleted by the restriction
+                    # operation. The ordinary executor cannot use a different
+                    # leased request to silently rewrite a role binding.
+                    operations = ("('account_permission.scoped_grant')" if event in {"INSERT", "UPDATE"}
+                                  else "('account_permission.restrict')")
+                    requirements.append(
+                        "IF NOT EXISTS(SELECT 1 FROM wex_requests wr WHERE wr.request_id=@wex_request "
+                        f"AND wr.operation IN {operations}) THEN "
+                        "SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='scoped permission operation required'; END IF;"
+                    )
+                    if event != "DELETE":
+                        condition = (f"NOT EXISTS(SELECT 1 FROM account_permissions ap JOIN roles r ON r.role_id={row}.role_id "
+                                     f"WHERE ap.account_permission_id={row}.account_permission_id AND ap.effect='Grant' "
+                                     "AND ap.is_active=1 AND r.is_active=1 AND NOT wex_reserved(r.role_name))")
                 elif table == "accounts":
                     # Ordinary review may approve only pending base registrations.
                     # Framework flags and credential changes of approved users are protected.
@@ -188,6 +205,11 @@ def grants(schema, runtime, ordinary, protected, recovery, notifications="wex_no
             if user == ordinary and table in {"roles", "services", "permissions"}:
                 continue
             privileges = "INSERT" if table == "access_audit_logs" else "INSERT,UPDATE"
+            if table == "account_permission_role_scopes":
+                # A restriction transaction must remove the mapping when a
+                # Grant is revoked or replaced with a Deny. SQL triggers above
+                # require the exact request operation and a valid writer lease.
+                privileges += ",DELETE"
             if user == ordinary and table in {"accounts", "users"}:
                 # DELETE is fenced by the exact rejection lease and immutable
                 # decision receipt, never exposed to runtime or other handlers.

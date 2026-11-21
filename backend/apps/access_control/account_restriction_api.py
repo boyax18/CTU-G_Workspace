@@ -59,7 +59,8 @@ class RestrictionAPI(RegistrationReviewAPI):
         return getattr(settings, "WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED", False) is True
 
     def initial(self, request, *args, **kwargs):
-        if executor_enabled():
+        if (executor_enabled() and
+                getattr(settings, "WORKSPACE_WF03_EXECUTOR_ACCOUNT_WRITES_ENABLED", False) is not True):
             raise ReviewAPIUnavailable()
         return super().initial(request, *args, **kwargs)
 

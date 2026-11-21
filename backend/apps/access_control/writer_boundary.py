@@ -42,7 +42,8 @@ def require_verified_writer(operation):
     from .executor.runtime import active_operation
     current = active_operation()
     aliases = {"role_permission.change": {"role_permission.grant", "role_permission.revoke"},
-               "account_permission.change": {"account_permission.grant", "account_permission.deny", "account_permission.deactivate"}}
+               "account_permission.change": {"account_permission.grant", "account_permission.deny", "account_permission.deactivate",
+                                              "account_permission.scoped_grant", "account_permission.restrict"}}
     if current is not None and (current == operation or current in aliases.get(operation, ())):
         # Only executor code joins the outer ledger transaction. Runtime has no
         # protected-table DML grants; forging Python state cannot grant SQL rights.

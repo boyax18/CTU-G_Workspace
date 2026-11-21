@@ -7,6 +7,7 @@ access_control Service is a conservative management mutex; it is never created.
 from contextlib import contextmanager
 from dataclasses import dataclass
 
+from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS, transaction
 
 from apps.accounts.fields import CurrentTimestamp
@@ -19,8 +20,8 @@ from .delegation import (
     PermissionManagementValidationError, approved_scope, is_governance_permission,
     is_reserved_role, require_delegation, require_governance_authority,
 )
-from .models import AccountPermission, AccountRole, Permission, Role, RolePermission, Service
-from .writer_boundary import require_verified_writer, writer_atomic
+from .models import AccountPermission, AccountPermissionRoleScope, AccountRole, Permission, Role, RolePermission, Service
+from .writer_boundary import WriterBoundaryUnavailable, require_verified_writer, writer_atomic
 
 
 def _pk(value, model):
@@ -124,7 +125,8 @@ def _management_context(actor, permission, management_code, *, role=None, target
             if locked_role is None:
                 raise PermissionManagementValidationError("The role reference no longer exists.")
             if (not locked_role.is_active or is_reserved_role(locked_role.role_name)
-                    or locked_role.role_name not in scope.role_names or role_id in actor_role_ids):
+                    or locked_role.role_name not in scope.role_names
+                    or (management_code == ROLE_PERMISSION_MANAGE and role_id in actor_role_ids)):
                 raise PermissionManagementDenied("The role is not an eligible independent delegation target.")
         if target_id is not None:
             locked_target = accounts[target_id]
@@ -251,3 +253,82 @@ def deactivate_account_override(*, actor, target, permission, reason="permission
     """Disable Grant or Deny. Disabling Deny can increase access and is fully gated."""
     _pk(target, Account)
     return _change_account_override(actor=actor, target=target, permission=permission, effect=None, deactivate=True, reason=reason)
+
+
+class AccountGrantStateConflict(Exception):
+    """A direct Grant was changed since its last loaded snapshot."""
+
+
+def grant_account_permission_for_role(*, actor, target, role, permission,
+                                      expected_active=False, reason="permission_change"):
+    """WF-03.03: a single explicitly role-scoped individual Grant.
+
+    Uses the existing governance/approved-delegation locks and append-only
+    audit. NEVER uses an unscoped legacy Grant as authority in role-context
+    mode. The auxiliary scope row and permission override commit atomically.
+    """
+    if type(expected_active) is not bool or expected_active is not False:
+        raise PermissionManagementValidationError("Require an inactive expected state.")
+    if (getattr(settings, "WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED", False) is not True
+            or getattr(settings, "WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED", False) is not True):
+        raise DelegationPolicyUnavailable("Individual role-scoped Grants are not enabled.")
+    from apps.accounts.active_role_context import context_enabled
+    from .executor.client import enabled as executor_enabled
+    from .ordinary_role_runtime import (
+        ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
+    )
+    if executor_enabled() or not context_enabled():
+        raise WriterBoundaryUnavailable("The current writer/role context cannot safely grant scoped permissions.")
+    # This is a separate, local-only surface; no executor protocol expansion.
+    _pk(target, Account)
+    _pk(role, Role)
+    with _management_context(actor, permission, ACCOUNT_PERMISSION_MANAGE,
+                             role=role, target=target) as context:
+        _reason(reason)
+        assigned = AccountRole.objects.using(DEFAULT_DB_ALIAS).filter(
+            account=context.target, role=context.role, role__is_active=True,
+        ).exists()
+        if not assigned:
+            raise PermissionManagementDenied("The specified target role is not assigned and active.")
+        if context.role.role_name in ORDINARY_ROLE_NAMES and (
+            not runtime_enforcement_enabled()
+            or context.role.role_name not in verified_ordinary_roles_for(context.target.pk)
+        ):
+            raise PermissionManagementDenied("The ordinary-role appointment is not verified.")
+        current = AccountPermission.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(
+            account=context.target, permission=context.permission,
+        ).first()
+        if current is not None and current.is_active:
+            raise AccountGrantStateConflict("The account override changed; reload first.")
+        previous = _override_snapshot(current) if current is not None else None
+        if current is None:
+            current = AccountPermission.objects.using(DEFAULT_DB_ALIAS).create(
+                account=context.target, permission=context.permission,
+                effect="Grant", is_active=True, assigned_by=context.actor,
+            )
+        else:
+            current.effect = "Grant"
+            current.is_active = True
+            current.assigned_by = context.actor
+            current.updated_at = CurrentTimestamp()
+            current.save(using=DEFAULT_DB_ALIAS, update_fields=[
+                "effect", "is_active", "assigned_by", "updated_at",
+            ])
+        scope_row = AccountPermissionRoleScope.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(
+            account_permission=current,
+        ).first()
+        if scope_row is None:
+            AccountPermissionRoleScope.objects.using(DEFAULT_DB_ALIAS).create(
+                account_permission=current, role=context.role,
+            )
+        else:
+            scope_row.role = context.role
+            scope_row.save(using=DEFAULT_DB_ALIAS, update_fields=["role"])
+        # The role FK records the new bound context without modifying the
+        # separately pinned audit snapshot field allowlist.
+        audit.record_access_audit(
+            actor=context.actor, target=context.target, role=context.role,
+            permission=context.permission, action="account_permission.grant",
+            old_value=previous, new_value=_override_snapshot(current), reason=reason,
+        )
+    return True

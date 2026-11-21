@@ -2167,6 +2167,8 @@ Human Approval: ☐ Approved by: ______  Date: ______
 Next flow: WF-03.03. Do not mark WF-03.02 finally Approved before deferred verification and sign-off.
 
 #### WF-03.03 — Grant account-specific permission
+**Implementation checkpoint (21 November 2026, source staged — not executed):** WF-03.03 adds a gated individual Grant dashboard and protected API, CTU-G ID lookup, role-binding of account-specific Grants, a separate 0005 scope-table migration, transactional delegation/audit controls, stale-state refusal, and active-role-specific permission evaluation. Existing unscoped overrides do not become cross-role Grants. The protected executor is not extended. Default-off gates, required migration approval, D-101/D-102 delegated authority, and consolidated WF-03 tests remain unresolved. No operational or test success claimed. WF-03.04 retains Deny and grant-revocation scope. Human Approval remains unchecked.
+
 
 | Field | Definition |
 | --- | --- |

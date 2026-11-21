@@ -23,4 +23,6 @@ urlpatterns = [
     path("api/v1/admin/role-assignments/", include("apps.access_control.role_assignment_urls")),
     # WF-03.02: isolated role-permission management, independently gated off.
     path("api/v1/admin/role-permissions/", include("apps.access_control.role_permission_urls")),
+    # WF-03.03 individual Grants; independently gated and isolated.
+    path("api/v1/admin/account-grants/", include("apps.access_control.account_grant_urls")),
 ]

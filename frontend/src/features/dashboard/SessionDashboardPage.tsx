@@ -17,6 +17,8 @@ import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
 import RoleAssignmentsPanel from '../access-control/RoleAssignmentsPanel';
 import RolePermissionsPanel from '../access-control/RolePermissionsPanel';
 import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig';
+import AccountGrantsPanel from '../access-control/AccountGrantsPanel';
+import { ACCOUNT_GRANTS_ENABLED } from '../access-control/accountGrantConfig';
 import AppointmentManagementPanel from '../access-control/AppointmentManagementPanel';
 import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig';
@@ -190,6 +192,8 @@ export default function SessionDashboardPage() {
   if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel permissions={permissions} />;
   // WF-03.02: role-permission matrix; each request is re-authorized by Django.
   if (view === 'role-permissions' && ROLE_PERMISSION_MANAGEMENT_ENABLED) return <RolePermissionsPanel permissions={permissions} />;
+  // WF-03.03: exact account-specific Grants; no role-wide permission changes.
+  if (view === 'account-overrides' && ACCOUNT_GRANTS_ENABLED) return <AccountGrantsPanel permissions={permissions} />;
 
   return <ModuleUnavailable onBack={back} />;
 }

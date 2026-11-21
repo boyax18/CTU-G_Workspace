@@ -14,6 +14,7 @@ import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig.ts';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig.ts';
 import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig.ts';
 import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig.ts';
+import { ACCOUNT_GRANTS_ENABLED } from '../access-control/accountGrantConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -209,8 +210,8 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     requiredAny: ['access_control.role_permissions.manage'], integration: ROLE_PERMISSION_MANAGEMENT_ENABLED ? 'shell' : planned,
     description: 'Permissions granted to ordinary roles.' },
   { id: 'account-overrides', label: 'Account overrides', icon: 'key', group: 'access-control',
-    requiredAny: ['access_control.account_permissions.manage'], integration: planned,
-    description: 'Account-level Grant and Deny overrides.' },
+    requiredAny: ['access_control.account_permissions.manage'], integration: ACCOUNT_GRANTS_ENABLED ? 'shell' : planned,
+    description: 'Individual role-bound Grants (Deny and removal follow in WF-03.04).' },
   { id: 'permission-catalogue', label: 'Permission catalogue', icon: 'list', group: 'access-control',
     requiredAny: ['access_control.catalogue.read'], integration: planned,
     description: 'The reviewed permission and service catalogue.' },

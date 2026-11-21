@@ -7,13 +7,14 @@ caches, requested roles, role names, and Django auth flags confer no authority.
 
 import logging
 
+from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models import Exists, OuterRef, Q
 
 from apps.accounts.models import Account
 from apps.accounts.active_role_context import context_enabled, selected_scope, allowed_role_ids
 
-from .models import AccountPermission, AccountRole, Permission, RolePermission
+from .models import AccountPermission, AccountPermissionRoleScope, AccountRole, Permission, Role, RolePermission
 from .ordinary_role_runtime import (
     ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
 )
@@ -76,8 +77,45 @@ def _authorized_permissions(account_id):
     else:
         grant_source = Q(Exists(overrides.filter(effect="Grant"))) | Q(Exists(role_grants))
 
+    # WF-03.03: new direct Grants are explicitly bound to ONE persisted role
+    # context in a separate, opt-in table. Without a completed migration and
+    # activation this code performs no new queries, preserving D-117 behavior.
+    scoped_grants_enabled = (
+        getattr(settings, "WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED", False) is True
+    )
     if selected_ids is not None:
-        grant_source = Q(Exists(role_grants))
+        if scoped_grants_enabled:
+            chosen = selected_scope()
+            scoped_rows = AccountPermissionRoleScope.objects.using(DEFAULT_DB_ALIAS).filter(
+                account_permission_id=OuterRef("pk"), role_id=chosen.role_id,
+            )
+            scoped_source = overrides.filter(effect="Grant").filter(Exists(scoped_rows))
+            # A scoped grant cannot bypass an unverified ordinary appointment
+            # or an ordinary-role-bound permission guard.
+            chosen_ordinary = Role.objects.using(DEFAULT_DB_ALIAS).filter(
+                pk=chosen.role_id, role_name__in=ORDINARY_ROLE_NAMES,
+            ).exists()
+            if chosen_ordinary and not runtime_enforcement_enabled():
+                scoped_source = scoped_source.none()
+            if runtime_enforcement_enabled():
+                bound_ordinary = RolePermission.objects.using(DEFAULT_DB_ALIAS).filter(
+                    permission_id=OuterRef("pk"), role__role_name__in=ORDINARY_ROLE_NAMES,
+                )
+                grant_source = Q(Exists(role_grants)) | (
+                    Q(Exists(scoped_source)) & ~Q(Exists(bound_ordinary))
+                )
+            else:
+                grant_source = Q(Exists(role_grants)) | Q(Exists(scoped_source))
+        else:
+            grant_source = Q(Exists(role_grants))
+    elif scoped_grants_enabled:
+        # Legacy unscoped grants retain legacy semantics in non-context mode;
+        # new role-scoped grants must NEVER leak into the union evaluator.
+        scoped_any = AccountPermissionRoleScope.objects.using(DEFAULT_DB_ALIAS).filter(
+            account_permission_id=OuterRef("pk"),
+        )
+        legacy_unscoped = overrides.filter(effect="Grant").filter(~Exists(scoped_any))
+        grant_source = Q(Exists(role_grants)) | Q(Exists(legacy_unscoped))
 
     return (
         Permission.objects.using(DEFAULT_DB_ALIAS)

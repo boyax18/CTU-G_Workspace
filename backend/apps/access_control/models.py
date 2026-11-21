@@ -172,6 +172,27 @@ class AccountPermission(models.Model):
         ]
 
 
+class AccountPermissionRoleScope(models.Model):
+    """One active-role binding for an account-specific Grant (WF-03.03).
+
+    A row alone does NOT authorize anything: the override, account, selected
+    role, appointment eligibility, service and delegation policy are separate.
+    No auto-created rows for historical unscoped overrides.
+    """
+
+    account_permission = models.OneToOneField(
+        AccountPermission, db_column="account_permission_id", primary_key=True,
+        on_delete=models.PROTECT, related_name="role_scope",
+    )
+    role = models.ForeignKey(
+        Role, db_column="role_id", on_delete=models.PROTECT,
+        related_name="account_permission_scopes",
+    )
+
+    class Meta:
+        db_table = "account_permission_role_scopes"
+
+
 class AccessAuditLog(models.Model):
     access_audit_log_id = models.AutoField(primary_key=True)
     actor_account = models.ForeignKey(

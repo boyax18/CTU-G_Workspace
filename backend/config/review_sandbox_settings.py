@@ -108,3 +108,16 @@ WORKSPACE_WF0302_ROLE_PERMISSION_MUTATIONS_ENABLED = (
 )
 # Mutation gate remains off until the reviewed delegation policy, S1 authority,
 # protected writer and deferred WF-03 tests are authorized.
+
+# WF-03.03 individual role-bound Grants: three independent, default-OFF gates.
+# Requires owner-approved 0005 migration, D-101/102 delegated authority and
+# preserved protected executor limitations before activation.
+WORKSPACE_WF0303_ACCOUNT_GRANTS_ENABLED = (
+    os.environ.get("CTUG_WF0303_SANDBOX_ACK") == "SANDBOX_WF0303"
+)
+WORKSPACE_WF0303_ACCOUNT_GRANT_MUTATIONS_ENABLED = (
+    os.environ.get("CTUG_WF0303_SANDBOX_MUTATION_ACK") == "SANDBOX_WF0303_MUTATIONS"
+)
+WORKSPACE_WF0303_SCOPED_GRANT_EVALUATION_ENABLED = (
+    os.environ.get("CTUG_WF0303_SANDBOX_EVALUATION_ACK") == "SANDBOX_WF0303_EVALUATION"
+)

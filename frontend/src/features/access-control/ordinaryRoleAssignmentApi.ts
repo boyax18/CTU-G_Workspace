@@ -18,7 +18,7 @@ export interface OrdinaryRoleRow {
 }
 export interface OrdinaryPage { results: OrdinaryRoleRow[]; page: number; page_size: 20; has_next: boolean }
 
-const fail = (): never => { throw new ApiError('Unexpected response from the role service.', 0, 'invalid_response'); };
+const fail = (): ApiError => new ApiError('Unexpected response from the role service.', 0, 'invalid_response');
 const record = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
 const exact = (x: Record<string, unknown>, keys: string[]) => Object.keys(x).length === keys.length && keys.every(k => Object.prototype.hasOwnProperty.call(x, k));
 const validId = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n > 0 && n <= 2_147_483_647;
@@ -30,17 +30,17 @@ function parsePage(data: unknown): OrdinaryPage {
   if (!record(data) || !exact(data, ['results', 'page', 'page_size', 'has_next'])
     || !Array.isArray(data.results) || data.results.length > 20 || !Number.isInteger(data.page) || (data.page as number) < 1
     || data.page_size !== 20 || typeof data.has_next !== 'boolean'
-    || (data.has_next && data.results.length !== 20)) fail();
+    || (data.has_next && data.results.length !== 20)) throw fail();
   const results: OrdinaryRoleRow[] = [];
   for (const row of data.results as unknown[]) {
     if (!record(row) || !exact(row, ['account_id', 'school_id', 'full_name', 'roles', 'treasurer_action', 'advisor_action'])
       || !validId(row.account_id) || typeof row.school_id !== 'string' || !row.school_id || row.school_id.length > 50
       || !(row.full_name === null || (typeof row.full_name === 'string' && !!row.full_name && row.full_name.length <= 400))
       || !Array.isArray(row.roles) || row.roles.length > 20 || row.roles.some(r => typeof r !== 'string' || !r || r.length > 50)
-      || new Set(row.roles).size !== row.roles.length || !validAction(row.treasurer_action) || !validAction(row.advisor_action)) fail();
+      || new Set(row.roles).size !== row.roles.length || !validAction(row.treasurer_action) || !validAction(row.advisor_action)) throw fail();
     results.push(row as unknown as OrdinaryRoleRow);
   }
-  if (new Set(results.map(r => r.account_id)).size !== results.length) fail();
+  if (new Set(results.map(r => r.account_id)).size !== results.length) throw fail();
   return { results, page: data.page as number, page_size: 20, has_next: data.has_next as boolean };
 }
 

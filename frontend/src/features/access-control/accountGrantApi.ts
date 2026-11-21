@@ -16,33 +16,33 @@ export type AccountGrantDirectory = {
 const rec = (v: unknown): v is Record<string, unknown> => Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 const id = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0 && v <= 2_147_483_647;
 const str = (v: unknown, limit: number): v is string => typeof v === 'string' && v.length > 0 && v.length <= limit;
-const fail = (): never => { throw new ApiError('Invalid account grant response.', 0, 'invalid_response'); };
+const fail = (): ApiError => new ApiError('Invalid account grant response.', 0, 'invalid_response');
 const check = () => { if (!ACCOUNT_GRANTS_ENABLED) throw new ApiError('Account grants not enabled.', 503, 'review_unavailable'); };
 
 export async function searchGrantAccounts(q: string): Promise<AccountMatch[]> {
   check();
-  if (q.trim() !== q || q.length < 3 || q.length > 64) fail();
+  if (q.trim() !== q || q.length < 3 || q.length > 64) throw fail();
   const data = await getJSON(`${ACCOUNT_GRANTS_ROOT}accounts/?q=${encodeURIComponent(q)}`);
-  if (!rec(data) || !Array.isArray(data.accounts) || data.accounts.length > 20 || typeof data.has_next !== 'boolean') fail();
+  if (!rec(data) || !Array.isArray(data.accounts) || data.accounts.length > 20 || typeof data.has_next !== 'boolean') throw fail();
   const seen = new Set<number>();
   return data.accounts.map((x: unknown) => {
     if (!rec(x) || !id(x.account_id) || !str(x.ctug_id, 100) || typeof x.full_name !== 'string'
-      || x.full_name.length > 250 || seen.has(x.account_id)) fail();
+      || x.full_name.length > 250 || seen.has(x.account_id)) throw fail();
     seen.add(x.account_id);
     return x as unknown as AccountMatch;
   });
 }
 
 export async function getAccountGrantDirectory(accountId: number): Promise<AccountGrantDirectory> {
-  check(); if (!id(accountId)) fail();
+  check(); if (!id(accountId)) throw fail();
   const data = await getJSON(`${ACCOUNT_GRANTS_ROOT}accounts/${accountId}/grants/`);
   if (!rec(data) || !rec(data.account) || data.account.account_id !== accountId
     || !str(data.account.ctug_id, 100) || typeof data.account.full_name !== 'string'
     || !Array.isArray(data.account.roles) || data.account.roles.length > 100
-    || !Array.isArray(data.permissions) || data.permissions.length > 1024) fail();
+    || !Array.isArray(data.permissions) || data.permissions.length > 1024) throw fail();
   const roleIds = new Set<number>();
   const roles = data.account.roles.map((r: unknown) => {
-    if (!rec(r) || !id(r.role_id) || !str(r.role_name, 50) || roleIds.has(r.role_id)) fail();
+    if (!rec(r) || !id(r.role_id) || !str(r.role_name, 50) || roleIds.has(r.role_id)) throw fail();
     roleIds.add(r.role_id); return r as unknown as AccountRoleOption;
   });
   const permissionIds = new Set<number>();
@@ -52,14 +52,14 @@ export async function getAccountGrantDirectory(accountId: number): Promise<Accou
       || (p.scope_role_id !== null && !id(p.scope_role_id))
       || !Array.isArray(p.grant_role_ids) || p.grant_role_ids.length > 100
       || p.grant_role_ids.some((r: unknown) => !id(r) || !roleIds.has(r))
-      || permissionIds.has(p.permission_id)) fail();
+      || permissionIds.has(p.permission_id)) throw fail();
     permissionIds.add(p.permission_id); return p as unknown as AccountPermissionRow;
   });
   return {account: {...(data.account as unknown as AccountMatch), roles}, permissions};
 }
 
 export async function grantIndividualPermission(accountId: number, permissionId: number, roleId: number): Promise<void> {
-  check(); if (![accountId, permissionId, roleId].every(id)) fail();
+  check(); if (![accountId, permissionId, roleId].every(id)) throw fail();
   const data = await postJSON(`${ACCOUNT_GRANTS_ROOT}accounts/${accountId}/grants/${permissionId}/`, {
     role_id: roleId, expected_active: false,
   });

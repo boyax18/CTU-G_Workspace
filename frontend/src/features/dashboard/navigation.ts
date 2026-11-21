@@ -17,6 +17,7 @@ import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermis
 import { ACCOUNT_GRANTS_ENABLED } from '../access-control/accountGrantConfig.ts';
 import { ACCOUNT_RESTRICTIONS_ENABLED } from '../access-control/accountRestrictionConfig.ts';
 import { EFFECTIVE_ACCESS_INSPECT_ENABLED } from '../access-control/effectiveAccessConfig.ts';
+import { ACCESS_AUDIT_ENABLED } from '../access-control/accessAuditConfig.ts';
 
 export type DashboardView =
   | 'overview'

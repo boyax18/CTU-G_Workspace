@@ -136,12 +136,20 @@ def _management_context(actor, permission, management_code, *, role=None, target
         yield _Context(locked_actor, current_permission, locked_role, locked_target)
 
 
+class RolePermissionStateConflict(Exception):
+    """The selected role-permission binding changed since the caller read it."""
+
+
 def _role_snapshot(row):
     return {"role_permission_id": row.pk, "role_id": row.role_id,
             "permission_id": row.permission_id, "is_active": row.is_active}
 
 
-def _change_role_permission(*, actor, role, permission, enable, reason):
+def _change_role_permission(*, actor, role, permission, enable, reason, expected_active=None):
+    # A browser's previous observation is only a concurrency precondition, not
+    # authorization. Recheck it after acquiring the role-permission row lock.
+    if expected_active is not None and type(expected_active) is not bool:
+        raise PermissionManagementValidationError("expected_active must be a boolean.")
     from .executor.client import LOCAL, remote_call
     remote = remote_call("role_permission.grant" if enable else "role_permission.revoke", {
         "actor_id": _pk(actor, Account), "role_id": _pk(role, Role), "permission_id": _pk(permission, Permission), "reason": reason,
@@ -151,6 +159,8 @@ def _change_role_permission(*, actor, role, permission, enable, reason):
     with _management_context(actor, permission, ROLE_PERMISSION_MANAGE, role=role) as context:
         _reason(reason)
         row = RolePermission.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(role=context.role, permission=context.permission).first()
+        if expected_active is not None and bool(row is not None and row.is_active) != expected_active:
+            raise RolePermissionStateConflict("The role permission changed; reload before continuing.")
         if row is None and not enable or row is not None and row.is_active == enable:
             changed = False
         else:
@@ -173,16 +183,16 @@ def _change_role_permission(*, actor, role, permission, enable, reason):
     return changed
 
 
-def grant_role_permission(*, actor, role, permission, reason="permission_change"):
+def grant_role_permission(*, actor, role, permission, reason="permission_change", expected_active=None):
     """Create/enable one approved ordinary role grant; return changed after commit."""
     _pk(role, Role)
-    return _change_role_permission(actor=actor, role=role, permission=permission, enable=True, reason=reason)
+    return _change_role_permission(actor=actor, role=role, permission=permission, enable=True, reason=reason, expected_active=expected_active)
 
 
-def revoke_role_permission(*, actor, role, permission, reason="permission_change"):
+def revoke_role_permission(*, actor, role, permission, reason="permission_change", expected_active=None):
     """Disable an existing role grant; never insert an inactive placeholder."""
     _pk(role, Role)
-    return _change_role_permission(actor=actor, role=role, permission=permission, enable=False, reason=reason)
+    return _change_role_permission(actor=actor, role=role, permission=permission, enable=False, reason=reason, expected_active=expected_active)
 
 
 def _override_snapshot(row):

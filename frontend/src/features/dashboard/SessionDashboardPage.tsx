@@ -15,6 +15,8 @@ import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsC
 import AccountDirectoryPanel from '../admin/AccountDirectoryPanel';
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
 import RoleAssignmentsPanel from '../access-control/RoleAssignmentsPanel';
+import RolePermissionsPanel from '../access-control/RolePermissionsPanel';
+import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig';
 import AppointmentManagementPanel from '../access-control/AppointmentManagementPanel';
 import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig';
@@ -186,6 +188,8 @@ export default function SessionDashboardPage() {
   if (view === 'appointment-evidence' && APPOINTMENT_MANAGEMENT_ENABLED) return <AppointmentManagementPanel permissions={permissions} />;
   // WF-03.01 (D-86): Technical Super Admin role assignments; Django rechecks every request.
   if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel permissions={permissions} />;
+  // WF-03.02: role-permission matrix; each request is re-authorized by Django.
+  if (view === 'role-permissions' && ROLE_PERMISSION_MANAGEMENT_ENABLED) return <RolePermissionsPanel permissions={permissions} />;
 
   return <ModuleUnavailable onBack={back} />;
 }

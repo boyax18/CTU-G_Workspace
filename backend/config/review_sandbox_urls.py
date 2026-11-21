@@ -21,4 +21,6 @@ urlpatterns = [
     path("api/v1/admin/school-accounts/", include("apps.accounts.account_status_urls")),
     # WF-03.01 D-87: sandbox-only route, gated off unless the sandbox operator opts in.
     path("api/v1/admin/role-assignments/", include("apps.access_control.role_assignment_urls")),
+    # WF-03.02: isolated role-permission management, independently gated off.
+    path("api/v1/admin/role-permissions/", include("apps.access_control.role_permission_urls")),
 ]

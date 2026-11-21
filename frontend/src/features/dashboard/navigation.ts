@@ -13,6 +13,7 @@ import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsC
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig.ts';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig.ts';
 import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig.ts';
+import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -205,7 +206,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     requiredAny: ['access_control.admin_assignments.manage'], integration: ROLE_ASSIGNMENT_ENABLED ? 'shell' : planned,
     description: 'School Admin assignments and separately gated ordinary role responsibilities.' },
   { id: 'role-permissions', label: 'Role permissions', icon: 'key', group: 'access-control',
-    requiredAny: ['access_control.role_permissions.manage'], integration: planned,
+    requiredAny: ['access_control.role_permissions.manage'], integration: ROLE_PERMISSION_MANAGEMENT_ENABLED ? 'shell' : planned,
     description: 'Permissions granted to ordinary roles.' },
   { id: 'account-overrides', label: 'Account overrides', icon: 'key', group: 'access-control',
     requiredAny: ['access_control.account_permissions.manage'], integration: planned,

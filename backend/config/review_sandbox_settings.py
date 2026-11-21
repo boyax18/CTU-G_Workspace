@@ -98,3 +98,13 @@ WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = (
     os.environ.get("CTUG_ROLE_CONTEXT_SANDBOX_ACK") == "SANDBOX_WF0301_D113"
 )
 MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware"]
+
+# WF-03.02: role-permission directory + separate mutation gate; default OFF.
+WORKSPACE_WF0302_ROLE_PERMISSIONS_ENABLED = (
+    os.environ.get("CTUG_WF0302_SANDBOX_ACK") == "SANDBOX_WF0302"
+)
+WORKSPACE_WF0302_ROLE_PERMISSION_MUTATIONS_ENABLED = (
+    os.environ.get("CTUG_WF0302_SANDBOX_MUTATION_ACK") == "SANDBOX_WF0302_MUTATIONS"
+)
+# Mutation gate remains off until the reviewed delegation policy, S1 authority,
+# protected writer and deferred WF-03 tests are authorized.

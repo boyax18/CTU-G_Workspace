@@ -13,4 +13,6 @@ urlpatterns = [
     # WF-03.01 D-87: isolated local-review route ONLY. Gate remains default-off in the settings overlay.
     # Never mount this in config.urls or expose it on a non-loopback server.
     path("api/v1/admin/role-assignments/", include("apps.access_control.role_assignment_urls")),
+    # WF-03.02: isolated role-permission management, independently gated off.
+    path("api/v1/admin/role-permissions/", include("apps.access_control.role_permission_urls")),
 ]

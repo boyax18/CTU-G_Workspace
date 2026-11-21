@@ -22,7 +22,7 @@ from .delegation import (
 from .models import AccessAuditLog, AccountPermission, AccountRole, Permission, Role, RolePermission, Service
 from .mutations import (
     deactivate_account_override, deny_account_permission, grant_account_permission,
-    grant_role_permission, revoke_role_permission,
+    grant_role_permission, revoke_role_permission, RolePermissionStateConflict,
 )
 from .services import has_permission
 
@@ -126,6 +126,24 @@ class PermissionMutationTests(_Helpers, TestCase):
         self.assertEqual(event.new_value["role_permission_id"], row.pk)
         self.assertTrue(event.new_value["is_active"])
         self.assertEqual(event.action, "role_permission.grant")
+
+    def test_role_permission_expected_state_is_rechecked_under_transaction_lock(self):
+        before = self.state()
+        with self.assertRaises(RolePermissionStateConflict):
+            self.grant_role(expected_active=True)
+        self.assertEqual(self.state(), before)
+        self.assertTrue(self.grant_role(expected_active=False))
+        after_grant = self.state()
+        with self.assertRaises(RolePermissionStateConflict):
+            self.grant_role(expected_active=False)
+        self.assertEqual(self.state(), after_grant)
+        self.assertTrue(revoke_role_permission(actor=self.actor, role=self.student,
+            permission=self.read, expected_active=True))
+        after_revoke = self.state()
+        with self.assertRaises(RolePermissionStateConflict):
+            revoke_role_permission(actor=self.actor, role=self.student,
+                permission=self.read, expected_active=True)
+        self.assertEqual(self.state(), after_revoke)
 
     def test_role_revoke_disables_grant_without_inserting_a_deny(self):
         self.grant_role()

@@ -2114,43 +2114,57 @@ Next flow: WF-03.02. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | Not yet inspected |
-| Trigger | Not yet inspected |
-| Preconditions | Not yet inspected |
-| Result | Not yet inspected |
-| Status | Not yet inspected |
+| Actor / required permission | Technical Super Admin with effective `access_control.role_permissions.manage`; scoped delegation authority for each eligible target permission |
+| Trigger | Authorized operator opens Role permissions or requests a single grant/revoke |
+| Preconditions | Approved active Technical Super Admin profile and services; eligible ordinary role; independently approved service delegation scope; isolated local-review or sandbox mode; protected-writer compatibility before release |
+| Result | Read-only role/permission directory; when separately authorized, one atomic grant or revoke with an append-only audit record |
+| Status | Implementation staged in source; NOT TESTED, NOT ACTIVATED, final Human Approval pending |
 
 #### Main flow
 
-Not yet inspected.
+1. Authorized Technical Super Admin opens Access Control → Role permissions in a separately enabled isolated profile.
+2. The API checks session, exact effective management permission, Technical Super Admin profile and active service state; unauthorized and unavailable sessions are denied.
+3. Server returns bounded role directory; operator selects a role and reviews its stored permission bindings and non-authoritative change eligibility hints.
+4. The operator filters permissions and selects Grant or Revoke for one eligible non-governance permission on an ordinary role.
+5. UI requires an explicit confirmation and sends the previously observed active state.
+6. Server checks the independent mutation gate, approved delegation scope, eligible target role, exact actor authority, and the protected-executor boundary.
+7. The existing mutation service rechecks authority, delegation, and expected binding state under primary MySQL READ COMMITTED locks; it performs one state change and audit append atomically.
+8. UI refreshes from the server after success and never treats a client-side hint as authorization or an uncertain response as success.
 
 #### Alternative flows
 
-Not yet inspected.
+A. No scope/permission/gate or protected executor incompatibility: refuse; no write.
+B. Protected Admin/Technical Super Admin role, governance permission, own role, or out-of-scope role: read only/refused; no write.
+C. Stale binding state: return 409; reload before another action; no audit/write.
+D. Delegated permission changes effective access for other holders: subsequent backend checks recompute permissions; account-specific Deny continues to win.
+E. Display unavailable: the isolated API is not exposed by normal production routes; navigation shows planned/unavailable when the client gate is off.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| Not yet inspected | Not yet inspected | Not yet inspected |
+| 2–3 | Missing session, active service, or required authority | 401/403/503; no data or changes |
+| 4–7 | Invalid request or ineligible binding | 400/403/404, no unauthorized change |
+| 7 | Concurrent modification | 409 and refresh; transaction rolls back |
+| 6–8 | Protected writer unavailable or uncertain response | 503/no assumed success; refuse/reload |
 
 #### Links
 
-Depends on: Not yet inspected.
+Depends on: WF-03.01 active-role context and Technical Super Admin authorization; existing delegation.py, mutations.py, audit.py, and protected-writer policy. No new catalogue rows or migrations provisioned.
 
-Feeds: Not yet inspected.
+Feeds: WF-03.03 account-specific Grants and WF-03.05 effective permissions; WF-03.06 audit review.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☒ Inspect   ☒ Reconcile   ☒ Approve (staged implementation only)   ☒ Implement (source staged)   ☐ Test   ☐ Commit (pending user's local commit)
 
-Blocked by: Unknown – needs confirmation
+Blocked by: Approved delegation scopes, S1 authority provisioning, executor compatibility, separately approved activation; consolidated WF-03 testing and final Human Approval remain pending.
 
-Evidence level: Unknown – needs confirmation
+Evidence level: Source-staged (API/UI/transactional mutation integration and deferred tests); no new executed test evidence.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-03.03. Do not start until Approved is ticked.
+Next flow: WF-03.03. Do not mark WF-03.02 finally Approved before deferred verification and sign-off.
 
 #### WF-03.03 — Grant account-specific permission
 

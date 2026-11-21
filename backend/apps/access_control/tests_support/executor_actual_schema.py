@@ -226,6 +226,135 @@ def run():
                     time.sleep(0.1)
             checks.append("mtls_and_independent_actor_password_authentication")
             print("Actual-schema stage: mTLS and actor authentication passed", flush=True)
+            # WF-03 Task 3: isolate actual-schema SQL fence checks from WF-02.03.
+            # Registration approval is intentionally refused under protected
+            # executor mode (D-51), irrespective of attestation. This branch
+            # never attempts to change that restriction or create an approval.
+            if os.environ.get("CTUG_WF03_ACTUAL_FENCE_ONLY") == "1":
+                import MySQLdb
+                from apps.access_control.executor.schema import FENCED, TABLES
+
+                def _fence_db(principal):
+                    user, pw = credentials[principal]
+                    dbh = MySQLdb.connect(
+                        host=".", user=user, passwd=pw, db=name,
+                        named_pipe=True, unix_socket=driver.pipe,
+                        server_public_key_path=str(driver.data / "public_key.pem"),
+                        autocommit=True,
+                    )
+                    with dbh.cursor() as c:
+                        c.execute("SELECT CURRENT_USER()")
+                        assert c.fetchone()[0] == user + "@localhost"
+                    return dbh
+
+                def _must_deny(cursor, label, sql, params=()):
+                    try:
+                        cursor.execute(sql, params)
+                    except (MySQLdb.Error, DatabaseError) as exc:
+                        assert exc.args and exc.args[0] in {1142, 1143, 1227, 1370, 1644}, (
+                            label, type(exc).__name__, exc.args[0] if exc.args else None
+                        )
+                        checks.append(label)
+                        return
+                    raise AssertionError(label + " unexpectedly succeeded")
+
+                try:
+                    assert len(FENCED) == 11 and "account_permission_role_scopes" in FENCED
+                    # Inspection uses the root credential of the disposable
+                    # second server. Runtime has intentionally no TRIGGER grant.
+                    inspection = MySQLdb.connect(
+                        host=".", user="root", passwd=driver.root_password, db=name,
+                        named_pipe=True, unix_socket=driver.pipe,
+                        server_public_key_path=str(driver.data / "public_key.pem"),
+                        autocommit=True,
+                    )
+                    try:
+                        with inspection.cursor() as c:
+                            c.execute("SHOW TABLES")
+                            present = {r[0] for r in c.fetchall()}
+                            assert set(FENCED).issubset(present) and set(TABLES).issubset(present)
+                            c.execute("SHOW TRIGGERS")
+                            present_triggers = {r[0] for r in c.fetchall()}
+                            expected_triggers = {
+                                f"wex_{table}_{event}"
+                                for table in FENCED
+                                for event in ("insert", "update", "delete")
+                            }
+                            assert expected_triggers.issubset(present_triggers)
+                    finally:
+                        inspection.close()
+                    checks.append("actual_11_table_fence_and_scope_triggers_installed")
+                    with connection.cursor() as c:
+                        c.execute("SELECT COUNT(*) FROM account_permission_role_scopes")
+                        prior_scope_count = c.fetchone()[0]
+                        c.execute("SELECT COUNT(*) FROM access_audit_logs")
+                        prior_audit_count = c.fetchone()[0]
+                        c.execute("SELECT COUNT(*) FROM role_permissions")
+                        prior_role_grant_count = c.fetchone()[0]
+
+                    # A successful TLS 1.3 client-certificate handshake and
+                    # readiness response is read-only, not mutation authority.
+                    assert transport("/ready", {})["epoch"] == trust.epoch
+                    checks.append("isolated_executor_authenticated_ready")
+
+                    runtime_db = _fence_db("runtime")
+                    ordinary_db = _fence_db("ordinary")
+                    protected_db = _fence_db("protected")
+                    recovery_db = _fence_db("recovery")
+                    try:
+                        with runtime_db.cursor() as c:
+                            _must_deny(c, "runtime_cannot_update_accounts", "UPDATE accounts SET is_active=1 WHERE account_id=%s", (pending[0].pk,))
+                            _must_deny(c, "runtime_cannot_write_roles", "UPDATE roles SET is_active=1")
+                            _must_deny(c, "runtime_cannot_write_role_permissions", "INSERT INTO role_permissions(role_id,permission_id,is_active) VALUES(%s,%s,1)", (roles["Student"].pk, read.pk))
+                            _must_deny(c, "runtime_cannot_write_account_permissions", "INSERT INTO account_permissions(account_id,permission_id,effect,is_active) VALUES(%s,%s,'Grant',1)", (pending[0].pk,read.pk))
+                            _must_deny(c, "runtime_cannot_write_scope_table", "INSERT INTO account_permission_role_scopes(account_permission_id,role_id) VALUES(%s,%s)", (999999,roles["Student"].pk))
+                            _must_deny(c, "runtime_cannot_forge_audit", "INSERT INTO access_audit_logs(actor_account_id,action) VALUES(%s,'forged')", (operator.pk,))
+                            _must_deny(c, "runtime_cannot_reset_executor_hold", "UPDATE wex_control SET halted=0")
+                        with ordinary_db.cursor() as c:
+                            _must_deny(c, "ordinary_cannot_mutate_accounts_without_lease", "UPDATE accounts SET is_active=1 WHERE account_id=%s", (pending[0].pk,))
+                            _must_deny(c, "ordinary_cannot_mutate_role_grants_without_lease", "INSERT INTO role_permissions(role_id,permission_id,is_active) VALUES(%s,%s,1)", (roles["Student"].pk,read.pk))
+                            _must_deny(c, "ordinary_cannot_mutate_scopes_without_lease", "INSERT INTO account_permission_role_scopes(account_permission_id,role_id) VALUES(%s,%s)", (999999,roles["Student"].pk))
+                            _must_deny(c, "ordinary_cannot_forge_audit_without_lease", "INSERT INTO access_audit_logs(actor_account_id,action) VALUES(%s,'forged')", (operator.pk,))
+                            _must_deny(c, "ordinary_cannot_modify_catalogue", "UPDATE roles SET is_active=0")
+                            _must_deny(c, "ordinary_cannot_delete_audit", "DELETE FROM access_audit_logs")
+                            _must_deny(c, "ordinary_cannot_alter_triggers", "DROP TRIGGER wex_accounts_update")
+                            c.execute("SET @wex_request=%s", (secrets.token_hex(32),))
+                            _must_deny(c, "forged_lease_name_does_not_grant_writer", "UPDATE accounts SET is_active=1 WHERE account_id=%s", (pending[0].pk,))
+                        with protected_db.cursor() as c:
+                            _must_deny(c, "protected_cannot_edit_roles_without_lease", "UPDATE roles SET is_active=0")
+                            _must_deny(c, "protected_cannot_mutate_scopes_without_lease", "INSERT INTO account_permission_role_scopes(account_permission_id,role_id) VALUES(%s,%s)", (999999,roles["Student"].pk))
+                        with recovery_db.cursor() as c:
+                            _must_deny(c, "recovery_cannot_grant_permissions", "INSERT INTO role_permissions(role_id,permission_id,is_active) VALUES(%s,%s,1)", (roles["Student"].pk,read.pk))
+                        with runtime_db.cursor() as c:
+                            c.execute("SELECT request_status,is_active FROM accounts WHERE account_id=%s", (pending[0].pk,))
+                            assert c.fetchone() == ("Pending", 0)
+                            c.execute("SELECT COUNT(*) FROM account_permission_role_scopes")
+                            assert c.fetchone() == (prior_scope_count,)
+                            c.execute("SELECT COUNT(*) FROM access_audit_logs")
+                            assert c.fetchone() == (prior_audit_count,)
+                            c.execute("SELECT COUNT(*) FROM role_permissions")
+                            assert c.fetchone() == (prior_role_grant_count,)
+                        checks.append("negative_tests_leave_permission_audit_and_registration_state_unchanged")
+                    finally:
+                        runtime_db.close()
+                        ordinary_db.close()
+                        protected_db.close()
+                        recovery_db.close()
+                    return {
+                        "mode": "WF03_ACTUAL_SCHEMA_FENCE_ONLY",
+                        "verified_checks": len(checks),
+                        "checks": checks,
+                        "application_tables_migrated": migrated_tables,
+                        "wf02_approval_unmodified_and_not_tested": True,
+                        "authorized_executor_writes_tested": False,
+                        "production_release_authorized": False,
+                        "official_erd_changed": False,
+                    }
+                except Exception:
+                    # Let the enclosing cleanup stop both temporary executor
+                    # processes, close connections, and destroy the temp DB.
+                    raise
+
             with using_actor_proof(school_auth["proof"]):
                 assert approve_registration(actor=school, target_id=pending[0].pk) == pending[0].pk
             assert Account.objects.get(pk=pending[0].pk).is_active

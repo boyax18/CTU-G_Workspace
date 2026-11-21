@@ -244,9 +244,15 @@ class Executor:
         require(type(p.get("permission_id")) is int)
         permission = Permission.objects.get(pk=p["permission_id"])
         if operation in {"role_permission.grant", "role_permission.revoke"}:
-            require(set(p) == {"actor_id", "role_id", "permission_id", "reason"} and type(p["role_id"]) is int)
+            legacy = {"actor_id", "role_id", "permission_id", "reason"}
+            # Preserve the existing fixed legacy operation while admitting
+            # an optional boolean CAS precondition for the gated WF-03.02 UI.
+            require(set(p) in (legacy, legacy | {"expected_active"})
+                    and type(p["role_id"]) is int
+                    and ("expected_active" not in p or type(p["expected_active"]) is bool))
             function = mutations.grant_role_permission if operation.endswith("grant") else mutations.revoke_role_permission
-            return function(actor=actor, role=Role.objects.get(pk=p["role_id"]), permission=permission, reason=p["reason"])
+            return function(actor=actor, role=Role.objects.get(pk=p["role_id"]), permission=permission,
+                            reason=p["reason"], expected_active=p.get("expected_active"))
         functions = {"account_permission.grant": mutations.grant_account_permission,
                      "account_permission.deny": mutations.deny_account_permission,
                      "account_permission.deactivate": mutations.deactivate_account_override}

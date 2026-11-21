@@ -153,9 +153,13 @@ def _change_role_permission(*, actor, role, permission, enable, reason, expected
     if expected_active is not None and type(expected_active) is not bool:
         raise PermissionManagementValidationError("expected_active must be a boolean.")
     from .executor.client import LOCAL, remote_call
-    remote = remote_call("role_permission.grant" if enable else "role_permission.revoke", {
-        "actor_id": _pk(actor, Account), "role_id": _pk(role, Role), "permission_id": _pk(permission, Permission), "reason": reason,
-    })
+    # Do not discard the browser's locked-state precondition at the mTLS
+    # boundary. The executor rechecks it after taking the database row lock.
+    wire = {"actor_id": _pk(actor, Account), "role_id": _pk(role, Role),
+            "permission_id": _pk(permission, Permission), "reason": reason}
+    if expected_active is not None:
+        wire["expected_active"] = expected_active
+    remote = remote_call("role_permission.grant" if enable else "role_permission.revoke", wire)
     if remote is not LOCAL:
         return remote
     with _management_context(actor, permission, ROLE_PERMISSION_MANAGE, role=role) as context:

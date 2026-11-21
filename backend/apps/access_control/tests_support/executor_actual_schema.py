@@ -107,6 +107,15 @@ def run():
             migrated_tables = len(cursor.fetchall())
         checks.append("actual_django_migrations_applied")
         roles = {n: Role.objects.create(role_name=n) for n in ("Admin", "Student", "Instructor")}
+        # Additional governance actor exists ONLY in the second-server fixture,
+        # with a separate explicit opt-in. No real S0/S1 provisioning occurs.
+        scoped_write_test = os.environ.get("CTUG_WF03_ACTUAL_SCOPED_WRITE") == "1"
+        fixture_technical_role = None
+        if scoped_write_test:
+            if (os.environ.get("CTUG_WF03_ACTUAL_FENCE_ONLY") != "1"
+                    or os.environ.get("CTUG_WF03_ACTUAL_LEASE_WRITE") != "1"):
+                raise RuntimeError("Scoped-write test requires both isolated fence and lease-write modes.")
+            fixture_technical_role = Role.objects.create(role_name="Technical Super Admin")
         governance = Service.objects.create(service_code="access_control", service_name="Governance")
         accounts = Service.objects.create(service_code="accounts", service_name="Accounts")
         records = Service.objects.create(service_code="fixture_records", service_name="Fixture records")
@@ -135,6 +144,17 @@ def run():
         delegated = Permission.objects.create(service=governance, permission_code="access_control.delegate.fixture_records", permission_name="Fixture delegation", module_name="access_control", action_name="delegate")
         RolePermission.objects.create(role=roles["Admin"], permission=delegated)
         read = Permission.objects.create(service=records, permission_code="fixture.records.read", permission_name="Fixture read", module_name="records", action_name="read")
+        fixture_governance_actor = None
+        if scoped_write_test:
+            fixture_governance_actor = account("fixture-wf03-governance-only", "Admin")
+            AccountRole.objects.create(account=fixture_governance_actor, role=fixture_technical_role)
+            manage = Permission.objects.create(
+                service=governance, permission_code="access_control.account_permissions.manage",
+                permission_name="Fixture account permission management",
+                module_name="access_control", action_name="manage",
+            )
+            RolePermission.objects.create(role=fixture_technical_role, permission=manage)
+            RolePermission.objects.create(role=fixture_technical_role, permission=delegated)
         policy = {"fixture_records": {"authority_permission": delegated.permission_code,
                   "permission_codes": [read.permission_code], "role_names": ["Student", "Instructor"]}}
         policy_hash = digest({"delegation": policy, "ordinary_assignment": {"Instructor": ["Student", "Instructor"]}})
@@ -208,6 +228,16 @@ def run():
             c = json.loads(path.read_text())
             c["delegation_policy"] = policy
             c["ordinary_assignment_policy"] = {"Instructor": ["Student", "Instructor"]}
+            if scoped_write_test and kind == "ordinary":
+                # Only the disposable MySQL second server permits test operations.
+                # All ordinary production and developer settings remain default-OFF.
+                c.update({
+                    "wf03_executor_account_writes_enabled": True,
+                    "wf03_active_role_context_enabled": True,
+                    "wf0303_account_grant_mutations_enabled": True,
+                    "wf0304_account_restriction_mutations_enabled": True,
+                    "wf0303_scoped_grant_evaluation_enabled": True,
+                })
             path.write_text(json.dumps(c))
         # Restart ensures configuration is fixed before accepting any requests.
         for child, log in children:
@@ -352,7 +382,13 @@ def run():
                     # This does NOT activate protected Technical Super Admin
                     # governance or the gated WF-03.03/.04 account mutations.
                     authorized_lease_write_tested = False
-                    if os.environ.get("CTUG_WF03_ACTUAL_LEASE_WRITE") == "1":
+                    # The preexisting role.assign operation has no selected-role
+                    # field. It was verified separately in the prior 29-check
+                    # rehearsal with role-context enforcement disabled. Here the
+                    # new scoped executor intentionally ENABLES role-context
+                    # enforcement, so do not replay that incompatible legacy
+                    # operation or weaken the role-context gate to make it pass.
+                    if os.environ.get("CTUG_WF03_ACTUAL_LEASE_WRITE") == "1" and not scoped_write_test:
                         from apps.access_control.executor.role_assignment import assign_ordinary_role
                         assert approved_lease_target is not None
                         target_id = approved_lease_target.pk
@@ -426,14 +462,167 @@ def run():
                         finally:
                             inspection.close()
                         authorized_lease_write_tested = True
+                    # Actual-schema positive checks of *ordinary delegated*
+                    # scoped Grant/Restriction paths, never S0/S1 provisioning.
+                    # A synthetic actor in this private, ephemeral database has
+                    # preseeded permission grants; no production identity is used.
+                    scoped_write_verified = False
+                    if scoped_write_test:
+                        assert fixture_governance_actor is not None
+                        assert fixture_technical_role is not None
+                        assert approved_lease_target is not None
+                        from apps.access_control.models import AccountPermissionRoleScope
+                        from apps.access_control.executor.protocol import request as make_envelope
+                        scoped_auth = authenticate_actor(fixture_governance_actor.school_id, password)
+                        target_id = approved_lease_target.pk
+                        role_id = roles["Student"].pk
+                        actor_id = fixture_governance_actor.pk
+
+                        def scoped_execute(operation, fields):
+                            envelope = make_envelope(operation, {
+                                "actor_id": actor_id,
+                                "target_id": target_id,
+                                "permission_id": read.pk,
+                                "selected_role_id": fixture_technical_role.pk,
+                                "reason": "permission_change",
+                                **fields,
+                            }, scoped_auth["proof"])
+                            result = transport("/execute", envelope)
+                            assert result.get("value") is True
+                            return envelope, result
+
+                        # A School Admin cannot manufacture a Technical role
+                        # by putting its ID into a signed operation payload.
+                        from apps.access_control.executor.errors import ExecutionDenied
+                        audit_before_spoof = AccessAuditLog.objects.count()
+                        spoof = make_envelope("account_permission.scoped_grant", {
+                            "actor_id": school.pk, "target_id": target_id,
+                            "permission_id": read.pk, "selected_role_id": fixture_technical_role.pk,
+                            "reason": "permission_change", "role_id": role_id,
+                            "expected_active": False,
+                        }, school_auth["proof"])
+                        try:
+                            transport("/execute", spoof)
+                        except ExecutionDenied:
+                            pass
+                        else:
+                            raise AssertionError("School Admin spoofed a Technical role context")
+                        assert AccessAuditLog.objects.count() == audit_before_spoof
+                        checks.append("school_admin_cannot_spoof_technical_selected_role")
+
+                        grant_envelope, grant_result = scoped_execute("account_permission.scoped_grant", {
+                            "role_id": role_id, "expected_active": False,
+                        })
+                        override = AccountPermission.objects.get(account_id=target_id, permission_id=read.pk)
+                        assert override.effect == "Grant" and override.is_active is True
+                        assert AccountPermissionRoleScope.objects.filter(
+                            account_permission_id=override.pk, role_id=role_id
+                        ).count() == 1
+                        checks.append("authorized_scoped_grant_and_role_binding_committed")
+
+                        deny_envelope, deny_result = scoped_execute("account_permission.restrict", {
+                            "action": "deny", "expected_effect": "Grant",
+                            "expected_scope_role_id": role_id,
+                        })
+                        override.refresh_from_db()
+                        assert override.effect == "Deny" and override.is_active is True
+                        assert not AccountPermissionRoleScope.objects.filter(account_permission_id=override.pk).exists()
+                        checks.append("authorized_restriction_deny_clears_scoped_grant")
+
+                        remove_envelope, remove_result = scoped_execute("account_permission.restrict", {
+                            "action": "remove_deny", "expected_effect": "Deny",
+                            "expected_scope_role_id": None,
+                        })
+                        override.refresh_from_db()
+                        assert override.effect == "Deny" and override.is_active is False
+                        assert not AccountPermissionRoleScope.objects.filter(account_permission_id=override.pk).exists()
+                        checks.append("authorized_remove_deny_clears_override_without_stale_scope")
+
+                        second_grant_envelope, second_grant_result = scoped_execute(
+                            "account_permission.scoped_grant", {
+                                "role_id": role_id, "expected_active": False,
+                            },
+                        )
+                        override.refresh_from_db()
+                        assert override.effect == "Grant" and override.is_active is True
+                        assert AccountPermissionRoleScope.objects.filter(
+                            account_permission_id=override.pk, role_id=role_id
+                        ).count() == 1
+                        revoke_envelope, revoke_result = scoped_execute("account_permission.restrict", {
+                            "action": "revoke_grant", "expected_effect": "Grant",
+                            "expected_scope_role_id": role_id,
+                        })
+                        override.refresh_from_db()
+                        assert override.effect == "Grant" and override.is_active is False
+                        assert not AccountPermissionRoleScope.objects.filter(account_permission_id=override.pk).exists()
+                        checks.append("authorized_revoke_grant_disables_override_without_stale_scope")
+
+                        proof_cases = (
+                            (grant_envelope, grant_result, "account_permission.grant"),
+                            (deny_envelope, deny_result, "account_permission.deny"),
+                            (remove_envelope, remove_result, "account_permission.deny.deactivate"),
+                            (second_grant_envelope, second_grant_result, "account_permission.grant"),
+                            (revoke_envelope, revoke_result, "account_permission.grant.deactivate"),
+                        )
+                        # Root here is read-only and belongs solely to the
+                        # disposable second MySQL server, never ctug_workspace.
+                        inspection = MySQLdb.connect(
+                            host=".", user="root", passwd=driver.root_password, db=name,
+                            named_pipe=True, unix_socket=driver.pipe,
+                            server_public_key_path=str(driver.data / "public_key.pem"),
+                            autocommit=True,
+                        )
+                        try:
+                            with inspection.cursor() as c:
+                                for envelope, result, expected_action in proof_cases:
+                                    c.execute(
+                                        "SELECT kind,principal,actor_id,status,epoch,result FROM wex_requests "
+                                        "WHERE request_id=%s AND operation=%s",
+                                        (envelope["request_id"], envelope["operation"]),
+                                    )
+                                    row = c.fetchone()
+                                    assert row is not None
+                                    kind, principal, stored_actor_id, status, epoch, raw_receipt = row
+                                    assert (kind, principal, stored_actor_id, status, epoch) == (
+                                        "ordinary", credentials["ordinary"][0] + "@localhost",
+                                        actor_id, "APPLIED", trust.epoch,
+                                    )
+                                    receipt = json.loads(raw_receipt) if isinstance(raw_receipt, (bytes, str)) else raw_receipt
+                                    assert receipt.get("request_id") == envelope["request_id"]
+                                    assert receipt.get("value") is True
+                                    assert isinstance(receipt.get("executor_signature"), str)
+                                    c.execute(
+                                        "SELECT l.audit_id,a.actor_account_id,a.target_account_id,a.permission_id,a.action "
+                                        "FROM wex_audits l JOIN access_audit_logs a "
+                                        "ON a.access_audit_log_id=l.audit_id "
+                                        "WHERE l.request_id=%s", (envelope["request_id"],),
+                                    )
+                                    audits = c.fetchall()
+                                    assert len(audits) == 1
+                                    audit_id, stored_actor, stored_target, stored_permission, action = audits[0]
+                                    assert (stored_actor, stored_target, stored_permission, action) == (
+                                        actor_id, target_id, read.pk, expected_action,
+                                    )
+                                    assert receipt.get("audit_ids") == [audit_id]
+                                    assert result.get("audit_ids") == [audit_id]
+                        finally:
+                            inspection.close()
+                        checks.append("all_five_scoped_mutations_have_applied_ledger_and_linked_audit")
+                        scoped_write_verified = True
                     return {
                         "mode": "WF03_ACTUAL_SCHEMA_FENCE_ONLY",
                         "verified_checks": len(checks),
                         "checks": checks,
                         "application_tables_migrated": migrated_tables,
                         "wf02_approval_unmodified_and_not_tested": True,
-                        "authorized_executor_writes_tested": authorized_lease_write_tested,
-                        "authorized_executor_operations": ["role.assign"] if authorized_lease_write_tested else [],
+                        "authorized_executor_writes_tested": (authorized_lease_write_tested or scoped_write_verified),
+                        "authorized_executor_operations": (
+                            (["role.assign"] if authorized_lease_write_tested else [])
+                            + (["account_permission.scoped_grant", "account_permission.restrict"]
+                               if scoped_write_verified else [])
+                        ),
+                        "scoped_delegated_executor_writes_tested": scoped_write_verified,
+                        "synthetic_test_only_technical_role_used": scoped_write_verified,
                         "protected_governance_writes_tested": False,
                         "production_release_authorized": False,
                         "official_erd_changed": False,

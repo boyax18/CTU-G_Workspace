@@ -7,6 +7,7 @@ import { DashboardContext } from '../contexts/DashboardContext';
 import type { DashboardSubpage } from '../contexts/DashboardContext';
 import DashboardShell from '../components/dashboard/DashboardShell';
 import { getWorkspaceSession, switchWorkspaceRole } from '../features/auth/session';
+import { ApiError } from '../api/client';
 import { ROLE_CONTEXT_SWITCHING_ENABLED } from '../features/dashboard/roleContextConfig';
 import { signOutMessage, signOutWorkspace } from '../features/auth/signOut';
 import { useSessionRevalidation } from '../hooks/useSessionRevalidation';
@@ -126,9 +127,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setView('overview');
       setSearch(window.location.search);
       setSubpage(null);
-    } catch {
-      // A POST outcome may be ambiguous; refresh from server before trusting it.
-      setRoleSwitchError('Role switch not confirmed. Check your session and try again.');
+    } catch (error) {
+      // Never display a role until a server response confirms it. A failed POST
+      // may have an ambiguous outcome, so re-read the session for truth.
+      const message = error instanceof ApiError && error.status === 503
+        ? 'Role switching is unavailable in the current server configuration.'
+        : error instanceof ApiError && error.status === 403
+          ? 'Role switch was refused by the security check. Refresh the page and try again.'
+          : error instanceof ApiError && error.status === 401
+            ? 'Your session has ended. Sign in again to switch roles.'
+            : 'Role switch not confirmed. Check the current role and try again.';
+      setRoleSwitchError(message);
       recheckSession();
     } finally {
       setSwitchingRole(false);

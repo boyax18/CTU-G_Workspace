@@ -70,6 +70,10 @@ function ModuleCard({ item, onOpen }: { item: DashboardNavItem; onOpen: () => vo
 function Overview() {
   const { session, navigate } = useDashboardContext();
   const { permissions } = session;
+  const currentRole = session.role_context?.choices.find(
+    (r) => r.role_id === session.role_context?.active_role_id,
+  );
+  const displayRole = currentRole?.role_name === 'Admin' ? 'School Admin' : currentRole?.role_name;
   const widgets = getWidgets(permissions);
   const groups = getVisibleNavGroups(permissions, 'main').filter((group) => group.id !== 'overview');
 
@@ -79,7 +83,7 @@ function Overview() {
         style={{ '--db-hero-photo': `url(${campusPhoto})` } as CSSProperties}>
         <div className="relative z-10 max-w-2xl">
           <p className="dashboard-hero-eyebrow text-xs font-semibold uppercase tracking-[0.18em]">Cebu Technological University · Ginatilan</p>
-          <h2 id="dashboard-welcome" className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Welcome to your workspace</h2>
+          <h2 id="dashboard-welcome" className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">{displayRole ? `${displayRole} workspace` : 'Welcome to your workspace'}</h2>
           <p className="dashboard-hero-text mt-3 text-sm leading-relaxed">
             One shared campus dashboard. The modules below follow your current access, and every request is verified by the server.
           </p>

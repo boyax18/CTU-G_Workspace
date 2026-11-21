@@ -122,6 +122,13 @@ def run():
             return a
         operator, technical, school = (account("fixture-operator", "Admin"), account("fixture-technical", "Admin"), account("fixture-school", "Admin"))
         pending = [account("600000" + str(i), pending=True) for i in range(7)]
+        # A synthetic approved target for the opt-in WF-03 actual-lease write test.
+        # No change to the default historical rehearsal or its WF-02 safeguards.
+        approved_lease_target = None
+        if os.environ.get("CTUG_WF03_ACTUAL_LEASE_WRITE") == "1":
+            if os.environ.get("CTUG_WF03_ACTUAL_FENCE_ONLY") != "1":
+                raise RuntimeError("Isolated lease-write test requires WF-03 fence-only mode.")
+            approved_lease_target = account("fixture-approved-lease-target", "Student")
         for code in ("accounts.registration_requests.approve", "accounts.registration_requests.reject", "accounts.role_assignments.manage"):
             p = Permission.objects.create(service=accounts, permission_code=code, permission_name="Fixture", module_name="registration_requests", action_name=code.rsplit(".", 1)[1])
             RolePermission.objects.create(role=roles["Admin"], permission=p)
@@ -340,13 +347,94 @@ def run():
                         ordinary_db.close()
                         protected_db.close()
                         recovery_db.close()
+                    # Positive test: ordinary executor must perform a real,
+                    # authenticated, leased and audited WF-03.01 role assignment.
+                    # This does NOT activate protected Technical Super Admin
+                    # governance or the gated WF-03.03/.04 account mutations.
+                    authorized_lease_write_tested = False
+                    if os.environ.get("CTUG_WF03_ACTUAL_LEASE_WRITE") == "1":
+                        from apps.access_control.executor.role_assignment import assign_ordinary_role
+                        assert approved_lease_target is not None
+                        target_id = approved_lease_target.pk
+                        instructor_id = roles["Instructor"].pk
+                        assert not AccountRole.objects.filter(
+                            account_id=target_id, role_id=instructor_id
+                        ).exists()
+                        initial_audit_count = AccessAuditLog.objects.filter(
+                            action="account.role.assign", actor_account_id=school.pk,
+                            target_account_id=target_id
+                        ).count()
+                        with using_actor_proof(school_auth["proof"]):
+                            assigned = assign_ordinary_role(
+                                actor=school, target_id=target_id, role_id=instructor_id
+                            )
+                        assert assigned is True, "Authorized ordinary role assignment did not succeed"
+                        checks.append("authorized_ordinary_executor_role_assignment_succeeded")
+
+                        with connection.cursor() as c:
+                            c.execute("SELECT COUNT(*) FROM account_roles WHERE account_id=%s AND role_id=%s",
+                                      (target_id, instructor_id))
+                            assert c.fetchone() == (1,)
+                            c.execute("SELECT COUNT(*) FROM account_roles WHERE account_id=%s", (target_id,))
+                            assert c.fetchone() == (2,), "The existing Student assignment must be retained"
+                        assert AccessAuditLog.objects.filter(
+                            action="account.role.assign", actor_account_id=school.pk,
+                            target_account_id=target_id, role_id=instructor_id
+                        ).count() == initial_audit_count + 1
+                        checks.append("authorized_assignment_persisted_without_erasing_student_role")
+
+                        # The runtime has no ledger-write privilege. Root is used
+                        # for READ-ONLY inspection of this disposable server.
+                        inspection = MySQLdb.connect(
+                            host=".", user="root", passwd=driver.root_password, db=name,
+                            named_pipe=True, unix_socket=driver.pipe,
+                            server_public_key_path=str(driver.data / "public_key.pem"),
+                            autocommit=True,
+                        )
+                        try:
+                            with inspection.cursor() as c:
+                                c.execute(
+                                    "SELECT request_id,kind,principal,actor_id,status,epoch,result "
+                                    "FROM wex_requests WHERE operation='role.assign'",
+                                )
+                                ledger_rows = c.fetchall()
+                                assert len(ledger_rows) == 1, "Exactly one leased assignment request expected"
+                                request_id, kind, principal, actor_id, status, epoch, raw_result = ledger_rows[0]
+                                assert (kind, principal, actor_id, status, epoch) == (
+                                    "ordinary", credentials["ordinary"][0] + "@localhost",
+                                    school.pk, "APPLIED", trust.epoch,
+                                ), "Executor ledger identity/status/epoch mismatch"
+                                receipt = json.loads(raw_result) if isinstance(raw_result, (str, bytes)) else raw_result
+                                assert isinstance(receipt, dict)
+                                assert receipt.get("request_id") == request_id and receipt.get("value") is True
+                                assert isinstance(receipt.get("executor_signature"), str)
+                                checks.append("authorized_request_has_applied_executor_ledger_and_receipt")
+                                c.execute(
+                                    "SELECT a.access_audit_log_id,a.actor_account_id,a.target_account_id,"
+                                    "a.role_id,a.action FROM wex_audits l "
+                                    "JOIN access_audit_logs a ON a.access_audit_log_id=l.audit_id "
+                                    "WHERE l.request_id=%s", (request_id,),
+                                )
+                                linked = c.fetchall()
+                                assert len(linked) == 1, "An authorized assignment needs one linked audit event"
+                                audit_id, audit_actor, audit_target, audit_role, audit_action = linked[0]
+                                assert (audit_actor, audit_target, audit_role, audit_action) == (
+                                    school.pk, target_id, instructor_id, "account.role.assign",
+                                )
+                                assert receipt.get("audit_ids") == [audit_id]
+                                checks.append("authorized_ledger_receipt_links_real_append_only_audit")
+                        finally:
+                            inspection.close()
+                        authorized_lease_write_tested = True
                     return {
                         "mode": "WF03_ACTUAL_SCHEMA_FENCE_ONLY",
                         "verified_checks": len(checks),
                         "checks": checks,
                         "application_tables_migrated": migrated_tables,
                         "wf02_approval_unmodified_and_not_tested": True,
-                        "authorized_executor_writes_tested": False,
+                        "authorized_executor_writes_tested": authorized_lease_write_tested,
+                        "authorized_executor_operations": ["role.assign"] if authorized_lease_write_tested else [],
+                        "protected_governance_writes_tested": False,
                         "production_release_authorized": False,
                         "official_erd_changed": False,
                     }

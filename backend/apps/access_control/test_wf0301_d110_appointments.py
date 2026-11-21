@@ -14,7 +14,7 @@ from apps.access_control.appointment_registry import (
 from apps.access_control.models import AccountRole, OrdinaryAppointment, Permission, Role, RolePermission, Service
 from apps.access_control.ordinary_appointment_evidence import appointment_verified_for
 from apps.access_control.role_management import RoleChangeDenied
-from apps.access_control.test_wf0301_role_assignment import World, configure
+from apps.access_control.test_wf0301_role_assignment import World, configure, GATES
 
 
 class AppointmentGateTests(SimpleTestCase):
@@ -27,7 +27,7 @@ class AppointmentGateTests(SimpleTestCase):
         self.assertFalse(appointment_verified_for(target_account_id=1, role_name="Treasurer"))
 
 
-@override_settings(WORKSPACE_ORDINARY_APPOINTMENT_REGISTRY_ENABLED=True)
+@override_settings(WORKSPACE_ORDINARY_APPOINTMENT_REGISTRY_ENABLED=True, **GATES)
 class AppointmentLedgerTests(TestCase):
     @classmethod
     def setUpTestData(cls):

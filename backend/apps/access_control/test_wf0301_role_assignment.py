@@ -447,7 +447,22 @@ class TechnicalSuperAdminAssignmentTests(TestCase):
                                  "role-assignments-revoke-school-admin")
                 self.assertEqual(resolve(f"{API}ordinary/", urlconf=conf).url_name, "role-assignments-ordinary-list")
                 self.assertTrue(any("role-assignments" in route for route in unexpected_review_routes(conf)))
-        self.assertEqual(len(unexpected_review_routes(URLCONF)), 5)
+        # 11 exact, intentionally isolated WF-03.01 routes now exist after D-100,
+        # D-110 and D-112. This assertion must still fail for an unreviewed extra route.
+        expected_routes = {
+            "api/v1/admin/role-assignments/ (role-assignments-list)",
+            "api/v1/admin/role-assignments/<int:account_id>/school-admin/assign/ (role-assignments-assign-school-admin)",
+            "api/v1/admin/role-assignments/<int:account_id>/school-admin/revoke/ (role-assignments-revoke-school-admin)",
+            "api/v1/admin/role-assignments/appointments/ (ordinary-appointment-submit)",
+            "api/v1/admin/role-assignments/appointments/candidate/ (ordinary-appointment-candidate)",
+            "api/v1/admin/role-assignments/appointments/my-submissions/ (ordinary-appointment-submissions)",
+            "api/v1/admin/role-assignments/appointments/verified/ (ordinary-appointment-verified)",
+            "api/v1/admin/role-assignments/appointments/review-queue/ (ordinary-appointment-review-queue)",
+            "api/v1/admin/role-assignments/appointments/<int:appointment_id>/<str:action>/ (ordinary-appointment-review)",
+            "api/v1/admin/role-assignments/ordinary/ (role-assignments-ordinary-list)",
+            "api/v1/admin/role-assignments/<int:account_id>/ordinary/<slug:role_slug>/<str:action>/ (role-assignments-ordinary-change)",
+        }
+        self.assertCountEqual(unexpected_review_routes(URLCONF), expected_routes)
         self.assertEqual(unexpected_review_routes("config.urls"), [])
         base = open("config/settings.py", encoding="utf-8").read()
         self.assertNotIn("WORKSPACE_ROLE_ASSIGNMENT_ENABLED", base)
@@ -639,4 +654,10 @@ class ProtectedCompatibilityTests(TransactionTestCase):
         bound = {b["permission_code"]: b["role_name"] for b in data["default_bindings"]
                  if b["permission_code"] == "access_control.role_assignments.ordinary.manage"}
         self.assertEqual(bound, {"access_control.role_assignments.ordinary.manage": "Admin"})  # v2.1 pending (D-89)
-        self.assertFalse(hasattr(role_assignment, "assign_ordinary_role"))  # no Treasurer/SSG Advisor path yet
+        # D-100 introduced ordinary-role writers behind separate, default-off gates.
+        # Their presence is expected; removing the activation barriers is not.
+        self.assertTrue(callable(getattr(role_assignment, "assign_ordinary_role", None)))
+        self.assertTrue(callable(getattr(role_assignment, "revoke_ordinary_role", None)))
+        with override_settings(WORKSPACE_ROLE_ASSIGNMENT_ENABLED=False,
+                               WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED=False):
+            self.assertFalse(role_assignment.ordinary_gate_open())

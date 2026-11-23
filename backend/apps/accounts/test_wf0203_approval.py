@@ -93,8 +93,10 @@ def applicant(school_id, role, *, email=APPLICANT_EMAIL, proof="same", profile=T
 
 GATES = dict(
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
-    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
+    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=True,
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False,
+    WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION="v1",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
     WORKSPACE_P3C6_REQUIRE_VERIFIED_WRITER=False,
 )
 
@@ -106,6 +108,11 @@ class ApprovalServicePolicyTests(TestCase):
         cls.w = build_world()
 
     def setUp(self):
+        self.outbox_key = patch.dict(os.environ, {
+            "WORKSPACE_OUTBOX_KEK_V1_B64": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
+        })
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         self.target = applicant("WF0203-STUDENT", self.w.roles["Student"])
 
     def assert_untouched(self, target=None):
@@ -184,6 +191,13 @@ class ApprovalServicePolicyTests(TestCase):
                 Account.objects.filter(pk=self.target.pk).update(**change)
                 self.refuse("email_unverified", attestation=STUDENT)
 
+    def test_invalid_but_self_verified_address_is_refused_for_outbox_delivery(self):
+        invalid = "not-an-address"
+        Account.objects.filter(pk=self.target.pk).update(
+            email=invalid, email_verified_at=timezone.now(), email_verified_address=invalid,
+        )
+        self.refuse("email_unverified", attestation=STUDENT)
+
     def test_missing_false_malformed_forged_or_wrong_role_attestations_are_refused(self):
         bad = [
             None, {}, [], "ctu_main_system_records", {"confirmed": True},
@@ -248,7 +262,7 @@ class ApprovalServicePolicyTests(TestCase):
         self.assertEqual(set(get_effective_permissions(Account.objects.get(pk=self.target.pk))), set())
 
     def test_audit_failure_rolls_back_the_whole_approval(self):
-        with patch("apps.accounts.registration_review.record_access_audit", side_effect=RuntimeError("audit down")):
+        with patch("apps.accounts.registration_review.record_access_audit_receipt", side_effect=RuntimeError("audit down")):
             with self.assertRaises(RuntimeError):
                 approve_registration(actor=self.w.reviewer, target_id=self.target.pk, attestation=STUDENT)
         self.assert_untouched()
@@ -291,10 +305,16 @@ class ApprovalNotificationTests(TestCase):
     def approve(self):
         return approve_registration(actor=self.w.reviewer, target_id=self.target.pk, attestation=STUDENT)
 
+    def assert_untouched(self):
+        self.target.refresh_from_db()
+        self.assertEqual(self.target.request_status, "Pending")
+        self.assertFalse(self.target.is_active)
+        self.assertFalse(AccountRole.objects.filter(account=self.target).exists())
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
+
     def test_outbox_row_is_written_with_the_approval_and_linked_to_its_audit(self):
-        with patch("apps.accounts.registration_review.schedule_registration_decision_email_after_commit") as legacy:
-            self.approve()
-        legacy.assert_not_called()
+        self.approve()
         row = RegistrationNotificationOutbox.objects.get()
         self.assertEqual(row.decision_audit_log_id, AccessAuditLog.objects.get().pk)
         self.assertEqual((row.template_code, row.delivery_status), ("registration.approved", "Pending"))
@@ -304,10 +324,12 @@ class ApprovalNotificationTests(TestCase):
     def test_no_outbox_row_or_email_when_outbox_is_disabled(self):
         with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False):
             with self.captureOnCommitCallbacks(execute=True) as callbacks:
-                self.approve()
+                with self.assertRaises(registration_review.RegistrationReviewUnavailable):
+                    self.approve()
         self.assertEqual(callbacks, [])
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
         self.assertEqual(len(mail.outbox), 0)
+        self.assert_untouched()
 
     def test_refused_approval_queues_nothing(self):
         Account.objects.filter(pk=self.target.pk).update(email_verified_at=None)
@@ -344,13 +366,15 @@ class ApprovalNotificationTests(TestCase):
         self.assertEqual(RegistrationNotificationOutbox.objects.count(), 1)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
-    def test_legacy_email_path_sends_only_after_commit(self):
+    def test_legacy_email_flag_cannot_bypass_the_durable_outbox(self):
         with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
                                WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=True):
             with self.captureOnCommitCallbacks(execute=False) as callbacks:
-                self.approve()
+                with self.assertRaises(registration_review.RegistrationReviewUnavailable):
+                    self.approve()
             self.assertEqual(len(mail.outbox), 0)
-            self.assertEqual(len(callbacks), 1)
+            self.assertEqual(len(callbacks), 0)
+        self.assert_untouched()
 
 
 @override_settings(
@@ -365,6 +389,11 @@ class ApprovalHTTPContractTests(TestCase):
         cls.w = build_world()
 
     def setUp(self):
+        self.outbox_key = patch.dict(os.environ, {
+            "WORKSPACE_OUTBOX_KEK_V1_B64": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
+        })
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         cache.clear()
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.w.reviewer)
@@ -393,7 +422,9 @@ class ApprovalHTTPContractTests(TestCase):
     def test_success_returns_only_the_decision_and_no_store(self):
         response = self.post(BODY)
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json(), {"account_id": self.target.pk, "status": "Approved"})
+        self.assertEqual(response.json(), {
+            "account_id": self.target.pk, "status": "Approved", "notification": "queued",
+        })
         self.assertIn("no-store", response["Cache-Control"])
 
     def test_policy_refusals_are_409_with_fixed_reasons(self):
@@ -503,6 +534,11 @@ class ApprovalConcurrencyTests(TransactionTestCase):
     """Two real MySQL connections: locks serialize decisions; the loser sees committed state."""
 
     def setUp(self):
+        self.outbox_key = patch.dict(os.environ, {
+            "WORKSPACE_OUTBOX_KEK_V1_B64": base64.b64encode(secrets.token_bytes(32)).decode("ascii"),
+        })
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         self.w = build_world()
         self.target = applicant("WF0203-RACE", self.w.roles["Student"])
         self.holding, self.release = threading.Event(), threading.Event()

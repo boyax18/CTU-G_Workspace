@@ -1,5 +1,14 @@
 # CTU-G Workspace — Development Changelog
 
+### 23 November 2026 — WF-02.03/02.04 durable notifications and bulk decisions
+
+- Made the durable outbox mandatory for both individual and bulk approvals/rejections. Each successful decision, individual audit record and encrypted notification row commit atomically; rejected registration/profile deletion cannot erase its queued notification. API/UI language now distinguishes queued from delivered.
+- Added fail-closed action availability checks for the active outbox encryption key, so decisions are not advertised when notification encryption is unavailable.
+- Added gated bulk applicant selection, current-page selection controls, count, action confirmation, per-applicant processing/results and no-retry handling for uncertain outcomes. The bounded backend uses explicit unique IDs (maximum 20), per-item permission/state checks, independent transactions and individual audit/outbox evidence.
+- Preserved exact permission checks, active Admin assignment, CSRF/session checks, role-context isolation and protected writer/executor boundaries. The bulk URLconf and decision writes remain unmounted from the normal application and default-off; no new Human Approval or production authorization is claimed.
+- Updated the existing WF-02 workflow catalogue, Account Management API/mobile-client contract, access-control gates, notification specification, implementation status and test results. Workflow IDs and prior Human Approval fields are unchanged.
+- Verification: backend 78/78 API/approval/bulk, 36/36 notification/outbox/review, and 6/6 dashboard action-availability tests; focused frontend 47/47; applicant-review browser 22/22, including active-gate approval and rejection UI flows; production build passed. Isolated tests used synthetic data; no real records, migrations or SMTP messages were changed.
+
 ### 23 November 2026 — WF-02 Account Management dashboard integration
 
 - Reused existing WF-02.01–06 services and dashboard components. Normal routes now include only authorized read-only directory, account detail and minimized history, behind independent default-off directory flags. Applicant reads retain their existing independent gate. The shared navigation group is Account management.
@@ -9,7 +18,13 @@
 - Verification: backend 250/250 plus 46/46 status/outbox/release supplement in 18 selected modules (both disposable MySQL databases destroyed); details in `testing/TEST_RESULTS.md`; focused frontend 73/73; browser 62/62 plus independent read-build 3/3; changed-file lint and production build passed. Full frontend unit run remains 237/238 because of the existing appointment/frozen-catalogue inventory mismatch; full lint retains 3 existing errors in unchanged WF-03 files.
 - Git: local `ronald` integration from parent `d9b58da`; code/tests/docs committed together under `feat(wf-02): integrate account management reads and verified documentation`. Resolve the commit hash with `git log --oneline -- docs/CHANGELOG.md`. Unrelated LAN work preserved; no push and no shared-HTTP real-data activation.
 
-### 23 November 2026 — WF-02 local runtime activation inspection
+### 23 November 2026 — WF-02 localhost-only process activation
+
+- Replaced the prior development listeners with Django and Vite bound only to `127.0.0.1`; enabled only applicant-list and account-directory reads in process-local settings. Role-context LAN/HTTPS environment conflicts were cleared only in the Django process after loading existing `.env`; no private configuration or existing LAN/HTTPS implementation was changed.
+- Verified the browser sign-in page and CSRF endpoint return 200; anonymous applicant/directory reads return 401; approval, rejection and account-status mutation paths return 404. Vite’s transformed frontend configuration has read flags on and mutation flags off.
+- No authenticated session was available, so no personal-data response or role-specific browser result is claimed. The account holder must sign in to complete live UI verification. Process flags are temporary and revert when the services stop; the local `.env` remains unchanged.
+
+### 23 November 2026 — WF-02 pre-activation runtime inspection
 
 - Read-only inspection confirmed eligible account counts, active account/access-control services, active Admin read grants, and effective WF-02 read permissions for Admin and Technical Super Admin contexts in the current `ctug_workspace` database. Student and Instructor contexts were denied.
 - Runtime frontend/backend read switches remain default-off. The current Vite listener is plain HTTP on a LAN interface, localhost is unavailable, and a fresh settings load is blocked by the existing uncommitted LAN role-context configuration. No real-data read flags were enabled, and no database mutation, migration, protected activation, or personal-data display occurred.

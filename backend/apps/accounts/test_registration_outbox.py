@@ -15,7 +15,8 @@ from .models import Account, UserProfile
 from .outbox_crypto import OutboxCryptoUnavailable, decrypt_recipient
 from .outbox_models import RegistrationNotificationOutbox
 from .registration_review import (
-    RegistrationRejectionNotAllowed, RegistrationReviewDenied, approve_registration, reject_registration,
+    RegistrationRejectionNotAllowed, RegistrationReviewDenied, RegistrationReviewUnavailable,
+    approve_registration, reject_registration,
 )
 from .registration_outbox import RegistrationOutboxError, record_registration_decision_outbox
 
@@ -95,9 +96,7 @@ class RegistrationOutboxTests(TestCase):
         )
 
     def test_approval_atomically_stores_encrypted_pending_event(self):
-        with patch("apps.accounts.registration_review.schedule_registration_decision_email_after_commit") as legacy:
-            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
-        legacy.assert_not_called()
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         row = RegistrationNotificationOutbox.objects.get()
         audit = AccessAuditLog.objects.get()
         self.assertEqual(row.decision_audit_log_id, audit.pk)
@@ -198,7 +197,7 @@ class RegistrationOutboxTests(TestCase):
 
     def test_missing_key_fails_closed_and_rolls_back_decision(self):
         with patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": ""}):
-            with self.assertRaises(OutboxCryptoUnavailable):
+            with self.assertRaises(RegistrationReviewUnavailable):
                 approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Pending")
@@ -235,12 +234,15 @@ class RegistrationOutboxTests(TestCase):
         self.assertEqual(AccessAuditLog.objects.count(), 1)
         self.assertEqual(RegistrationNotificationOutbox.objects.count(), 1)
 
-    def test_outbox_disabled_keeps_original_no_outbox_behavior(self):
+    def test_outbox_disabled_fails_closed_even_when_legacy_notifications_are_enabled(self):
         with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
-                               WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False):
-            approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
+                               WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=True):
+            from .registration_review import RegistrationReviewUnavailable
+            with self.assertRaises(RegistrationReviewUnavailable):
+                approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
-        self.assertEqual(AccessAuditLog.objects.count(), 1)
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self._assert_refused_unchanged()
 
     @override_settings(WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True)  # WF-02.04 D-54 test correction
     def test_account_delete_failure_rolls_back_profile_audit_and_outbox(self):

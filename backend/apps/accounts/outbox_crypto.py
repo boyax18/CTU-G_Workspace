@@ -46,6 +46,16 @@ def _wrapping_key(version):
     return key
 
 
+def outbox_encryption_ready():
+    """Return whether the configured AEAD dependency and active wrapping key are usable."""
+    try:
+        _aesgcm()
+        _wrapping_key(getattr(settings, "WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION", "v1"))
+    except OutboxCryptoUnavailable:
+        return False
+    return True
+
+
 def _associated_data(*, audit_log_id, template_code, template_version):
     if (type(audit_log_id) is not int or not 1 <= audit_log_id <= 2_147_483_647
             or template_code not in _TEMPLATE_CODES

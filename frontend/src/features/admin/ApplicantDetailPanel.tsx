@@ -216,6 +216,9 @@ export default function ApplicantDetailPanel({
           <p className="mt-2 text-sm leading-relaxed">
             What they can open after signing in depends on the permissions set for the {done.requested_role} role.
           </p>
+          <p className="mt-2 text-sm leading-relaxed">
+            An approval email has been queued for delivery. Delivery happens separately and is not confirmed here.
+          </p>
         </section>
       </div>
     );

@@ -6,6 +6,8 @@ activate services, role bindings, URLs, or live account decisions.
 """
 
 import json
+import os
+from unittest.mock import patch
 
 from django.conf import settings
 from django.core.cache import cache
@@ -18,7 +20,7 @@ from apps.access_control.models import (
     RolePermission, Service,
 )
 from .models import Account
-from .rejection_test_support import rejection_outbox
+from .rejection_test_support import fresh_test_key, rejection_outbox
 
 
 if (
@@ -63,7 +65,9 @@ class RegistrationReviewP4LiveRoutingLockTests(SimpleTestCase):
     ROOT_URLCONF="apps.accounts.registration_review_urls",
     WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=True,
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
-    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
+    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=True,
+    WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION="v1",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False,
 )
 class RegistrationReviewP4HTTPContractTests(TestCase):
@@ -95,6 +99,9 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
             RolePermission.objects.create(role=cls.admin_role, permission=perm, is_active=True)
 
     def setUp(self):
+        self.outbox_key = patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()})
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         cache.clear()
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.admin)
@@ -183,7 +190,9 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
     def test_approve_with_attestation_returns_exact_decision_and_audit(self):
         response = self.post("approve", APPROVAL_BODY)
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json(), {"account_id": self.pending.pk, "status": "Approved"})
+        self.assertEqual(response.json(), {
+            "account_id": self.pending.pk, "status": "Approved", "notification": "queued",
+        })
         self.pending.refresh_from_db()
         self.assertEqual(self.pending.request_status, "Approved")
         self.assertTrue(self.pending.is_active)

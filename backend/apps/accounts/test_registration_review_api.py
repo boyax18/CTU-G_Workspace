@@ -6,6 +6,7 @@ These tests temporarily mount an isolated URLconf and enable flags ONLY in
 Django test settings. They do not register routes in config.urls.
 """
 
+import os
 from unittest.mock import patch
 
 from django.conf import settings
@@ -20,7 +21,8 @@ from apps.access_control.models import (
 )
 
 from .models import Account
-from .rejection_test_support import rejection_outbox
+from .outbox_models import RegistrationNotificationOutbox
+from .rejection_test_support import fresh_test_key, rejection_outbox
 
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
@@ -46,6 +48,9 @@ def with_email_proof(account, email):
     ROOT_URLCONF="apps.accounts.registration_review_urls",
     WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=True,
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
+    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=True,
+    WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION="v1",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
 )
 class RegistrationReviewAPITests(TestCase):
     @classmethod
@@ -78,6 +83,9 @@ class RegistrationReviewAPITests(TestCase):
             cls.permissions[action] = perm
 
     def setUp(self):
+        self.outbox_key = patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()})
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         cache.clear()
         self.client = Client(enforce_csrf_checks=True)
         self.client.force_login(self.reviewer)
@@ -206,11 +214,15 @@ class RegistrationReviewAPITests(TestCase):
     def test_approve_assigns_one_role_and_audits(self):
         result = self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY)
         self.assertEqual(result.status_code, 200, result.content)
+        self.assertEqual(result.json(), {
+            "account_id": self.target.pk, "status": "Approved", "notification": "queued",
+        })
         self.target.refresh_from_db()
         self.assertTrue(self.target.is_active)
         self.assertEqual(self.target.request_status, "Approved")
         self.assertEqual(AccountRole.objects.get(account=self.target).role_id, self.student.pk)
         self.assertEqual(AccessAuditLog.objects.get().action, "account.registration.approve")
+        self.assertEqual(RegistrationNotificationOutbox.objects.count(), 1)
         self.assertEqual(self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY).status_code, 404)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
 
@@ -244,7 +256,7 @@ class RegistrationReviewAPITests(TestCase):
         self.assertEqual(self.client.get("/").status_code, 401)
 
     def test_audit_writer_failure_rolls_back(self):
-        with patch("apps.accounts.registration_review.record_access_audit", side_effect=RuntimeError("audit unavailable")):
+        with patch("apps.accounts.registration_review.record_access_audit_receipt", side_effect=RuntimeError("audit unavailable")):
             response = self.post(f"/{self.target.pk}/approve/", APPROVAL_BODY)
         self.assertEqual(response.status_code, 503)
         self.target.refresh_from_db()

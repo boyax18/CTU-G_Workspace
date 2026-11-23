@@ -1,10 +1,22 @@
 # CTU-G Workspace — Registration Decision Notifications
 
-**Feature ID:** AR-6C5A  
+**Feature ID:** AR-6C5A / AR-6C5B
 **Document type:** Technical feature specification and verification record  
-**Status:** Draft implementation with passing automated tests; **disabled by default / not production-released**  
-**Last reviewed:** 2026-11-10  
-**Scope:** Best-effort email notification after an authorized Student/Instructor registration approval or rejection.
+**Status:** Durable decision notifications implemented and tested; decision routes remain gated/unmounted and are not production-released
+**Last reviewed:** 2026-11-23
+**Scope:** Mandatory durable email notification for individual and bulk Student/Instructor registration decisions.
+
+## Current implementation status — 23 November 2026
+
+This update supersedes the historical best-effort design and checklist below. The approval and rejection services now require the existing durable outbox, a usable active encryption key and a valid recipient before making a decision. The encrypted recipient, individual audit record and decision-specific outbox row are written atomically with the decision. Rejection preserves its outbox row while deleting the rejected account and registration profile in the same transaction. The old post-commit best-effort email path cannot substitute for or bypass the outbox.
+
+The API response reports `notification: queued`; this confirms only durable queuing, not delivery. The worker distinguishes `Pending`, `Leased`, `Retry`, `Delivered` and `Dead`; delivery is completed only at `Delivered`, while `Dead` is terminal failure. SMTP operation and production delivery are not verified. Local tests use synthetic records, a disposable MySQL test database and the in-memory email backend.
+
+Bulk decisions use explicit unique account IDs, at most 20 per request, and the existing locked single-applicant service independently for each applicant. Each committed decision has its own audit and encrypted notification row. The UI presents confirmation and per-applicant outcomes; an uncertain result stops processing and is not automatically retried. The endpoint remains detached from normal URL configuration; backend/frontend bulk and mutation gates remain off by default.
+
+No real applicant/account data was mutated, no notification was sent through SMTP, and no new Human Approval or production authorization is recorded. For the current API shape and route status, see [the Account Management API contract](../../api/AR-6C-registration-review-api-contract-proposal.md); for focused test evidence, see [the test results](../../testing/TEST_RESULTS.md).
+
+## Historical AR-6C5A design record — 10 November 2026 (superseded)
 
 ## 1. Purpose and scope
 

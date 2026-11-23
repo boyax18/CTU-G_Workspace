@@ -158,20 +158,25 @@ test('rejects unsupported actions, never defaults to a decision', () => {
   assert.throws(() => buildReviewDecisionRequest(TEST_ROOT, 910001, 'bulk'));
 });
 
-test('accepts only the expected account and decision response', () => {
-  assert.deepEqual(parseRegistrationReviewDecision({ account_id: 910001, status: 'Approved' }, 910001, 'Approved'), {
-    account_id: 910001, status: 'Approved',
+test('accepts only the expected decision and a durably queued notification', () => {
+  assert.deepEqual(parseRegistrationReviewDecision({
+    account_id: 910001, status: 'Approved', notification: 'queued',
+  }, 910001, 'Approved'), {
+    account_id: 910001, status: 'Approved', notification: 'queued',
   });
-  assert.deepEqual(parseRegistrationReviewDecision({ account_id: 910001, status: 'Rejected' }, 910001, 'Rejected'), {
-    account_id: 910001, status: 'Rejected',
+  assert.deepEqual(parseRegistrationReviewDecision({
+    account_id: 910001, status: 'Rejected', notification: 'queued',
+  }, 910001, 'Rejected'), {
+    account_id: 910001, status: 'Rejected', notification: 'queued',
   });
 });
 
 test('rejects wrong target ID, wrong status, extra server fields and malformed response', () => {
   for (const data of [
-    { account_id: 910002, status: 'Approved' },
-    { account_id: 910001, status: 'Rejected' },
-    { account_id: 910001, status: 'Approved', email: 'private' },
+    { account_id: 910002, status: 'Approved', notification: 'queued' },
+    { account_id: 910001, status: 'Rejected', notification: 'queued' },
+    { account_id: 910001, status: 'Approved', notification: 'sent' },
+    { account_id: 910001, status: 'Approved', notification: 'queued', email: 'private' },
     { account_id: '910001', status: 'Approved' },
     null,
   ]) {
@@ -300,11 +305,16 @@ test('WF-02.01 list client, when enabled, issues exactly one GET and never a wri
   const before = globalThis.fetch;
   globalThis.fetch = async (path, init) => {
     calls.push({ path, method: init.method, credentials: init.credentials, cache: init.cache });
-    return { ok: true, status: 200, json: async () => example() };
+    return {
+      ok: true, status: 200,
+      headers: new Headers({ 'X-Workspace-Available-Actions': 'approve,reject,bulk-approve,bulk-reject' }),
+      json: async () => example(),
+    };
   };
   try {
     const page = await api.listPendingApplications(2, { role: 'Student' }, true);
     assert.equal(page.results[0].school_id, '9900001');
+    assert.deepEqual(page.available_actions, ['approve', 'reject', 'bulk-approve', 'bulk-reject']);
   } finally {
     globalThis.fetch = before;
   }

@@ -7,6 +7,7 @@ import { contrastReport, DASHBOARD_TEXT } from './contrastProbe.mjs';
 
 process.env.VITE_WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = '1';
 process.env.VITE_WORKSPACE_REGISTRATION_APPROVAL_ENABLED = '1';
+process.env.VITE_WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED = '1';
 
 const READ = 'accounts.registration_requests.read';
 const APPROVE = 'accounts.registration_requests.approve';
@@ -31,11 +32,32 @@ const detail = (id, overrides = {}) => ({
 });
 
 /** approve(id, state) returns [body, status] or 'abort'; it may be async (to hold the request open). */
-function server({ permissions = [READ, APPROVE], actions = 'approve,reject', detailFor = (id) => detail(id), approve = (id) => [{ account_id: id, status: 'Approved' }] } = {}) {
-  const state = { session: session(permissions), lists: 0, details: [], approvals: [] };
+function server({
+  permissions = [READ, APPROVE], actions = 'approve,reject', bulkActions = '',
+  detailFor = (id) => detail(id),
+  approve = (id) => [{ account_id: id, status: 'Approved', notification: 'queued' }],
+  bulkDecision = (body) => {
+    const outcome = body.action === 'approve' ? 'Approved' : 'Rejected';
+    const counts = { Approved: 0, Rejected: 0, Skipped: 0, Failed: 0, Unconfirmed: 0 };
+    counts[outcome] = body.account_ids.length;
+    return [{
+      action: body.action, requested: body.account_ids.length, processed: body.account_ids.length,
+      remaining: 0, interrupted: false, counts,
+      results: body.account_ids.map((account_id) => ({ account_id, outcome, notification: 'queued' })),
+    }];
+  },
+} = {}) {
+  const state = { session: session(permissions), lists: 0, details: [], approvals: [], bulkDecisions: [] };
   const handle = async ({ path, request, respond, route }) => {
     if (path.endsWith('/session/')) return respond(state.session);
     if (request.method() === 'POST') {
+      if (path === `${LIST}bulk/`) {
+        const body = request.postDataJSON();
+        state.bulkDecisions.push({ body, csrf: request.headers()['x-csrftoken'] });
+        const result = await bulkDecision(body, state);
+        if (result === 'abort') return route.abort('failed');
+        return respond(result[0], result[1] ?? 200);
+      }
       const match = path.match(/^\/api\/v1\/admin\/registration-requests\/(\d+)\/approve\/$/);
       if (!match) return route.abort('failed');
       state.approvals.push({ id: Number(match[1]), body: request.postDataJSON(), csrf: request.headers()['x-csrftoken'] });
@@ -45,7 +67,8 @@ function server({ permissions = [READ, APPROVE], actions = 'approve,reject', det
     }
     if (path === LIST) {
       state.lists++;
-      return respond({ results: [row(1), row(2)], page: 1, page_size: 20, has_next: false });
+      return respond({ results: [row(1), row(2)], page: 1, page_size: 20, has_next: false },
+        200, bulkActions ? { 'X-Workspace-Available-Actions': bulkActions } : {});
     }
     const match = path.match(/^\/api\/v1\/admin\/registration-requests\/(\d+)\/$/);
     if (match) { state.details.push(Number(match[1])); return respond(detailFor(Number(match[1]), state), 200, { 'X-Workspace-Available-Actions': actions }); }
@@ -55,6 +78,69 @@ function server({ permissions = [READ, APPROVE], actions = 'approve,reject', det
 }
 
 const at = (id) => `${VIEW}&applicant=${id}`;
+
+test('bulk selection is current-page scoped and actions stay disabled without release gates', async () => {
+  const fake = server({ actions: '' });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('heading', { name: 'Pending applications' }).waitFor();
+    const first = page.getByRole('checkbox', { name: /Select CTU-G ID .* for bulk decisions/ }).first();
+    await first.check();
+    await page.getByText('1 applicant selected on this page').waitFor();
+    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
+    await page.getByText('2 applicants selected on this page').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Bulk Approve' }).isDisabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Bulk Reject' }).isDisabled(), true);
+    await page.getByRole('button', { name: 'Clear Selection' }).click();
+    await page.getByText('0 applicants selected on this page').waitFor();
+    assert.equal(fake.state.approvals.length, 0);
+  }, VIEW);
+});
+
+test('bulk approval confirms the selected count and reports independently queued outcomes', async () => {
+  const fake = server({ bulkActions: 'bulk-approve,bulk-reject' });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
+    await page.getByText('2 applicants selected on this page').waitFor();
+    await page.getByRole('button', { name: 'Bulk Approve' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Confirm approval of 2 applicants?' });
+    await dialog.waitFor();
+    assert.ok((await dialog.innerText()).includes('process 2 selected applicants independently'));
+    await dialog.getByRole('checkbox').check();
+    await dialog.getByRole('button', { name: 'Confirm bulk approval' }).click();
+    const summary = page.getByRole('status', { name: 'Bulk decision results' });
+    await summary.waitFor();
+    assert.ok((await summary.innerText()).includes('Approved 2; rejected 0; skipped 0; failed 0; unconfirmed 0.'));
+    assert.ok((await summary.innerText()).includes('7241001 — Approved (email queued; delivery not confirmed)'));
+    assert.equal(fake.state.bulkDecisions.length, 1);
+    assert.deepEqual(fake.state.bulkDecisions[0].body, {
+      action: 'approve', account_ids: [6001, 6002], eligibility_confirmed: true,
+    });
+    assert.ok(fake.state.bulkDecisions[0].csrf);
+  }, VIEW);
+});
+
+test('bulk rejection is explicitly irreversible, uses one fixed reason, and reports outcomes', async () => {
+  const fake = server({ bulkActions: 'bulk-approve,bulk-reject' });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
+    await page.getByRole('button', { name: 'Bulk Reject' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Confirm rejection of 2 applicants?' });
+    await dialog.waitFor();
+    assert.ok((await dialog.innerText()).includes('Irreversible'));
+    await dialog.getByLabel('Reason for every selected applicant').selectOption('identity_mismatch');
+    await dialog.getByRole('button', { name: 'Confirm bulk rejection' }).click();
+    const summary = page.getByRole('status', { name: 'Bulk decision results' });
+    await summary.waitFor();
+    assert.ok((await summary.innerText()).includes('Approved 0; rejected 2; skipped 0; failed 0; unconfirmed 0.'));
+    assert.equal(fake.state.bulkDecisions.length, 1);
+    assert.deepEqual(fake.state.bulkDecisions[0].body, {
+      action: 'reject', account_ids: [6001, 6002], rejection_code: 'identity_mismatch',
+    });
+    assert.ok(fake.state.bulkDecisions[0].csrf);
+  }, VIEW);
+});
 
 test('disabled backend approval stays hidden with a frontend flag and approve permission', async () => {
   const fake = server({ actions: '' });
@@ -125,6 +211,7 @@ test('a reviewer confirms eligibility, sees a confirmation dialog, and approves 
     const result = await page.locator('main').innerText();
     assert.ok(result.includes('is now active with the Student role'));
     assert.ok(result.includes('depends on the permissions set for the Student role'));
+    assert.ok(result.includes('An approval email has been queued for delivery. Delivery happens separately and is not confirmed here.'));
     assert.deepEqual(fake.state.approvals, [{ id: 6001, body: { eligibility_confirmed: true, eligibility_source: 'ctu_main_system_records' }, csrf: fake.state.approvals[0].csrf }]);
     assert.ok(fake.state.approvals[0].csrf, 'CSRF header sent');
     await until(() => fake.state.lists > listsBefore, 'list refresh after approval');
@@ -246,7 +333,7 @@ test('an uncertain result locks approval until the application is re-read, and n
 test('while the request is in flight the dialog cannot be dismissed or submitted twice', async () => {
   let release;
   const held = new Promise((resolve) => { release = resolve; });
-  const fake = server({ approve: async (id) => { await held; return [{ account_id: id, status: 'Approved' }]; } });
+  const fake = server({ approve: async (id) => { await held; return [{ account_id: id, status: 'Approved', notification: 'queued' }]; } });
   await scene(fake.handle, async (page) => {
     await page.getByRole('heading', { name: 'Approve application' }).waitFor();
     await fillAttestation(page);

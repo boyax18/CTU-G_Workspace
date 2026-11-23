@@ -13,7 +13,7 @@ from .registration_review import (
     REJECTION_CODES,
     RegistrationReviewDenied,
     RegistrationReviewUnavailable,
-    approve_registration,
+    approve_registration_bulk,
     reject_registration,
 )
 
@@ -37,6 +37,8 @@ def validate_bulk_request(payload):
     allowed = {"action", "account_ids"}
     if action == "reject":
         allowed.add("rejection_code")
+    else:
+        allowed.add("eligibility_confirmed")
     if set(payload) != allowed:
         raise exceptions.ValidationError("Unsupported or missing request fields.")
     ids = payload.get("account_ids")
@@ -49,11 +51,14 @@ def validate_bulk_request(payload):
     code = payload.get("rejection_code")
     if action == "reject" and (type(code) is not str or code not in REJECTION_CODES):
         raise exceptions.ValidationError("Use an approved rejection code.")
-    return action, tuple(ids), code
+    eligibility_confirmed = payload.get("eligibility_confirmed")
+    if action == "approve" and (type(eligibility_confirmed) is not bool or not eligibility_confirmed):
+        raise exceptions.ValidationError("Confirm eligibility checks for every selected applicant.")
+    return action, tuple(ids), code, eligibility_confirmed
 
 
 def process_bulk_registration(*, actor, action, account_ids, rejection_code=None,
-                              recheck_authority=None):
+                              eligibility_confirmed=None, recheck_authority=None):
     """Process validated explicit IDs individually, never as one long transaction.
 
     Each single-account service acquires its existing governance/role/account
@@ -76,6 +81,10 @@ def process_bulk_registration(*, actor, action, account_ids, rejection_code=None
         raise ValueError("Invalid rejection code.")
     if action == "approve" and rejection_code is not None:
         raise ValueError("Unexpected rejection code.")
+    if action == "approve" and (type(eligibility_confirmed) is not bool or not eligibility_confirmed):
+        raise ValueError("Eligibility checks must be confirmed for every applicant.")
+    if action == "reject" and eligibility_confirmed is not None:
+        raise ValueError("Unexpected eligibility attestation.")
 
     results = []
     interrupted = False
@@ -90,7 +99,10 @@ def process_bulk_registration(*, actor, action, account_ids, rejection_code=None
 
         try:
             if action == "approve":
-                approve_registration(actor=actor, target_id=pk)
+                approve_registration_bulk(
+                    actor=actor, target_id=pk,
+                    eligibility_confirmed=eligibility_confirmed,
+                )
                 outcome = "Approved"
             else:
                 reject_registration(actor=actor, target_id=pk, rejection_code=rejection_code)
@@ -103,18 +115,21 @@ def process_bulk_registration(*, actor, action, account_ids, rejection_code=None
             interrupted = True
             break
         except Exception as exc:
-            # The individual service rolls back its own transaction; do not
-            # expose exception text, identifiers other than submitted IDs, or
-            # continue blindly after an infrastructure error.
+            # A failure may occur while the database is acknowledging commit.
+            # Do not retry or continue: the outcome cannot be proven either way.
             logger.error("Bulk review stopped after %s.", type(exc).__name__)
-            results.append({"account_id": pk, "outcome": "Failed"})
+            results.append({"account_id": pk, "outcome": "Unconfirmed"})
             interrupted = True
             break
-        results.append({"account_id": pk, "outcome": outcome})
+        result = {"account_id": pk, "outcome": outcome}
+        if outcome in ("Approved", "Rejected"):
+            result["notification"] = "queued"
+        results.append(result)
 
     counts = {label: sum(item["outcome"] == label for item in results)
-              for label in ("Approved", "Rejected", "Skipped", "Failed")}
+              for label in ("Approved", "Rejected", "Skipped", "Failed", "Unconfirmed")}
     return {
+        "action": action,
         "requested": len(account_ids),
         "processed": len(results),
         "remaining": len(account_ids) - len(results),

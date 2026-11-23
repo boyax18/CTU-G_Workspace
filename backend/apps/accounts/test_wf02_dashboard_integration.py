@@ -1,4 +1,5 @@
 """Normal WF-02 read surface: synthetic fixtures in config.test_settings only."""
+import os
 from unittest.mock import patch
 
 from django.conf import settings
@@ -12,6 +13,7 @@ from types import ModuleType
 from apps.access_control.models import AccountPermission, Permission, RolePermission
 from .active_role_context import SESSION_ROLE_KEY
 from .models import Account
+from .rejection_test_support import fresh_test_key
 from .test_wf0205_account_status import World
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
@@ -121,11 +123,13 @@ class DashboardIntegrationTests(TestCase):
             path("api/v1/admin/registration-requests/", include("apps.accounts.registration_review_urls")),
         ]
         client = self.client_for(self.technical, "Technical Super Admin")
-        with override_settings(ROOT_URLCONF=conf, WORKSPACE_ACCOUNT_STATUS_ENABLED=True,
-                               WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=True, WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True):
+        with patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()}), override_settings(
+            ROOT_URLCONF=conf, WORKSPACE_ACCOUNT_STATUS_ENABLED=True,
+            WORKSPACE_REGISTRATION_REVIEW_API_ENABLED=True, WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
+        ):
             detail = client.get(f"{ROOT}{self.student.pk}/")
             self.assertEqual(detail["X-Workspace-Available-Actions"], "suspend,activate")
-            self.assertEqual(client.get(f"{REVIEWS}{self.pending.pk}/")["X-Workspace-Available-Actions"], "approve")
+            self.assertEqual(client.get(f"{REVIEWS}{self.pending.pk}/")["X-Workspace-Available-Actions"], "")
             with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=True, WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED=True):
                 self.assertEqual(client.get(f"{REVIEWS}{self.pending.pk}/")["X-Workspace-Available-Actions"], "approve,reject")
             AccountPermission.objects.create(account=self.technical, permission=self.w.perms["suspend"], effect="Deny")

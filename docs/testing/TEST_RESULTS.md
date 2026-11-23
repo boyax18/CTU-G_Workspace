@@ -3,22 +3,67 @@
 **As of:** November 23, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
-## 23 November 2026 — Current local runtime activation inspection
+## 23 November 2026 — WF-02.03/02.04 durable notifications and bulk decisions
 
-This is a read-only runtime/configuration check, separate from the isolated synthetic tests below. It did not expose or record personal fields, change `.env`, alter the real database, or claim live authenticated browser verification.
+| Check | Result |
+| --- | --- |
+| Backend decision/bulk API | 78/78 passed across `test_registration_review_api`, `test_wf0203_approval`, and `test_registration_bulk`; isolated disposable MySQL database destroyed |
+| Backend notification/outbox/review | 36/36 passed across `test_registration_review_notifications`, `test_registration_outbox`, and `test_registration_review`; separate isolated disposable MySQL database destroyed |
+| Dashboard action availability | 6/6 passed in `test_wf02_dashboard_integration`; a third isolated disposable MySQL database destroyed |
+| Outbox availability | Bulk action hints are omitted when the outbox gate or active wrapping key is unavailable; decision services fail closed before writes |
+| Frontend decision/bulk contracts | 47/47 passed across the pending API contract, approval, and bulk tests |
+| Applicant-review browser checks | 22/22 passed across pending-applicant and approval suites, including active-gate approval/rejection confirmations and disabled controls when gates are off |
+| Production build | `npm.cmd run build` passed (TypeScript and Vite) |
+| Real database / delivery | No records or migrations changed in `ctug_workspace`; no SMTP delivery attempted |
+| Activation | Bulk URLconf and approval/rejection mutation routes remain unmounted from the normal application; default-off decision gates were not enabled |
+| Live authenticated decision | Not verified. Browser tests use synthetic fixtures and mocked APIs; they do not prove authenticated live decisions or mail delivery |
+
+Test targets from `backend/`. They were invoked with the existing virtual environment and a process-local runner that loads `.env` without printing values, clears the three role-context acknowledgements only for the test process, and runs each target under `config.test_settings`. No environment file was changed:
+
+```powershell
+python manage.py test apps.accounts.test_registration_review_api apps.accounts.test_wf0203_approval apps.accounts.test_registration_bulk --settings=config.test_settings --noinput
+python manage.py test apps.accounts.test_registration_review_notifications apps.accounts.test_registration_outbox apps.accounts.test_registration_review --settings=config.test_settings --noinput
+python manage.py test apps.accounts.test_wf02_dashboard_integration --settings=config.test_settings --noinput
+```
+
+Commands from `frontend/`:
+
+```powershell
+node --test tests/registration-review-bulk.test.mjs tests/registration-review-api-contract.test.mjs tests/registration-review-approval.test.mjs
+node --test tests/browser/pending-applications-errors.test.mjs tests/browser/applicant-approval-errors.test.mjs
+npm.cmd run build
+```
+
+## 23 November 2026 — Temporary localhost-only runtime activation
+
+The earlier pre-activation inspection is retained below in the development-status history. This checkpoint reflects the current running processes; the read flags were set in process environments only, not persisted in `.env`.
 
 | Check | Observed result |
 | --- | --- |
-| Database | Read-only connection confirmed `ctug_workspace`; 3 eligible Pending Student applications and 1 eligible ordinary Approved directory account (before viewer exclusion) were counted without selecting personal fields |
-| Services and grants | `accounts` and `access_control` services active; both WF-02 read permissions exist with active Admin grants |
-| Effective role-context permissions | Current database assignments evaluated both reads as allowed in Admin and Technical Super Admin contexts; Student and Instructor contexts were denied. The Technical Super Admin assignment has an active Admin assignment. No session or role assignment was changed |
-| Backend/frontend read flags | Applicant-list, account-directory and account-status flags unset/default-off; normal list/directory API probes returned 503 |
-| Mutations and delivery | Approval/rejection and status-write routes remain unmounted or separately gated; outbox delivery is off |
-| Network safety | Vite answered on a private LAN interface over plain HTTP, with no transport-security headers; `127.0.0.1:5173` was unavailable. Real-data read flags were not enabled |
-| Fresh local startup | A fresh settings import was refused because the existing uncommitted LAN role-context acknowledgement is set while `DJANGO_DEBUG` is unset/false. Existing LAN/HTTPS work was preserved; inspection/test processes cleared only their own environment variables |
-| Verification | Isolated backend: 86/86 passed. Focused frontend/browser: 60/60 passed. Frontend production build passed. An expanded selection including dashboard navigation had 72/73 pass; the one failure is the existing appointment-permission/frozen-catalogue mismatch described below and in the historical checkpoint |
+| Bindings and proxy | Django `127.0.0.1:8000`; Vite `127.0.0.1:5173`; no LAN listener on these ports. Vite `/api` proxy targets the local Django server |
+| Local role context | Normal localhost-only role-context acknowledgement loaded; conflicting LAN/HTTPS acknowledgements cleared in the Django process after loading existing `.env`. No configuration files changed |
+| Read flags | Backend applicant list and account directory on; matching Vite flags on. Status, approval, rejection, outbox, SMTP and protected executor writes off |
+| Browser/app smoke | `http://127.0.0.1:5173/` returned 200 and rendered the real sign-in screen; CSRF endpoint 200; session endpoint 200 with unauthenticated state |
+| API auth/gates | Applicant and directory reads returned 401 through the Vite proxy (not 503), confirming enabled read gates with authentication still enforced |
+| Mutation protection | Applicant approve/reject and account activate/suspend paths returned 404 |
+| Frontend gate inspection | Vite-transformed applicant/directory modules report enabled read flags; approval/rejection/status flags report disabled |
+| Database | Existing local MySQL `ctug_workspace`; prior read-only check found 3 eligible Pending Student applications and 1 eligible ordinary Approved directory account before viewer exclusion. Services and Admin read grants are active. No database changes or personal fields were accessed in this smoke check |
+| Authenticated outcome | Not yet verified: the browser has no signed-in session and no credentials were supplied. No live applicant/account payload or role-specific browser access is claimed |
 
-The browser cases here use synthetic fixtures/mocked APIs and do **not** prove live integration. The live checks establish database counts, stored grants, configured gates and endpoint availability only. Remaining activation requirements are a loopback-only or approved secure origin, a valid local startup configuration, the two read flags, and an authenticated end-to-end check. No real account data was displayed.
+Both servers are currently running in attached tool sessions. Their flags are temporary and revert to the unchanged `.env` defaults if the processes stop. One user action remains: sign in at `http://127.0.0.1:5173` using an existing approved Admin or Technical Super Admin account, then open Applicant Reviews and Account Directory. Existing synthetic browser tests and the prior database-backed role permission check remain supporting evidence, not a substitute for this live authenticated step.
+
+## 23 November 2026 — Pre-activation local runtime inspection
+
+This read-only inspection preceded the localhost-only process activation. It did not expose or record personal fields, change `.env`, alter the real database, or claim live authenticated browser verification.
+
+| Check | Observed result |
+| --- | --- |
+| Feature gates | Backend and frontend read flags were unset/default-off; normal read probes returned 503 |
+| Network safety | Vite was bound to a private LAN interface over plain HTTP; localhost was unavailable. Real-data flags were not enabled |
+| Startup configuration | A fresh settings import was refused because the existing uncommitted LAN role-context acknowledgement conflicted with normal localhost role context. The uncommitted LAN/HTTPS implementation was preserved |
+| Focused verification | Isolated backend 86/86; frontend/browser 60/60; build passed. An expanded selector had 72/73 pass, reproducing the existing appointment-permission/frozen-catalogue mismatch documented in the historical checkpoint |
+
+The browser tests use synthetic fixtures/mocked APIs and do **not** prove live integration. No database writes, migrations or applicant/account personal-data access occurred in that inspection.
 
 ## 23 November 2026 — WF-02 dashboard integration
 

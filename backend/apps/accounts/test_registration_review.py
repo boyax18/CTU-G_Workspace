@@ -4,6 +4,7 @@ Run ONLY with --settings=config.test_settings; the runner creates and removes a
 fresh random test database and never uses the development database.
 """
 
+import os
 from unittest.mock import patch
 
 from django.conf import settings
@@ -23,7 +24,7 @@ from apps.access_control.models import (
 from apps.access_control.services import has_permission
 
 from .models import Account
-from .rejection_test_support import rejection_outbox
+from .rejection_test_support import fresh_test_key, rejection_outbox
 from .registration_review import (
     RegistrationReviewDenied,
     RegistrationReviewUnavailable,
@@ -54,7 +55,12 @@ def with_email_proof(account, email):
     return account
 
 
-@override_settings(WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True)
+@override_settings(
+    WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
+    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=True,
+    WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION="v1",
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+)
 class RegistrationReviewTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -100,6 +106,9 @@ class RegistrationReviewTests(TestCase):
         )
 
     def setUp(self):
+        self.outbox_key = patch.dict(os.environ, {"WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key()})
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         self.target = with_email_proof(Account.objects.create_user(
             school_id="STUDENT-001",
             password="Strong!Curriculum9682",
@@ -250,7 +259,7 @@ class RegistrationReviewTests(TestCase):
 
     def test_audit_failure_rolls_back_review_and_role_assignment(self):
         with patch(
-            "apps.accounts.registration_review.record_access_audit",
+            "apps.accounts.registration_review.record_access_audit_receipt",
             side_effect=RuntimeError("audit store unavailable"),
         ):
             with self.assertRaises(RuntimeError):

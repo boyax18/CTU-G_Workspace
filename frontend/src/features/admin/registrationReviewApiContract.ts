@@ -27,6 +27,8 @@ export interface PendingRegistrationPage {
   page_size: 20;
   /** WF-02.01 D-33: the server looked one row ahead; no total count is disclosed. */
   has_next: boolean;
+  /** Request-local server gate and permission hints; not part of the JSON body. */
+  available_actions?: string[];
 }
 
 /** WF-02.01 D-33: server-side search, filters and sort. Omitted values use server defaults. */
@@ -40,6 +42,20 @@ export interface PendingApplicationsQuery {
 export interface RegistrationReviewDecisionResult {
   account_id: number;
   status: RegistrationReviewStatus;
+  /** The notification is durably queued; this does not assert delivery. */
+  notification: 'queued';
+}
+
+export type BulkRegistrationOutcome = 'Approved' | 'Rejected' | 'Skipped' | 'Failed' | 'Unconfirmed';
+
+export interface BulkRegistrationDecisionResult {
+  action: 'approve' | 'reject';
+  requested: number;
+  processed: number;
+  remaining: number;
+  interrupted: boolean;
+  counts: Record<BulkRegistrationOutcome, number>;
+  results: Array<{ account_id: number; outcome: BulkRegistrationOutcome; notification?: 'queued' }>;
 }
 
 export interface PendingReviewRequestPlan {
@@ -222,11 +238,109 @@ export function parseRegistrationReviewDecision(
 ): RegistrationReviewDecisionResult {
   assertAccountId(expectedId);
   if (expectedStatus !== 'Approved' && expectedStatus !== 'Rejected') throw new Error(INVALID_RESPONSE);
-  if (!isRecord(value) || !hasExactKeys(value, ['account_id', 'status'])
-    || value.account_id !== expectedId || value.status !== expectedStatus) {
+  if (!isRecord(value) || !hasExactKeys(value, ['account_id', 'status', 'notification'])
+    || value.account_id !== expectedId || value.status !== expectedStatus || value.notification !== 'queued') {
     throw new Error(INVALID_RESPONSE);
   }
-  return { account_id: expectedId, status: expectedStatus };
+  return { account_id: expectedId, status: expectedStatus, notification: 'queued' };
+}
+
+/** Build a bounded, explicit-ID bulk request; approval carries only the reviewer's blanket attestation. */
+export function buildBulkRegistrationDecisionRequest(
+  root: string,
+  accountIds: readonly number[],
+  action: 'approve' | 'reject',
+  rejectionCode?: RegistrationReviewRejectionCode,
+): { method: 'POST'; path: string; body: Record<string, unknown> } {
+  const base = validateRoot(root);
+  if (!Array.isArray(accountIds) || accountIds.length < 1 || accountIds.length > 20
+    || accountIds.some((id) => !isAccountId(id)) || new Set(accountIds).size !== accountIds.length) {
+    throw new Error('Select between 1 and 20 unique pending applications.');
+  }
+  if (action === 'approve') {
+    if (rejectionCode !== undefined) throw new Error('Approval cannot include a rejection reason.');
+    return {
+      method: 'POST',
+      path: `${base}bulk/`,
+      body: { action, account_ids: [...accountIds], eligibility_confirmed: true },
+    };
+  }
+  if (action !== 'reject' || typeof rejectionCode !== 'string'
+    || !REGISTRATION_REJECTION_CODES.includes(rejectionCode)) {
+    throw new Error('Choose an approved rejection reason.');
+  }
+  return {
+    method: 'POST',
+    path: `${base}bulk/`,
+    body: { action, account_ids: [...accountIds], rejection_code: rejectionCode },
+  };
+}
+
+/** Accept only a bounded per-applicant outcome report for the exact submitted ID set. */
+export function parseBulkRegistrationDecision(
+  value: unknown,
+  expectedIds: readonly number[],
+  expectedAction: 'approve' | 'reject',
+): BulkRegistrationDecisionResult {
+  const outcomes: readonly BulkRegistrationOutcome[] = ['Approved', 'Rejected', 'Skipped', 'Failed', 'Unconfirmed'];
+  const countKeys = outcomes;
+  if (!Array.isArray(expectedIds) || expectedIds.length < 1 || expectedIds.length > 20
+    || expectedIds.some((id) => !isAccountId(id)) || new Set(expectedIds).size !== expectedIds.length
+    || !isRecord(value) || !hasExactKeys(value, ['action', 'requested', 'processed', 'remaining', 'interrupted', 'counts', 'results'])
+    || value.action !== expectedAction || value.requested !== expectedIds.length
+    || !Number.isInteger(value.processed) || !Number.isInteger(value.remaining)
+    || (value.processed as number) < 0 || (value.remaining as number) < 0
+    || typeof value.interrupted !== 'boolean' || !Array.isArray(value.results)
+    || value.results.length !== value.processed || (value.processed as number) + (value.remaining as number) !== expectedIds.length
+    || !isRecord(value.counts)) {
+    throw new Error(INVALID_RESPONSE);
+  }
+  const rawCounts = value.counts;
+  if (!hasExactKeys(rawCounts, countKeys)) throw new Error(INVALID_RESPONSE);
+  const counts = {} as Record<BulkRegistrationOutcome, number>;
+  for (const key of countKeys) {
+    const count = rawCounts[key];
+    if (typeof count !== 'number' || !Number.isInteger(count) || count < 0) throw new Error(INVALID_RESPONSE);
+    counts[key] = count;
+  }
+
+  const allowedOutcomes = expectedAction === 'approve'
+    ? new Set<BulkRegistrationOutcome>(['Approved', 'Skipped', 'Failed', 'Unconfirmed'])
+    : new Set<BulkRegistrationOutcome>(['Rejected', 'Skipped', 'Failed', 'Unconfirmed']);
+  const expected = new Set(expectedIds);
+  const seen = new Set<number>();
+  const results: BulkRegistrationDecisionResult['results'] = [];
+  for (const row of value.results) {
+    if (!isRecord(row)
+      || !isAccountId(row.account_id) || !expected.has(row.account_id) || seen.has(row.account_id)
+      || typeof row.outcome !== 'string' || !allowedOutcomes.has(row.outcome as BulkRegistrationOutcome)) {
+      throw new Error(INVALID_RESPONSE);
+    }
+    const successful = row.outcome === (expectedAction === 'approve' ? 'Approved' : 'Rejected');
+    const keys = successful ? ['account_id', 'outcome', 'notification'] : ['account_id', 'outcome'];
+    if (!hasExactKeys(row, keys) || (successful && row.notification !== 'queued')) {
+      throw new Error(INVALID_RESPONSE);
+    }
+    seen.add(row.account_id);
+    results.push({
+      account_id: row.account_id,
+      outcome: row.outcome as BulkRegistrationOutcome,
+      ...(successful ? { notification: 'queued' as const } : {}),
+    });
+  }
+  if (countKeys.some((key) => results.filter((row) => row.outcome === key).length !== counts[key])
+    || countKeys.reduce((sum, key) => sum + counts[key], 0) !== results.length) {
+    throw new Error(INVALID_RESPONSE);
+  }
+  return {
+    action: expectedAction,
+    requested: expectedIds.length,
+    processed: value.processed as number,
+    remaining: value.remaining as number,
+    interrupted: value.interrupted,
+    counts,
+    results,
+  };
 }
 
 /** Stable, non-sensitive error interpretation for the GET adapter. */

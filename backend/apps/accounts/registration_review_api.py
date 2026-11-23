@@ -307,10 +307,12 @@ class PendingRegistrationRequestsView(RegistrationReviewAPI):
             }
             for account in rows[:PAGE_SIZE]
         ]
-        return Response({
+        response = Response({
             "results": results, "page": page, "page_size": PAGE_SIZE,
             "has_next": len(rows) > PAGE_SIZE,
         })
+        from .management_availability import attach_pending_registration_actions
+        return attach_pending_registration_actions(response, actor, request)
 
 
 class ApproveRegistrationRequestView(RegistrationReviewAPI):
@@ -331,7 +333,9 @@ class ApproveRegistrationRequestView(RegistrationReviewAPI):
         decided_id = approve_registration(actor=actor, target_id=account_id, attestation={
             "confirmed": data["eligibility_confirmed"], "source": data["eligibility_source"],
         })
-        return Response({"account_id": decided_id, "status": "Approved"})
+        # Success means the approval notification is durably queued in the same
+        # transaction; delivery happens later and is not claimed here.
+        return Response({"account_id": decided_id, "status": "Approved", "notification": "queued"})
 
 
 class RejectRegistrationRequestView(RegistrationReviewAPI):

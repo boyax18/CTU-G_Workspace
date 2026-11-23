@@ -72,8 +72,8 @@ test('Django approval POST uses only empty JSON and exact confirmation fields', 
     method: 'POST', path: `${ROUTE}840001/approve/`, body: {},
   });
   assert.deepEqual(contract.parseRegistrationReviewDecision(
-    { account_id: 840001, status: 'Approved' }, 840001, 'Approved',
-  ), { account_id: 840001, status: 'Approved' });
+    { account_id: 840001, status: 'Approved', notification: 'queued' }, 840001, 'Approved',
+  ), { account_id: 840001, status: 'Approved', notification: 'queued' });
   assert.throws(() => contract.parseRegistrationReviewDecision({
     account_id: 840001, status: 'Approved', role: 'Admin',
   }, 840001, 'Approved'));
@@ -87,8 +87,8 @@ test('Django rejection POST uses one of four codes and exact confirmation', () =
     method: 'POST', path: `${ROUTE}840001/reject/`, body: { rejection_code: 'identity_mismatch' },
   });
   assert.deepEqual(contract.parseRegistrationReviewDecision(
-    { account_id: 840001, status: 'Rejected' }, 840001, 'Rejected',
-  ), { account_id: 840001, status: 'Rejected' });
+    { account_id: 840001, status: 'Rejected', notification: 'queued' }, 840001, 'Rejected',
+  ), { account_id: 840001, status: 'Rejected', notification: 'queued' });
   assert.throws(() => contract.buildReviewDecisionRequest(ROUTE, 840001, 'reject', 'arbitrary_reason'));
 });
 
@@ -109,9 +109,9 @@ test('browser POST bootstraps CSRF then sends same-origin session credentials', 
   const result = await withFakeFetch(async (path, opts) => {
     calls.push({ path, opts });
     if (calls.length === 1) return response(200, { csrfToken: 'fake-csrf-token' });
-    return response(200, { account_id: 840001, status: 'Approved' });
+    return response(200, { account_id: 840001, status: 'Approved', notification: 'queued' });
   }, async () => postJSON(`${ROUTE}840001/approve/`, {}));
-  assert.deepEqual(result, { account_id: 840001, status: 'Approved' });
+  assert.deepEqual(result, { account_id: 840001, status: 'Approved', notification: 'queued' });
   assert.equal(calls.length, 2);
   assert.equal(calls[0].path, '/api/v1/auth/csrf/');
   assert.equal(calls[0].opts.credentials, 'same-origin');

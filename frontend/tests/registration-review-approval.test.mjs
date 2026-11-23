@@ -84,9 +84,11 @@ test('switched off, approval refuses before any CSRF request or POST', async () 
   });
 });
 
-test('success sends one CSRF-protected POST with the attestation and needs the exact decision back', async () => {
-  await withFetch(() => reply(200, { account_id: 7, status: 'Approved' }), async (calls) => {
-    assert.deepEqual(await api.approveApplication(7, STUDENT, true), { account_id: 7, status: 'Approved' });
+test('success sends one CSRF-protected POST and requires the queued-notification result', async () => {
+  await withFetch(() => reply(200, { account_id: 7, status: 'Approved', notification: 'queued' }), async (calls) => {
+    assert.deepEqual(await api.approveApplication(7, STUDENT, true), {
+      account_id: 7, status: 'Approved', notification: 'queued',
+    });
     assert.equal(posts(calls).length, 1);
     assert.equal(posts(calls)[0].path, `${ROOT}7/approve/`);
     assert.equal(posts(calls)[0].csrf, 'tok');
@@ -142,7 +144,7 @@ test('anything that may have been applied is outcome_unknown, sent once and neve
 });
 
 test('a failed security-check bootstrap sends nothing and is a definite non-approval', async () => {
-  await withFetch(() => reply(200, { account_id: 7, status: 'Approved' }), async (calls) => {
+  await withFetch(() => reply(200, { account_id: 7, status: 'Approved', notification: 'queued' }), async (calls) => {
     await assert.rejects(api.approveApplication(7, STUDENT, true), (error) => error.code !== 'outcome_unknown' && !error.outcomeUnknown);
     assert.equal(posts(calls).length, 0);
   }, { csrf: () => { throw new TypeError('offline'); } });

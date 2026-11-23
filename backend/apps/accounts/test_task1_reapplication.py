@@ -271,25 +271,18 @@ class Task1BulkNotificationCompatibilityTests(TestCase):
         for row in RegistrationNotificationOutbox.objects.select_related("decision_audit_log"):
             self.assertIn("Registration identity could not be verified", _message_for(row)[1])
 
-    def test_bulk_approval_is_refused_and_single_approval_creates_one_v2_approval(self):
-        # WF-02.03 D-44/D-45: bulk approval cannot carry the per-applicant attestation, so it
-        # approves nothing and queues nothing; the v2 approval message is still produced by the
-        # single, attested approval path, once per approved account.
+    def test_bulk_approval_creates_one_v2_approval_notification_per_applicant(self):
+        # WF-02.03: the explicit bulk attestation is applied independently to each locked applicant.
         from django.utils import timezone
-        from .registration_review import approve_registration
         for target in self.targets:
             Account.objects.filter(pk=target.pk).update(
                 email_verified_at=timezone.now(), email_verified_address=target.email,
             )
         result = process_bulk_registration(
             actor=self.admin, action="approve", account_ids=[t.pk for t in self.targets],
+            eligibility_confirmed=True,
         )
-        self.assertEqual(result["counts"]["Approved"], 0)
-        self.assertEqual(result["counts"]["Skipped"], 2)
-        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
-        for target in self.targets:
-            approve_registration(actor=self.admin, target_id=target.pk,
-                                 attestation={"confirmed": True, "source": "ctu_main_system_records"})
+        self.assertEqual(result["counts"]["Approved"], 2)
         self.assertEqual(RegistrationNotificationOutbox.objects.count(), 2)
         for row in RegistrationNotificationOutbox.objects.select_related("decision_audit_log"):
             self.assertEqual(row.template_version, 2)

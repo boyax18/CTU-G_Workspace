@@ -1,8 +1,9 @@
-"""AR-6C5A draft: isolated registration review notification tests.
+"""Isolated tests for transactional applicant-decision notifications.
 
 Use ONLY --settings=config.test_settings. Never run against development data.
 """
 
+import os
 from unittest.mock import patch
 
 from django.conf import settings
@@ -21,7 +22,7 @@ from apps.access_control.models import (
 )
 from .models import Account
 from .outbox_models import RegistrationNotificationOutbox
-from .rejection_test_support import rejection_outbox
+from .rejection_test_support import fresh_test_key, rejection_outbox
 from .registration_review import (
     RegistrationRejectionNotAllowed,
     RegistrationReviewDenied,
@@ -29,6 +30,7 @@ from .registration_review import (
     approve_registration,
     reject_registration,
 )
+from .outbox_worker import process_one
 
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
@@ -53,6 +55,8 @@ def with_email_proof(account, email):
 @override_settings(
     WORKSPACE_REGISTRATION_APPROVAL_ENABLED=True,
     WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=True,
+    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=True,
+    WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION="v1",
     EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
     # Deterministic, local-only email context so a developer's backend/.env (for
     # example a LAN WORKSPACE_PUBLIC_BASE_URL or an enabled outbox) cannot change
@@ -60,7 +64,6 @@ def with_email_proof(account, email):
     # localhost with the locmem test backend.
     WORKSPACE_PUBLIC_BASE_URL="http://localhost:5173",
     WORKSPACE_EMAIL_PUBLIC_HOSTS=frozenset(),
-    WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False,
 )
 class RegistrationDecisionEmailTests(TestCase):
     @classmethod
@@ -96,6 +99,13 @@ class RegistrationDecisionEmailTests(TestCase):
         RolePermission.objects.create(role=cls.admin_role, permission=reject)
 
     def setUp(self):
+        mail.outbox = []
+        self.outbox_key = patch.dict(os.environ, {
+            "WORKSPACE_OUTBOX_KEK_V1_B64": fresh_test_key(),
+            "WORKSPACE_OUTBOX_WORKER_ENABLED": "1",
+        })
+        self.outbox_key.start()
+        self.addCleanup(self.outbox_key.stop)
         self.target = with_email_proof(Account.objects.create(
             school_id="EMAIL-STUDENT-001",
             email="applicant@example.edu",
@@ -109,12 +119,10 @@ class RegistrationDecisionEmailTests(TestCase):
             decided_id = approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
             self.assertEqual(len(mail.outbox), 0)
         self.assertEqual(decided_id, self.target.pk)
-        self.assertEqual(len(callbacks), 1)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["applicant@example.edu"])
-        self.assertIn("approved", mail.outbox[0].subject.lower())
-        self.assertNotIn("EMAIL-STUDENT-001", mail.outbox[0].body)
+        self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
         self.assertEqual(AccessAuditLog.objects.count(), 1)
+        row = RegistrationNotificationOutbox.objects.get()
+        self.assertEqual((row.template_code, row.delivery_status), ("registration.approved", "Pending"))
         self.target.refresh_from_db()
         self.assertTrue(self.target.is_active)
         self.assertEqual(self.target.request_status, "Approved")
@@ -131,6 +139,11 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
         # With the outbox ready, an authorized rejection queues exactly one encrypted row bound to its
         # immutable audit inside the decision, schedules no best-effort email and sends nothing itself.
+        with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False), \
+                self.captureOnCommitCallbacks(execute=True) as callbacks:
+            with self.assertRaises(RegistrationReviewUnavailable):
+                reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
+        self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
         with rejection_outbox(), self.captureOnCommitCallbacks(execute=True) as callbacks:
             reject_registration(actor=self.reviewer, target_id=self.target.pk, rejection_code="incomplete_submission")
         self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
@@ -144,11 +157,14 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertFalse(Account.objects.filter(pk=self.target.pk).exists())
 
     def test_disabled_notification_gate_does_not_register_callback(self):
-        with override_settings(WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED=False):
+        with override_settings(WORKSPACE_REGISTRATION_OUTBOX_ENABLED=False):
             with self.captureOnCommitCallbacks(execute=True) as callbacks:
-                approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
+                with self.assertRaises(RegistrationReviewUnavailable):
+                    approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         self.assertEqual(len(callbacks), 0)
         self.assertEqual(len(mail.outbox), 0)
+        self.assertFalse(AccessAuditLog.objects.exists())
+        self.assertFalse(RegistrationNotificationOutbox.objects.exists())
 
     def test_missing_email_skips_notification_without_blocking_review(self):
         # WF-02.04 D-55 (revised, owner-approved rewrite): without a recipient the rejection is now
@@ -167,7 +183,7 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertFalse(RegistrationNotificationOutbox.objects.exists())
 
     def test_failed_audit_rolls_back_and_sends_nothing(self):
-        with patch("apps.accounts.registration_review.record_access_audit", side_effect=RuntimeError("audit failed")):
+        with patch("apps.accounts.registration_review.record_access_audit_receipt", side_effect=RuntimeError("audit failed")):
             with self.captureOnCommitCallbacks(execute=True) as callbacks:
                 with self.assertRaises(RuntimeError):
                     approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
@@ -179,24 +195,23 @@ class RegistrationDecisionEmailTests(TestCase):
         self.assertFalse(AccessAuditLog.objects.exists())
 
     def test_email_delivery_failure_does_not_reverse_committed_decision(self):
+        approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
         with patch(
-            "apps.accounts.registration_notifications.send_mail",
+            "apps.accounts.outbox_worker.send_mail",
             side_effect=OSError("private mail-server exception detail"),
         ):
-            with self.assertLogs("apps.accounts.registration_notifications", level="ERROR") as captured:
-                with self.captureOnCommitCallbacks(execute=True):
-                    approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
-        self.assertNotIn("private mail-server exception detail", " ".join(captured.output))
+            self.assertEqual(process_one(), "retry")
         self.target.refresh_from_db()
         self.assertEqual(self.target.request_status, "Approved")
         self.assertTrue(self.target.is_active)
         self.assertEqual(AccessAuditLog.objects.count(), 1)
+        self.assertEqual(RegistrationNotificationOutbox.objects.get().delivery_status, "Retry")
 
     def test_second_decision_denied_without_second_email(self):
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
             with self.assertRaises(RegistrationReviewDenied):
                 approve_registration(actor=self.reviewer, target_id=self.target.pk, attestation=STUDENT_ATTESTATION)
-        self.assertEqual(len(callbacks), 1)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual((len(callbacks), len(mail.outbox)), (0, 0))
         self.assertEqual(AccessAuditLog.objects.count(), 1)
+        self.assertEqual(RegistrationNotificationOutbox.objects.count(), 1)

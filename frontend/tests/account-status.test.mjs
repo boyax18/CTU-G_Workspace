@@ -65,6 +65,8 @@ test('server availability hints fail closed for absent, duplicate or unknown act
   assert.deepEqual(availableActions(new Response()), []);
   assert.deepEqual(availableActions({}), []);
   assert.deepEqual(availableActions(new Response(null, { headers: { 'X-Workspace-Available-Actions': 'suspend,activate' } })), ['suspend', 'activate']);
+  assert.deepEqual(availableActions(new Response(null, { headers: { 'X-Workspace-Available-Actions': 'approve,reject,bulk-approve,bulk-reject' } })),
+    ['approve', 'reject', 'bulk-approve', 'bulk-reject']);
 });
 
 test('detail adapter reads server action hints separately from the strict JSON contract', async () => {

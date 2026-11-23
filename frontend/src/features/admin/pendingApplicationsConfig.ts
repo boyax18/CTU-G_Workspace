@@ -23,3 +23,7 @@ export const APPLICANT_APPROVAL_ENABLED: boolean =
  * the reject permission. Like approval it is served only by local review mode and the sandbox. */
 export const APPLICANT_REJECTION_ENABLED: boolean =
   import.meta.env?.VITE_WORKSPACE_REGISTRATION_REJECTION_ENABLED === '1';
+
+/** WF-02.03/02.04 bulk decisions stay off until the detached backend endpoint and release gates are approved. */
+export const BULK_APPLICANT_DECISIONS_ENABLED: boolean =
+  import.meta.env?.VITE_WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED === '1';

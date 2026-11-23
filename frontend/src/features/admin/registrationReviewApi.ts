@@ -5,11 +5,13 @@ import { ApiError, initializeCSRF, postJSON, timeoutSignal } from '../../api/cli
 import {
   buildApplicantDetailRequest,
   buildApprovalRequest,
+  buildBulkRegistrationDecisionRequest,
   buildPendingReviewRequest,
   buildRejectionRequest,
   buildReviewDecisionRequest,
   parseApplicantDetail,
   parseApprovalRefusal,
+  parseBulkRegistrationDecision,
   parsePendingRegistrationPage,
   parseRegistrationReviewDecision,
   parseRegistrationReviewError,
@@ -18,6 +20,7 @@ import {
 } from './registrationReviewApiContract.ts';
 import type {
   ApplicantDetail,
+  BulkRegistrationDecisionResult,
   EligibilitySource,
   PendingApplicationsQuery,
   PendingRegistrationPage,
@@ -27,6 +30,7 @@ import type {
 } from './registrationReviewApiContract.ts';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from './registrationReviewApiGate.ts';
 import {
+  BULK_APPLICANT_DECISIONS_ENABLED,
   APPLICANT_APPROVAL_ENABLED,
   APPLICANT_REJECTION_ENABLED,
   PENDING_APPLICATIONS_LIST_ENABLED,
@@ -89,7 +93,60 @@ export async function listPendingApplications(
   // MUST remain first: no fetch or path access while the list is switched off.
   if (!enabled) throw new ApiError('Pending applications are not activated.', 503, 'review_unavailable');
   const plan = buildPendingReviewRequest(PENDING_APPLICATIONS_ROUTE_ROOT, page, query);
-  return parsePendingRegistrationPage(await getReviewJSON(plan.path));
+  let actions: string[] = [];
+  const data = parsePendingRegistrationPage(
+    await getReviewJSON(plan.path, (response) => { actions = availableActions(response); }),
+  );
+  return { ...data, available_actions: actions };
+}
+
+const bulkUncertain = () => new ApiError(
+  'We could not confirm all selected outcomes. Do not submit the batch again; refresh the list and review each application.',
+  0, 'outcome_unknown', {}, { outcomeUnknown: true },
+);
+
+/** WF-02.03/02.04 bulk decision; one same-origin CSRF POST, never automatically retried. */
+export async function decideBulkApplications(
+  accountIds: readonly number[],
+  action: 'approve' | 'reject',
+  rejectionCode?: RegistrationReviewRejectionCode,
+  enabled: boolean = BULK_APPLICANT_DECISIONS_ENABLED,
+): Promise<BulkRegistrationDecisionResult> {
+  if (!enabled) throw new ApiError('Bulk applicant decisions are not activated.', 503, 'review_unavailable');
+  const plan = buildBulkRegistrationDecisionRequest(
+    PENDING_APPLICATIONS_ROUTE_ROOT, accountIds, action, rejectionCode,
+  );
+  const csrfToken = await initializeCSRF();
+  let response: Response;
+  try {
+    response = await fetch(plan.path, {
+      method: 'POST', credentials: 'same-origin', cache: 'no-store',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(plan.body), signal: timeoutSignal(),
+    });
+  } catch {
+    throw bulkUncertain();
+  }
+  let value: unknown;
+  try {
+    value = await response.json();
+  } catch {
+    if (response.ok || response.status >= 500) throw bulkUncertain();
+    value = null;
+  }
+  if (response.ok) {
+    try {
+      return parseBulkRegistrationDecision(value, accountIds, action);
+    } catch {
+      throw bulkUncertain();
+    }
+  }
+  const { code, message } = parseRegistrationReviewError(response.status, value);
+  if (response.status >= 500 && !(response.status === 503 && code === 'review_unavailable')) {
+    throw bulkUncertain();
+  }
+  if (response.status === 401) notifyAuthenticationRequired();
+  throw new ApiError(message, response.status, code);
 }
 
 /** WF-02.02: one application, read-only, behind the same read switch (D-37). GET only. */

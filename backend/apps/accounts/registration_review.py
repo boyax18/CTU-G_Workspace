@@ -11,7 +11,7 @@ from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
 from django.utils import timezone
 
-from apps.access_control.audit import record_access_audit, record_access_audit_receipt
+from apps.access_control.audit import record_access_audit_receipt
 from apps.access_control.models import (
     AccountPermission,
     AccountRole,
@@ -29,7 +29,7 @@ from apps.access_control.writer_boundary import (
 
 from .models import Account
 from .outbox_models import RegistrationNotificationOutbox
-from .registration_notifications import schedule_registration_decision_email_after_commit
+from .outbox_crypto import outbox_encryption_ready
 from .registration_outbox import _recipient_valid, record_registration_decision_outbox
 
 
@@ -101,6 +101,15 @@ def rejection_notification_ready():
     return bool(
         getattr(settings, "WORKSPACE_REGISTRATION_OUTBOX_ENABLED", False)
         and getattr(settings, "WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED", False)
+        and outbox_encryption_ready()
+    )
+
+
+def approval_notification_ready():
+    """WF-02.03: an approval requires the durable outbox."""
+    return bool(
+        getattr(settings, "WORKSPACE_REGISTRATION_OUTBOX_ENABLED", False)
+        and outbox_encryption_ready()
     )
 
 
@@ -155,7 +164,8 @@ def _delete_rejected_registration(target_id):
             raise RegistrationReviewUnavailable("The rejected registration could not be removed.")
 
 
-def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None):
+def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None,
+            bulk_attestation_confirmed=False):
     """Return the decided account ID only AFTER its transaction commits.
 
     A future protected API must independently enforce CSRF, session eligibility,
@@ -172,7 +182,12 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
         # instead of being executed without it. Rejection is unchanged.
         if executor_enabled():
             raise WriterBoundaryUnavailable("Approval needs the eligibility attestation; the protected executor cannot carry it.")
-        attested_source = _attested_source(attestation)
+        if bulk_attestation_confirmed:
+            if type(bulk_attestation_confirmed) is not bool or attestation is not None:
+                raise RegistrationApprovalNotAllowed("eligibility_unconfirmed")
+            attested_source = None
+        else:
+            attested_source = _attested_source(attestation)
     remote = remote_call("registration.approve" if approve else "registration.reject", {
         "actor_id": getattr(actor, "pk", None), "target_id": target_id, "rejection_code": rejection_code,
     })
@@ -181,9 +196,10 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
 
     # P3C6A: when enforcement is enabled, stop BEFORE any primary-DB read/write.
     require_verified_writer("registration.approve" if approve else "registration.reject")
+    if approve and not approval_notification_ready():
+        raise RegistrationReviewUnavailable("Approval requires the durable notification outbox.")
     if not approve and not rejection_notification_ready():
         # WF-02.04 D-54: never delete an applicant without the durable notification record.
-        # Checked where the writes happen (here, or inside the executor), before any read or write.
         raise RegistrationReviewUnavailable("Rejection requires the durable notification outbox.")
 
     actor_id = _account_id(actor)
@@ -305,9 +321,12 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
             raise RegistrationReviewDenied("The request is not an eligible pending registration.")
         if approve:
             # D-44 / D-45 inside the locked transaction: nothing has been written yet.
-            if not email_ownership_verified(target):
+            if not email_ownership_verified(target) or not _recipient_valid(target.email):
                 raise RegistrationApprovalNotAllowed("email_unverified")
-            if attested_source != ELIGIBILITY_SOURCES[requested_role.role_name]:
+            expected_source = ELIGIBILITY_SOURCES[requested_role.role_name]
+            if bulk_attestation_confirmed:
+                attested_source = expected_source
+            if attested_source != expected_source:
                 raise RegistrationApprovalNotAllowed("eligibility_unconfirmed")
         else:
             # WF-02.04, inside the locked transaction and before any write.
@@ -368,29 +387,18 @@ def _decide(*, actor, target_id, approve, rejection_code=None, attestation=None)
             "new_value": new,
             "reason": "account_status_change",
         }
-        if getattr(settings, "WORKSPACE_REGISTRATION_OUTBOX_ENABLED", False):
-            # The audit receipt and encrypted outbox row are one transaction;
-            # both roll back if encryption, validation or insertion fails.
-            receipt_id = record_access_audit_receipt(**audit_values)
-            outbox_id = record_registration_decision_outbox(
-                audit_log_id=receipt_id,
-                target_account_id=target.pk,
-                approved=approve,
-                recipient_email=target.email,
-            )
-            if not approve and not RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS).filter(
-                    pk=outbox_id, delivery_status="Pending").exists():
-                # D-54/D-55: a rejection completes only with a deliverable, queued notification.
-                raise RegistrationReviewUnavailable("The rejection notification could not be queued.")
-        else:
-            # Existing audit and best-effort callback path remains unchanged.
-            record_access_audit(**audit_values)
-            if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_NOTIFICATIONS_ENABLED", False):
-                schedule_registration_decision_email_after_commit(
-                    recipient_email=target.email,
-                    approved=approve,
-                    rejection_code=rejection_code,
-                )
+        # Audit receipt and encrypted outbox row are mandatory and share this
+        # transaction with the account decision.
+        receipt_id = record_access_audit_receipt(**audit_values)
+        outbox_id = record_registration_decision_outbox(
+            audit_log_id=receipt_id,
+            target_account_id=target.pk,
+            approved=approve,
+            recipient_email=target.email,
+        )
+        if not RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS).filter(
+                pk=outbox_id, delivery_status="Pending").exists():
+            raise RegistrationReviewUnavailable("The decision notification could not be queued.")
         if not approve:
             # Delete only the locked, eligible applicant after its audit and
             # notification intent exist. Existing protected references refuse
@@ -413,6 +421,22 @@ def approve_registration(*, actor, target_id, attestation=None):
     Without them the call is refused and the applicant stays Pending.
     """
     return _decide(actor=actor, target_id=target_id, approve=True, attestation=attestation)
+
+
+def approve_registration_bulk(*, actor, target_id, eligibility_confirmed):
+    """Approve one bulk-selected applicant after a reviewer attests to each selected record.
+
+    The source is derived from the locked requested role, never supplied by the
+    bulk request. The individual review service still enforces every policy.
+    """
+    if type(eligibility_confirmed) is not bool or not eligibility_confirmed:
+        raise RegistrationApprovalNotAllowed("eligibility_unconfirmed")
+    return _decide(
+        actor=actor,
+        target_id=target_id,
+        approve=True,
+        bulk_attestation_confirmed=True,
+    )
 
 
 def reject_registration(*, actor, target_id, rejection_code):

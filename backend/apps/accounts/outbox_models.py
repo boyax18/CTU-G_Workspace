@@ -1,7 +1,7 @@
-"""AR-6C5B.3 review-only schema: one durable registration notification outbox.
+"""AR-6C5B.3 durable registration notification outbox.
 
-The table has no live writers, workers, admin registrations, or routes in this patch.
-Import this module at the bottom of apps.accounts.models to register the model.
+Review decision services write encrypted notification intent transactionally;
+the existing worker owns delivery and terminal recipient erasure.
 """
 
 from django.db import models

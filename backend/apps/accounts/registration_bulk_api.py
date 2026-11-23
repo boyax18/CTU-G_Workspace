@@ -39,7 +39,7 @@ class BulkRegistrationReviewView(RegistrationReviewAPI):
 
     def post(self, request):
         # Validate the entire batch *before* any decision is committed.
-        action, ids, rejection_code = validate_bulk_request(request.data)
+        action, ids, rejection_code, eligibility_confirmed = validate_bulk_request(request.data)
         permission = APPROVE_CODE if action == "approve" else REJECT_CODE
         actor = self.require_actor(request, permission)
 
@@ -48,6 +48,7 @@ class BulkRegistrationReviewView(RegistrationReviewAPI):
             action=action,
             account_ids=ids,
             rejection_code=rejection_code,
+            eligibility_confirmed=eligibility_confirmed,
             recheck_authority=lambda: self.require_actor(request, permission),
         )
         return Response(report, status=status.HTTP_200_OK)

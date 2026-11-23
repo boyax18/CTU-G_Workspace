@@ -14,4 +14,4 @@
 
 - Add exact serializers, HTTP response examples, error codes, and validation schemas from source-controlled code.
 - Record session cookie attributes, CSRF policy, origin configuration, rate limiting, and role permission checks from the actual settings and views.
-- Registration approval endpoints are **not** listed as implemented; AR-6C remains pending.
+- **23 November 2026:** implemented WF-02 Account Management routes, exact payloads, authentication, permissions and errors are documented in [the existing Account Management contract](AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). Normal routes mount only applicant and directory/status/history reads behind default-off read gates; approval/rejection/status mutations remain isolated and protected. Earlier AR-6C pending statements in this inventory are historical.

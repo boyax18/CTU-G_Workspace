@@ -53,11 +53,11 @@ test('role names do not authorize any module', () => {
   assert.deepEqual(ids(['Admin', 'Student', 'Treasurer', 'Technical Super Admin']), ['overview', 'account']);
 });
 
-test('the exact registration read grant reveals Applicant reviews under Account operations', () => {
+test('the exact registration read grant reveals Applicant reviews under Account management', () => {
   assert.deepEqual(ids([READ]), ['overview', 'registration-review', 'account']);
   assert.deepEqual(groups([READ], 'main'), ['overview', 'account-operations']);
   assert.equal(getDashboardItem('registration-review').label, 'Applicant reviews');
-  assert.equal(getDashboardGroup('registration-review').label, 'Account operations');
+  assert.equal(getDashboardGroup('registration-review').label, 'Account management');
   assert.equal(canOpenDashboardView('registration-review', []), false);
   assert.equal(canOpenDashboardView('registration-review', ['accounts.registration_requests.approve']), false);
 });

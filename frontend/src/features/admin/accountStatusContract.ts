@@ -47,6 +47,8 @@ export interface StatusHistoryPage {
 }
 
 export interface SchoolAccountDetail extends SchoolAccountItem {
+  /** Client-only hint read from the response header, never part of the JSON body. */
+  available_actions?: string[];
   name: { first: string | null; middle: string | null; last: string | null; suffix: string | null };
   request_status: 'Approved';
   created_at: string;

@@ -67,7 +67,7 @@ test('a reviewer opens one application read-only: three panels, exact evidence w
     await page.getByRole('link', { name: 'Review application for CTU-G ID 7240001' }).click();
     await page.getByRole('heading', { name: 'Maria Luz Santos', level: 2 }).waitFor();
     assert.ok(page.url().endsWith('applicant=5001'));
-    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews / CTU-G ID 7240001');
+    assert.equal(await crumbs(page), 'Dashboard / Account management / Applicant reviews / CTU-G ID 7240001');
     assert.equal(await page.locator('h1').innerText(), 'Applicant reviews');
     // Focus moves to the applicant heading for keyboard and screen-reader users.
     assert.ok(await page.getByRole('heading', { name: 'Maria Luz Santos', level: 2 }).evaluate((el) => el === document.activeElement));
@@ -104,7 +104,7 @@ test('Back restores filters, sort and page without refetching, and returns focus
     await page.getByText('Page 2', { exact: true }).waitFor();
     assert.equal(await page.getByLabel('Sort by').inputValue(), '-submitted');
     assert.equal(fake.state.lists.length, before, 'no refetch on Back');
-    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews');
+    assert.equal(await crumbs(page), 'Dashboard / Account management / Applicant reviews');
     const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-review-link'));
     assert.equal(focused, '5021');
     // Browser Back/Forward and the breadcrumb work too.
@@ -143,7 +143,7 @@ test('every evidence state, the Instructor CTU-G ID and missing data have their 
     const main = await page.locator('main').innerText();
     assert.ok(main.includes('CTU-G ID') && main.includes('0012345') && main.includes('Name not recorded'));
     assert.ok(main.includes('No name record exists for this application.'));
-    assert.equal(await crumbs(page), 'Dashboard / Account operations / Applicant reviews / CTU-G ID 0012345');
+    assert.equal(await crumbs(page), 'Dashboard / Account management / Applicant reviews / CTU-G ID 0012345');
   }, VIEW);
 });
 

@@ -13,7 +13,7 @@ import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from '../admin/registrationRevie
 import PendingApplicationsPanel from '../admin/PendingApplicationsPanel';
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig';
 import AccountDirectoryPanel from '../admin/AccountDirectoryPanel';
-import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
+import { ACCOUNT_DIRECTORY_ENABLED } from '../admin/accountStatusConfig';
 import RoleAssignmentsPanel from '../access-control/RoleAssignmentsPanel';
 import RolePermissionsPanel from '../access-control/RolePermissionsPanel';
 import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig';
@@ -190,7 +190,7 @@ export default function SessionDashboardPage() {
   }
 
   // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
-  if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
+  if (view === 'account-directory' && ACCOUNT_DIRECTORY_ENABLED) return <AccountDirectoryPanel />;
   // WF-03.01 D-112: School operations ONLY, permission-gated and default-off.
   // This never exposes Role Assignments controls to School Admin.
   if (view === 'appointment-evidence' && APPOINTMENT_MANAGEMENT_ENABLED) return <AppointmentManagementPanel permissions={permissions} />;

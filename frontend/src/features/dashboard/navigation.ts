@@ -10,7 +10,7 @@
  * Permission codes are point-in-time hints; Django authorizes every request.
  */
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig.ts';
-import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig.ts';
+import { ACCOUNT_DIRECTORY_ENABLED } from '../admin/accountStatusConfig.ts';
 import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig.ts';
 import { APPOINTMENT_MANAGEMENT_ENABLED } from '../access-control/appointmentManagementConfig.ts';
 import { ROLE_PERMISSION_MANAGEMENT_ENABLED } from '../access-control/rolePermissionConfig.ts';
@@ -105,7 +105,7 @@ export interface DashboardNavItem {
 
 export const DASHBOARD_NAV_GROUPS: readonly DashboardNavGroup[] = [
   { id: 'overview', label: 'Overview', placement: 'main' },
-  { id: 'account-operations', label: 'Account operations', placement: 'main' },
+  { id: 'account-operations', label: 'Account management', placement: 'main' },
   { id: 'academic', label: 'Academic', placement: 'main' },
   { id: 'finance', label: 'Finance', placement: 'main' },
   { id: 'teaching', label: 'Teaching', placement: 'main' },
@@ -135,7 +135,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     description: 'Pending Student and Instructor applications waiting for School Admin review. This list is read-only.' },
   { id: 'account-directory', label: 'Account directory', icon: 'list', group: 'account-operations',
     // WF-02.05 (D-69, D-70): live only when its switch is on; Django still decides access.
-    requiredAny: ['accounts.school_accounts.read'], integration: ACCOUNT_STATUS_ENABLED ? 'shell' : planned,
+    requiredAny: ['accounts.school_accounts.read'], integration: ACCOUNT_DIRECTORY_ENABLED ? 'shell' : planned,
     description: 'Eligible school accounts and their status.' },
 
   // D-112: recording/reviewing campus appointment evidence is SCHOOL operation,

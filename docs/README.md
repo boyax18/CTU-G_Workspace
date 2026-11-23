@@ -1,6 +1,6 @@
 # CTU-G Workspace — Documentation Index
 
-_Last reviewed: 2026-11-08 (local development; based on project terminal results shared in chat)_
+_Last reviewed: 2026-11-23 (WF-02 integration; isolated verification, no live activation)_
 
 This folder holds the project's **living documentation**. The SRS describes **what** the system should do; architecture, database, API, security, and implementation records describe **how**, **what has actually been built**, and **what remains blocked**.
 
@@ -18,6 +18,8 @@ This folder holds the project's **living documentation**. The SRS describes **wh
 | `implementation/authentication/ar-6c3-integration-readiness-assessment.md` | Remaining gates before live Admin registration-review integration | On verification or governance decisions |
 | `implementation/authentication/ar-6c2-routing-safety-verification.md` | Routing isolation and prior 25/25 test evidence | If routing or feature gates change |
 | `api/AUTH_ENDPOINT_INVENTORY.md` | Initial authentication API inventory to validate against route code | When auth endpoints/contracts change |
+| `api/AR-6C-registration-review-api-contract-proposal.md` | Current WF-02 Account Management contract (§0), with historical proposal retained | When WF-02 paths, gates, fields or error handling change |
+| `workflows/CTU-G_Workspace_System_Workflow_Catalogue.md` | Existing workflow definitions, evidence, approval checklists and blockers | Every workflow implementation or authorization change |
 | `templates/PHASE_COMPLETION_CHECKLIST.md` | Standard closure checklist for future phases | Every new phase |
 | `design/README.md` | UI design reference for agents and developers: tokens, components, patterns, consistency audit. Read before any frontend/UI work | When `frontend/src/css/*`, shared components or UI conventions change |
 

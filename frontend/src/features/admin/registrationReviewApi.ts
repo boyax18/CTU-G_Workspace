@@ -33,6 +33,7 @@ import {
   PENDING_APPLICATIONS_ROUTE_ROOT,
 } from './pendingApplicationsConfig.ts';
 import { notifyAuthenticationRequired } from '../../utils/sessionSignals.ts';
+import { availableActions } from './managementAvailability.ts';
 
 function requireApprovedActivation(): void {
   if (!REGISTRATION_REVIEW_LIVE_API_ENABLED) {
@@ -40,7 +41,7 @@ function requireApprovedActivation(): void {
   }
 }
 
-async function getReviewJSON(path: string): Promise<unknown> {
+async function getReviewJSON(path: string, onResponse?: (response: Response) => void): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(path, {
@@ -65,6 +66,7 @@ async function getReviewJSON(path: string): Promise<unknown> {
     if (response.status === 401) notifyAuthenticationRequired();
     throw new ApiError(message, response.status, code);
   }
+  onResponse?.(response);
   return value;
 }
 
@@ -98,7 +100,9 @@ export async function getPendingApplication(
   // MUST remain first: no fetch or path access while the read switch is off.
   if (!enabled) throw new ApiError('Pending applications are not activated.', 503, 'review_unavailable');
   const plan = buildApplicantDetailRequest(PENDING_APPLICATIONS_ROUTE_ROOT, accountId);
-  return parseApplicantDetail(await getReviewJSON(plan.path), accountId);
+  let actions: string[] = [];
+  const value = await getReviewJSON(plan.path, (response) => { actions = availableActions(response); });
+  return { ...parseApplicantDetail(value, accountId), available_actions: actions };
 }
 
 export async function approveRegistrationRequest(

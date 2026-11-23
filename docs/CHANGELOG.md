@@ -1,5 +1,14 @@
 # CTU-G Workspace — Development Changelog
 
+### 23 November 2026 — WF-02 Account Management dashboard integration
+
+- Reused existing WF-02.01–06 services and dashboard components. Normal routes now include only authorized read-only directory, account detail and minimized history, behind independent default-off directory flags. Applicant reads retain their existing independent gate. The shared navigation group is Account management.
+- Added backend action-availability hints and fail-closed frontend handling, so disabled/unmounted approval, rejection and status actions are not advertised by an enabled read view. Existing stored Admin-grant inheritance in Technical Super Admin context, Deny precedence and role switching remain authoritative; no role-name bypass or new permission was introduced.
+- Kept approval/rejection/status writes isolated and gated. Approval proof/attestation, transactional rejection/outbox/deletion, protected-target restrictions, audit and session revocation remain in place. The provisioning safeguard allows only five exact read mounts, refuses unexpected/write mounts, and requires both normal read switches off before provisioning.
+- Updated the existing workflow catalogue (WF-02.01–06, v0.3.44), API contract/inventory, access-control gates, development status, design pattern label and test evidence in the same task. Historical human approvals/checklists are preserved; no new approval or protected-operation readiness is claimed. No schema/DBML/migration change or live database write.
+- Verification: backend 250/250 plus 46/46 status/outbox/release supplement in 18 selected modules (both disposable MySQL databases destroyed); details in `testing/TEST_RESULTS.md`; focused frontend 73/73; browser 62/62 plus independent read-build 3/3; changed-file lint and production build passed. Full frontend unit run remains 237/238 because of the existing appointment/frozen-catalogue inventory mismatch; full lint retains 3 existing errors in unchanged WF-03 files.
+- Git: local `ronald` integration from parent `d9b58da`; code/tests/docs committed together under `feat(wf-02): integrate account management reads and verified documentation`. Resolve the commit hash with `git log --oneline -- docs/CHANGELOG.md`. Unrelated LAN work preserved; no push and no shared-HTTP real-data activation.
+
 ### 20 November 2026 — WF-03.01: final closeout reconciliation
 
 - **D-87:** API activation deferred; the role-assignment API stays unmounted. Live API/UI operation is untested; the API and page are verified only in disposable databases and mocked browsers.

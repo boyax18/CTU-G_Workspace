@@ -424,7 +424,7 @@ class PendingRegistrationDetailView(RegistrationReviewAPI):
             if name["last"] is None:
                 notes.append("missing_last_name")
         # D-38: the full email only here, never in the list, never in logs or errors.
-        return Response({
+        response = Response({
             "account_id": account.pk,
             "school_id": account.school_id,
             "id_label": ID_LABELS[role],
@@ -438,3 +438,5 @@ class PendingRegistrationDetailView(RegistrationReviewAPI):
             "institutional_check": {"subject": INSTITUTIONAL_SUBJECT[role], "verified_by_workspace": False},
             "data_notes": notes,
         })
+        from .management_availability import attach_available_actions
+        return attach_available_actions(response, actor, account.pk, "registration")

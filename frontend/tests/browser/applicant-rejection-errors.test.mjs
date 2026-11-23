@@ -32,7 +32,7 @@ const detail = (id, overrides = {}) => ({
   ...overrides,
 });
 
-function server({ permissions = [READ, REJECT], detailFor = (id) => detail(id),
+function server({ permissions = [READ, REJECT], actions = 'approve,reject', detailFor = (id) => detail(id),
   reject = (id) => [{ account_id: id, status: 'Rejected', notification: 'queued' }] } = {}) {
   const state = { session: session(permissions), lists: 0, details: [], rejections: [], approvals: 0 };
   const handle = async ({ path, request, respond, route }) => {
@@ -51,13 +51,22 @@ function server({ permissions = [READ, REJECT], detailFor = (id) => detail(id),
       return respond({ results: [row(1), row(2)], page: 1, page_size: 20, has_next: false });
     }
     const match = path.match(/^\/api\/v1\/admin\/registration-requests\/(\d+)\/$/);
-    if (match) { state.details.push(Number(match[1])); return respond(detailFor(Number(match[1]), state)); }
+    if (match) { state.details.push(Number(match[1])); return respond(detailFor(Number(match[1]), state), 200, { 'X-Workspace-Available-Actions': actions }); }
     return route.abort('failed');
   };
   return { state, handle };
 }
 
 const at = (id) => `${VIEW}&applicant=${id}`;
+
+test('disabled backend rejection stays hidden with a frontend flag and reject permission', async () => {
+  const fake = server({ actions: '' });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('heading', { name: 'Institutional eligibility', level: 3 }).waitFor();
+    assert.equal(await page.getByRole('heading', { name: 'Reject application', level: 3 }).count(), 0);
+    assert.equal(fake.state.rejections.length, 0);
+  }, at(7001));
+});
 const focusedText = (page) => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
 async function until(check, label) {
   for (let i = 0; i < 100; i++) { if (await check()) return; await new Promise((resolve) => setTimeout(resolve, 50)); }

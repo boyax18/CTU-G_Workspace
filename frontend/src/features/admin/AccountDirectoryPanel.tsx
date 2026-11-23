@@ -2,7 +2,8 @@
  *
  * Shows only what the server returns for accounts the reviewer may read (Approved, non-protected).
  * `?account={id}` opens the read-only detail with the status controls in this same view; the list
- * state stays in memory so Back restores it. No history (WF-02.06), roles or permission editing.
+ * state stays in memory so Back restores it. Detail includes permitted WF-02.06 history;
+ * roles and permissions are read-only.
  */
 import { useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent, MouseEvent } from 'react';

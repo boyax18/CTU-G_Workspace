@@ -16,6 +16,9 @@ from apps.accounts.models import Account
 from apps.accounts.registration_review_api import (
     PendingRegistrationDetailView, PendingRegistrationRequestsView, RegistrationReviewAPI,
 )
+from apps.accounts.account_status_api import (
+    SchoolAccountDetailView, SchoolAccountHistoryView, SchoolAccountListView,
+)
 from apps.access_control.audit import record_access_audit_receipt
 from apps.access_control.models import (
     AccessAuditLog, AccountPermission, AccountRole, Permission,
@@ -44,11 +47,13 @@ class MetadataRefused(RuntimeError):
 
 
 # WF-02.01 (owner-authorized 17 Nov 2026, Option A) and WF-02.02 (D-41, owner-authorized
-# 17 Nov 2026). Before the review release, exactly TWO read-only registration-review routes may be
+# 17 Nov 2026), extended by the 23 Nov WF-02 read-only integration. Before review release, FIVE
+# exact read routes may be
 # mounted, each at most once, each bound directly to its exact view class with no as_view()
 # overrides, GET/HEAD/OPTIONS only and no write handler:
 #   1. WF-02.01 pending list   api/v1/admin/registration-requests/                  (PendingRegistrationRequestsView)
 #   2. WF-02.02 applicant detail api/v1/admin/registration-requests/<int:account_id>/ (PendingRegistrationDetailView)
+#   3-5. WF-02 school-accounts list, detail and permitted history (no status writes).
 # The detail is tolerated only alongside the list. Approve, reject, bulk, a moved, renamed,
 # re-typed or subclassed route, a second mount, or any other review route is refused (fail closed).
 READ_ONLY_LIST_ROUTE = "api/v1/admin/registration-requests/"
@@ -59,11 +64,14 @@ READ_ONLY_LIST_METHODS = ("get", "head", "options")
 _APPROVED_READ_ROUTES = (
     ("list", READ_ONLY_LIST_ROUTE, READ_ONLY_LIST_NAME, PendingRegistrationRequestsView),
     ("detail", READ_ONLY_DETAIL_ROUTE, READ_ONLY_DETAIL_NAME, PendingRegistrationDetailView),
+    ("accounts-list", "api/v1/admin/school-accounts/", "school-accounts-list", SchoolAccountListView),
+    ("accounts-detail", "api/v1/admin/school-accounts/<int:account_id>/", "school-accounts-detail", SchoolAccountDetailView),
+    ("accounts-history", "api/v1/admin/school-accounts/<int:account_id>/history/", "school-accounts-history", SchoolAccountHistoryView),
 )
 _WRITE_HANDLERS = ("post", "put", "patch", "delete")
 # WF-02.05 stage 3 (owner-authorized 18 Nov 2026): account-status routes are recognized by every
 # layer too (class, module, route name and path marker), so an opaque wrapper on a school-accounts
-# path is refused like one on a registration-requests path. Nothing here is newly tolerated.
+# path is refused like one on a registration-requests path; only exact reads above are tolerated.
 _REVIEW_NAME_PREFIXES = ("registration-review", "bulk-review", "bulk-registration-review", "school-accounts")
 _REVIEW_ROUTE_MARKERS = ("registration-requests", "school-accounts")
 _REVIEW_MODULE_PREFIXES = (
@@ -82,7 +90,7 @@ def _walk_url_patterns(patterns, prefix=""):
 
 
 def _approved_read_route(route, entry, view_class):
-    """Return 'list' or 'detail' when this entry is exactly an approved read route, else None."""
+    """Return a route kind only for an exact read class/path/name without overrides."""
     for kind, approved_route, approved_name, approved_class in _APPROVED_READ_ROUTES:
         if (
             route == approved_route
@@ -97,10 +105,10 @@ def _approved_read_route(route, entry, view_class):
 
 
 def unexpected_review_routes(urlconf=None):
-    """Return a description of every mounted review route except the two approved read routes.
+    """Return a description of every mounted review route except the five exact read routes.
 
-    An empty list means only the read-only list, optionally with the read-only detail (or
-    nothing), is mounted. Inspection errors and unknown entries are reported as unexpected,
+    An empty list means only exact read routes (or nothing) are mounted. Detail/history requires
+    its list. Inspection errors and unknown entries are reported as unexpected,
     never ignored.
     """
     try:
@@ -108,7 +116,7 @@ def unexpected_review_routes(urlconf=None):
         entries = list(_walk_url_patterns(patterns))
     except Exception as exc:  # fail closed: an unreadable URLconf is not "nothing mounted"
         return [f"URLconf could not be inspected ({type(exc).__name__})"]
-    unexpected, seen = [], {"list": 0, "detail": 0}
+    unexpected, seen = [], {kind: 0 for kind, *_ in _APPROVED_READ_ROUTES}
     for route, entry in entries:
         if entry is None:
             unexpected.append(route)
@@ -133,13 +141,17 @@ def unexpected_review_routes(urlconf=None):
         unexpected.append(f"{route} ({name or 'unnamed'})")
     if seen["detail"] and not seen["list"]:
         unexpected.append(f"{READ_ONLY_DETAIL_ROUTE} (detail without the approved list)")
+    if (seen["accounts-detail"] or seen["accounts-history"]) and not seen["accounts-list"]:
+        unexpected.append("school-accounts detail/history without the exact directory list")
     return unexpected
 
 
 def refuse_unless_only_read_only_list(error_class, message):
-    """Shared P1/P3C guard: only the two read routes are tolerated, and only while their switch is off."""
+    """Shared P1/P3C guard: exact reads only, with both normal read switches off."""
     if getattr(settings, "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", False) is not False:
         raise error_class("The WF-02.01 pending-list switch must remain off before release.")
+    if getattr(settings, "WORKSPACE_ACCOUNT_DIRECTORY_ENABLED", False) is not False:
+        raise error_class("The WF-02 directory switch must remain off before provisioning.")
     if unexpected_review_routes():
         raise error_class(message)
 

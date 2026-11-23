@@ -1,4 +1,71 @@
-# CTU-G Workspace — AR-6C Registration Review API Contract (Proposal)
+# CTU-G Workspace — Account Management API Contract and Historical Proposal
+
+## 0. Verified WF-02 implementation — 23 November 2026
+
+This section supersedes the historical candidate routes and payloads in §§1–5 below. Source: `config/urls.py`, the isolated review URLconfs, `registration_review_api.py`, `account_status_api.py`, their services, and the test evidence in `../testing/TEST_RESULTS.md`. Route presence is not activation or release approval. No live account mutations or provisioning were performed for this integration.
+
+### Availability and authorization
+
+All paths below begin with `/api/v1/admin/`. Reads support GET/HEAD/OPTIONS; HEAD has no response body. The normal URLconf mounts only the five read routes. Default-off `WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED` enables applicant list/detail; default-off `WORKSPACE_ACCOUNT_DIRECTORY_ENABLED` independently enables directory/detail/history. The existing `WORKSPACE_ACCOUNT_STATUS_ENABLED` also enables school-account reads in isolated review profiles. These switches do not provision permissions or activate services.
+
+Every data request resolves the authenticated Django Workspace session, checks an Approved/active non-framework account with an active stored Admin assignment, requires both `accounts` and `access_control` services active, and evaluates the exact permission in the current server role context. Technical Super Admin inherits only its actually assigned Admin role's stored grants. Student/Instructor contexts cannot use these operations; account Deny takes precedence. Role names, client permission hints and framework superuser flags do not authorize a request.
+
+| Method | Path after `/api/v1/admin/` | Required exact permission | Normal application | Isolated review profiles |
+| --- | --- | --- | --- | --- |
+| GET | `registration-requests/` | `accounts.registration_requests.read` | Mounted, read gate default off | Existing decision gate pair also opens reads |
+| GET | `registration-requests/{id}/` | Same read permission | Mounted, same read gate | Same eligibility as list |
+| POST | `registration-requests/{id}/approve/` | `accounts.registration_requests.approve` | Unmounted (404) | Review API + approval gates; locked service checks |
+| POST | `registration-requests/{id}/reject/` | `accounts.registration_requests.reject` | Unmounted (404) | Same gate pair; durable outbox + v2 template required |
+| GET | `school-accounts/` | `accounts.school_accounts.read` | Mounted, directory gate default off | Existing status gate also opens reads |
+| GET | `school-accounts/{id}/` | Same school-account read permission | Mounted, same directory gate | Same target exclusions |
+| GET | `school-accounts/{id}/history/` | Same school-account read permission | Mounted, same directory gate | Minimized history only |
+| POST | `school-accounts/{id}/suspend/` | `accounts.school_accounts.suspend` | Unmounted (404) | Separate status gate; protected executor refusal |
+| POST | `school-accounts/{id}/activate/` | `accounts.school_accounts.activate` | Unmounted (404) | Separate status gate; protected executor refusal |
+
+Local review requires its explicit acknowledgement and loopback restriction; sandbox uses synthetic data. Mounting the full isolated URLconfs in the normal application is prohibited. The provisioning guard accepts only the five exact read classes/paths/names without overrides or write handlers, refuses duplicates/unexpected mounts, and requires both normal read switches off before provisioning. No shared-HTTP/LAN real-data activation is authorized here.
+
+### Read contracts
+
+All list responses use `{ "results": [], "page": 1, "page_size": 20, "has_next": false }`. There is no total count. Pages are 1–10000; unsupported/repeated query fields are rejected. `q` is printable ASCII, at most 50 characters and five whitespace-separated terms: each term matches an ID prefix or a name substring. Omit blank `q`.
+
+- **Pending list:** optional `status=Pending`, `role=Student|Instructor`, `proof=verified|legacy`, `sort=submitted|-submitted|school_id|-school_id` (default `submitted`), `page`, `q`. Results contain exactly `account_id` (integer), `school_id` (string), `full_name` (string/null), `requested_role` (Student/Instructor), `created_at` (ISO timestamp), `email_verified` (boolean). Pending status is implicit in this endpoint. Eligible rows are Pending/inactive with an active requested Student/Instructor role, no assigned roles or reviewer fields, no framework privileges, excluding the viewer. Missing/stale email proof remains visible as unverified; approval independently requires current-address proof.
+- **Applicant detail:** no query parameters. Fields: `account_id`, `school_id`, `id_label` (`CTU-G ID`), `name` (`first`, `middle`, `last`, `suffix`, each string/null), `full_name`, `email` (string/null, detail only), `requested_role`, `request_status` (`Pending`), `created_at`, `email_evidence` (`state`, `verified_at`), `institutional_check` (`subject`, `verified_by_workspace=false`), `data_notes` (array). Evidence states are `verified`, `no_email`, `no_proof`, `address_changed`; only verified has a timestamp. Institutional subject is `enrollment` or `employment`; mailbox proof never establishes institutional eligibility. Notes are limited to missing profile/first name/last name indicators.
+- **Directory:** optional `page`, `q`, `status=active|inactive`. Results contain exactly `account_id`, `school_id`, `id_label`, `full_name`, `roles` (active role-name strings), `is_active` (boolean). Only Approved non-framework accounts without any reserved administrator/governance assignment are eligible; the viewer is excluded. Pending/Rejected accounts and protected administrators are excluded. No broader Technical Super Admin inventory is supplied.
+- **School-account detail:** no query parameters. Directory item fields plus `name`, `request_status=Approved`, `created_at`, `can_reactivate` (active-role hint only), `approved_at` (ISO timestamp/null), `last_status_change` (history entry/null). Approval date comes from the approval audit time, falling back to recorded `reviewed_at`; missing dates are null, never inferred. Current active state comes from the account row.
+- **History:** only optional `page`. Same target eligibility and envelope as directory. Entries contain `event`, `description`, `occurred_at` (ISO timestamp), `actor` (`You` or `An administrator`). Allowed event/description pairs: `registration_approved`/`Registration approved`, `account_deactivated`/`Account deactivated`, `account_reactivated`/`Account reactivated`. Status events also contain `previous_is_active`, `new_is_active` (booleans, or both null if the stored transition is invalid). Newest audit primary key first. No raw JSON, reasons, attestations, actor identities/IDs or governance audit events are exposed.
+
+Successful applicant/account detail responses include `X-Workspace-Available-Actions`, a comma-separated subset of `approve,reject` or `suspend,activate`. An empty/missing/invalid header means no actions may be advertised. Hints require mounted exact mutation classes, enabled backend gates, effective permissions and no protected executor; reject additionally requires outbox/template readiness flags. Hints do not certify every target-specific or delivery prerequisite (including encryption key availability), and services recheck inside transactions. This header adds no JSON fields. The frontend retains separate default-off mutation build flags and exact permission checks.
+
+### Mutation contracts — protected, not normal application routes
+
+Approval body: `{ "eligibility_confirmed": true, "eligibility_source": "ctu_main_system_records" }` for Student, or `institutional_employment_records` for Instructor. Only these two keys are accepted. The service requires current email ownership proof, eligible Pending state, and a matching positive institutional attestation. Success: `{ "account_id": 123, "status": "Approved" }`. Only the requested Student/Instructor base role is assigned; approval/audit are atomic. A later directory read includes the eligible approved account.
+
+Rejection body: `{ "rejection_code": "identity_mismatch" }`. Allowed codes: `incomplete_submission`, `ineligible_registration`, `identity_mismatch`, `duplicate_request`. Success: `{ "account_id": 123, "status": "Rejected", "notification": "queued" }`. The transaction queues the encrypted notification snapshot, preserves minimized audit evidence, and deletes rejected registration/account/profile data according to the service's dependency checks. Queueing is not email delivery. Failure rolls back the decision/deletion; stale/deleted targets are unavailable. The ID/email may be reused through normal registration where policy permits; there is no rejected-account reactivation or previous-identity field. Local review suppresses external SMTP and uses locmem mail.
+
+Suspend body: `{ "expected_active": true }`; activate body: `{ "expected_active": false }`. Exactly one boolean field is accepted. Success: `{ "account_id": 123, "is_active": false }` (or true for activation). The locked service checks the expected state, target eligibility, permissions and protected-account restrictions, changes active status, advances the persistent session-revocation counter, and records the audit event atomically. Reactivation requires an existing active role and never restores old sessions. Approval, identity, roles and permissions are not edited here. Protected-executor status writes remain refused.
+
+### Authentication, errors and future mobile clients
+
+Use the existing session contract: GET `/api/v1/auth/csrf/` to initialize CSRF, POST `/api/v1/auth/login/`, GET `/api/v1/auth/session/`, POST `/api/v1/auth/role-context/` only where its independent gate permits, POST `/api/v1/auth/logout/`. Send session cookies and `Accept: application/json`; unsafe requests require JSON, the CSRF cookie and `X-CSRFToken`, and valid origin/referer under configured policy. No bearer-token/mobile-specific authentication endpoint has been implemented. A future mobile client needs a session cookie jar and CSRF lifecycle over approved HTTPS, must consume server role-context/permission state, and must not combine grants or infer authorization from role labels.
+
+Responses use `Cache-Control: no-store` and an opaque `X-Request-ID`; never persist applicant/account responses in browser or mobile storage. Read throttle: 60/minute per authenticated account (anonymous fallback: socket address); mutation throttle: 20/minute per socket address. Reads are not automatically retried by the clients; writes must never be blindly replayed after a timeout. Re-read status after an uncertain result.
+
+Errors use `{ "error": { "code": "...", "message": "..." } }`, with a fixed `reason` only for policy conflicts. The following applies to mounted WF-02 views; unmounted routes return routing-level 404 and must not be assumed to have a JSON envelope.
+
+| HTTP | Code / meaning |
+| --- | --- |
+| 400 | `invalid_request`: unsupported query, invalid value, unexpected JSON fields or malformed body |
+| 401 | `authentication_required`: no eligible authenticated Workspace session |
+| 403 | `access_denied`: exact permission, active Admin assignment, role-context or CSRF denial |
+| 404 | `request_unavailable`: missing, stale or inaccessible target, intentionally indistinguishable |
+| 405 / 406 / 415 | `method_not_allowed` / `not_acceptable` / `unsupported_media_type` |
+| 409 | `approval_not_allowed`: `email_unverified` or `eligibility_unconfirmed`; `rejection_not_allowed`: `recipient_unverified`, `direct_permissions`, `protected_history`; `account_status_conflict`: `state_changed`, `protected_account`, `no_operational_role` |
+| 429 | `rate_limited` |
+| 503 | `review_unavailable`: gate off, inactive required service, database outage, unavailable notification/writer prerequisites; unexpected exceptions use the inherited safe `auth_unavailable` response |
+
+Passwords/hashes, OTPs, reset tokens, credentials and private audit details are never part of these contracts. Protected WF-03 governance routes, provisioning and schema activation remain separate.
+
+## Historical proposal (8 November 2026; retained for traceability)
 
 **Prepared:** 2026-11-08
 **Phase:** AR-6B1A contract design for future AR-6C implementation

@@ -249,15 +249,14 @@ class AccountHistoryHTTPTests(TestCase):
         self.assertEqual((set(statuses[:60]), statuses[60]), ({400}, 429))
 
     # -- release surface (D-76) ------------------------------------------------------------------
-    def test_route_exists_only_in_the_isolated_urlconf_and_the_safeguard_reports_it(self):
+    def test_normal_and_isolated_history_reads_preserve_status_write_boundary(self):
         from apps.access_control.management.commands.init_registration_review_metadata_local_dev import unexpected_review_routes
-        with self.assertRaises(Resolver404):
-            resolve(f"{API}1/history/", urlconf="config.urls")
+        self.assertEqual(resolve(f"{API}1/history/", urlconf="config.urls").url_name, "school-accounts-history")
         self.assertEqual(resolve(f"{API}1/history/", urlconf=URLCONF).url_name, "school-accounts-history")
         for conf in ("config.review_local_urls", "config.review_sandbox_urls"):
             with self.subTest(conf=conf):
                 self.assertEqual(resolve(f"{API}1/history/", urlconf=conf).url_name, "school-accounts-history")
-                self.assertTrue(any("school-accounts-history" in str(r) for r in unexpected_review_routes(conf)))
+                self.assertTrue(any("school-accounts-suspend" in str(r) for r in unexpected_review_routes(conf)))
         self.assertEqual(unexpected_review_routes("config.urls"), [])
         self.assertFalse(hasattr(__import__("config.settings", fromlist=["x"]), "WORKSPACE_ACCOUNT_STATUS_ENABLED"))
 

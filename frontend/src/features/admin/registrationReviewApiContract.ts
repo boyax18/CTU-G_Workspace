@@ -255,6 +255,8 @@ export type EmailEvidenceState = 'verified' | 'no_proof' | 'address_changed' | '
 export type ApplicantDataNote = 'missing_profile' | 'missing_first_name' | 'missing_last_name';
 
 export interface ApplicantDetail {
+  /** Client-only hint read from the response header, never part of the JSON body. */
+  available_actions?: string[];
   account_id: number;
   school_id: string;
   id_label: 'CTU-G ID';

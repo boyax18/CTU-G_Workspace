@@ -19,6 +19,7 @@ const hooks = registerHooks({
 const contract = await import('../src/features/admin/accountStatusContract.ts');
 const api = await import('../src/features/admin/accountStatusApi.ts');
 const config = await import('../src/features/admin/accountStatusConfig.ts');
+const { availableActions } = await import('../src/features/admin/managementAvailability.ts');
 hooks.deregister();
 
 const ROOT = '/api/v1/admin/school-accounts/';
@@ -49,11 +50,30 @@ async function withFetch(post, run, { csrf = () => reply(200, { csrfToken: 'tok'
 }
 const posts = (calls) => calls.filter((c) => c.method === 'POST');
 
-test('the switch is off by default and the route is never config.urls-shaped review routes', () => {
+test('read and mutation switches are off by default; normal routes only mount reads', () => {
   assert.equal(config.ACCOUNT_STATUS_ENABLED, false);
+  assert.equal(config.ACCOUNT_DIRECTORY_ENABLED, false);
   assert.equal(config.ACCOUNT_STATUS_ROUTE_ROOT, ROOT);
   assert.match(readFileSync(new URL('../src/features/admin/accountStatusConfig.ts', import.meta.url), 'utf8'),
     /VITE_WORKSPACE_ACCOUNT_STATUS_ENABLED === '1'/);
+});
+
+test('server availability hints fail closed for absent, duplicate or unknown actions', () => {
+  for (const value of ['', 'approve,approve', 'delete', 'approve, reject', 'activate,delete']) {
+    assert.deepEqual(availableActions(new Response(null, { headers: { 'X-Workspace-Available-Actions': value } })), []);
+  }
+  assert.deepEqual(availableActions(new Response()), []);
+  assert.deepEqual(availableActions({}), []);
+  assert.deepEqual(availableActions(new Response(null, { headers: { 'X-Workspace-Available-Actions': 'suspend,activate' } })), ['suspend', 'activate']);
+});
+
+test('detail adapter reads server action hints separately from the strict JSON contract', async () => {
+  await withFetch(() => ({ ...reply(200, detail()), headers: new Headers({ 'X-Workspace-Available-Actions': 'suspend' }) }), async () => {
+    assert.deepEqual((await api.getSchoolAccount(7, true)).available_actions, ['suspend']);
+  });
+  await withFetch(() => reply(200, detail()), async () => {
+    assert.deepEqual((await api.getSchoolAccount(7, true)).available_actions, []);
+  });
 });
 
 test('list plans send only page, search and status', () => {

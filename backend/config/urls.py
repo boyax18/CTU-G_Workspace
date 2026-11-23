@@ -18,6 +18,9 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.accounts.active_role_context_api import RoleContextSwitchView
+from apps.accounts.account_status_api import (
+    SchoolAccountDetailView, SchoolAccountHistoryView, SchoolAccountListView,
+)
 
 from apps.accounts.registration_review_api import (
     PendingRegistrationDetailView,
@@ -43,5 +46,9 @@ urlpatterns = [
         PendingRegistrationDetailView.as_view(),
         name='registration-review-detail',
     ),
+    # WF-02 read-only integration. Never include account_status_urls here: it also mounts writes.
+    path('api/v1/admin/school-accounts/', SchoolAccountListView.as_view(), name='school-accounts-list'),
+    path('api/v1/admin/school-accounts/<int:account_id>/', SchoolAccountDetailView.as_view(), name='school-accounts-detail'),
+    path('api/v1/admin/school-accounts/<int:account_id>/history/', SchoolAccountHistoryView.as_view(), name='school-accounts-history'),
     path('admin/', admin.site.urls),
 ]

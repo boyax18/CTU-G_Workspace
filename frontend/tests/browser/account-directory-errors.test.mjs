@@ -27,7 +27,7 @@ const approval = (at) => ({ event: 'registration_approved', description: 'Regist
 const historyPage = (results, page = 1, has_next = false) => ({ results, page, page_size: 20, has_next });
 const HISTORY = '/history/';
 
-function server({ permissions = [READ, SUSPEND, ACTIVATE], detailFor = (id) => detail(id),
+function server({ permissions = [READ, SUSPEND, ACTIVATE], actions = 'suspend,activate', detailFor = (id) => detail(id),
   change = (id, action) => [{ account_id: id, is_active: action === 'activate' }],
   historyFor = (id, page) => historyPage([], page) } = {}) {
   // `active` remembers confirmed changes so a re-read detail reflects them, as Django would.
@@ -62,7 +62,7 @@ function server({ permissions = [READ, SUSPEND, ACTIVATE], detailFor = (id) => d
       const value = detailFor(Number(one[1]), state);
       if (Array.isArray(value)) return respond(value[0], value[1]);
       const id = Number(one[1]);
-      return respond(id in state.active ? { ...value, is_active: state.active[id] } : value);
+      return respond(id in state.active ? { ...value, is_active: state.active[id] } : value, 200, { 'X-Workspace-Available-Actions': actions });
     }
     return route.abort('failed');
   };
@@ -70,6 +70,16 @@ function server({ permissions = [READ, SUSPEND, ACTIVATE], detailFor = (id) => d
 }
 
 const at = (id) => `${VIEW}&account=${id}`;
+
+test('read-only server hides status actions despite mutation build flag and permission hints', async () => {
+  const fake = server({ actions: '' });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('heading', { name: 'Account information', level: 3 }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Deactivate account', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Reactivate account', exact: true }).count(), 0);
+    assert.equal(fake.state.posts.length, 0);
+  }, at(8101));
+});
 const focused = (page) => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
 async function until(check, label) {
   for (let i = 0; i < 100; i++) { if (await check()) return; await new Promise((r) => setTimeout(r, 50)); }

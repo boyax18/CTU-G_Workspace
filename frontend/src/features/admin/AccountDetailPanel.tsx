@@ -16,6 +16,7 @@ import type { ReactNode } from 'react';
 import Modal from '../../components/common/Modal';
 import { useDashboardContext } from '../../hooks/useDashboardContext';
 import AccountStatusBadge from './AccountStatusBadge';
+import { ACCOUNT_STATUS_ENABLED } from './accountStatusConfig.ts';
 import { changeAccountStatus, getSchoolAccount, getSchoolAccountHistory } from './accountStatusApi.ts';
 import { parseAccountParam } from './accountStatusContract.ts';
 import type { AccountStatusAction, SchoolAccountDetail, StatusHistoryEntry } from './accountStatusContract.ts';
@@ -236,7 +237,8 @@ export default function AccountDetailPanel({ raw, onBack, onChanged }: Props) {
 
   const data = loaded.data;
   const action: AccountStatusAction = data.is_active ? 'suspend' : 'activate';
-  const allowed = session.permissions.includes(action === 'suspend' ? SUSPEND : ACTIVATE);
+  const allowed = ACCOUNT_STATUS_ENABLED && data.available_actions?.includes(action) === true
+    && session.permissions.includes(action === 'suspend' ? SUSPEND : ACTIVATE);
   const busy = phase === 'submitting';
   const name = data.full_name ?? 'this account';
 

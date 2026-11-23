@@ -1,7 +1,19 @@
 ﻿# CTU-G Workspace — Development Status
 
-**As of:** November 8, 2026
-**Basis:** Previously verified local build/test outputs, read-only planner/preflight evidence, an offline AR-6C3 source review, and the project owner's November 8 local SHA-256 checks. This document is not a continuous live database audit.
+**As of:** November 23, 2026
+**Basis:** Current WF-02 source inspection and isolated verification below. Older phase records are historical evidence, not a continuous live database audit.
+
+## 0. WF-02 dashboard integration — current checkpoint
+
+- **Inspected/reconciled:** WF-02.01–06 already had implemented services, shared dashboard components, and historical local-development owner approvals. Normal settings exposed applicant reads behind a default-off switch; directory/detail/history and all decisions/status changes were isolated to review profiles. Existing role-context evaluation already lets a Technical Super Admin context inherit stored grants from its actual active Admin assignment; no new permissions or role-name bypass were needed.
+- **Implemented:** normal application now mounts only read-only directory, account detail and minimized history alongside existing applicant list/detail. `WORKSPACE_ACCOUNT_DIRECTORY_ENABLED` and `VITE_WORKSPACE_ACCOUNT_DIRECTORY_ENABLED` are independent default-off read switches. Existing isolated status-read behavior is retained. The shared sidebar group is Account management. Backend detail responses report available actions; the UI requires those hints, its mutation build flags and exact session permission hints before displaying controls.
+- **Retained:** pending search/category/proof/sort filters, account search/status filters, pagination, applicant details, empty/loading/error states, recorded status dates and minimized history. Approval requires mailbox proof plus institutional attestation; rejection queues encrypted delivery intent and deletes rejected registration data transactionally; status changes retain audit, protected-target checks and persistent session revocation. These mutations remain absent from normal routes and separately gated in isolated profiles.
+- **Tests and limitations:** backend 250/250 plus status/outbox supplement 46/46, focused frontend 73/73, browser 62/62 plus read-build 3/3, changed-file lint and production build passed. Full frontend tests retain one existing inventory failure (237/238 pass); full lint retains three existing errors in unchanged WF-03 files. See the 23 November checkpoint in `testing/TEST_RESULTS.md` for exact commands, observed counts, failures and coverage. All verification uses synthetic/disposable MySQL data or mocked browser APIs. No real applicant records, live account changes, SMTP delivery or production deployment were used to demonstrate operation. Normal read switches were not enabled in the local `.env` or a shared HTTP environment. Production/safe-network activation remains blocked.
+- **Schema:** this task changes no model, migration, table, relationship or DBML file and applies no migration to `ctug_workspace`. Disposable test migrations are test setup only. Historical migration application evidence is not a fresh live schema audit; pending WF-03 schema work remains outside this task.
+- **Approval:** preserve the catalogue's prior human approvals and Inspect → Reconcile → Approve → Implement → Test → Commit checklists. This integration records no new Human Approval and does not mark protected WF-03 functionality operational.
+- **Git:** branch `ronald`, implementation parent `d9b58da`. Code, tests and these existing documentation records belong in the same local commit, identifiable with `git log -1 --format="%h %s" -- docs/DEVELOPMENT_STATUS.md`. No automatic push. Pre-existing settings/LAN helper/script/guide changes and the mkcert executable remain outside the staged scope.
+
+The sections below retain the November 8 historical baseline. Their earlier inactive/deferred statements must be read with this checkpoint and the current workflow catalogue, including its later local-development approvals and protected WF-03 blockers. API contracts are in `api/AR-6C-registration-review-api-contract-proposal.md` §0; operational access and governance separation are in `security/ACCESS_CONTROL_GATES.md`.
 
 ## 1. System in Scope
 

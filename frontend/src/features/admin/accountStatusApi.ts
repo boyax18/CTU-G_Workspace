@@ -1,8 +1,9 @@
-/** WF-02.05 school-account client. Off unless VITE_WORKSPACE_ACCOUNT_STATUS_ENABLED=1 (D-69).
+/** WF-02 school-account client: independent directory reads and status mutations (D-69).
  *
- * The switch only decides whether the dashboard calls the API; Django's own gate, the exact
+ * Read integration uses ACCOUNT_DIRECTORY_ENABLED; POSTs retain ACCOUNT_STATUS_ENABLED.
+ * These switches decide whether the dashboard calls the API; Django's own gates, the exact
  * effective permission and the account rules decide everything. The API is mounted only where
- * the owner authorizes it (never config.urls). GETs are never retried automatically; the status
+ * the owner authorizes it (normal config.urls mounts reads only). GETs are never retried automatically; the status
  * POST is sent once and anything that might have been applied is `outcome_unknown` (D-68).
  */
 import { ApiError, initializeCSRF, timeoutSignal } from '../../api/client.ts';
@@ -12,7 +13,8 @@ import {
   buildAccountDetailRequest, buildAccountHistoryRequest, buildAccountsRequest, buildStatusChangeRequest,
   parseAccountDetail, parseAccountPage, parseHistoryPage, parseStatusChange, parseStatusConflict,
 } from './accountStatusContract.ts';
-import { ACCOUNT_STATUS_ENABLED, ACCOUNT_STATUS_ROUTE_ROOT } from './accountStatusConfig.ts';
+import { ACCOUNT_DIRECTORY_ENABLED, ACCOUNT_STATUS_ENABLED, ACCOUNT_STATUS_ROUTE_ROOT } from './accountStatusConfig.ts';
+import { availableActions } from './managementAvailability.ts';
 import type {
   AccountsQuery, AccountStatusAction, AccountStatusResult, SchoolAccountDetail, SchoolAccountPage, StatusHistoryPage,
 } from './accountStatusContract.ts';
@@ -23,7 +25,7 @@ const uncertain = () => new ApiError(
   'We could not confirm the change. Reload the account before trying again.', 0, 'outcome_unknown', {}, { outcomeUnknown: true },
 );
 
-async function getJSON(path: string): Promise<unknown> {
+async function getJSON(path: string, onResponse?: (response: Response) => void): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(path, { method: 'GET', credentials: 'same-origin', cache: 'no-store',
@@ -42,21 +44,24 @@ async function getJSON(path: string): Promise<unknown> {
     if (response.status === 401) notifyAuthenticationRequired();
     throw new ApiError(message, response.status, code);
   }
+  onResponse?.(response);
   return value;
 }
 
-export async function listSchoolAccounts(page = 1, query: AccountsQuery = {}, enabled = ACCOUNT_STATUS_ENABLED): Promise<SchoolAccountPage> {
+export async function listSchoolAccounts(page = 1, query: AccountsQuery = {}, enabled = ACCOUNT_DIRECTORY_ENABLED): Promise<SchoolAccountPage> {
   if (!enabled) throw off(); // MUST stay first: no request while switched off
   return parseAccountPage(await getJSON(buildAccountsRequest(ACCOUNT_STATUS_ROUTE_ROOT, page, query)));
 }
 
-export async function getSchoolAccount(accountId: number, enabled = ACCOUNT_STATUS_ENABLED): Promise<SchoolAccountDetail> {
+export async function getSchoolAccount(accountId: number, enabled = ACCOUNT_DIRECTORY_ENABLED): Promise<SchoolAccountDetail> {
   if (!enabled) throw off();
-  return parseAccountDetail(await getJSON(buildAccountDetailRequest(ACCOUNT_STATUS_ROUTE_ROOT, accountId)), accountId);
+  let actions: string[] = [];
+  const value = await getJSON(buildAccountDetailRequest(ACCOUNT_STATUS_ROUTE_ROOT, accountId), (response) => { actions = availableActions(response); });
+  return { ...parseAccountDetail(value, accountId), available_actions: actions };
 }
 
 /** WF-02.06: one page (20, newest first) of the account's permitted status history; read-only. */
-export async function getSchoolAccountHistory(accountId: number, page = 1, enabled = ACCOUNT_STATUS_ENABLED): Promise<StatusHistoryPage> {
+export async function getSchoolAccountHistory(accountId: number, page = 1, enabled = ACCOUNT_DIRECTORY_ENABLED): Promise<StatusHistoryPage> {
   if (!enabled) throw off();
   return parseHistoryPage(await getJSON(buildAccountHistoryRequest(ACCOUNT_STATUS_ROUTE_ROOT, accountId, page)), page);
 }

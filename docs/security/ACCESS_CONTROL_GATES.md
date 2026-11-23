@@ -1,9 +1,28 @@
 # Hybrid Dynamic Access Control — Release Gates
 
-**Status:** Catalogue V2 remains a **review proposal**, not an activation authorization.  
+**Current checkpoint:** WF-02 read-only dashboard integration, 23 November 2026, as described below. Historical catalogue proposals and later local approvals do not authorize new protected operations.
 **Last planner run referenced:** 2026-11-08; pinned SHA-256 `56ccd699a127ac7a734bd53a2cb7d4a30a1d3953413e4c423897b4a9c9398b78`.
 
-## Catalogue planner snapshot
+## WF-02 operational access — 23 November 2026
+
+| Actor/context | Operational access | Required authority and limitations |
+| --- | --- | --- |
+| School Admin (`Admin`) | Applicant list/detail, eligible school-account directory/detail/history | Approved/active Workspace identity, active stored Admin assignment, both required services active, exact `accounts.registration_requests.read` or `accounts.school_accounts.read`, read gate enabled |
+| Technical Super Admin active context | Same shared operational module without switching to School Admin | Inherits only stored grants from an actually assigned active Admin role, validated afresh by `allowed_role_ids`; no governance-role shortcut and no unrestricted protected-identity inventory |
+| Student or Instructor active context | Account Management denied, including on a multi-role administrative account selecting Instructor | Current server-selected role restricts permissions; account-wide Deny wins. Ordinary direct Grants do not replace the mandatory Admin assignment |
+| Django framework operator | No Workspace Account Management authority through framework flags | Framework administration/provisioning follows its separate protected process |
+
+Approval, rejection, suspension and activation require their exact `accounts.registration_requests.approve`, `.reject`, `accounts.school_accounts.suspend`, `.activate` permissions. Normal routes mount none of these writes. Isolated review gates, locked target/state checks, CSRF and transaction/audit controls remain authoritative. Approval does not provision Technical Super Admin; status management excludes administrator/governance/framework targets and the actor. Rejection preserves durable delivery intent across deletion and never reactivates rejected registrations.
+
+`WORKSPACE_ACCOUNT_DIRECTORY_ENABLED` independently opens read-only school-account APIs; `WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED` opens applicant reads. Both default off. Frontend read flags control integration only. Action controls also require `X-Workspace-Available-Actions` from the authorized detail response, effective permission hints and separate mutation build flags; the server advertises no actions for absent routes, disabled gates or an enabled protected executor. Availability hints are not transaction authorization.
+
+The provisioning/release safeguard now tolerates only the five exact read paths/classes/names, with no write handlers or initialization overrides, no duplicate mount and no orphan detail/history. Both normal read gates must remain off during provisioning. Approval/rejection/status writes and disguised, moved or duplicated review routes remain refused. No metadata initializer, grant command, service activation or privileged executor operation was executed for this task.
+
+WF-03 governance retains its separate permissions, active-role rules, URL configuration and protected executor boundaries. No access-control route, grant, role binding, permission catalogue pin, administrator identity or migration is activated by WF-02 integration. Shared unencrypted HTTP is not approved for real applicant information or sensitive account operations. Network isolation/HTTPS, target-database permission readiness and explicit release decisions remain prerequisites. Automated synthetic tests do not replace human approval.
+
+See `../testing/TEST_RESULTS.md` for current test evidence. The November 8 planner snapshot and dated decisions below remain historical records, not a statement that later catalogue or local-provisioning work never occurred.
+
+## Catalogue planner snapshot (historical, 8 November 2026)
 
 - Proposed: 10 services, 95 permissions, 106 role-permission bindings, 6 roles, 1 retired definition tombstone.
 - Existing role matches: Student, Instructor, Treasurer, Admin.

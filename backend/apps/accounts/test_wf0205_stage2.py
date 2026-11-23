@@ -236,11 +236,15 @@ def conf(*patterns):
 
 
 class ReleaseSafeguardVerificationTests(TestCase):
-    """The existing P1/P3C safeguard against unauthorized account-status mounts (no safeguard change)."""
+    """Exact gated reads are mounted normally; unauthorized/write mounts remain refused."""
 
-    def test_production_urlconf_exposes_nothing(self):
+    @override_settings(ROOT_URLCONF="config.urls", WORKSPACE_ACCOUNT_DIRECTORY_ENABLED=False)
+    def test_normal_urlconf_mounts_only_default_closed_reads(self):
         self.assertEqual(unexpected_review_routes("config.urls"), [])
-        for url in (API, f"{API}1/", f"{API}1/suspend/", f"{API}1/activate/"):
+        for url in (API, f"{API}1/", f"{API}1/history/"):
+            self.assertIsNotNone(resolve(url, urlconf="config.urls"))
+            self.assertEqual(self.client.get(url).status_code, 503)
+        for url in (f"{API}1/suspend/", f"{API}1/activate/"):
             with self.subTest(url=url), self.assertRaises(Resolver404):
                 resolve(url, urlconf="config.urls")
 

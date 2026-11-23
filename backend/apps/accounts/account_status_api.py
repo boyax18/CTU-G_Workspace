@@ -1,12 +1,14 @@
 """WF-02.05 account directory, read-only detail and status changes (stage 1).
 
-Mounted ONLY by apps.accounts.account_status_urls (an isolated URLconf); never by config.urls.
+Reads are mounted directly in config.urls behind an independent default-off directory gate.
+The isolated account_status_urls additionally mounts separately gated status writes.
 Every view subclasses RegistrationReviewAPI on purpose: it reuses the explicit CSRF check, the
 bounded JSON parser, no-store headers, the Admin-assignment pre-check and error mapping, and the
 existing P1/P3C release safeguard already refuses any mounted RegistrationReviewAPI route that is
 not an approved read route (D-69). Its own default-off gate WORKSPACE_ACCOUNT_STATUS_ENABLED.
 """
 
+from django.conf import settings
 from django.db.models import Exists, OuterRef, Q
 from rest_framework import exceptions
 from rest_framework.response import Response
@@ -124,7 +126,12 @@ class AccountStatusAPI(RegistrationReviewAPI):
         return super().handle_exception(exc)
 
 
-class SchoolAccountListView(AccountStatusAPI):
+class SchoolAccountReadAPI(AccountStatusAPI):
+    def review_gate_open(self):
+        return getattr(settings, "WORKSPACE_ACCOUNT_DIRECTORY_ENABLED", False) is True or gate_open()
+
+
+class SchoolAccountListView(SchoolAccountReadAPI):
     http_method_names = ["get", "head", "options"]
     throttle_classes = [ReviewListThrottle]
 
@@ -159,7 +166,7 @@ class SchoolAccountListView(AccountStatusAPI):
         return Response({"results": results, "page": page, "page_size": PAGE_SIZE, "has_next": len(rows) > PAGE_SIZE})
 
 
-class SchoolAccountDetailView(AccountStatusAPI):
+class SchoolAccountDetailView(SchoolAccountReadAPI):
     http_method_names = ["get", "head", "options"]
     throttle_classes = [ReviewListThrottle]
 
@@ -174,7 +181,7 @@ class SchoolAccountDetailView(AccountStatusAPI):
             raise exceptions.NotFound()
         profile = _profile_or_none(account)
         roles = _roles(account)
-        return Response({
+        response = Response({
             "account_id": account.pk, "school_id": account.school_id, "id_label": _id_label(account),
             "name": {field: _clean(getattr(profile, f"{field}_name" if field != "suffix" else "suffix", None))
                      for field in ("first", "middle", "last", "suffix")},
@@ -188,9 +195,11 @@ class SchoolAccountDetailView(AccountStatusAPI):
             "last_status_change": next(
                 (_history_entry(row, actor) for row in _history_rows(account.pk, STATUS_ACTIONS)[:1]), None),
         })
+        from .management_availability import attach_available_actions
+        return attach_available_actions(response, actor, account.pk, "status")
 
 
-class SchoolAccountHistoryView(AccountStatusAPI):
+class SchoolAccountHistoryView(SchoolAccountReadAPI):
     """WF-02.06 D-76: read-only, paginated status history of ONE eligible account.
 
     Same gate, session, Admin-assignment, service and exact-permission checks as the WF-02.05 detail

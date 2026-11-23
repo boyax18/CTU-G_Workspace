@@ -209,6 +209,10 @@ WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = os.environ.get(
 WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = os.environ.get(
     "WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED", "0"
 ) == "1"
+# WF-02: independent read-only directory/detail/history gate. Never enables status writes.
+WORKSPACE_ACCOUNT_DIRECTORY_ENABLED = os.environ.get(
+    "WORKSPACE_ACCOUNT_DIRECTORY_ENABLED", "0"
+) == "1"
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
     if WORKSPACE_EMAIL_SMTP_ENABLED

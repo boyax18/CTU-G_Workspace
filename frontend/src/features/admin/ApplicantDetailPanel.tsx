@@ -134,10 +134,11 @@ export default function ApplicantDetailPanel({
   const heading = useRef<HTMLHeadingElement>(null);
   const resultHeading = useRef<HTMLHeadingElement>(null);
   // A hint only: Django re-checks the exact permission on the approval request.
-  const canApprove = approvalEnabled && session.permissions.includes(APPROVE_PERMISSION);
-  const canReject = rejectionEnabled && session.permissions.includes(REJECT_PERMISSION);
-  const copy = decisionCopy(canApprove, canReject);
   const [loaded, setLoaded] = useState<Loaded>(accountId === null ? { status: 'failed', code: 'request_unavailable' } : { status: 'loading' });
+  const actions = loaded.status === 'ready' ? loaded.data.available_actions : undefined;
+  const canApprove = approvalEnabled && actions?.includes('approve') === true && session.permissions.includes(APPROVE_PERMISSION);
+  const canReject = rejectionEnabled && actions?.includes('reject') === true && session.permissions.includes(REJECT_PERMISSION);
+  const copy = decisionCopy(canApprove, canReject);
   const [version, setVersion] = useState(0);
 
   useEffect(() => {
@@ -150,7 +151,10 @@ export default function ApplicantDetailPanel({
         setLoaded({ status: 'ready', data });
         setSubpage({
           label: `${data.id_label} ${data.school_id}`,
-          description: copy.description,
+          description: decisionCopy(
+            approvalEnabled && data.available_actions?.includes('approve') === true && session.permissions.includes(APPROVE_PERMISSION),
+            rejectionEnabled && data.available_actions?.includes('reject') === true && session.permissions.includes(REJECT_PERMISSION),
+          ).description,
         });
       })
       .catch((error: unknown) => {
@@ -158,7 +162,7 @@ export default function ApplicantDetailPanel({
         if (!cancelled) setLoaded({ status: 'failed', code });
       });
     return () => { cancelled = true; };
-  }, [accountId, version, setSubpage, copy.description]);
+  }, [accountId, version, setSubpage, approvalEnabled, rejectionEnabled, session.permissions]);
 
   useEffect(() => () => setSubpage(null), [setSubpage]);
   useEffect(() => {

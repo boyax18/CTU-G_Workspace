@@ -348,7 +348,7 @@ class AccountStatusSafeguardTests(SimpleTestCase):
             "opaque wrapper on a school-accounts path": path("api/v1/admin/school-accounts/<int:account_id>/off/", opaque),
             "opaque wrapper with a school-accounts name": path("o/<int:account_id>/", opaque, name="school-accounts-x"),
             "function view in an account_status module": path("f/<int:account_id>/", _account_status_function_view),
-            "read-only list": path("api/v1/admin/school-accounts/", self.views[0].as_view(), name="school-accounts-list"),
+            "renamed read-only list": path("api/v1/admin/school-accounts/", self.views[0].as_view(), name="school-accounts-other"),
             # WF-02.06: the read-only history view, at its own path and at an unrelated path and name.
             "read-only history": path("api/v1/admin/school-accounts/<int:account_id>/history/", self.history.as_view(),
                                       name="school-accounts-history"),
@@ -381,3 +381,25 @@ class AccountStatusSafeguardTests(SimpleTestCase):
         # Statically undetectable for every review route; the default-off backend switch and the
         # protected-writer refusal are the independent layers (tested in test_wf0205_stage2).
         self.assertEqual(self.refused(path("unrelated/<int:account_id>/", opaque)), [])
+
+
+class DirectoryReadSafeguardTests(SimpleTestCase):
+    def test_exact_reads_are_allowed_but_changed_and_duplicate_mounts_are_refused(self):
+        reads = [path(route, view.as_view(), name=name)
+                 for _, route, name, view in p1._APPROVED_READ_ROUTES[2:]]
+        self.assertEqual(p1.unexpected_review_routes(urlconf(*reads)), [])
+        for _, route, name, view in p1._APPROVED_READ_ROUTES[2:]:
+            for changed in (
+                path("moved/" + route, view.as_view(), name=name),
+                path(route, view.as_view(), name=name + "-renamed"),
+                path(route, view.as_view(http_method_names=["get", "post"]), name=name),
+                path(route, type("ChangedRead", (view,), {}).as_view(), name=name),
+                path(route, view.as_view(), name=name),
+            ):
+                with self.subTest(route=route, changed=str(changed.pattern)):
+                    self.assertTrue(p1.unexpected_review_routes(urlconf(*reads, changed)))
+
+    @override_settings(WORKSPACE_ACCOUNT_DIRECTORY_ENABLED=True, WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED=False)
+    def test_directory_activation_blocks_provisioning_even_with_exact_read_routes(self):
+        with self.assertRaisesMessage(CommandError, "directory switch"):
+            p1.refuse_unless_only_read_only_list(CommandError, "refused")

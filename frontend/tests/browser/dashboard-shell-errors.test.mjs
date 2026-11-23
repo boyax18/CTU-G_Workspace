@@ -29,10 +29,10 @@ const sidebarGroups = (page) => page.locator('nav[aria-label="Dashboard navigati
 const sidebarLinks = (page) => page.locator('nav[aria-label="Dashboard navigation"] a')
   .evaluateAll((nodes) => nodes.map((node) => node.textContent.replace('Soon', '').trim()));
 
-test('School Admin: one shell, Overview and Account operations only, no governance links', async () => {
+test('School Admin: one shell, Overview and Account management only, no governance links', async () => {
   await scene(server(schoolAdmin), async (page) => {
     await page.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
-    assert.deepEqual(await sidebarGroups(page), ['Overview', 'Account operations']);
+    assert.deepEqual(await sidebarGroups(page), ['Overview', 'Account management']);
     assert.deepEqual(await sidebarLinks(page), ['Dashboard', 'Applicant reviews']);
     for (const name of ['Role permissions', 'Account overrides', 'Permission catalogue', 'Access audit logs', 'System health']) {
       assert.equal(await page.getByRole('link', { name }).count(), 0, name);
@@ -51,7 +51,7 @@ test('School Admin: one shell, Overview and Account operations only, no governan
     await widget.getByRole('button', { name: 'Open applicant reviews' }).click();
     await page.getByRole('heading', { name: 'Applicant reviews', level: 1 }).waitFor();
     const crumbs = await page.getByRole('navigation', { name: 'Breadcrumb' }).innerText();
-    assert.equal(crumbs.replace(/\s+/g, ' ').trim(), 'Dashboard / Account operations / Applicant reviews');
+    assert.equal(crumbs.replace(/\s+/g, ' ').trim(), 'Dashboard / Account management / Applicant reviews');
     const current = await page.locator('nav[aria-label="Breadcrumb"] [aria-current="page"]').innerText();
     assert.equal(current.replace(/[\s/]+/g, ' ').trim(), 'Applicant reviews');
   }, '/dashboard');
@@ -61,7 +61,7 @@ test('Super Admin inherits School Admin operations and adds governance groups th
   await scene(server(superAdmin), async (page) => {
     await page.getByRole('heading', { name: 'Dashboard', level: 1 }).waitFor();
     assert.deepEqual(await sidebarGroups(page),
-      ['Overview', 'Account operations', 'Access control', 'Security & audit', 'System operations']);
+      ['Overview', 'Account management', 'Access control', 'Security & audit', 'System operations']);
     const links = await sidebarLinks(page);
     assert.equal(new Set(links).size, links.length, 'deduplicated');
     // Unfinished governance modules are labelled and open a not-available page, never a working one.

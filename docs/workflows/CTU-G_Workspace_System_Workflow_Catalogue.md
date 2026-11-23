@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.43  |  20 November 2026  |  For stakeholder review
+Draft version 0.3.44  |  23 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
@@ -50,12 +50,12 @@ Index only. Actor and status are documented here; detailed specifications are in
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-02.01 | View pending applications | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Owner-approved; P-01 to P-08 implemented and tested; committed (bbbc8db); list switch off by default; Human Approval recorded |
-| WF-02.02 | Verify and review applicant information | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Owner-approved; P-01 to P-08 implemented and tested; committed (5e7a2c6); read switch off by default; Human Approval recorded |
-| WF-02.03 | Approve applicant account | School Admin with accounts.registration_requests.approve (Technical Super Admin through effective permissions) | Owner-approved (P-01 to P-09, D-44 to D-53); implemented, tested and committed locally; reachable only in local review mode and the sandbox; Human Approval recorded by the owner (Ronald C. Arias, November 18, 2026) |
-| WF-02.04 | Reject applicant, notify by email, and delete rejected registration data | School Admin with accounts.registration_requests.reject (Technical Super Admin through effective permissions) | Owner-approved (stages 1 and 2, D-54 to D-62); implemented, tested and committed locally; local review mode and sandbox only (in-memory mail); production blocked; Human Approval recorded by the owner for local development (Ronald C. Arias, November 18, 2026) |
-| WF-02.05 | Activate or deactivate an existing account | School Admin with accounts.school_accounts.suspend / .activate and .read (Technical Super Admin through effective permissions) | Completed for local development only: stages 1–3C owner-authorized 18 Nov 2026; implemented, tested and committed locally (f476294; documentation ce784e8 and 53f0616; test 85212e4; not pushed); governed permissions provisioned and verified in ctug_workspace; production blocked; Human Approval recorded by the owner (Ronald C. Arias, November 18, 2026) for local development only |
-| WF-02.06 | View account status and permitted history | School Admin with accounts.school_accounts.read (Technical Super Admin through an actual Admin assignment; D-72) | Completed for local development only: D-72 to D-78 owner-approved 18 Nov 2026; implemented, tested and committed locally (ec6a145; documentation f51a9c6; accessibility correction 32ca7fa; not pushed); full WF-02 category regression passed; closes WF-02 Account Management (WF-02.01 to WF-02.06) for local development; production blocked; Human Approval recorded by the owner (Ronald C. Arias, November 18, 2026) for local development only |
+| WF-02.01 | View pending applications | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Existing owner-approved local implementation retained; normal list/detail read gate off; current role-context/read integration evidence and release blockers recorded below; no new Human Approval |
+| WF-02.02 | Verify and review applicant information | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Existing owner-approved local implementation retained; backend-reported decision availability integrated; normal read gate off and decisions unmounted; no new Human Approval |
+| WF-02.03 | Approve applicant account | School Admin with accounts.registration_requests.approve (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; isolated approval tested; normal approval unmounted and protected executor unavailable; no new Human Approval |
+| WF-02.04 | Reject applicant, notify by email, and delete rejected registration data | School Admin with accounts.registration_requests.reject (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; isolated rejection/outbox deletion tested; normal rejection unmounted, SMTP/production blocked; no new Human Approval |
+| WF-02.05 | Activate or deactivate an existing account | School Admin with accounts.school_accounts.suspend / .activate and .read (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; normal directory/detail reads integrated behind independent default-off gate; status writes isolated and protected; no new Human Approval |
+| WF-02.06 | View account status and permitted history | School Admin with accounts.school_accounts.read (Technical Super Admin through an actual Admin assignment; D-72) | Historical owner approval (18 Nov, local development) retained; normal minimized history read integrated behind default-off directory gate; release and full-check blockers remain; no new Human Approval |
 
 #### WF-03  Access Control Management
 
@@ -1045,6 +1045,14 @@ Feeds: WF-02.02 (open one application for review), WF-02.03 (approve), WF-02.04 
 
 Traceability: SRS v1 UC-02 (precondition: reviewer sees eligible Pending applications), FR-REG-02, FR-AUTH-03, FR-ADM-06; Use Case Specification v0.4.1 ACT-SA-01 and UC-D03; ERD tables accounts, users, roles, account_roles, role_permissions, account_permissions (no change).
 
+##### 23 November 2026 implementation checkpoint
+
+Existing Pending Student/Instructor list is reused with real authorized backend queries, search, category/proof filters, sort, pagination and loading/empty/error states. The normal read gate and paired frontend flag remain default off. No applicant records were created in the development database. Synthetic tests cover School Admin and Technical Super Admin in its own context, ordinary-role denials and role switching.
+
+Current status: implemented read integration; normal read gates remain off pending safe activation. Existing isolated mutations are not declared fully operational. Evidence and exact observed failures/counts: [23 November verification](../../testing/TEST_RESULTS.md#23-november-2026--wf-02-dashboard-integration). API contract: [verified Account Management API](../../api/AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). No schema change or development-database migration in this task. Production/real-data shared-HTTP use remains blocked.
+
+The existing AI Agent Guidelines Checklist (Inspect → Reconcile → Approve → Implement → Test → Commit) and historical human approvals below are preserved. No new Human Approval is recorded for this checkpoint. Git: local integration commit on ronald, parent d9b58da; resolve its hash with git log --oneline -- docs/DEVELOPMENT_STATUS.md. No push.
+
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
 AI Agent Checklist: ☒ Inspected   ☒ Reconciled   ☒ Approved   ☒ Implemented   ☒ Tested   ☒ Committed
@@ -1169,6 +1177,14 @@ Depends on: WF-01.01 and WF-01.02 (the captured fields and email proof), WF-01.0
 Feeds: WF-02.03 (approve) and WF-02.04 (reject) — both stay unmounted and separately gated; WF-02.02 provides the information a reviewer needs before them but records nothing for them.
 
 Traceability: Use Case Specification v0.4.1 ACT-SA-02 ("Validate email proof and Student/Instructor eligibility using approved evidence; OTP alone does not prove enrollment/employment") and UC-D03 step 1; SRS v1 UC-02 and FR-ADM-06; SRS v0.4 draft definitions of "Approved account" and "Verified academic eligibility"; ERD tables accounts, users, roles, account_roles (read only; no change).
+
+##### 23 November 2026 implementation checkpoint
+
+Existing minimized applicant detail and current-address email evidence are reused. The server now reports X-Workspace-Available-Actions on successful details; controls require that hint, the exact session permission and the separate mutation build flag. Missing/empty headers hide actions. Normal applicant detail has no mounted decision endpoints. Institutional eligibility still requires the approved external attestation.
+
+Current status: implemented read integration; normal read gates remain off pending safe activation. Existing isolated mutations are not declared fully operational. Evidence and exact observed failures/counts: [23 November verification](../../testing/TEST_RESULTS.md#23-november-2026--wf-02-dashboard-integration). API contract: [verified Account Management API](../../api/AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). No schema change or development-database migration in this task. Production/real-data shared-HTTP use remains blocked.
+
+The existing AI Agent Guidelines Checklist (Inspect → Reconcile → Approve → Implement → Test → Commit) and historical human approvals below are preserved. No new Human Approval is recorded for this checkpoint. Git: local integration commit on ronald, parent d9b58da; resolve its hash with git log --oneline -- docs/DEVELOPMENT_STATUS.md. No push.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
@@ -1298,6 +1314,14 @@ Depends on: WF-01.01 and WF-01.02 (captured fields and email proof), WF-01.03 an
 Feeds: WF-01.03 (the approved account can sign in), WF-04 (profile of the approved user), WF-09 (approval notification, if D-49 enables it), WF-12 (audit review of account.registration.approve).
 
 Traceability: SRS v1 and v0.4 UC-02 and AT-02; FR-AUTH-03; Use Case Specification v0.4.1 ACT-SA-03 and UC-D03 (including "Unverified legacy Pending account … refuse"); ERD tables accounts, account_roles, access_audit_logs, registration_notification_outbox (no change).
+
+##### 23 November 2026 implementation checkpoint
+
+Existing locked approval, current-address mailbox proof, exact eligibility attestation, initial Student/Instructor base-role assignment and audit behavior are retained. No normal approve route is mounted. Action availability is now confirmed by the backend route/gate/permission checks; the protected executor remains unavailable for this UI path. Tests exercise isolated approval and read integration, not live approval or privileged provisioning.
+
+Current status: implemented read integration; normal read gates remain off pending safe activation. Existing isolated mutations are not declared fully operational. Evidence and exact observed failures/counts: [23 November verification](../../testing/TEST_RESULTS.md#23-november-2026--wf-02-dashboard-integration). API contract: [verified Account Management API](../../api/AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). No schema change or development-database migration in this task. Production/real-data shared-HTTP use remains blocked.
+
+The existing AI Agent Guidelines Checklist (Inspect → Reconcile → Approve → Implement → Test → Commit) and historical human approvals below are preserved. No new Human Approval is recorded for this checkpoint. Git: local integration commit on ronald, parent d9b58da; resolve its hash with git log --oneline -- docs/DEVELOPMENT_STATUS.md. No push.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
@@ -1454,6 +1478,14 @@ The following content is retained verbatim from the original sample use case for
 | Alternative / exception flows | If authorization fails, reject without changing the record. If notification or deletion fails, follow a documented recovery path without reporting unsupported completion. |
 | Postcondition | Rejected applicant cannot use the rejected registration; normal fresh registration is possible, including reuse of the School ID/email when permitted by the approved deletion workflow. |
 | Verification | Tests cover authorized rejection, denial to unauthorized actors, notification behavior, deletion, and fresh registration; privacy/audit handling requires explicit approval. |
+
+##### 23 November 2026 implementation checkpoint
+
+Existing rejection reason allowlist, encrypted outbox snapshot and transactional rejection/deletion are retained. Notification success means queued, not delivered. Rejected registration data are deleted only if the existing dependency checks permit; normal registration may reuse the ID/email where policy permits. No normal reject route is mounted, no rejected-account reactivation exists, and local review remains locmem-only. Outbox/template readiness is required before advertising rejection; target/key readiness is rechecked by the service.
+
+Current status: implemented read integration; normal read gates remain off pending safe activation. Existing isolated mutations are not declared fully operational. Evidence and exact observed failures/counts: [23 November verification](../../testing/TEST_RESULTS.md#23-november-2026--wf-02-dashboard-integration). API contract: [verified Account Management API](../../api/AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). No schema change or development-database migration in this task. Production/real-data shared-HTTP use remains blocked.
+
+The existing AI Agent Guidelines Checklist (Inspect → Reconcile → Approve → Implement → Test → Commit) and historical human approvals below are preserved. No new Human Approval is recorded for this checkpoint. Git: local integration commit on ronald, parent d9b58da; resolve its hash with git log --oneline -- docs/DEVELOPMENT_STATUS.md. No push.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
@@ -1620,6 +1652,14 @@ Feeds: WF-01.03 (an inactive account cannot sign in), WF-02.06 (status history),
 
 Traceability: SRS v0.4/v1 FR-AUTH-03, FR-ADM-02 to FR-ADM-06 and the last-effective Super Admin rule; Use Case Specification v0.4.1 ACT-SA-05; catalogue v2 accounts.school_accounts.read/suspend/activate; ERD tables accounts, account_roles, access_audit_logs and django_session (no change).
 
+##### 23 November 2026 implementation checkpoint
+
+Normal application now mounts only the existing school-account directory/detail reads, behind independent WORKSPACE_ACCOUNT_DIRECTORY_ENABLED and VITE_WORKSPACE_ACCOUNT_DIRECTORY_ENABLED switches (both default off). The existing isolated status gate also opens reads. Search, status filtering and pagination are retained; protected administrator/governance/framework targets and the viewer remain excluded. Suspend/activate stay unmounted in normal routes and separately gated in isolated profiles; locked state validation, audit, session revocation and executor refusal are unchanged.
+
+Current status: implemented read integration; normal read gates remain off pending safe activation. Existing isolated mutations are not declared fully operational. Evidence and exact observed failures/counts: [23 November verification](../../testing/TEST_RESULTS.md#23-november-2026--wf-02-dashboard-integration). API contract: [verified Account Management API](../../api/AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). No schema change or development-database migration in this task. Production/real-data shared-HTTP use remains blocked.
+
+The existing AI Agent Guidelines Checklist (Inspect → Reconcile → Approve → Implement → Test → Commit) and historical human approvals below are preserved. No new Human Approval is recorded for this checkpoint. Git: local integration commit on ronald, parent d9b58da; resolve its hash with git log --oneline -- docs/DEVELOPMENT_STATUS.md. No push.
+
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
 AI Agent Guidelines Checklist: ☒ Inspect   ☒ Reconcile   ☒ Approve   ☒ Implement   ☒ Test   ☒ Commit
@@ -1756,6 +1796,14 @@ Full WF-02 category regression plan (mandatory after implementation, before WF-0
 - Backend, every module of accounts and access_control and the remaining apps (currently 1780 tests across 84 modules): registration and email verification (WF-01.01/01.02), login, logout and session security (WF-01.03/01.04/01.06), password reset (WF-01.05), pending list and review (WF-02.01/02.02), approval and rejection with the outbox (WF-02.03/02.04), activation and deactivation and the D-66 session epoch (WF-02.05), dynamic authorization and Deny precedence, governance P1–P4, P3B compatibility and the release safeguards; `manage.py check`; `makemigrations --check --dry-run`.
 - Frontend: `npm test` (all unit suites), `npm run test:registration-ui` (all browser suites at 360, 768, 1024 and 1440px in light, dark and system themes, including the account-directory suite), `npm run build`, `npm run lint`. Lint baseline exceptions are reported separately; the WF-02.05 exception does not carry over (D-78). Flaky or timed-out browser tests are reported as such.
 - Read-only checks over ctug_workspace (GET only, rolled back, checksums unchanged), as in WF-02.05 stage 3C.
+
+##### 23 November 2026 implementation checkpoint
+
+Normal application now mounts the existing minimized account history read behind the directory gate and exact accounts.school_accounts.read permission, with the same target exclusions as detail. Approval/status dates remain recorded values or null; only approval/deactivation/reactivation history is returned, newest first, with actor labels You/An administrator. No raw governance audit, private reasons or identities are exposed. This is read integration only; protected operations and release approval remain outstanding.
+
+Current status: implemented read integration; normal read gates remain off pending safe activation. Existing isolated mutations are not declared fully operational. Evidence and exact observed failures/counts: [23 November verification](../../testing/TEST_RESULTS.md#23-november-2026--wf-02-dashboard-integration). API contract: [verified Account Management API](../../api/AR-6C-registration-review-api-contract-proposal.md#0-verified-wf-02-implementation--23-november-2026). No schema change or development-database migration in this task. Production/real-data shared-HTTP use remains blocked.
+
+The existing AI Agent Guidelines Checklist (Inspect → Reconcile → Approve → Implement → Test → Commit) and historical human approvals below are preserved. No new Human Approval is recorded for this checkpoint. Git: local integration commit on ronald, parent d9b58da; resolve its hash with git log --oneline -- docs/DEVELOPMENT_STATUS.md. No push.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
@@ -5095,6 +5143,7 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | 0.3.41 WF-03.01 final closeout reconciliation | 20 November 2026 | D-87 API activation deferred (unmounted; live API/UI untested). D-98 resolved: both lint findings fixed; `npm run lint` 0 problems; `tsc -p tsconfig.app.json --noEmit` clean; `npm test` 217/217, 0 failed, 0 skipped; `npm run build` succeeded. D-100 scope reconciled: ordinary-role assignment stays in WF-03.01 (later role changes), separate from WF-02.03 initial base-role assignment; not implemented, deferred; no new workflow ID. Backend regression 1977/1977 in 87 apps.access_control and apps.accounts modules, 0 failed, 0 errors, 0 skipped. Status and blocker list corrected. | Owner (closeout); Human Approval pending |
 | 0.3.42 WF-03.01 D-100 staged ordinary-role code | 20 November 2026 | Owner-approved Treasurer/SSG Advisor assign/revoke rules staged for local review only, with a separate default-off gate, exact S1 permission, backend eligibility/atomic audit/session controls, isolated API/UI and deferred test module. No verified appointment source in the repository: grants fail closed; revocations require S1 and explicit activation. D-101/D-102 and SSG Advisor initialization remain blocked. Neither production routes nor pinned catalogue sources changed. Test stage and Human Approval unchanged. | Owner (implementation rules); final workflow approval pending |
 | 0.3.43 WF-03.01 D-110 appointment registry foundation | 20 November 2026 | Added candidate appointment registry data model and unapplied migration, staged local-review APIs, two-person external-document digest comparison, separate default-off evidence-use gate, exact-permission authorization and audit receipt linkage without changing protected audit.py. Deferred tests authored, not run; no live data, permissions, role assignments or release gates changed. Authority designation, continuous expiry enforcement, D-101/D-102 and final Human Approval OPEN. | Owner authorized proceeding; separate campus approval/release pending |
+| 0.3.44 WF-02 operational dashboard integration | 23 November 2026 | Reused existing WF-02 services/UI; mounted exact read-only directory/detail/history under an independent default-off gate; added server availability hints for decision/status controls; preserved role-context inheritance, mutation and governance boundaries. Existing catalogue sections, API, access-control, development status and test records updated together. Isolated verification and known full-check blockers recorded; no schema/live-data changes or push. | Historical approvals retained; no new Human Approval |
 
 | 0.3.8 requirements-only draft for unstarted workflows | 17 November 2026 | Updated only unstarted drafts in WF-05, WF-06, WF-07, WF-08 and WF-11.01 to reflect SRS v0.4 and Use Case Specification v0.4.1. Proposed Student Semester Onboarding and WF-08 subflow descriptions have no approved IDs; current registered IDs/titles remain unchanged. Standardized unstarted checklist footers. Historical started WF-01.01–06 and WF-02.01–03 specification bodies and register statuses preserved byte-exact; no owner/AI approvals or implementation evidence added. No code, ERD, migration, permission or repository write. | Awaiting stakeholder review and individual Inspect/Reconcile |
 

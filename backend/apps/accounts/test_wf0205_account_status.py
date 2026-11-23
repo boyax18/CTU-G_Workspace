@@ -353,12 +353,13 @@ class AccountStatusHTTPTests(TestCase):
         statuses = [self.post(self.student.pk, "suspend", {}).status_code for _ in range(21)]
         self.assertEqual((statuses[:20], statuses[20]), ([400] * 20, 429))
 
-    def test_not_mounted_in_config_urls_and_the_release_safeguard_refuses_it(self):
-        for url in (API, f"{API}1/suspend/", f"{API}1/activate/"):
+    def test_normal_reads_are_mounted_and_writes_remain_refused(self):
+        self.assertEqual(resolve(API, urlconf="config.urls").url_name, "school-accounts-list")
+        for url in (f"{API}1/suspend/", f"{API}1/activate/"):
             with self.subTest(url=url), self.assertRaises(Resolver404):
                 resolve(url, urlconf="config.urls")
         from apps.access_control.management.commands.init_registration_review_metadata_local_dev import unexpected_review_routes
-        self.assertEqual(len(unexpected_review_routes(URLCONF)), 5)  # list, detail, history (WF-02.06), suspend, activate
+        self.assertEqual(len(unexpected_review_routes(URLCONF)), 2)  # only suspend and activate
         self.assertEqual(unexpected_review_routes("config.urls"), [])
 
 

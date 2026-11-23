@@ -1,7 +1,82 @@
 ﻿# Test Results and Evidence — CTU-G Workspace
 
-**As of:** November 8, 2026
-**Evidence source:** Local PowerShell outputs and development test reports, plus the November 8, 2026 local protected-ERD hash checks. Results must be revalidated whenever relevant code, schema, or configuration changes.
+**As of:** November 23, 2026
+**Evidence source:** Current isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
+
+## 23 November 2026 — WF-02 dashboard integration
+
+Source baseline: branch `ronald`, parent `d9b58da`; pre-existing LAN/settings/script changes left outside this implementation commit. These are source, synthetic database and mocked-browser checks, not live release or human approval evidence.
+
+| Check | Observed result |
+| --- | --- |
+| Final backend integration/regression | 250/250 passed, 0 failed/errors/skipped across 15 selected modules; fresh disposable MySQL database destroyed after the run |
+| Backend status/outbox/release supplement | 46/46 passed in 3 additional modules; separate fresh disposable MySQL database destroyed |
+| Focused frontend contracts/clients and role context | 73/73 passed, 0 failed/skipped |
+| Six existing WF-02/dashboard browser suites | 62/62 passed, 0 failed/skipped |
+| Independent read-only directory build/browser suite | 3/3 passed, 0 failed/skipped; School Admin and Technical Super Admin access with only the directory read build flag; no status controls/POST; Student denied |
+| Full frontend unit suite | 238 tests: 237 passed, 1 existing failure (`dashboard-navigation.test.mjs`: appointment permission absent from frozen v2.0 inventory) |
+| Changed/new frontend source and tests lint | Passed, 0 problems |
+| Full frontend lint | 3 existing `react-hooks/set-state-in-effect` errors: `RoleContextSwitcher.tsx` lines 16 and 19, `RolePermissionsPanel.tsx` line 52; these files are unchanged by this task |
+| `npm.cmd run build` | Passed: TypeScript and Vite production bundle |
+| Django system checks | No issues during isolated test setup; all three normal WF-02 backend flags observed unset/default-off |
+| Schema/migrations | No model/migration/DBML change; no migration applied to `ctug_workspace` |
+| Git diff validation | `git diff --check` passed; source comparison confirmed every original catalogue approval/checklist line unchanged and all six existing WF-02 sections updated |
+
+Backend coverage includes the real normal read URLconf, exact permissions and Admin assignment, Technical Super Admin inheritance in its own selected context, actual role-context switch to Instructor and subsequent denial, Student/Instructor/anonymous denials, Deny precedence, revoked inherited assignment, protected-target exclusion, search/status filtering, default-off read gates, no mounted normal writes/governance, no-store responses and server action hints under isolated mutation gates. Existing approval/rejection/status/history suites retain transaction, proof, deletion/outbox, conflict, audit and revocation coverage. Release-guard tests cover exact read mounts and refusal of moved/renamed/overridden/subclassed/duplicate mounts, status writes and provisioning while the new read gate is on.
+
+Browser suites use fresh headless Edge profiles, localhost-only Vite and synthetic/mocked APIs. They cover read content, search/filter/pagination, unavailable/expired/forbidden/error/empty states, confirmations, uncertain-write handling with no replay, hidden disabled actions, keyboard/focus behavior and 360/768/1024/1440px layouts in Light, System-dark and Dark with contrast checks. Backend behavior is established separately by isolated MySQL tests; browser mocks are not live API E2E evidence. The 250-case backend run and 46-case supplement used 18 distinct selected modules in separate databases. The 73 focused frontend tests overlap the full 238 and must not be added as unique cases. The 62 and 3 browser cases ran separately.
+
+Commands from `frontend/`:
+
+```powershell
+npm.cmd test
+node --test tests/account-status.test.mjs tests/registration-review-api-contract.test.mjs tests/registration-review-approval.test.mjs tests/registration-review-rejection.test.mjs tests/role-context-immediate-selection.test.mjs tests/role-context-normal-app.test.mjs tests/role-context-switching.test.mjs
+node --test tests/browser/pending-applications-errors.test.mjs tests/browser/applicant-detail-errors.test.mjs tests/browser/applicant-approval-errors.test.mjs tests/browser/applicant-rejection-errors.test.mjs tests/browser/account-directory-errors.test.mjs tests/browser/dashboard-shell-errors.test.mjs
+node --test tests/browser/account-management-readonly-errors.test.mjs
+npm.cmd run lint
+npm.cmd run build
+```
+
+Changed-file lint used the frontend-relative paths from `git diff --name-only --relative`, plus `src/features/admin/managementAvailability.ts` and `tests/browser/account-management-readonly-errors.test.mjs`. `npm.cmd` avoids this machine's PowerShell script execution restriction; it does not change execution policy.
+
+Backend command from `backend/` (existing local virtual environment). The preamble loads local credentials without printing them and clears only three process-local development acknowledgements; existing `.env`/settings files are not edited:
+
+```powershell
+@'
+from dotenv import load_dotenv
+load_dotenv('.env')
+import os, sys, runpy
+for key in ('CTUG_ROLE_CONTEXT_NORMAL_DEV_ACK', 'CTUG_ROLE_CONTEXT_LAN_DEV_ACK', 'CTUG_ROLE_CONTEXT_HTTPS_LAN_DEV_ACK'):
+    os.environ[key] = ''
+modules = [
+    'apps.accounts.test_wf02_dashboard_integration',
+    'apps.accounts.test_wf0201_pending_list',
+    'apps.accounts.test_wf0202_applicant_detail',
+    'apps.accounts.test_wf0203_approval',
+    'apps.accounts.test_wf0204_rejection',
+    'apps.accounts.test_wf0205_account_status',
+    'apps.accounts.test_wf0206_account_history',
+    'apps.access_control.test_wf0201_release_safeguard',
+    'apps.access_control.test_wf0301_d113_role_context',
+    'apps.accounts.test_registration_review_routing',
+    'apps.accounts.test_registration_review_api',
+    'apps.accounts.test_review_sandbox_boundary',
+    'apps.access_control.test_registration_review_metadata_local_dev',
+    'apps.access_control.test_registration_review_operational_gate_p3c',
+    'apps.access_control.test_registration_review_local_release_p4',
+]
+sys.argv = ['manage.py', 'test', *modules, '--settings=config.test_settings', '--noinput']
+runpy.run_path('manage.py', run_name='__main__')
+'@ | .\.venv\Scripts\python.exe -
+```
+
+The 46-case supplement used the same backend wrapper with `modules = ['apps.accounts.test_wf0205_stage2', 'apps.accounts.test_wf0204_outbox_erasure', 'apps.accounts.test_wf0204_release_settings']`.
+
+`config.test_settings`/`IsolatedMySQLRunner` selects a fresh unpredictable `test_ctug_registration_<16 hex>` database, refuses reuse/cloning and verifies the connected database before fixtures. Test migrations are disposable setup; no development-database migration or account mutation is authorized by this command. Final database teardown is recorded with the final result above.
+
+Intermediate outcomes are retained honestly: the first backend command stopped at the existing LAN startup guard before database access. The first 177-case regression then had 176 successes and one error in the new action-hint fixture because its temporary URLconf omitted applicant detail; the fixture was corrected and the final expanded run is reported above. The first frontend run also exposed a missing-header compatibility issue in older mocks; the client now fails closed for absent headers, with regression coverage. Full frontend test/lint blockers persist independently of these fixes: the frozen-inventory mismatch exists in the original navigation, and all three lint findings are in unchanged files. The initial 46-case supplement hit two stale assertions within the old no-normal-routes test; it was updated to verify mounted reads return 503 by default and status writes remain unmounted. Its rerun passed all 46 cases. The expected audit-writer failure simulation can log a safe RuntimeError; the legacy date fixture emits a naive-datetime warning.
+
+Remaining unverified: real applicant data over approved HTTPS, live permission/service readiness, live SMTP delivery, shared-LAN safety, production deployment, pending protected WF-03 activation/migrations and full backend repository regression outside the selected suites. No new Human Approval, grant/provisioning, protected executor activation or push is inferred from passing tests.
 
 ## 1. Frontend Verification
 

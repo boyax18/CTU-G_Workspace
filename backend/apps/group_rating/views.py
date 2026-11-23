@@ -99,7 +99,84 @@ class RatingWorkspaceView(APIView):
                     "submitted": False,
                 })
 
-        return Response({"sessions": sorted(sessions.values(), key=lambda item: item["deadline"])})
+        session_rows = sorted(sessions.values(), key=lambda item: item["deadline"])
+        details = {}
+        for row in session_rows:
+            session = RatingSession.objects.filter(pk=row["id"]).first()
+            if session is None:
+                continue
+            is_professor = session.created_by_id == account.pk
+            is_leader = RatingGroup.objects.filter(session=session, leader=account).exists()
+            membership = RatingMember.objects.filter(
+                group__session=session, account=account
+            ).select_related("group").first()
+
+            own_result = IndividualResult.objects.filter(
+                session=session, student=account, released_at__isnull=False
+            ).first()
+
+            groups = []
+            for group in session.groups.select_related("leader").all():
+                members = RatingMember.objects.filter(group=group).select_related(
+                    "account", "account__profile"
+                )
+                member_rows = [
+                    {
+                        "school_id": member.account.school_id,
+                        "name": account_name(member.account),
+                    }
+                    for member in members
+                ]
+                submitted_ids = set(
+                    RatingSubmission.objects.filter(session=session, group=group).values_list(
+                        "rater__school_id", flat=True
+                    )
+                )
+                if is_professor or is_leader:
+                    groups.append({
+                        "id": group.pk,
+                        "name": group.name,
+                        "leader": {
+                            "school_id": group.leader.school_id,
+                            "name": account_name(group.leader),
+                        },
+                        "members": member_rows,
+                        "submission_count": len(submitted_ids),
+                        "member_count": len(member_rows),
+                        "submitted_school_ids": sorted(submitted_ids),
+                    })
+                elif membership is not None and membership.group_id == group.pk:
+                    groups.append({
+                        "id": group.pk,
+                        "name": group.name,
+                        "leader": {
+                            "school_id": group.leader.school_id,
+                            "name": account_name(group.leader),
+                        },
+                        "members": [
+                            item for item in member_rows
+                            if item["school_id"] != account.school_id
+                        ],
+                    })
+
+            details[row["id"]] = {
+                "groups": groups,
+                "own_result": None if own_result is None else {
+                    "scores": own_result.scores,
+                    "final_score": str(own_result.final_score),
+                    "released_at": own_result.released_at.isoformat(),
+                },
+            }
+
+        return Response({
+            "sessions": session_rows,
+            "details": details,
+            "capabilities": {
+                "create": has_permission(account, "group_rating.sheets.manage")
+                    and has_permission(account, "group_rating.criteria.manage"),
+                "publish": has_permission(account, "group_rating.invitations.manage"),
+            },
+        })
 
 
 class RatingSessionView(APIView):
@@ -242,7 +319,11 @@ class RatingSubmissionView(APIView):
         ratings = data.get("ratings") if isinstance(data, dict) else None
         if not isinstance(ratings, dict):
             raise exceptions.ValidationError("ratings must be an object.")
-        targets = list(RatingMember.objects.filter(group=membership.group).values_list("account__school_id", flat=True))
+        targets = list(
+            RatingMember.objects.filter(group=membership.group)
+            .exclude(account=account)
+            .values_list("account__school_id", flat=True)
+        )
         for target in targets:
             values = ratings.get(target)
             if not isinstance(values, dict):

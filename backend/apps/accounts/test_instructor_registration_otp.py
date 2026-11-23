@@ -224,7 +224,7 @@ class InstructorOTPTests(TestCase):
     def test_staff_id_validation_uses_staff_label(self):
         response = self.post(payload={**data(), "school_id": "bad-id"})
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["error"]["fields"]["school_id"], ["Staff ID must contain 1 to 7 digits only."])
+        self.assertEqual(response.json()["error"]["fields"]["school_id"], ["CTU-G ID must contain 1 to 7 digits only."])
 
     def test_identity_registration_limits_apply_to_id_and_email(self):
         Account.objects.create(school_id=data()["school_id"], email=data()["email"])

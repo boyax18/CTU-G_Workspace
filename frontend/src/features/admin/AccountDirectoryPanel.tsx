@@ -135,7 +135,7 @@ export default function AccountDirectoryPanel() {
         </div>
         <form role="search" aria-label="School accounts" noValidate onSubmit={apply} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] sm:items-end">
           <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium">
-            Search School ID, Staff ID or name
+            Search CTU-G ID or name
             <input ref={searchRef} type="search" value={draft.q} maxLength={ACCOUNT_SEARCH_MAX} autoComplete="off" spellCheck={false}
               aria-invalid={searchError ? true : undefined} aria-describedby={searchError ? `${ids}-search-error` : undefined}
               onChange={(e) => { setDraft({ ...draft, q: e.target.value }); setSearchError(''); }} className={`${fieldClass} w-full`} />

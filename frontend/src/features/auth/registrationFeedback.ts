@@ -5,9 +5,9 @@ export function asApiError(error: unknown, role?: 'Student' | 'Instructor'): Api
   if (problem.code === 'conflict') {
     return new ApiError(API_MESSAGES.conflict, 409, 'conflict', {}, { requestId: problem.requestId });
   }
-  if (role === 'Instructor' && problem.fields.school_id) {
+  if (role && problem.fields.school_id) {
     return new ApiError(problem.message, problem.status, problem.code, {
-      ...problem.fields, school_id: problem.fields.school_id.map(text => text.replace(/School ID/g, 'Staff ID')),
+      ...problem.fields, school_id: problem.fields.school_id.map(text => text.replace(/(?:School|Student|Staff) ID/g, 'CTU-G ID')),
     }, { requestId: problem.requestId, retryAfter: problem.retryAfter, outcomeUnknown: problem.outcomeUnknown, context: problem.context });
   }
   return problem;

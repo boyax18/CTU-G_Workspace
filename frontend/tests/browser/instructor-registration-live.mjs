@@ -73,7 +73,7 @@ try {
       });
       await page.goto(origin + '/register');
       await page.getByLabel('Register as', { exact: true }).selectOption('Instructor');
-      await page.getByLabel('Staff ID *', { exact: true }).fill(attempt.school);
+      await page.getByLabel('CTU-G ID *', { exact: true }).fill(attempt.school);
       await page.getByLabel('Email *', { exact: true }).fill(attempt.email);
       await page.getByLabel('First Name *', { exact: true }).fill(attempt.name);
       await page.getByLabel('Middle Name (optional)', { exact: true }).fill('Q.');
@@ -92,9 +92,9 @@ try {
         assert.equal(registrationBodies.at(-1).error.message, API_MESSAGES.conflict);
         await page.getByRole('alert').first().waitFor();
         assert.equal(new URL(page.url()).pathname, '/register');
-        assert.equal(await page.getByLabel('Staff ID *', { exact: true }).inputValue(), attempt.school);
+        assert.equal(await page.getByLabel('CTU-G ID *', { exact: true }).inputValue(), attempt.school);
         assert.equal(await page.getByLabel('Password *', { exact: true }).inputValue(), '');
-        assert.match(await page.locator('body').innerText(), /Check both your Staff ID and email/);
+        assert.match(await page.locator('body').innerText(), /Check both your CTU-G ID and email/);
         assert.equal(await page.getByRole('link', { name: 'Sign in', exact: true }).getAttribute('href'), '/');
         assert.equal(await page.getByRole('button', { name: 'Continue your registration' }).count(), 0);
         assert.equal(otpRequests, 0);
@@ -118,7 +118,7 @@ try {
       // Same-browser submission continues the original encrypted attempt.
       await page.goto(origin + '/register?requested_role=Instructor');
       for (const [label, value] of [
-        ['Staff ID *', attempt.school], ['Email *', 'changed@example.edu'],
+        ['CTU-G ID *', attempt.school], ['Email *', 'changed@example.edu'],
         ['First Name *', 'Changed'], ['Last Name *', 'Instructor'],
         ['Password *', 'Copper!River7392'], ['Confirm Password *', 'Copper!River7392'],
       ]) await page.getByLabel(label, { exact: true }).fill(value);

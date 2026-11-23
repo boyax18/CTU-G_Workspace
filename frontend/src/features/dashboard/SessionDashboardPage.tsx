@@ -14,6 +14,8 @@ import PendingApplicationsPanel from '../admin/PendingApplicationsPanel';
 import { PENDING_APPLICATIONS_LIST_ENABLED } from '../admin/pendingApplicationsConfig';
 import AccountDirectoryPanel from '../admin/AccountDirectoryPanel';
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
+import RoleAssignmentsPanel from '../access-control/RoleAssignmentsPanel';
+import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig';
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 import GroupRatingPage from '../groupRating/GroupRatingPage';
@@ -137,7 +139,7 @@ function Profile() {
     <section className="dashboard-panel rounded-2xl border p-6 sm:p-8" aria-labelledby="profile-details">
       <h2 id="profile-details" className="dashboard-heading mb-6 text-lg font-semibold">Account details</h2>
       <dl className="grid gap-6 text-sm sm:grid-cols-2">
-        <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">School ID</dt><dd className="dashboard-heading mt-2 font-semibold">{account.school_id}</dd></div>
+        <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">CTU-G ID</dt><dd className="dashboard-heading mt-2 font-semibold">{account.school_id}</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Assigned roles</dt><dd className="dashboard-heading mt-2 font-semibold">{account.roles.join(', ') || 'None'}</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Session status</dt><dd className="dashboard-heading mt-2 font-semibold">Authenticated</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Effective permission hints</dt><dd className="dashboard-heading mt-2 font-semibold">{permissions.length}</dd></div>
@@ -170,6 +172,8 @@ export default function SessionDashboardPage() {
   // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
   if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
   if (view === 'group-rating') return <GroupRatingPage />;
+  // WF-03.01 (D-86): Technical Super Admin role assignments; Django rechecks every request.
+  if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel />;
 
   return <ModuleUnavailable onBack={back} />;
 }

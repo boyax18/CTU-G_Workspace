@@ -22,7 +22,7 @@ export function validateRegistration(data: RegistrationData): Partial<Record<key
   for (const field of ['school_id', 'email', 'first_name', 'last_name', 'password', 'password_confirmation'] as const) {
     if (!data[field].trim()) errors[field] = 'This field is required.';
   }
-  if (data.school_id.trim() && !/^[0-9]{1,7}$/.test(data.school_id.trim())) errors.school_id = data.requested_role === 'Instructor' ? 'Staff ID must contain 1 to 7 digits only.' : 'Use 1 to 7 digits only.';
+  if (data.school_id.trim() && !/^[0-9]{1,7}$/.test(data.school_id.trim())) errors.school_id = 'CTU-G ID must contain 1 to 7 digits only.';
   if (data.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) errors.email = 'Enter a valid email address.';
   if (data.password && data.password.length < 8) errors.password = 'Use at least 8 characters.';
   if (data.password !== data.password_confirmation) errors.password_confirmation = 'Passwords do not match.';

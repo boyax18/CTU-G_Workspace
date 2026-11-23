@@ -16,4 +16,6 @@ urlpatterns = [
     ),
     # WF-02.05 (owner-authorized 18 Nov 2026, local development only; never config.urls).
     path("api/v1/admin/school-accounts/", include("apps.accounts.account_status_urls")),
+    # WF-03.01 D-87: sandbox-only route, gated off unless the sandbox operator opts in.
+    path("api/v1/admin/role-assignments/", include("apps.access_control.role_assignment_urls")),
 ]

@@ -183,6 +183,9 @@ def run(*, phase, actor_account_id, confirmation=None, apply=False):
             raise SchoolAccountsProvisionRefused("Another governance operation is running.")
     try:
         with transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True):
+            # WF-03.01 K-4 (owner-authorized 19 Nov 2026, Option A under R-1): lock the shared service rows
+            # FIRST, in service_id order, like every protected snapshot and role change; then as before.
+            list(Service.objects.select_for_update().order_by("service_id"))
             try:
                 admin = Role.objects.select_for_update().get(role_name="Admin", is_active=True)
             except (Role.DoesNotExist, Role.MultipleObjectsReturned) as exc:

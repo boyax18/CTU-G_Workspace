@@ -1,14 +1,16 @@
 """WF-02.05 Activate or deactivate an existing account (stage 1, owner-authorized 18 Nov 2026).
 
 Governance-sensitive. Changes ONLY accounts.is_active (D-65) for an eligible Approved school
-account (D-63), never request_status, review fields, roles, direct permissions, identity,
+account (D-63), plus the session-revocation counter that SR-1 Stage A requires (security state), never request_status, review fields, roles, direct permissions, identity,
 credentials or profile. One locked transaction reuses the WF-02.03/02.04 lock order and re-checks
 the exact effective permission inside the lock; the caller's confirmed state must still hold
 (D-68); one append-only audit event is written in the same transaction (D-67).
 
-The committed suspension audit row is also the account's session epoch (D-66): every session
-signed in before the latest suspension fails Django's per-request session-hash check, so a
-reactivation can never revive it. Administrators, governance and framework accounts and the
+Sessions (D-66; SR-1 Stage A, owner-authorized 19 Nov 2026): suspension and reactivation each
+advance the account's persistent session-revocation counter (session_revocation.advance) in the
+same transaction, so every session signed in before the change fails Django's per-request
+session-hash check and a reactivation can never revive it. The counter is not derived from the
+audit row, so deleting or changing that row cannot revive a session either. Administrators, governance and framework accounts and the
 actor are protected (D-71). Disabled by default; refused while the protected writer is enabled,
 because the executor protocol has no account-status operation (D-69). NOT mounted in config.urls.
 """
@@ -24,6 +26,7 @@ from apps.access_control.models import AccessAuditLog, AccountPermission, Accoun
 from apps.access_control.services import has_permission
 from apps.access_control.writer_boundary import WriterBoundaryUnavailable, writer_atomic
 
+from . import session_revocation
 from .models import Account
 from .registration_review import RegistrationReviewDenied, RegistrationReviewUnavailable
 
@@ -60,11 +63,18 @@ def is_reserved_role(role_name):
 
 
 def status_epoch(account_id):
-    """D-66: primary key of the account's latest committed suspension audit, or 0."""
+    """DIAGNOSTIC ONLY since SR-1 Stage A: primary key of the account's latest committed suspension OR
+    role grant/revoke audit receipt (Technical Super Admin path and Django Superuser procedure), or 0.
+
+    It is NOT a security control and is no longer part of the session hash: receipts can be deleted
+    or changed by a database-privileged writer, which moves this value backwards (SR-1). Session
+    revocation uses Account.session_revocation_version (apps.accounts.session_revocation).
+    """
     if type(account_id) is not int:
         return 0
+    from apps.access_control.role_management import ROLE_CHANGE_ACTIONS
     return (AccessAuditLog.objects.using(DEFAULT_DB_ALIAS)
-            .filter(target_account_id=account_id, action=SUSPEND_ACTION)
+            .filter(target_account_id=account_id, action__in=(SUSPEND_ACTION, *ROLE_CHANGE_ACTIONS))
             .aggregate(epoch=Max("pk"))["epoch"] or 0)
 
 
@@ -147,6 +157,8 @@ def _change(*, actor, target_id, activate, expected_active):
             new_value={"account_id": target_id, "request_status": "Approved", "is_active": activate},
             reason="account_status_change",
         )
+        # D-66 / SR-1: end every earlier session in the same transaction (the target row is already locked).
+        session_revocation.advance(target_id)
     return {"account_id": target_id, "is_active": activate}
 
 

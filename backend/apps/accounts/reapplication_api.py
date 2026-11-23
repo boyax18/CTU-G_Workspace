@@ -24,13 +24,13 @@ class ReapplicationLinkSerializer(serializers.Serializer):
 
     def to_internal_value(self, data):
         if type(data) is not dict or set(data) != {"school_id", "email"}:
-            raise serializers.ValidationError("Provide your School ID and registered email.")
+            raise serializers.ValidationError("Provide your CTU-G ID and registered email.")
         return super().to_internal_value(data)
 
     def validate_school_id(self, value):
         import re
         if not re.fullmatch(r"[0-9]{1,7}", value):
-            raise serializers.ValidationError("School ID must contain 1 to 7 digits.")
+            raise serializers.ValidationError("CTU-G ID must contain 1 to 7 digits.")
         return value
 
 

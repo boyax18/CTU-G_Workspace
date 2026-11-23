@@ -2,7 +2,7 @@ import Reveal from '../../../components/common/Reveal';
 import { GLASS } from '../../../utils/styles';
 
 const TIPS = [
-  'Enter your School ID exactly as it appears on your records.',
+  'Enter your CTU-G ID exactly as it appears on your records.',
   'Use the eye icon in the password field to check what you typed.',
   'If you do not have an account yet, use Get Started.',
   'For other concerns, see the Contact section.',

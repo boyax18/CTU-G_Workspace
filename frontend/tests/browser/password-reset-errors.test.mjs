@@ -34,7 +34,7 @@ async function enterPassword(page, password = 'New!Password643') {
 
 test('full flow: email, code, new password, with neutral copy and no ticket in the page', async () => {
   await scene(server(), async (page, seen) => {
-    assert.equal(await page.getByLabel('School ID or Staff ID', { exact: true }).count(), 0);
+    assert.equal(await page.getByLabel('CTU-G ID', { exact: true }).count(), 0);
     await sendEmail(page);
     await page.getByText('If an eligible account uses this email, we sent a 6-digit code.').waitFor();
     await page.getByText(/The code is valid for 10 minutes/).waitFor();

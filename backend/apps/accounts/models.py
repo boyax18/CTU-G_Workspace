@@ -6,8 +6,35 @@ from django.db import models, transaction
 from .fields import CurrentTimestamp, MySQLEnumField, MySQLTimestampField
 from .email_identity import normalize_account_email
 
+# WF-03.01 SR-1 Stage A (owner-authorized 19 Nov 2026): the persistent per-account session-revocation counter.
+# Only apps.accounts.session_revocation.advance() changes it (one atomic SQL increment). The guards below are
+# APPLICATION-level only: they refuse ORM writes that name the counter and stop a stale full save() from writing
+# an old value back. They do not bind QuerySet.update() on the base manager, raw SQL or a privileged database
+# user; only the separately approved non-decrease trigger (tested on disposable databases) works at that level.
+SESSION_REVOCATION_FIELD = "session_revocation_version"
+SESSION_HASH_SALT = "ctug.workspace.accounts.session_revocation.v2"
+
+
+class SessionRevocationWriteRefused(ValueError):
+    """An ORM write named the session-revocation counter outside session_revocation.advance()."""
+
+
+class AccountQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        if SESSION_REVOCATION_FIELD in kwargs:
+            raise SessionRevocationWriteRefused("Use apps.accounts.session_revocation.advance().")
+        return super().update(**kwargs)
+
+    def bulk_update(self, objs, fields, batch_size=None):
+        if SESSION_REVOCATION_FIELD in set(fields):
+            raise SessionRevocationWriteRefused("Use apps.accounts.session_revocation.advance().")
+        return super().bulk_update(objs, fields, batch_size=batch_size)
+
 
 class AccountManager(BaseUserManager):
+    def get_queryset(self):
+        return AccountQuerySet(self.model, using=self._db)
+
     @classmethod
     def normalize_email(cls, email):
         return normalize_account_email(email)
@@ -20,7 +47,7 @@ class AccountManager(BaseUserManager):
                 "Unsupported account creation fields: " + ", ".join(sorted(extra_fields))
             )
         if not isinstance(school_id, str) or not school_id.strip():
-            raise ValueError("School ID is required.")
+            raise ValueError("CTU-G ID is required.")
 
         school_id = self.model.normalize_username(school_id.strip())
         school_id = self.model._meta.get_field("school_id").clean(school_id, None)
@@ -149,7 +176,12 @@ class Account(AbstractBaseUser):
     db_default=False,
     )
 
-
+    # SR-1 Stage A: authoritative for role/status session revocation; never derived from an audit receipt.
+    session_revocation_version = models.PositiveBigIntegerField(
+        default=0,
+        db_default=0,
+        editable=False,
+    )
 
     objects = AccountManager()
 
@@ -162,8 +194,19 @@ class Account(AbstractBaseUser):
     def save(self, *args, **kwargs):
         # Do not expand partial approval/password writes to include email.
         update_fields = kwargs.get("update_fields")
+        if update_fields is not None and SESSION_REVOCATION_FIELD in set(update_fields):
+            raise SessionRevocationWriteRefused("Use apps.accounts.session_revocation.advance().")
         if update_fields is None or "email" in update_fields:
             self.email = normalize_account_email(self.email)
+        if update_fields is None and not self._state.adding and not kwargs.get("force_insert"):
+            # SR-1: a full save of an existing account never writes the counter, so a stale instance cannot
+            # lower it, and a deleted row is not silently re-created with an old value (Django refuses an
+            # update_fields save that matches no row).
+            deferred = self.get_deferred_fields()
+            kwargs["update_fields"] = [
+                field.name for field in self._meta.concrete_fields
+                if not field.primary_key and field.name != SESSION_REVOCATION_FIELD and field.attname not in deferred
+            ]
         return super().save(*args, **kwargs)
 
     def has_perm(self, perm, obj=None):
@@ -179,27 +222,29 @@ class Account(AbstractBaseUser):
         return False
 
     def _get_session_auth_hash(self, secret=None):
-        """WF-02.05 D-66: bind every session to the account's latest suspension.
+        """WF-02.05 D-66 / WF-03.01 D-83, SR-1 Stage A: bind every session to the password AND the
+        account's persistent session-revocation counter.
 
         Django re-checks this hash on every request (django.contrib.auth.get_user) and flushes a
-        mismatching session. Until an account has ever been suspended the hash is exactly
-        Django's own, so no existing session changes. After a suspension the hash also binds the
-        primary key of that committed, append-only suspension audit row, so every session signed
-        in before it fails the check, on every device, including after a later reactivation.
-        No schema change: the audit row is the epoch and is written in the same transaction as
-        is_active. Fallback secrets (SECRET_KEY_FALLBACKS) are handled by Django as before.
+        mismatching session. Every approved session-ending event (suspension, reactivation, School
+        Admin and Technical Super Admin grants and revocations, the protected bootstrap, password
+        reset) advances the counter in the same transaction as its change, so every session signed in
+        before it fails the check on every device, including after a later reactivation or after a
+        removed role is added again.
+
+        The counter is stored on the account row, never derived from audit receipts: deleting,
+        changing or forging a receipt cannot change it (SR-1). The v2 domain applies even at counter
+        0 and there is NO fallback to the earlier receipt-epoch hash or to Django's plain hash, so
+        every session created before this contract fails once (one-time sign-out). Password changes
+        still change the base hash. SECRET_KEY_FALLBACKS are handled by Django as before.
         """
         from django.utils.crypto import salted_hmac
-        from .account_status import status_epoch
 
+        version = self.session_revocation_version
+        if type(version) is not int or version < 0:
+            raise ValueError("The session-revocation counter is invalid.")  # fail closed, never a default
         base = super()._get_session_auth_hash(secret=secret)
-        epoch = status_epoch(self.pk)
-        if not epoch:
-            return base
-        return salted_hmac(
-            "ctug.workspace.accounts.session_status_epoch.v1", f"{base}:{epoch}",
-            secret=secret, algorithm="sha256",
-        ).hexdigest()
+        return salted_hmac(SESSION_HASH_SALT, f"{base}:{version}", secret=secret, algorithm="sha256").hexdigest()
 
     def __str__(self):
         return self.school_id

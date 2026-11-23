@@ -51,7 +51,7 @@ test('mock list limits to pending and matches role', () => {
   assert.equal(filterPendingRegistrations(records, '', 'Instructor').length, 2);
 });
 
-test('mock search uses only exact School ID text, not name or email', () => {
+test('mock search uses only exact CTU-G ID text, not name or email', () => {
   assert.equal(filterPendingRegistrations(original(), '9900002', 'All').length, 1);
   assert.equal(filterPendingRegistrations(original(), 'not found', 'All').length, 0);
 });

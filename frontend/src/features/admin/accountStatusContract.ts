@@ -11,7 +11,7 @@ export type AccountStatusConflictReason = 'state_changed' | 'protected_account' 
 export interface SchoolAccountItem {
   account_id: number;
   school_id: string;
-  id_label: 'School ID' | 'Staff ID';
+  id_label: 'CTU-G ID';
   full_name: string | null;
   roles: string[];
   is_active: boolean;
@@ -184,7 +184,7 @@ function parseItem(item: unknown, detail = false): SchoolAccountItem {
   if (!isRecord(item) || !exactKeys(item, all)) fail();
   const v = item as Record<string, unknown>;
   if (!isAccountId(v.account_id) || typeof v.school_id !== 'string' || v.school_id.length < 1 || v.school_id.length > 50
-    || (v.id_label !== 'School ID' && v.id_label !== 'Staff ID') || !optionalText(v.full_name, 400)
+    || v.id_label !== 'CTU-G ID' || !optionalText(v.full_name, 400)
     || !Array.isArray(v.roles) || v.roles.length > 20
     || v.roles.some((r) => typeof r !== 'string' || r.length < 1 || r.length > 50)
     || new Set(v.roles).size !== v.roles.length || typeof v.is_active !== 'boolean') fail();

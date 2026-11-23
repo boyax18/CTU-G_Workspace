@@ -22,7 +22,7 @@ const config = await import('../src/features/admin/accountStatusConfig.ts');
 hooks.deregister();
 
 const ROOT = '/api/v1/admin/school-accounts/';
-const item = (id = 7, overrides = {}) => ({ account_id: id, school_id: '7240001', id_label: 'School ID', full_name: 'Ana Cruz',
+const item = (id = 7, overrides = {}) => ({ account_id: id, school_id: '7240001', id_label: 'CTU-G ID', full_name: 'Ana Cruz',
   roles: ['Student'], is_active: true, ...overrides });
 const detail = (id = 7, overrides = {}) => ({ ...item(id), name: { first: 'Ana', middle: null, last: 'Cruz', suffix: null },
   request_status: 'Approved', created_at: '2026-11-10T09:15:00+08:00', can_reactivate: true,

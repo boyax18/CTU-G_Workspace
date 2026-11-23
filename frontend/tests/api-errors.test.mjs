@@ -50,11 +50,11 @@ test('both role feedback paths strip field details from conflict errors', () => 
   }
 });
 
-test('Staff ID validation retains its label in the shared error response path', async () => {
+test('CTU-G ID validation retains its label in the shared error response path', async () => {
   await withFetch(async () => json({ error: { code: 'validation_error', fields: { school_id: [secret] } } }, 400), async () => {
     await assert.rejects(() => getJSON('/api/v1/auth/register/'), error => {
-      assert.equal(asApiError(error, 'Instructor').fields.school_id[0], 'Staff ID must contain 1 to 7 digits only.');
-      assert.equal(asApiError(error, 'Student').fields.school_id[0], 'School ID must contain 1 to 7 digits only.');
+      assert.equal(asApiError(error, 'Instructor').fields.school_id[0], 'CTU-G ID must contain 1 to 7 digits only.');
+      assert.equal(asApiError(error, 'Student').fields.school_id[0], 'CTU-G ID must contain 1 to 7 digits only.');
       return true;
     });
   });

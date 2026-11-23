@@ -257,7 +257,7 @@ export type ApplicantDataNote = 'missing_profile' | 'missing_first_name' | 'miss
 export interface ApplicantDetail {
   account_id: number;
   school_id: string;
-  id_label: 'School ID' | 'Staff ID';
+  id_label: 'CTU-G ID';
   name: { first: string | null; middle: string | null; last: string | null; suffix: string | null };
   full_name: string | null;
   /** D-38: the full address, shown only in this authorized detail. */
@@ -272,7 +272,7 @@ export interface ApplicantDetail {
 
 const EVIDENCE_STATES: readonly EmailEvidenceState[] = ['verified', 'no_proof', 'address_changed', 'no_email'];
 const DATA_NOTES: readonly ApplicantDataNote[] = ['missing_profile', 'missing_first_name', 'missing_last_name'];
-const ID_LABEL: Record<RegistrationReviewRole, ApplicantDetail['id_label']> = { Student: 'School ID', Instructor: 'Staff ID' };
+const ID_LABEL: ApplicantDetail['id_label'] = 'CTU-G ID';
 const SUBJECT: Record<RegistrationReviewRole, ApplicantDetail['institutional_check']['subject']> = {
   Student: 'enrollment', Instructor: 'employment',
 };
@@ -305,7 +305,7 @@ export function parseApplicantDetail(value: unknown, expectedId: number): Applic
   if (v.account_id !== expectedId || role !== 'Student' && role !== 'Instructor') fail();
   const r = role as RegistrationReviewRole;
   if (typeof v.school_id !== 'string' || v.school_id.length < 1 || v.school_id.length > 50
-    || v.id_label !== ID_LABEL[r] || v.request_status !== 'Pending' || !isServerTimestamp(v.created_at)
+    || v.id_label !== ID_LABEL || v.request_status !== 'Pending' || !isServerTimestamp(v.created_at)
     || !optionalText(v.full_name, 400) || !optionalText(v.email, 150)
     || (typeof v.email === 'string' && !v.email.includes('@'))) fail();
   const name = v.name;
@@ -329,7 +329,7 @@ export function parseApplicantDetail(value: unknown, expectedId: number): Applic
   return {
     account_id: expectedId,
     school_id: v.school_id as string,
-    id_label: ID_LABEL[r],
+    id_label: ID_LABEL,
     name: { first: n.first, middle: n.middle, last: n.last, suffix: n.suffix },
     full_name: v.full_name as string | null,
     email: v.email as string | null,

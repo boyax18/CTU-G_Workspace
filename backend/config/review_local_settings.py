@@ -25,6 +25,12 @@ WORKSPACE_REGISTRATION_APPROVAL_ENABLED = True
 # local mode only. config.settings keeps WORKSPACE_ACCOUNT_STATUS_ENABLED absent (off); the protected
 # writer still refuses; the accounts.school_accounts.* rows must exist (governed tooling) to act.
 WORKSPACE_ACCOUNT_STATUS_ENABLED = True
+# WF-03.01 D-87: a separate, exact, PROCESS-ONLY opt-in for local role-assignment operations.
+# Nothing is enabled by the normal settings or by the existing local-review acknowledgement.
+# Leave this unset until the dedicated WF-03 regression and security checks are authorized.
+WORKSPACE_ROLE_ASSIGNMENT_ENABLED = (
+    os.environ.get("CTUG_ROLE_ASSIGNMENT_LOCAL_ACK") == "LOCAL_WF0301_D87"
+)
 
 # Explicitly suppress external messages for local development tests.
 # WF-02.04 D-54/D-62 (owner-authorized 18 Nov 2026): a rejection needs the durable encrypted

@@ -60,7 +60,7 @@ export default function RegistrationReviewPreview({ permissions }: { permissions
       </header>
 
       <section role="status" aria-label="Preview safety notice" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
-        <strong>Fictional data · Disabled feature preview.</strong> All School IDs below are invented. Decisions are simulated in your browser only; no approval, rejection, notification or audit record is submitted.
+        <strong>Fictional data · Disabled feature preview.</strong> All CTU-G IDs below are invented. Decisions are simulated in your browser only; no approval, rejection, notification or audit record is submitted.
       </section>
 
       <section className="dashboard-panel grid gap-4 rounded-2xl border p-5 sm:grid-cols-3" aria-label="Mock registration summary">
@@ -77,8 +77,8 @@ export default function RegistrationReviewPreview({ permissions }: { permissions
           </div>
           <div className="flex flex-wrap gap-2">
             <label className="dashboard-muted flex flex-col gap-1 text-xs">
-              Search fictional School ID
-              <input className="dashboard-panel w-48 rounded-lg border px-3 py-2 text-sm" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={50} placeholder="Search ID" />
+              Search fictional CTU-G ID
+              <input className="dashboard-panel w-48 rounded-lg border px-3 py-2 text-sm" value={search} onChange={(event) => setSearch(event.target.value)} maxLength={50} placeholder="Search CTU-G ID" />
             </label>
             <label className="dashboard-muted flex flex-col gap-1 text-xs">
               Requested role
@@ -95,7 +95,7 @@ export default function RegistrationReviewPreview({ permissions }: { permissions
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[580px] text-left text-sm">
-              <thead><tr className="dashboard-muted border-b text-xs uppercase tracking-wide"><th scope="col" className="px-2 py-3">School ID</th><th scope="col" className="px-2 py-3">Requested role</th><th scope="col" className="px-2 py-3">Submitted</th><th scope="col" className="px-2 py-3">Demo actions</th></tr></thead>
+              <thead><tr className="dashboard-muted border-b text-xs uppercase tracking-wide"><th scope="col" className="px-2 py-3">CTU-G ID</th><th scope="col" className="px-2 py-3">Requested role</th><th scope="col" className="px-2 py-3">Submitted</th><th scope="col" className="px-2 py-3">Demo actions</th></tr></thead>
               <tbody>{visible.map((item) => (
                 <tr key={item.account_id} className="border-b last:border-0">
                   <td className="dashboard-heading px-2 py-3 font-semibold">{item.school_id}</td>
@@ -118,7 +118,7 @@ export default function RegistrationReviewPreview({ permissions }: { permissions
       {selected && selectedRecord && (
         <section role="dialog" aria-modal="true" aria-labelledby="mock-confirm-title" className="dashboard-panel rounded-2xl border-2 border-amber-300 p-5">
           <h3 id="mock-confirm-title" className="dashboard-heading text-lg font-bold">Simulate {selected.action === 'approve' ? 'approval' : 'rejection'}?</h3>
-          <p className="dashboard-muted mt-2 text-sm">Fictional School ID {selectedRecord.school_id}. This changes preview data only; it will NOT affect a real account.</p>
+          <p className="dashboard-muted mt-2 text-sm">Fictional CTU-G ID {selectedRecord.school_id}. This changes preview data only; it will NOT affect a real account.</p>
           {selected.action === 'reject' && (
             <label className="mt-4 block text-sm font-medium">Mock rejection reason
               <select className="dashboard-panel mt-2 block w-full max-w-md rounded-lg border p-3" value={reason} onChange={(event) => setReason(event.target.value as RejectionCode | '')}>

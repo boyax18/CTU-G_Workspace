@@ -58,7 +58,7 @@ test('dashboard sign-out ends the session, opens / and Back does not return to t
     assert.deepEqual(seen.mutations.map((m) => m.path), ['/api/v1/auth/logout/']);
     await page.goBack();
     assert.equal(new URL(page.url()).pathname, '/');
-    await page.getByLabel('School ID or Staff ID', { exact: true }).waitFor();
+    await page.getByLabel('CTU-G ID', { exact: true }).waitFor();
   }, '/');
 });
 

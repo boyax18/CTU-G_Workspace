@@ -81,7 +81,7 @@ test('search, filters and sort go to the server only when applied, never per key
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
     const baseline = fake.state.lists.length;
-    const search = page.getByLabel('Search School ID or name');
+    const search = page.getByLabel('Search CTU-G ID or name');
     await search.pressSequentially('  santos ');
     await page.getByLabel('Requested role').selectOption('Instructor');
     await page.getByLabel('Email proof').selectOption('legacy');
@@ -106,7 +106,7 @@ test('invalid search text is refused in the browser without a request', async ()
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
     const baseline = fake.state.lists.length;
-    const search = page.getByLabel('Search School ID or name');
+    const search = page.getByLabel('Search CTU-G ID or name');
     await search.fill('Ñame');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await page.getByRole('alert').filter({ hasText: 'no accents' }).waitFor();
@@ -202,7 +202,7 @@ test('keyboard: the search form is reachable and operable without a pointer', as
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
     const baseline = fake.state.lists.length;
-    await page.getByLabel('Search School ID or name').focus();
+    await page.getByLabel('Search CTU-G ID or name').focus();
     const order = [];
     for (let i = 0; i < 5; i++) {
       await page.keyboard.press('Tab');

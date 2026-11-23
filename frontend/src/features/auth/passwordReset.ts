@@ -38,7 +38,7 @@ export const RECOVERY_VERIFY_UNCERTAIN = 'We could not confirm the code check. E
 export const RECOVERY_RESET_UNCERTAIN = 'We could not confirm whether your password was changed. Try signing in with your new password. If that does not work, start again.';
 export const RECOVERY_CODE_SENT = 'If an eligible account uses this email, we sent a 6-digit code.';
 export const RECOVERY_ASSISTED_HINT = 'If no email arrives, your account may need assisted recovery. Contact support.';
-export const RECOVERY_PASSWORD_HINT = 'Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your School ID, Staff ID or email.';
+export const RECOVERY_PASSWORD_HINT = 'Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your CTU-G ID or email.';
 
 // recovery_disabled and recovery_unavailable are definite refusals with nothing changed.
 const KNOWN_REFUSALS = new Set(['recovery_disabled', 'recovery_unavailable']);

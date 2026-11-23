@@ -2,7 +2,7 @@
 ## Use Case Specification — All Application User Types
 
 **Document ID:** CTUG-UCS-001  
-**Version:** 0.4.1 (workflow-category reconciliation; proposed WF-08 Group Rating)  
+**Version:** 0.4.1 + 18 November 2026 administrator-authority alignment (review draft; existing use-case IDs preserved)  
 **Date:** 17 November 2026  
 **Project:** CTU-G Workspace — Cebu Technological University, Ginatilan Campus  
 **Status:** **PROPOSED / NOT APPROVED FOR IMPLEMENTATION**  
@@ -50,13 +50,13 @@ This specification presents the actions that five primary application user types
 | Actor | Description and authority boundary |
 |---|---|
 | Technical Super Admin | **Application-level Super Admin**, built from normal School Admin authority plus separately protected access-governance permissions. It is **not** a separate third admin tier and not automatically a Django Superuser. No blanket right to view every business record. |
-| School Admin | Reviews applicants, administers approved school operations (including proposed creation and activation of academic periods), and assigns only eligible **ordinary** roles under allowlisted delegation. Cannot manage default permissions, general direct overrides, or protected governance. |
+| School Admin | Existing approved Instructor with an additional Admin role; handles authorized school operations. Cannot assign/revoke any account role or edit role defaults, overrides or protected governance. |
 | Instructor | Views assigned teaching information; prepares class-scoped group formation and Instructor-defined point-allocation sheets, reviews transfer/exception requests, and performs assigned clearance actions. Can additionally act as **SSG Advisor (Finance Monitor)** with separately approved, read-only finance capabilities. |
 | Treasurer | Handles permitted SSG fee assessments after verified period enrollment eligibility, payments, receipts, expenses, and reports. A Student may also have Treasurer duties; self-benefiting transactions must be blocked or independently controlled. |
 | Student | Completes proposed semester-specific onboarding and uses own academic, clearance, finance, group invitation and peer point-allocation, announcement and account services. Cannot access other students' records. |
 | Student/Instructor Applicant | Public, pre-approval actor who can start email-OTP registration; no dashboard or assigned application role from registration alone. |
 | CTU Main System / authorized verifier | **External authoritative source** for enrollment/reenrollment and verified academic status; CTU-G Workspace must not create a competing authoritative enrollment module. |
-| Django Superuser / technical operator | **Separate framework-level** maintenance actor, outside the five application user types; receives no automatic custom-app permission bypass. |
+| Django Superuser / technical operator | Separate framework-level highest configuration authority over system data and all account roles, **including exclusive grant/revoke of Technical Super Admin** via reviewed, audited, protected Django administration. No implicit ordinary Workspace API permission bypass. |
 
 ### 2.1 Authorization principles
 
@@ -73,6 +73,12 @@ This specification presents the actions that five primary application user types
 - **Organization-fee boundary:** activation or self-submitted subject lists alone do not create a debt. Verified eligibility for a distinct active academic period plus an approved fee policy must trigger exactly one assessment per student, period and fee type, even if onboarding is completed late or verified upstream before login.
 - **WF-08 group-scoped authority (proposal):** a Group Leader is a responsibility within one verified subject/activity, not a new application role. Instructor group management is limited to assigned classes. Each Student may have only one confirmed group in the same activity and cannot score themselves or view other raters' private point allocations.
 - **WF-08 exact point distribution (proposal):** for each published category, a Student must allocate **exactly** the Instructor-set number of points across eligible *other* members of the same activity group; zero is a valid intentional allocation, but an unanswered cell is not zero. Row totals sum that groupmate's categories; category totals must match the Instructor's budget before final submission.
+
+### 2.2 Administrator promotion authority — owner-directed alignment, 18 November 2026
+
+These are **target requirements, not implemented access paths**. An Instructor applies using WF-01.02 and is approved through WF-02.03. School Admin is the resulting Instructor + Admin composition. Technical Super Admin is Instructor + Admin + Technical Super Admin; its governance permissions must also be explicitly provisioned and enabled. Both retain Instructor. Technical Super Admin may assign/revoke Admin for another eligible approved Instructor, but **only Django Superuser** may add/remove the Technical Super Admin role. Django Superuser also has reviewed configuration authority over other system data and account roles. Direct unrestricted model editing is not approved; the current `/admin/` is read-only. A special audited, authenticated, protected Django configuration action must be reconciled against the existing bootstrap ceremony, ledger/writer safeguards and effective-permission architecture before use.
+
+**Negative flows:** School Admin role editing denied; Technical Super Admin grants/revokes Technical Super Admin denied; Django staff-only actor denied; `is_superuser` flag does not bypass unrelated Workspace API permissions; self-promotion by an application administrator denied; invalid Instructor eligibility denied; missing audit or P3B/protected writer precondition rolls back; last-operator removal refused until recovery policy exists. Preserve separate requirements for account eligibility, role collision, Deny precedence and session invalidation.
 
 ## 3. Common use cases (approved active accounts unless stated)
 
@@ -100,9 +106,11 @@ This specification presents the actions that five primary application user types
 | ACT-TS-05 | Review role/permission audit events | WF-03.06, WF-12.02 | Redacted, scoped and attributable access-governance history. |
 | ACT-TS-06 | Configure protected service permissions | WF-11.03, WF-03 | Only approved governance configuration; review impact on active users. |
 | ACT-TS-07 | Provision/promote eligible ordinary School Admin | WF-03.01; SRS UC-08 | Independently authorized change with role allowlist, actor identity and audit trail. |
-| ACT-TS-08 | Initiate protected Super Admin provisioning/recovery | WF-03.01; SRS UC-09 | Separate higher-assurance process; cannot freely promote self or eliminate last operator. |
+| ACT-TS-08 | Await first Technical Super Admin provisioning by Django Superuser | WF-03.01; SRS UC-09 | Only Django Superuser may grant/revoke Technical Super Admin to an approved Instructor; existing two-Admin/three-signer bootstrap and protected executor require reconciled replacement authorization. Technical Super Admin cannot perform elevation. |
 | ACT-TS-09 | Review authorized security/system events | WF-12.01–04 | Access redacted diagnostics as granted; no blanket read of financial or rating records. |
 | ACT-TS-10 | Review backup/retention controls | WF-12.05 | Only when assigned separate operational powers; procedures and evidence require approval. |
+
+| ACT-TS-11 | Assign/revoke authorized ordinary account roles | WF-03.01; SRS UC-05 / FR-ADM-01 | With exact permission, approved eligible target, no self-promotion, atomic audit, deny precedence and session revocation; may assign/remove Admin to eligible approved Instructors, never Technical Super Admin. |
 
 ### 4.2 School Admin (normal Admin)
 
@@ -113,7 +121,7 @@ This specification presents the actions that five primary application user types
 | ACT-SA-03 | Approve an eligible applicant | WF-02.03; SRS UC-02 | Approved/active account with correct first role and reviewer attribution in one authorized transaction. |
 | ACT-SA-04 | Reject applicant and notify by email | WF-02.04; SRS UC-03 | Notify and delete rejected registration account/data under approved failure, privacy and audit policy; allow normal fresh registration. |
 | ACT-SA-05 | Activate/deactivate eligible existing account | WF-02.05–06 | Authorized state change without breaking protected governance or audit invariants. |
-| ACT-SA-06 | Assign/revoke approved ordinary additional roles | WF-03.01; SRS UC-05 | Eligible Student+Treasurer or Instructor+SSG Advisor, with separation-of-duties checks; no governance promotion. |
+| ACT-SA-06 | Attempt to assign/revoke roles (denial case; historical ID retained) | WF-03.01; SRS UC-05 | School Admin has no account-role or Access Control Management mutation authority. All attempts must be refused and audited where policy requires; no role change. Ordinary role management belongs to ACT-TS-11. |
 | ACT-SA-07 | Manage authorized academic-period settings | WF-05.04, WF-11.01; SRS UC-14 | Create/edit Draft and Scheduled school-year/semester settings and validated dates; CTU main system remains enrollment authority. |
 | ACT-SA-08 | Maintain clearance signatory assignments | WF-06.02–03 | Only valid periods, subjects and appointees; assignment changes are attributable. |
 | ACT-SA-09 | Publish eligible announcements | WF-09.01; SRS UC-18 | Audience and publication policy enforced. |
@@ -121,7 +129,7 @@ This specification presents the actions that five primary application user types
 | ACT-SA-11 | Review permitted operational reports/activity | WF-12.02, WF-13.01 | Scoped business reports and optionally redacted school auth events, only if explicitly granted. |
 | ACT-SA-12 | Activate or close the campus academic period (proposed) | WF-05.04, WF-11.01 (existing categories; no new ID) | Preflight, confirm, audit and atomically transition exactly one campus-scoped Active semester while preserving prior records; no blanket charging or auto-clearance. |
 
-**Explicit denial:** School Admin cannot edit role-default permission templates, general account overrides, protected governance catalogue, or Super Admin grants. Any narrowly delegated read-only inspection is not permission editing.
+**Explicit denial:** School Admin cannot assign or revoke **any role**, edit role-default permission templates, manage account overrides, edit protected governance catalogue, or grant Super Admin authority. Any narrowly delegated read-only inspection is not permission editing.
 
 ### 4.3 Instructor
 
@@ -184,7 +192,7 @@ This specification presents the actions that five primary application user types
 |---|---|---|---|---|---|
 | WF-01 Authentication | O | O | O | O | O |
 | WF-02 Account Management | M | M | — | — | — |
-| WF-03 Access Control Management | G | A (ordinary roles only) | — | — | — |
+| WF-03 Access Control Management | G (subject to exact permissions) | — (may view own/eligible roles in school account detail, not manage access control) | — | — | — |
 | WF-04 Profile Management | O | O | O | O | O |
 | WF-05 Academic Information / Semester Onboarding | A | M (period activation) | A/R (assigned) | R (if assigned) | O (submit/verify status) |
 | WF-06 Clearance Management | A | M | A | A | O |
@@ -245,13 +253,13 @@ The detailed cases below are **design descriptions**. For cases whose workflow i
 - **Alternatives:** Email delivery or deletion failure, repeated request, concurrent approval, privacy/audit retention conflict. Do not claim the request completed if one required effect did not occur; use approved compensation/retry mechanism.
 - **Important conflict:** Older SRS FR-REG-07 describes retaining rejected request history. The **newer catalogue and project-owner decision** require notification and deletion of rejected registration data; exact audit-minimization and failure sequencing need explicit reconciliation.
 
-### UC-D05 — School Admin assigns an ordinary additional role
+### UC-D05 — Technical Super Admin assigns an ordinary additional role
 
-**SRS link:** UC-05, UC-11, UC-13. **Workflow:** WF-03.01. **Actor:** Authorized School Admin. **Status:** Draft/not yet inspected in catalogue.
+**SRS link:** UC-05, UC-11, UC-13. **Workflow:** WF-03.01. **Actor:** Authorized Technical Super Admin (ACT-TS-11); Django Superuser may use its separate protected configuration procedure. **Status:** Owner-directed requirement alignment; implementation and bootstrap blocked.
 
-- **Preconditions:** Approved active target; actor has delegated role-assignment permission; role is on ordinary allowlist; duties are eligible.
+- **Preconditions:** Approved active target; authorized Technical Super Admin holds the Admin + Technical Super Admin roles and the exact effective role-assignment permission, or Django Superuser uses the separately protected audited administrator channel; role is on approved allowlist; duties are eligible. School Admin is not an actor.
 - **Proposed main flow:** (1) View target roles. (2) Select an ordinary additional role (e.g., eligible Student+Treasurer or Instructor+SSG Advisor). (3) Review scope and separation-of-duties warnings. (4) Confirm an audited role assignment. (5) Re-evaluate effective permissions for next authorized request.
-- **Alternatives:** Protected/admin role, self-change, eligibility failure, financial self-interest, duplicate role or audit failure — deny without partial change.
+- **Alternatives:** School Admin attempts any assignment; Technical Super Admin attempts Technical Super Admin promotion; untrusted superuser flag in normal API; self-change, ineligible or protected target, financial self-interest, duplicate role, last-operator violation, missing audit or stale session — deny without partial change.
 - **Postconditions:** Original role preserved unless separately revoked; protected governance unchanged.
 
 ### UC-D06 — Technical Super Admin changes role-default permission
@@ -434,14 +442,14 @@ The detailed cases below are **design descriptions**. For cases whose workflow i
 |---|---|---|
 | AT-01 Registration | ACT-ST-01, ACT-IN-01 | Email verification precedes Pending/inactive creation; no role/session; duplicate attacks denied. |
 | AT-02 Approval | ACT-SA-03 | Correct authorized reviewer; one approval and base-role assignment with attribution; no self-approval. |
-| AT-03/04 Advisor | ACT-IN-06, ACT-SA-06 | Instructor keeps Instructor role; scoped financial views read-only; Treasurer writes denied. |
+| AT-03/04 Advisor | ACT-IN-06, ACT-TS-11, ACT-SA-06 (denied) | Eligible responsibility assignment only through Technical Super Admin or protected Django Superuser procedure; School Admin must be denied; Instructor monitoring remains read-only. |
 | AT-05 Student+Treasurer | ACT-TR-03, ACT-ST-06 | Both allowed interfaces appear; own-finance conflicting mutation denied. |
 | AT-06/07 Protected defaults | ACT-TS-02 | Super Admin can change approved defaults; School Admin denied even with forged API request. |
-| AT-08/09 Admin promotion | ACT-TS-07, ACT-SA-06 | Protected normal-admin creation; ordinary Admin cannot promote to Super Admin. |
+| AT-08/09 Admin promotion | ACT-TS-07, ACT-TS-08, ACT-TS-11, ACT-SA-06 (denied) | Approved Instructor retains Instructor while Technical Super Admin or Django Superuser assigns Admin; only Django Superuser can assign/revoke Technical Super Admin via protected audited configuration. |
 | AT-10 Last operator | ACT-TS-08 | No self-grant or last-governance-operator removal outside recovery. |
 | AT-11 Deny override | ACT-TS-03, ACT-TS-04 | Active Deny wins over any assigned role Grant on next request. |
-| AT-12/13 Logs/framework | ACT-TS-09, ACT-SA-11 | Redacted logs; Django Superuser provides no automatic custom-app bypass. |
-| AT-15 Audit rollback | ACT-TS-02, ACT-SA-06 | Failure to write required audit prevents protected mutation. |
+| AT-12/13 Logs/framework | ACT-TS-09, ACT-SA-11, Django Superuser protected config | School Admin receives only granted redacted views; Django Superuser controls reviewed administrative configurations but never obtains an implicit ordinary Workspace API bypass. |
+| AT-15 Audit rollback | ACT-TS-02, ACT-TS-11, protected Django Superuser configuration | Required audit failure rolls back protected role mutation; there is no unreviewed raw Django Admin role editing. |
 | AT-16 Row scope | ACT-IN-03, ACT-ST-07 | Assigned-class and own-payment constraints enforced server-side. |
 | Proposed fee tests AT-25–31 | ACT-TR-01–08 | Only after finance policy approval; verified official status, no gap charges, dedupe, actor trace and conflict controls. |
 | Candidate SAP-01 Active period uniqueness | ACT-SA-07, ACT-SA-12 | Cannot activate duplicate/concurrent campus periods; previous period and audit roll back together on failure. |
@@ -510,7 +518,7 @@ All numbered workflows must follow **Inspect → Reconcile → Approve → Imple
 | O-03 | WF-02 eligibility proof, legacy Pending accounts and precise review/deletion-email recovery/audit rules. | Approval, rejection and privacy. |
 | O-04 | Older SRS historical rejected-account retention versus later deletion-after-email requirement. | Requirements reconciliation. |
 | O-05 | Protected governance-role name, first operator bootstrap, Super Admin promotion and last-operator policy. | Technical Super Admin activation. |
-| O-06 | Exact ordinary-role assignment allowlist and SSG Advisor (Finance Monitor) appointment, scope and revocation. | School Admin / Instructor. |
+| O-06 | Exact ordinary-role assignment allowlist, Treasurer and SSG Advisor (Finance Monitor) appointment, scope and revocation. School Admin cannot assign roles; Technical Super Admin governs eligible ordinary grants, Django Superuser uses protected configuration. | Technical Super Admin / security owner. |
 | O-07 | Approve official enrollment and subject/Instructor verification contract, fee effective dates, new-semester liability trigger, schedule, exemptions, transfers, gaps, corrections and authorized upstream pre-login assessment. | Treasurer, onboarding and Student finance. |
 | O-08 | Set previous-semester clearance prerequisite and exceptions separately from onboarding and fees; require verified subjects/authorized signatories. | Clearance and Student onboarding. |
 | O-09 | Allocate WF-08 subflow IDs only after review; reconcile proposed Hybrid group formation, Instructor-selected leaders, Student invitation acceptance, hybrid size/unassigned-student remedies, student-requested transfers, Instructor-designated successors and corrected/finalized roster behavior. | Instructor / Student group formation and changes. |
@@ -535,3 +543,7 @@ All numbered workflows must follow **Inspect → Reconcile → Approve → Imple
 - **v0.4 — 17 November 2026 (historical numbering corrected in v0.4.1):** Expanded the Group Rating umbrella and proposed UC-D14–D16 for Hybrid Group Management, Student-requested Instructor-approved transfers and direct Instructor-designated leadership successors; documented configurable category point budgets with exact distribution, self-excluding Student table, calculated totals, zero versus blank, illustrative 10/10/20 example, proposed acceptance labels GRT-01–11 and open decisions O-15–O-17. Draft only; no new approved WF-08 IDs, code/ERD/permissions or workflow approvals.
 
 - **v0.4.1 — 17 November 2026:** Administrative category reconciliation using the owner-supplied 13-category map: Group Rating WF-08 (Group B); Announcements WF-09; Account Concerns WF-10; System Administration WF-11; Audit/Security WF-12; Reporting & Document Generation WF-13 (Group C). Remapped all affected use-case, traceability, status, scope and open-decision references; preserved proposed Group Rating behaviors and left WF-08 subflow IDs undefined. No ERD, code, permission or workflow approval changes.
+
+> **Implementation status (18 Nov 2026, WF-03.01 staged, local development only):** ACT-TS-11 is implemented for School Admin assignment/revocation only (ordinary Treasurer/SSG Advisor assignment is not implemented; the Permission Catalogue v2.1 overlay that binds ordinary-role management to the Technical Super Admin was validated on 19 Nov 2026 (D-89) but is not provisioned, and eligibility decisions D-100 remain open); under the Permission Catalogue v2.2 overlay (D-103, 19 Nov 2026) School Admin holds no access_control default, supporting ACT-SA-06 (validated specification, not provisioned); ACT-TS-08 and UC-09 are implemented as the Django-Superuser-exclusive protected command, verified only in the disposable test database; ACT-SA-06 (denial) is enforced and tested. No real administrator was provisioned. Owner direction (19 November 2026, D-104): Permission Catalogue v2.2 is the current target specification; v2.1 is maintained only as its verified dependency, not a separate operational target. The v2.1 validator was corrected under D-101 F-1 (commit 9e259e7; effective catalogue digests unchanged). Operational adoption still requires the independent D-101 sign-offs (v2.1, then v2.2), D-102 and separate consumer-switch and provisioning authorization; nothing is provisioned.
+
+> **Governance note (18 Nov 2026):** This revision leaves earlier historical design status and test evidence unchanged. ACT-SA-06 is retained as a negative/legacy traceability identifier; ACT-TS-11 identifies the new positive ordinary-role operation. The framework-superuser configuration contract and protected bootstrap remain pending.

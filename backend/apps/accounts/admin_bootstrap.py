@@ -105,7 +105,7 @@ def provision_first_workspace_admin(*, operator_school_id, operator_password,
             ).exists():
                 raise BootstrapRefused("This one-time bootstrap was already recorded.")
             if Account.objects.using(DEFAULT_DB_ALIAS).filter(school_id=new_school_id).exists():
-                raise BootstrapRefused("A new, unused school ID is required. Existing applicants cannot be promoted.")
+                raise BootstrapRefused("A new, unused CTU-G ID is required. Existing applicants cannot be promoted.")
 
             try:
                 operator = Account.objects.using(DEFAULT_DB_ALIAS).select_for_update().get(
@@ -130,7 +130,7 @@ def provision_first_workspace_admin(*, operator_school_id, operator_password,
                 )
             except (ValidationError, ValueError) as exc:
                 raise BootstrapRefused(
-                    "New Admin school ID, email or password did not pass validation."
+                    "New Admin CTU-G ID, email or password did not pass validation."
                 ) from exc
             if account.requested_role_id is not None or account.is_staff or account.is_superuser:
                 raise BootstrapRefused("The created Admin is not an eligible Workspace account.")

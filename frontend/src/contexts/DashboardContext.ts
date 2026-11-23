@@ -4,7 +4,7 @@ import type { DashboardView } from '../features/dashboard/navigation';
 
 /** A page inside the current view (for example one application inside Applicant reviews). */
 export interface DashboardSubpage {
-  /** Fourth breadcrumb, for example "School ID 7240001". */
+  /** Fourth breadcrumb, for example "CTU-G ID 7240001". */
   label: string;
   /** Replaces the view's description in the page header. */
   description?: string;

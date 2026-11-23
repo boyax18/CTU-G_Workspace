@@ -20,7 +20,7 @@ const row = (n) => ({
   requested_role: 'Student', created_at: '2026-11-10T09:15:00+08:00', email_verified: true,
 });
 const detail = (id, overrides = {}) => ({
-  account_id: id, school_id: '7241001', id_label: 'School ID',
+  account_id: id, school_id: '7241001', id_label: 'CTU-G ID',
   name: { first: 'Maria', middle: 'Luz', last: 'Santos', suffix: null }, full_name: 'Maria Luz Santos',
   email: 'maria.santos@example.edu', requested_role: 'Student', request_status: 'Pending',
   created_at: '2026-11-10T09:15:00+08:00',
@@ -92,7 +92,7 @@ test('a reviewer confirms eligibility, sees a confirmation dialog, and approves 
     await dialog.waitFor();
     assert.equal(await focusedText(page), 'Cancel');
     const dialogText = await dialog.innerText();
-    assert.ok(dialogText.includes('Approve Maria Luz Santos (School ID 7241001) as a Student?'));
+    assert.ok(dialogText.includes('Approve Maria Luz Santos (CTU-G ID 7241001) as a Student?'));
     assert.ok(dialogText.includes('It is audited and cannot be undone here.'));
 
     // Escape closes it, focus returns to the trigger, and nothing was sent.
@@ -146,7 +146,7 @@ test('no approval section without the approve permission; an unverified email bl
 
 test('an Instructor cites institutional employment records only', async () => {
   const fake = server({ detailFor: (id) => detail(id, {
-    school_id: '0012345', id_label: 'Staff ID', requested_role: 'Instructor',
+    school_id: '0012345', id_label: 'CTU-G ID', requested_role: 'Instructor',
     institutional_check: { subject: 'employment', verified_by_workspace: false },
   }) });
   await scene(fake.handle, async (page) => {

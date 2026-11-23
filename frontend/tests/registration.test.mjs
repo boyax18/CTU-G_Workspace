@@ -19,7 +19,7 @@ test('required fields and mismatched passwords are identified before submission'
   assert.deepEqual(validateRegistration(valid), {});
 });
 
-test('email is required and school IDs have 1–7 ASCII digits', () => {
+test('email is required and CTU-G IDs have 1–7 ASCII digits', () => {
   assert.equal(validateRegistration(valid).email, undefined);
   assert.ok(validateRegistration({ ...valid, email: '' }).email);
   assert.ok(validateRegistration({ ...valid, email: 'bad' }).email);

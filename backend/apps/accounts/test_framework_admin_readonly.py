@@ -64,6 +64,23 @@ class FrameworkAdminReadOnlyTests(SimpleTestCase):
                 self.assertFalse(model_admin.has_delete_permission(request))
                 self.assertEqual(model_admin.get_actions(request), {})
 
+    def test_account_identifier_labels_preserve_fields_and_read_only_behavior(self):
+        model_admin = admin.site._registry[Account]
+        self.assertIn("account_identifier", model_admin.fields)
+        self.assertIn("account_identifier", model_admin.readonly_fields)
+        self.assertEqual(model_admin.account_identifier.short_description, "CTU-G ID")
+        self.assertEqual(model_admin.account_identifier.admin_order_field, "school_id")
+        self.assertEqual(model_admin.account_identifier(SimpleNamespace(school_id="0012345")), "0012345")
+        self.assertEqual(model_admin.search_fields, ("school_id",))
+        self.assertEqual(Account.USERNAME_FIELD, "school_id")
+        self.assertEqual(Account._meta.get_field("school_id").column, "school_id")
+        form = admin.site.login_form()
+        self.assertEqual(form.fields["username"].label, "CTU-G ID")
+        error = form.get_invalid_login_error()
+        self.assertEqual(error.code, "invalid_login")
+        self.assertIn("CTU-G ID", error.messages[0])
+        self.assertNotIn("school id", error.messages[0].lower())
+
     def test_secrets_are_not_displayed(self):
         account_admin = admin.site._registry[Account]
         fields = set(account_admin.fields) | set(account_admin.list_display)

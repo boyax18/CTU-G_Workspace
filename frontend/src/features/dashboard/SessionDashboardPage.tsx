@@ -16,6 +16,7 @@ import AccountDirectoryPanel from '../admin/AccountDirectoryPanel';
 import { ACCOUNT_STATUS_ENABLED } from '../admin/accountStatusConfig';
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
+import GroupRatingPage from '../groupRating/GroupRatingPage';
 
 const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 
@@ -168,6 +169,7 @@ export default function SessionDashboardPage() {
 
   // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
   if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
+  if (view === 'group-rating') return <GroupRatingPage />;
 
   return <ModuleUnavailable onBack={back} />;
 }

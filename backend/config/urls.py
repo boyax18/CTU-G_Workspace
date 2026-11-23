@@ -16,6 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from apps.group_rating.views import (
+    RatingMemberView,
+    RatingPublishView,
+    RatingReleaseView,
+    RatingSessionView,
+    RatingSubmissionView,
+    RatingWorkspaceView,
+)
 
 from apps.accounts.registration_review_api import (
     PendingRegistrationDetailView,
@@ -24,6 +32,12 @@ from apps.accounts.registration_review_api import (
 
 urlpatterns = [
     path('api/v1/auth/', include('apps.accounts.urls')),
+    path('api/v1/group-rating/', RatingWorkspaceView.as_view()),
+    path('api/v1/group-rating/sessions/', RatingSessionView.as_view()),
+    path('api/v1/group-rating/sessions/<int:session_id>/members/', RatingMemberView.as_view()),
+    path('api/v1/group-rating/sessions/<int:session_id>/publish/', RatingPublishView.as_view()),
+    path('api/v1/group-rating/sessions/<int:session_id>/submit/', RatingSubmissionView.as_view()),
+    path('api/v1/group-rating/sessions/<int:session_id>/release/', RatingReleaseView.as_view()),
     # WF-02.01 (D-31) list and WF-02.02 (D-37) detail: the ONLY two review routes, both GET-only and
     # behind the same read switch (default off). Approve/reject (WF-02.03/02.04) remain unmounted;
     # never include the isolated review URLconf here.

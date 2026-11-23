@@ -149,7 +149,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     description: 'Clearance requests assigned to you for review.' },
 
   { id: 'group-rating', label: 'Group rating', icon: 'star', group: 'academic-services',
-    requiredAny: ['group_rating.sheets.assigned.read'], integration: planned,
+    requiredAny: ['group_rating.sheets.assigned.read'], integration: 'shell',
     description: 'Rating sheets for your assigned classes.' },
 
   { id: 'fee-obligations', label: 'Fee obligations', icon: 'calendar', group: 'financial-management',

@@ -9,6 +9,13 @@
 - Verification: backend 250/250 plus 46/46 status/outbox/release supplement in 18 selected modules (both disposable MySQL databases destroyed); details in `testing/TEST_RESULTS.md`; focused frontend 73/73; browser 62/62 plus independent read-build 3/3; changed-file lint and production build passed. Full frontend unit run remains 237/238 because of the existing appointment/frozen-catalogue inventory mismatch; full lint retains 3 existing errors in unchanged WF-03 files.
 - Git: local `ronald` integration from parent `d9b58da`; code/tests/docs committed together under `feat(wf-02): integrate account management reads and verified documentation`. Resolve the commit hash with `git log --oneline -- docs/CHANGELOG.md`. Unrelated LAN work preserved; no push and no shared-HTTP real-data activation.
 
+### 23 November 2026 — WF-02 local runtime activation inspection
+
+- Read-only inspection confirmed eligible account counts, active account/access-control services, active Admin read grants, and effective WF-02 read permissions for Admin and Technical Super Admin contexts in the current `ctug_workspace` database. Student and Instructor contexts were denied.
+- Runtime frontend/backend read switches remain default-off. The current Vite listener is plain HTTP on a LAN interface, localhost is unavailable, and a fresh settings load is blocked by the existing uncommitted LAN role-context configuration. No real-data read flags were enabled, and no database mutation, migration, protected activation, or personal-data display occurred.
+- Focused isolated verification: backend 86/86, frontend/browser 60/60, and production build passed. An expanded frontend selector reproduced one existing appointment-permission/frozen-catalogue assertion failure (72/73). See `testing/TEST_RESULTS.md`.
+- Result: source integration is present and role permissions are provisioned, but live applicant/account views remain unavailable until the local runtime uses a loopback-only or approved secure origin, startup configuration is valid, and read flags are intentionally enabled.
+
 ### 20 November 2026 — WF-03.01: final closeout reconciliation
 
 - **D-87:** API activation deferred; the role-assignment API stays unmounted. Live API/UI operation is untested; the API and page are verified only in disposable databases and mocked browsers.

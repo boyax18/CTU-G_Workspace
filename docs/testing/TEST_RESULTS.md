@@ -1,7 +1,24 @@
 ﻿# Test Results and Evidence — CTU-G Workspace
 
 **As of:** November 23, 2026
-**Evidence source:** Current isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
+**Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
+
+## 23 November 2026 — Current local runtime activation inspection
+
+This is a read-only runtime/configuration check, separate from the isolated synthetic tests below. It did not expose or record personal fields, change `.env`, alter the real database, or claim live authenticated browser verification.
+
+| Check | Observed result |
+| --- | --- |
+| Database | Read-only connection confirmed `ctug_workspace`; 3 eligible Pending Student applications and 1 eligible ordinary Approved directory account (before viewer exclusion) were counted without selecting personal fields |
+| Services and grants | `accounts` and `access_control` services active; both WF-02 read permissions exist with active Admin grants |
+| Effective role-context permissions | Current database assignments evaluated both reads as allowed in Admin and Technical Super Admin contexts; Student and Instructor contexts were denied. The Technical Super Admin assignment has an active Admin assignment. No session or role assignment was changed |
+| Backend/frontend read flags | Applicant-list, account-directory and account-status flags unset/default-off; normal list/directory API probes returned 503 |
+| Mutations and delivery | Approval/rejection and status-write routes remain unmounted or separately gated; outbox delivery is off |
+| Network safety | Vite answered on a private LAN interface over plain HTTP, with no transport-security headers; `127.0.0.1:5173` was unavailable. Real-data read flags were not enabled |
+| Fresh local startup | A fresh settings import was refused because the existing uncommitted LAN role-context acknowledgement is set while `DJANGO_DEBUG` is unset/false. Existing LAN/HTTPS work was preserved; inspection/test processes cleared only their own environment variables |
+| Verification | Isolated backend: 86/86 passed. Focused frontend/browser: 60/60 passed. Frontend production build passed. An expanded selection including dashboard navigation had 72/73 pass; the one failure is the existing appointment-permission/frozen-catalogue mismatch described below and in the historical checkpoint |
+
+The browser cases here use synthetic fixtures/mocked APIs and do **not** prove live integration. The live checks establish database counts, stored grants, configured gates and endpoint availability only. Remaining activation requirements are a loopback-only or approved secure origin, a valid local startup configuration, the two read flags, and an authenticated end-to-end check. No real account data was displayed.
 
 ## 23 November 2026 — WF-02 dashboard integration
 

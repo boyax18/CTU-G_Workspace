@@ -128,11 +128,12 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
   { id: 'overview', label: 'Dashboard', icon: 'home', group: 'overview', integration: 'shell',
     description: 'Your workspace at a glance. Modules appear according to your current access.' },
 
-  // WF-02.01: live (read-only) only when the list switch is on; Django still decides access.
+  // WF-02.01: live only when the list switch is on; Django still decides access. Decision controls
+  // appear inside the page only when the server reports them available, so this text stays neutral.
   { id: 'registration-review', label: 'Applicant reviews', icon: 'users', group: 'account-operations',
     requiredAny: ['accounts.registration_requests.read'],
     integration: PENDING_APPLICATIONS_LIST_ENABLED ? 'shell' : planned,
-    description: 'Pending Student and Instructor applications waiting for School Admin review. This list is read-only.' },
+    description: 'Pending Student and Instructor applications waiting for School Admin review.' },
   { id: 'account-directory', label: 'Account directory', icon: 'list', group: 'account-operations',
     // WF-02.05 (D-69, D-70): live only when its switch is on; Django still decides access.
     requiredAny: ['accounts.school_accounts.read'], integration: ACCOUNT_DIRECTORY_ENABLED ? 'shell' : planned,

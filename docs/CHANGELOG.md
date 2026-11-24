@@ -1,5 +1,10 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Applicant Reviews: neutral subtitle and selection hint
+
+- Removed "This list is read-only." from the page subtitle, because decision availability depends on the session. The table now shows "Select applicants to approve or reject them." when decisions are available and nothing is selected; the toolbar itself still appears only with a selection.
+- Verification: type-check, lint and build pass; browser suites `pending-applications-errors` + `dashboard-shell-errors` 22/22 and `applicant-approval-errors` 15/15 (run on its own, after a three-file parallel run timed out from harness contention); unit 243/244 (the one failure is the existing permission-inventory mismatch).
+
 ### 24 November 2026 — Applicant Reviews: automatic filtering
 
 - Removed Apply filters. Search updates after a ~300 ms pause (Enter applies at once); Requested role, Email proof and Sort by apply immediately. All of them combine in the existing server query, and each change resets to page 1 and clears the selection. Superseded responses are discarded, and the previous rows stay dimmed during loading.

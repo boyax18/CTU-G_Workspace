@@ -508,6 +508,10 @@ export default function PendingApplicationsPanel() {
           </p>
         )}
 
+        {listing.status === 'ready' && rows.length > 0 && selectionEnabled && count === 0 && (
+          <p className="dashboard-muted mt-5 text-sm">Select applicants to approve or reject them.</p>
+        )}
+
         {listing.status === 'ready' && selectionEnabled && count > 0 && (
           <section aria-label="Decisions for selected applicants" className="dashboard-panel mt-5 rounded-xl border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">

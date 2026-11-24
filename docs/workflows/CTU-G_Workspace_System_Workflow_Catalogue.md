@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.47  |  24 November 2026  |  For stakeholder review
+Draft version 0.3.48  |  24 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
@@ -52,8 +52,8 @@ Index only. Actor and status are documented here; detailed specifications are in
 | --- | --- | --- | --- |
 | WF-02.01 | View pending applications | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Existing owner-approved local implementation retained; normal list/detail read gate off; current role-context/read integration evidence and release blockers recorded below; no new Human Approval |
 | WF-02.02 | Verify and review applicant information | School Admin with accounts.registration_requests.read (Technical Super Admin through effective permissions) | Existing owner-approved local implementation retained; backend-reported decision availability integrated; normal read gate off and decisions unmounted; no new Human Approval |
-| WF-02.03 | Approve applicant account | School Admin with accounts.registration_requests.approve (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; individual and bounded bulk decisions use isolated review routes; normal routes unmounted, protected executor unavailable and outbox key absent in current environment; no new Human Approval |
-| WF-02.04 | Reject applicant, notify by email, and delete rejected registration data | School Admin with accounts.registration_requests.reject (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; individual and bounded bulk decisions use isolated review routes; normal routes unmounted, outbox key and SMTP delivery unavailable in current environment; no new Human Approval |
+| WF-02.03 | Approve applicant account | School Admin with accounts.registration_requests.approve (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; individual and bounded bulk decisions use isolated review routes; normal routes unmounted and protected executor unavailable; operational in the loopback `-Local` development mode on `ctug_workspace` since 24 Nov (outbox key provisioned outside Git; individual and bulk approval browser-verified on a disposable replica); no new Human Approval |
+| WF-02.04 | Reject applicant, notify by email, and delete rejected registration data | School Admin with accounts.registration_requests.reject (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; individual and bounded bulk decisions use isolated review routes; normal routes unmounted; operational in the loopback `-Local` development mode on `ctug_workspace` since 24 Nov (encrypted rejection notice queued, registration deleted; individual and bulk rejection browser-verified on a disposable replica); SMTP delivery worker still off; no new Human Approval |
 | WF-02.05 | Activate or deactivate an existing account | School Admin with accounts.school_accounts.suspend / .activate and .read (Technical Super Admin through effective permissions) | Historical owner approval (18 Nov, local development) retained; normal directory/detail reads integrated behind independent default-off gate; status writes isolated and protected; no new Human Approval |
 | WF-02.06 | View account status and permitted history | School Admin with accounts.school_accounts.read (Technical Super Admin through an actual Admin assignment; D-72) | Historical owner approval (18 Nov, local development) retained; normal minimized history read integrated behind default-off directory gate; release and full-check blockers remain; no new Human Approval |
 

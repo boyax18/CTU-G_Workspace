@@ -261,30 +261,51 @@ function Test-StopKey {
     return $false
 }
 
+function Get-ProcessStamp($Process) {
+    try { return $Process.StartTime.ToUniversalTime().ToString('o') } catch { return '' }
+}
+
 function Save-ServerRecord([object[]]$Processes) {
-    $records = @($Processes | Where-Object { $_ } | ForEach-Object {
-        @{ pid = $_.Id; started = $_.StartTime.ToUniversalTime().ToString('o') } })
-    ConvertTo-Json -InputObject @($records) | Set-Content -Path $PidFile -Encoding UTF8
+    # The record names its owner (this launcher's PowerShell process) so that another
+    # start can tell a closed window's leftovers from a launcher that is still running.
+    $me = Get-Process -Id $PID
+    $servers = @($Processes | Where-Object { $_ } | ForEach-Object { @{ pid = $_.Id; started = (Get-ProcessStamp $_) } })
+    $record = @{ owner = @{ pid = $PID; started = (Get-ProcessStamp $me) }; servers = $servers }
+    ConvertTo-Json -InputObject $record -Depth 4 | Set-Content -Path $PidFile -Encoding UTF8
+}
+
+function Test-SameProcess($Entry) {
+    if (-not $Entry -or -not ($Entry.PSObject.Properties.Name -contains 'pid')) { return $null }
+    $proc = Get-Process -Id ([int]$Entry.pid) -ErrorAction SilentlyContinue
+    if ($proc -and (Get-ProcessStamp $proc) -eq [string]$Entry.started) { return $proc }
+    return $null
 }
 
 function Stop-LeftoverServers {
-    # A previous launcher window may have been closed without Ctrl+C. Stop only
-    # processes proven to be ours: same PID, same start time, and a command line
-    # that writes to this launcher's log directory. Anything else is left alone.
+    # Only a launcher that is GONE (window closed without Ctrl+C) can leave servers
+    # behind. If the recorded owner is still running, refuse instead of stopping its
+    # servers. Stop only processes proven to be ours: same PID, same start time and a
+    # command line writing to this launcher's log directory. Records without an owner
+    # (older format) are never acted on.
     if (-not (Test-Path $PidFile)) { return }
-    # Windows PowerShell 5.1 emits a JSON array as ONE object; assign before enumerating.
-    $records = @()
-    try { $parsed = Get-Content $PidFile -Raw | ConvertFrom-Json; $records = $parsed } catch { }
-    foreach ($record in $records) {
-        if (-not $record -or -not ($record.PSObject.Properties.Name -contains 'pid')) { continue }
-        $proc = Get-Process -Id ([int]$record.pid) -ErrorAction SilentlyContinue
+    $record = $null
+    try { $record = Get-Content $PidFile -Raw | ConvertFrom-Json } catch { }
+    if (-not $record -or -not ($record.PSObject.Properties.Name -contains 'owner')) {
+        Remove-Item $PidFile -ErrorAction SilentlyContinue
+        return
+    }
+    $owner = Test-SameProcess $record.owner
+    if ($owner -and $owner.Id -ne $PID) {
+        Stop-Launcher "CTU-G Workspace is already running from another window (PowerShell PID $($owner.Id))." `
+            'Use that window, or stop it there with Ctrl+C before starting again.'
+    }
+    foreach ($entry in @($record.servers)) {
+        $proc = Test-SameProcess $entry
         if (-not $proc) { continue }
-        $sameStart = $false
-        try { $sameStart = ($proc.StartTime.ToUniversalTime().ToString('o') -eq [string]$record.started) } catch { }
         $cim = Get-CimInstance Win32_Process -Filter "ProcessId = $($proc.Id)" -ErrorAction SilentlyContinue
-        if ($sameStart -and $cim -and $cim.CommandLine -and $cim.CommandLine.Contains($LogDir)) {
-            Write-Info "Stopping a leftover server from an earlier session (PID $($proc.Id))."
-            & taskkill.exe /PID $proc.Id /T /F *> $null
+        if ($cim -and $cim.CommandLine -and $cim.CommandLine.Contains($LogDir)) {
+            Write-Info "Stopping a leftover server from a closed launcher window (PID $($proc.Id))."
+            Stop-Tree $proc
         }
     }
     Remove-Item $PidFile -ErrorAction SilentlyContinue

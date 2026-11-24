@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — WF-02 individual and bulk decisions working in `-Local`
+
+- Provisioned the development outbox key (v1) once in the git-ignored `backend/.env` (no prior key or outbox rows existed). The loopback decision profile now offers approve, reject and bulk approve/reject on `ctug_workspace` through `.\Start-CTUG-LAN.ps1 -Local`, with the existing permission, CSRF, audit and outbox rules. No application code or permission changed.
+- Fixed the launcher's leftover cleanup: the process record names its owning launcher, so a second start refuses while that launcher runs instead of stopping its servers.
+- Verification: 19/19 real-browser checks and 10/10 database-effect checks on a disposable schema replica; 82/82 focused decision tests (83/83 with the key loaded); safe non-mutating probes of the real `-Local` app. `ctug_workspace` unchanged; the four existing applicants were not decided.
+
 ### 24 November 2026 — Synthetic LAN setup removed; launcher uses `ctug_workspace`
 
 - Removed the synthetic-database development variant: `ctug_lan_synthetic` profile/settings/URLconf, `ctug_lan` command, initializer, seeding, live synthetic verifier, local-secrets generator and `Initialize-CTUG-LAN.ps1`.

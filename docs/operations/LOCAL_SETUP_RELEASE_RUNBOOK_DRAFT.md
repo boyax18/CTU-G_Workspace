@@ -59,10 +59,26 @@ verifying the page, the API proxy, sign-in-required protected reads and (LAN) th
 reachable directly. Ctrl+C stops both process trees; a launcher window closed abruptly is cleaned up on
 the next start (only processes it recorded). Logs: `.local\ctug-dev\logs\`.
 
+**Applicant decisions (`-Local`).** Run `.\Start-CTUG-LAN.ps1 -Local`, open `http://127.0.0.1:5173`, and sign in as
+School Admin or Technical Super Admin (no role switch needed). *Applicant reviews* then offers Review
+application → Approve / Reject (each with confirmation), plus row selection, Select All on Current Page,
+Clear Selection, and Bulk Approve / Bulk Reject (1–20). Decisions really change `ctug_workspace`.
+Approval activates the account and assigns the requested role. Rejection deletes the registration so the
+person can register again. Each decision writes its audit record and one encrypted `Pending` notification;
+nothing is emailed because the profile keeps mail in-process and the delivery worker is off (queued ≠
+delivered).
+
+**Outbox key.** A development key `WORKSPACE_OUTBOX_KEK_V1_B64` (v1) was generated once on 24 Nov 2026
+and stored in the git-ignored `backend/.env`. Never print, commit or regenerate it while outbox rows exist;
+queued notifications can only be decrypted with it. This is local development key storage, not an
+approved production KMS.
+
+**Running twice.** If a launcher is already running in another window, a new start refuses and leaves it
+alone. Only servers from a launcher window that has closed are stopped.
+
 **Known blockers (unchanged by the launcher).** `access_control` migrations 0004/0005 are not applied to
-`ctug_workspace`; the preflight reports them and never applies them. No valid
-`WORKSPACE_OUTBOX_KEK_V1_B64` is configured, so decisions stay fail-closed even in `-Local` until an
-approved key is provisioned outside Git. Plain HTTP over Wi-Fi exposes passwords and applicant data to the
+`ctug_workspace`; the preflight reports them and never applies them (the decision path does not use those
+tables). Plain HTTP over Wi-Fi exposes passwords and applicant data to the
 network (Option A policy: trusted networks only; HTTPS Option B remains deferred). Windows may classify
 the Wi-Fi as Public, which blocks other devices; the launcher reports this and changes nothing.
 

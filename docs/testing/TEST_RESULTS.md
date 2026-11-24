@@ -3,6 +3,19 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — WF-02 decisions in `-Local` mode
+
+| Check | Result |
+| --- | --- |
+| Prerequisites (read-only) | `ctug_workspace`: approve/reject permissions bound to Admin, both services active, 0 outbox rows, no key in process/user/machine/.env. After provisioning: key decodes to 32 bytes; decision gates open; approval/rejection notification ready; approve/reject/bulk resolve to their views; executor off; status writes off; mail locmem |
+| Real browser (headless Edge, real frontend + real `review_decision_local_settings`, disposable replica of the exact `ctug_workspace` schema, 13 test accounts) | 19/19: bulk buttons shown and disabled with no selection; School Admin sees Approve and Reject; approve confirmation dialog then success, applicant leaves Pending and appears in Account Directory; reject confirmation then "rejection email has been queued", applicant leaves Pending; Technical Super Admin role switch; Select All on Current Page; Clear Selection; Bulk Approve 2 and Bulk Reject 2 with result summaries and list refresh; Student/Instructor/Treasurer no controls, API 403 |
+| Replica database effects | 10/10: approved accounts Approved/active with Student role and reviewer; rejected accounts and profiles deleted; 6 outbox rows (3 approved, 3 rejected), all `Pending`, none delivered, key v1, no plaintext address; 6/6 decrypt with the stored key; one audit row per decision; rejected ID and email re-creatable; untouched applicants intact. Replica dropped |
+| Real `-Local` app on `ctug_workspace` (no sign-in) | Ready 4/4 features; anonymous reads 401; approve/reject/bulk GET 405 (mounted); anonymous POST 403; suspend and role-assignments 404; LAN address unreachable; decision build flags `1` |
+| Focused tests (disposable MySQL) | `test_wf0203_approval`, `test_registration_bulk`, `test_wf02_dashboard_integration`, `test_registration_review_notifications`, `test_registration_review_routing`: 82/82; with `.env` key loaded and `test_registration_outbox`: 83/83; launcher/Option A contracts OK |
+| Launcher ownership | Second start while a launcher runs: refused, listeners unchanged (2→2). Owner window killed: next start stopped the 2 recorded server trees, record removed |
+| Real data | `ctug_workspace` counts + `CHECKSUM TABLE` (11 tables) identical before/after; the four existing applicants not decided |
+| Not performed | Decisions by the owner on real applicants (owner's choice in the app); SMTP delivery |
+
 ## 24 November 2026 — synthetic setup removal and `ctug_workspace` startup
 
 | Check | Result |

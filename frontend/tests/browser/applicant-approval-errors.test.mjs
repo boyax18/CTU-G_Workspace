@@ -103,7 +103,13 @@ test('selection comes first, the toolbar appears only with a selection, and labe
     const headers = await table.locator('thead th').allInnerTexts();
     assert.equal(headers[1].trim().toUpperCase(), 'CTU-G ID', JSON.stringify(headers));
     assert.equal(await table.locator('tbody tr').first().locator('td').first().locator('input[type="checkbox"]').count(), 1);
-    assert.equal(await page.getByRole('button', { name: /^Approve/ }).count(), 0, 'toolbar hidden with no selection');
+    assert.equal(await page.getByRole('button', { name: /^Approve/ }).count(), 0, 'decision buttons hidden with no selection');
+    // Select All is offered even before anything is ticked.
+    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
+    await page.getByText('2 applicants selected on this page').waitFor();
+    await page.getByRole('button', { name: 'Approve All' }).waitFor();
+    await page.getByRole('button', { name: 'Unselect All' }).click();
+    await page.getByText('Select applicants to approve or reject them.').waitFor();
     await page.getByRole('checkbox', { name: 'Select CTU-G ID 7241001' }).check();
     await page.getByText('1 applicant selected on this page').waitFor();
     assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isEnabled(), true);

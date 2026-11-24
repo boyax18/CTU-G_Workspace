@@ -509,7 +509,13 @@ export default function PendingApplicationsPanel() {
         )}
 
         {listing.status === 'ready' && rows.length > 0 && selectionEnabled && count === 0 && (
-          <p className="dashboard-muted mt-5 text-sm">Select applicants to approve or reject them.</p>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p className="dashboard-muted text-sm">Select applicants to approve or reject them.</p>
+            <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting}
+              onClick={() => selectAllOnPage(true)}>
+              Select All on Current Page
+            </button>
+          </div>
         )}
 
         {listing.status === 'ready' && selectionEnabled && count > 0 && (

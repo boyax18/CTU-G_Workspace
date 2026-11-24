@@ -3,6 +3,21 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — permanent one-command LAN development system
+
+| Check | Result |
+| --- | --- |
+| LAN IP detection | `-CheckOnly` selected Wi-Fi `192.168.100.46`; ZeroTier (APIPA default gateway), Tailscale, WSL/Hyper-V and Bluetooth adapters excluded; public/APIPA/CGNAT `CTUG_DEV_LAN_IP` values refused |
+| Synthetic initialization | Schema created with marker; all migrations applied to `ctug_lan_synthetic` only; seeded 6 roles, 2 services, 8 accounts, 24 pending applicants, 4 catalogue permissions, 4 audited Admin bindings; second run created 0 rows (idempotent) |
+| Startup | Launcher printed the success block for `http://192.168.100.46:5173` only after page 200, proxied session `authenticated=false`, anonymous directory 401 and direct `:8000` LAN connection refused |
+| Live end-to-end (`manage.py ctug_lan verify --mutate-synthetic`) | 34/34: frontend and registry build flags (WF-02 `1`, governance `0`); proxy; marked synthetic DB; Option A refuses `ctug_workspace`; anonymous 401; loopback-only Django; School Admin sign-in with role context and 4 WF-02 permissions; pending list, search/filter, detail and server-advertised approve/reject/bulk actions; directory list/detail/history; suspend route 404; Technical Super Admin role switch and inherited WF-02 in its own context; governance routes 404; Student, Instructor and Treasurer denied (403, including a reject POST); approval (Approved/active, role, audit, encrypted Pending outbox row); duplicate approval 404; rejection (account and profile deleted, encrypted outbox row retained); bulk approve 2/2; bulk reject skipping an already-decided ID; 21-ID bulk 400; outbox row count exact; sign-out |
+| Rate limits | Running the verifier twice within a minute returns HTTP 429 from the existing login (8/min) and bulk (3/min) throttles. These were left unchanged; one run per minute passes |
+| Refusals | `ctug_lan initialize/preflight` under `config.settings` refused before any write; Option A with `ctug_workspace` raises `ImproperlyConfigured` |
+| Shutdown | Ctrl+C keypress: exit 0, ports 8000/5173 free, 0 server processes. Console Ctrl+C signal: same. Frontend killed: launcher stopped the backend tree (exit 1). Abruptly closed launcher: next start stopped only the 2 recorded process trees and the record was removed |
+| Unit/contract | `python -m unittest config.test_dev_lan_profile config.test_wf0301_lan_dev_gate config.test_wf0301_https_lan_gate`: 66/66, including launcher feature-agnostic and ASCII guards |
+| Regression (disposable MySQL) | `manage.py test --settings=config.test_settings` for `test_wf02_dashboard_integration`, `test_registration_review_routing`, `test_wf0301_option_a_proxy`, `test_registration_bulk`, `test_wf0203_approval`, `test_registration_review_notifications`, `test_registration_outbox`: 98/98; database destroyed |
+| Not verified | Access from a second physical device: Windows reports the Wi-Fi as a Public network. SMTP delivery is intentionally off |
+
 ## 24 November 2026 — isolated bulk route integration
 
 | Check | Result |

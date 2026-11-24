@@ -1,5 +1,14 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Permanent one-command LAN development system
+
+- Added `Start-CTUG-LAN.ps1` (automatic LAN IPv4 detection, preflight, Django on loopback + Vite on the LAN address, readiness and security probes, clean Ctrl+C shutdown, leftover-process recovery) and `Initialize-CTUG-LAN.ps1` (one-time synthetic setup/top-up, explicit `-Reset`). The launcher is feature-agnostic.
+- Added the central development feature registry `backend/config/dev_features.py` and the `lan-synthetic` profile (`config/dev_lan_environment.py`, `config/dev_lan_settings.py`, `config/dev_lan_urls.py`). WF-02 applicant reviews, individual and bulk decisions, and the read-only directory are approved; account-status writes and WF-03 governance are registered but forced off.
+- Added the hard-named synthetic database `ctug_lan_synthetic` with a marker table, dedicated git-ignored keys, and `manage.py ctug_lan initialize|preflight|verify`. Seeding uses the validated catalogue v2.2 and audited bindings; there are no real records and no reset without `-Reset`.
+- Option A HTTP LAN gate now requires the synthetic database (refuses `ctug_workspace`) and accepts the launcher profile. The localhost D-116 gate, the proxy guard and protected-writer refusals are unchanged; the HTTPS profile remains uncommitted and inactive.
+- Recorded the permanent development-complete rule in the workflow catalogue (v0.3.46) and the profile in the access-control gates and runbook §2A.
+- Verification: live end-to-end 34/34 on the running application; profile/Option A/HTTPS gate contracts 66/66; focused WF-02/Option A/outbox regression tests 98/98 on a disposable MySQL database; four shutdown scenarios. No `ctug_workspace` writes or migrations, and no SMTP.
+
 ### 24 November 2026 — Isolated WF-02 bulk route integration
 
 - Added the existing bulk-decision view to the shared registration-review URLconf used only by the loopback local-review/decision-local profiles and synthetic sandbox. Normal `config.urls` and production routing remain unchanged; source defaults remain off, with flags enabled only in the current local processes.

@@ -4,7 +4,7 @@
 **Scope:** Active-role switching for authorized multi-role accounts  
 **Current decision:** **Option A — Controlled LAN development testing (recommended now)**  
 **Future target:** **Option B — Secure LAN deployment**  
-**Status:** Proposal / implementation pending; this document does not authorize protected governance activation
+**Status:** Option A implemented for synthetic development (24 Nov 2026) through `Start-CTUG-LAN.ps1`; this document does not authorize protected governance activation
 
 ## 1. Background and current issue
 
@@ -117,6 +117,8 @@ Make role switching and other approved CTU-G Workspace operations available to a
 
 **Choose Option B before** inviting real students, instructors, or administrators to log in over LAN, or before accepting genuine applicant data. Option A is **not** a substitute for HTTPS.
 
-**Implementation status:** Neither option is activated by this document. The earlier experimental HTTPS/LAN patch was removed; the current working tree was reported clean at checkpoint `42640b9` before subsequent Git reconciliation. Confirm the latest Git state before editing.
+**Implementation status (24 November 2026):** Option A is implemented as a fail-closed gate and is used by the permanent launcher `Start-CTUG-LAN.ps1` (see `operations/LOCAL_SETUP_RELEASE_RUNBOOK_DRAFT.md` §2A). It now requires the separate synthetic database `ctug_lan_synthetic` and refuses `ctug_workspace`, enforcing §3.3 in code. Live verification of the running application covered School Admin and Technical Super Admin access, Active Role switching, Student/Instructor/Treasurer denial, CSRF-protected sign-in and decisions, unmounted governance routes and loopback-only Django (`testing/TEST_RESULTS.md`). Option B (HTTPS) remains deferred and unactivated.
+
+**Earlier status:** Neither option was activated by this document. The earlier experimental HTTPS/LAN patch was removed; the current working tree was reported clean at checkpoint `42640b9` before subsequent Git reconciliation. Confirm the latest Git state before editing.
 
 **Next scoped engineering task:** Inspect the current WF-03 role-context settings and test harness; implement and test the **separate, default-off Option A gate** without removing the existing localhost policy; verify LAN browser acceptance with synthetic accounts; then record results. Preserve all approval gates.

@@ -268,7 +268,30 @@ if _WORKSPACE_NORMAL_ROLE_CONTEXT_ACK:
             "Normal role switching requires the local DEBUG profile, local "
             "ctug_workspace MySQL, and loopback-only ALLOWED_HOSTS."
         )
-WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = _WORKSPACE_NORMAL_ROLE_CONTEXT_ACK
+# Option A is separate from D-116. The normal localhost-only acknowledgment
+# remains unchanged, and LAN tests are default-off and fail closed at startup.
+from .lan_role_context import validate_lan_dev_role_context
+
+try:
+    WORKSPACE_ROLE_CONTEXT_LAN_DEV_IP = validate_lan_dev_role_context(
+        os.environ,
+        debug=DEBUG,
+        allowed_hosts=ALLOWED_HOSTS,
+        database=DATABASES["default"],
+        csrf_origins=CSRF_TRUSTED_ORIGINS,
+        session_secure=SESSION_COOKIE_SECURE,
+        csrf_secure=CSRF_COOKIE_SECURE,
+    )
+except ValueError as exc:
+    raise ImproperlyConfigured(str(exc)) from exc
+
+WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = (
+    _WORKSPACE_NORMAL_ROLE_CONTEXT_ACK
+    or WORKSPACE_ROLE_CONTEXT_LAN_DEV_IP is not None
+)
+if WORKSPACE_ROLE_CONTEXT_LAN_DEV_IP is not None:
+    # Django must stay loopback-only behind Vite; refuse direct LAN callers.
+    MIDDLEWARE = ["apps.accounts.lan_dev_proxy_guard.LANDevLoopbackProxyGuard", *MIDDLEWARE]
 if WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED:
     # After authentication + session timeout, before any API view permission checks.
     MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware"]

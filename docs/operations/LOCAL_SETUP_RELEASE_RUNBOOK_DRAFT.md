@@ -27,6 +27,76 @@ git rev-parse --show-toplevel
 4. Verify your local MySQL service is available. The current settings/active database engine must come from `backend/config/settings.py` and sanitized environment variable names, not this older checkpoint.
 5. Do **not** enable recovery SMTP, outbox worker, registration-review routes or permission grants as part of normal startup.
 
+## 2A. Everyday LAN development — one command, synthetic data only (24 Nov 2026)
+
+Use this whenever other devices on the same Wi-Fi should open CTU-G Workspace. It serves **only** the
+isolated synthetic database `ctug_lan_synthetic` over plain HTTP; `ctug_workspace` is never selected,
+migrated or written, and real people's data must never be entered.
+
+**One-time setup** (first use, after new migrations, or to top up pending applicants), from the repository root:
+
+```powershell
+.\Initialize-CTUG-LAN.ps1            # idempotent; never resets existing synthetic data
+.\Initialize-CTUG-LAN.ps1 -Reset     # explicit: drop and recreate the MARKED synthetic schema (asks to type RESET)
+```
+
+It creates the git-ignored `.local\ctug-lan\synthetic.env` (dedicated session key and outbox encryption
+key; never overwritten), creates the schema with a synthetic marker table (an unmarked schema of that name
+is refused, never adopted), applies the repository migrations to that schema only, and seeds fictional
+accounts. Sign-in details (one random password, all `LAN-*` IDs) are written to the git-ignored
+`.local\ctug-lan\synthetic-accounts.txt`; they are not printed or committed.
+
+| Synthetic account | Roles | Use |
+| --- | --- | --- |
+| `LAN-SCHOOLADMIN-01` | Admin | School Admin: Applicant Reviews, decisions, Account Directory |
+| `LAN-TECHADMIN-01` | Admin + Technical Super Admin | Active Role switching; Technical Super Admin context inherits WF-02 |
+| `LAN-STUDENT-0x`, `LAN-INSTRUCTOR-0x` | Student / Instructor | Ordinary accounts (directory entries; denied Account Management) |
+| `LAN-TREASURER-01` | Student + Treasurer | Treasurer is an ordinary appointment role; its context stays hidden until appointment runtime enforcement is approved (existing D-111 rule) |
+| `LAN-APPLICANT-S0nn` / `-I0nn` | none (Pending) | 16 Student + 8 Instructor applicants with verified `@synthetic.ctug.test` addresses (RFC 6761, undeliverable) |
+
+**Everyday startup:**
+
+```powershell
+.\Start-CTUG-LAN.ps1                       # auto-detects the active Wi-Fi/Ethernet IPv4 address
+.\Start-CTUG-LAN.ps1 -InterfaceAlias Wi-Fi # or -LanIp 192.168.x.y when several adapters are connected
+.\Start-CTUG-LAN.ps1 -CheckOnly            # detection + preflight only
+```
+
+The launcher ignores loopback, disconnected, APIPA, VPN/overlay (Tailscale, ZeroTier, WireGuard), WSL and
+Hyper-V adapters, and prompts when two physical adapters qualify. It refuses ports 8000/5173 held by
+another program (it names the program and never stops it), runs `manage.py ctug_lan preflight`, starts
+Django on `127.0.0.1:8000` and Vite on `<LAN IP>:5173`, and prints the success block only after verifying
+the page, the API proxy, sign-in-required protected reads, and that Django is not reachable directly
+from the LAN. Ctrl+C stops both process trees. If a previous launcher window was closed abruptly, the
+next start stops only the server processes it can prove it started (recorded PID, start time and its own
+log path). Logs: `.local\ctug-lan\logs\`.
+
+**Configuration model.** The launcher passes only `DJANGO_SETTINGS_MODULE=config.dev_lan_settings` and
+`CTUG_DEV_LAN_IP`. `config/dev_lan_environment.py` derives everything else *before* `.env` is loaded:
+synthetic database name and secrets, SMTP off, outbox worker off, every `WORKSPACE_*`/`CTUG_*`
+`_ENABLED`/`_ACK` flag from the shell or `.env` neutralized, and the existing Option A gate configured for
+exactly the detected address (allowed hosts, CSRF origin, loopback-only Django with the proxy guard).
+Feature availability then comes only from the central registry `backend/config/dev_features.py`.
+Changing Wi-Fi networks needs no `.env` edits.
+
+**Live verification** of the running application (5 sign-ins; with `--mutate-synthetic` it also decides
+6 synthetic applicants; the existing rate limits allow one run per minute):
+
+```powershell
+cd backend
+$env:DJANGO_SETTINGS_MODULE='config.dev_lan_settings'; $env:CTUG_DEV_LAN_IP='<LAN IP>'
+.\.venv\Scripts\python.exe manage.py ctug_lan verify --base-url http://<LAN IP>:5173 --mutate-synthetic
+```
+
+**Troubleshooting.** *Other devices cannot connect:* the launcher warns when Windows classifies the network
+as Public or a firewall rule blocks Node.js. It never changes the network profile or firewall; an
+administrator may mark a trusted network Private or allow Node.js on Private networks only. Guest or
+neighborhood Wi-Fi often enables client isolation, which no laptop setting can bypass. *"schema is
+behind":* run `.\Initialize-CTUG-LAN.ps1`. *Plain `manage.py` fails with "requires the local synthetic
+MySQL database":* remove the obsolete `CTUG_ROLE_CONTEXT_LAN_DEV_ACK` / `CTUG_ROLE_CONTEXT_LAN_DEV_IP(S)`
+lines from `backend/.env`; the launcher supplies Option A per session, and Option A no longer serves
+`ctug_workspace`.
+
 ## 3. Start backend and frontend in separate terminals
 
 **Terminal 1 — backend:**

@@ -55,6 +55,13 @@ def main():
             report["warnings"].append(
                 f"{len(pending)} migration(s) are not applied to {db['NAME']}; the launcher never applies them. "
                 "Features that need those tables stay unavailable until an approved migration step.")
+        if launch.get("workers"):
+            from apps.accounts.outbox_worker import due_job_count
+            earlier = due_job_count()
+            report["warnings"].append(
+                "Email delivery is ON: notifications queued from now on are emailed automatically"
+                + (f"; {earlier} earlier queued notification(s) are NOT sent automatically"
+                   " (deliver them deliberately with: manage.py process_registration_outbox --deliver)." if earlier else "."))
         from apps.accounts.models import Account
         report["pending_applicants"] = Account.objects.filter(request_status="Pending", is_active=False).count()
         report["approved_accounts"] = Account.objects.filter(request_status="Approved").count()

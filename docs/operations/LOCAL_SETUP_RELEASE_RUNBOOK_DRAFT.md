@@ -73,6 +73,32 @@ and stored in the git-ignored `backend/.env`. Never print, commit or regenerate 
 queued notifications can only be decrypted with it. This is local development key storage, not an
 approved production KMS.
 
+**Email in `-Local` (one-time opt-in, owner-approved 24 Nov 2026).** Gmail SMTP must already be configured in
+`backend/.env`: `WORKSPACE_EMAIL_SMTP_ENABLED=1`, `WORKSPACE_EMAIL_USERNAME`, `WORKSPACE_EMAIL_APP_PASSWORD`
+(a Gmail App Password) and `WORKSPACE_EMAIL_FROM` (Gmail sends from the authenticated account unless the From
+address is a configured "Send mail as" alias). Then add once:
+
+```dotenv
+WORKSPACE_LOCAL_EMAIL_DELIVERY=1
+WORKSPACE_OUTBOX_WORKER_ENABLED=1
+WORKSPACE_OUTBOX_SMTP_DELIVERY_APPROVED=1
+```
+
+With these, `.\Start-CTUG-LAN.ps1 -Local` behaves as follows:
+
+- Registration and password-recovery OTPs are sent through Gmail.
+- The launcher starts the existing outbox worker (`manage.py process_registration_outbox --deliver --watch 15`, log
+  `worker-1.log`) and stops it with the servers.
+- Approval and rejection notifications, one per applicant including bulk decisions, are delivered within about 15 s.
+  Each is marked `Delivered` only after Gmail accepts it; that means SMTP acceptance, not confirmed inbox arrival.
+- Decision emails link to `http://localhost:5173`, allowed only in this DEBUG loopback profile.
+- The watcher only sends notifications queued **after it starts**. Older queued rows are listed in the startup warning
+  and wait for a deliberate one-off `manage.py process_registration_outbox --deliver`, run with the same `-Local`
+  settings.
+- Failures follow the existing worker policy: retry with backoff up to 5 attempts, then `Dead`; recipients are erased on
+  terminal states; output is aggregate only.
+- LAN mode is unchanged and has no decision routes. Its OTP mail follows `WORKSPACE_EMAIL_SMTP_ENABLED`, as before.
+
 **Running twice.** If a launcher is already running in another window, a new start refuses and leaves it
 alone. Only servers from a launcher window that has closed are stopped.
 

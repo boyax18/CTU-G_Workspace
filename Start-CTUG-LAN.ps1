@@ -360,6 +360,7 @@ function Show-LogTail([string]$LogFile) {
 # ------------------------------------------------------------------ main
 $django = $null
 $vite = $null
+$workers = @()
 $exitCode = 0
 try {
     $mode = if ($Local) { 'local' } else { 'lan' }
@@ -398,7 +399,7 @@ try {
     }
 
     $features = @($report.features)
-    $approved = @($features | Where-Object { $_.status -ne 'not-in-mode' })
+    $approved = @($features | Where-Object { $_.status -ne 'not-in-mode' -and $_.status -ne 'optional' })
     $available = @($features | Where-Object { $_.status -eq 'available' })
     $blocked = @($features | Where-Object { $_.status -eq 'blocked' })
 
@@ -430,6 +431,28 @@ try {
     Save-ServerRecord @($django, $vite)
     Wait-Http "$appUrl/" $vite 90 $frontendLog 'The frontend'
 
+    # Background commands declared by the feature registry (for example a delivery worker).
+    $workerLogs = @()
+    $index = 0
+    foreach ($command in @($report.workers)) {
+        if (-not $command) { continue }
+        $index++
+        $workerLog = Join-Path $LogDir ("worker-$index.log")
+        $line = '"' + $Python + '" ' + ((@($command) | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+        $workers += Start-Logged $line $Backend $backendEnv $workerLog
+        $workerLogs += $workerLog
+        Save-ServerRecord (@($django, $vite) + $workers)
+    }
+    if ($workers.Count -gt 0) {
+        Start-Sleep -Seconds 4
+        for ($i = 0; $i -lt $workers.Count; $i++) {
+            if ($workers[$i].HasExited) {
+                Show-LogTail $workerLogs[$i]
+                Stop-Launcher 'A background worker stopped during startup (its configuration gates refused it).' "See $($workerLogs[$i])"
+            }
+        }
+    }
+
     # Verify the real request path and the security posture before claiming success.
     $proxy = Invoke-Probe "$appUrl/api/v1/auth/session/"
     if ($proxy.Status -ne 200 -or $proxy.Body -notmatch '"authenticated"') {
@@ -458,9 +481,10 @@ try {
     Write-Host ''
     foreach ($f in $available) { Write-Info "+ $($f.title)" }
     foreach ($f in $blocked) { Write-Warn "$($f.title) unavailable: $(@($f.reasons) -join '; ')" }
-    foreach ($f in @($features | Where-Object { $_.status -eq 'not-in-mode' -and @($_.reasons).Count -gt 0 })) {
+    foreach ($f in @($features | Where-Object { ($_.status -eq 'not-in-mode' -or $_.status -eq 'optional') -and @($_.reasons).Count -gt 0 })) {
         Write-Info "- $($f.title): $(@($f.reasons) -join '; ')"
     }
+    if ($workers.Count -gt 0) { Write-Info "Background workers: $($workers.Count) running (logs: worker-*.log)" }
     Write-Info "Sign in with your existing CTU-G accounts. Logs: $LogDir"
     if (-not $Local) {
         Write-Warn 'Plain HTTP over Wi-Fi: passwords and applicant data are readable on this network. Use only a trusted network.'
@@ -473,6 +497,8 @@ try {
         if (Test-StopKey) { break }
         if ($django.HasExited) { Write-Warn "The backend stopped unexpectedly. See $backendLog"; $exitCode = 1; break }
         if ($vite.HasExited) { Write-Warn "The frontend stopped unexpectedly. See $frontendLog"; $exitCode = 1; break }
+        $stopped = @($workers | Where-Object { $_.HasExited })
+        if ($stopped.Count -gt 0) { Write-Warn "A background worker stopped unexpectedly. See $LogDir\worker-*.log"; $exitCode = 1; break }
         Start-Sleep -Milliseconds 500
     }
 } catch [LauncherStop] {
@@ -485,6 +511,7 @@ try {
     if ($django -or $vite) {
         Write-Plain ''
         Write-Plain 'Stopping CTU-G Workspace...'
+        foreach ($worker in $workers) { Stop-Tree $worker }
         Stop-Tree $vite
         Stop-Tree $django
         $left = ''

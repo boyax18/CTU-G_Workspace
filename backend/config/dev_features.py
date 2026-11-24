@@ -50,6 +50,8 @@ class Feature:
     frontend_flags: tuple = ()
     requires: tuple = ()
     prerequisites: tuple = ()
+    # Background commands (manage.py arguments) the launcher runs while this feature is available.
+    workers: tuple = ()
     note: str = ""
 
 
@@ -74,6 +76,12 @@ FEATURES = (
             frontend_flags=("VITE_WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED",),
             requires=("wf02.applicant_decisions",),
             note="Decision routes exist only in the loopback decision profile (.\\Start-CTUG-LAN.ps1 -Local)."),
+    Feature("wf01-02.email_delivery", "WF-01/WF-02", "Email delivery: registration OTP, password recovery, decision notifications",
+            modes=frozenset({LOCAL}),
+            prerequisites=("local_email_opt_in",),
+            workers=(("manage.py", "process_registration_outbox", "--deliver", "--watch", "15"),),
+            note="Optional: set WORKSPACE_LOCAL_EMAIL_DELIVERY=1, WORKSPACE_OUTBOX_WORKER_ENABLED=1 and "
+                 "WORKSPACE_OUTBOX_SMTP_DELIVERY_APPROVED=1 once in backend/.env (Gmail SMTP must be configured)."),
     # Registered, not approved for any launcher mode (protected; separately gated).
     Feature("wf02.account_status_changes", "WF-02.05 (write)", "Suspend / Activate accounts",
             frontend_flags=("VITE_WORKSPACE_ACCOUNT_STATUS_ENABLED",),
@@ -85,6 +93,10 @@ FEATURES = (
                             "VITE_WORKSPACE_WF0305_EFFECTIVE_ACCESS_INSPECT_ENABLED", "VITE_WORKSPACE_WF0306_AUDIT_HISTORY_ENABLED"),
             note="Protected Access Control Management keeps its own acknowledgments and executor boundary."),
 )
+
+# One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).
+LOCAL_EMAIL_FLAGS = ("WORKSPACE_EMAIL_SMTP_ENABLED", "WORKSPACE_LOCAL_EMAIL_DELIVERY",
+                     "WORKSPACE_OUTBOX_WORKER_ENABLED", "WORKSPACE_OUTBOX_SMTP_DELIVERY_APPROVED")
 
 _PRIVATE = (IPv4Network("10.0.0.0/8"), IPv4Network("172.16.0.0/12"), IPv4Network("192.168.0.0/16"))
 
@@ -114,6 +126,11 @@ def outbox_key_ready(env):
 def _prerequisite_failures(item, env):
     failures = []
     for name in item.prerequisites:
+        if name == "local_email_opt_in":
+            missing = [flag for flag in LOCAL_EMAIL_FLAGS if env.get(flag) != "1"]
+            if missing:
+                failures.append("not enabled (optional): set " + ", ".join(f"{flag}=1" for flag in missing)
+                                + " once in backend/.env")
         if name == "outbox_key" and not outbox_key_ready(env):
             failures.append("no valid WORKSPACE_OUTBOX_KEK_V1_B64 in backend/.env or the environment "
                             "(decisions stay fail-closed)")
@@ -173,13 +190,17 @@ def mode_environment(mode, *, lan_ip=None, env=None):
         if not reasons:
             available.add(item.key)
             backend.update(item.backend_env)
-        report.append({"key": item.key, "title": item.title, "status": "available" if not reasons else "blocked",
-                       "reasons": reasons})
+        optional_off = bool(reasons) and "local_email_opt_in" in item.prerequisites and all(
+            reason.startswith("not enabled (optional)") for reason in reasons)
+        status = "available" if not reasons else "optional" if optional_off else "blocked"
+        report.append({"key": item.key, "title": item.title, "status": status, "reasons": reasons})
     for item in FEATURES:
         for flag in item.frontend_flags:
             frontend[flag] = "1" if item.key in available else "0"
+    workers = [list(command) for item in FEATURES if item.key in available for command in item.workers]
     return {"mode": mode, "settings_module": SETTINGS_MODULES[mode], "backend_env": backend,
-            "frontend_env": frontend, "frontend_args": frontend_args, "url": url, "features": report}
+            "frontend_env": frontend, "frontend_args": frontend_args, "url": url, "features": report,
+            "workers": workers}
 
 
 def dotenv_environment(backend_dir):

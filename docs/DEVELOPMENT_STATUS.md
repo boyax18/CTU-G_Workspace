@@ -48,6 +48,27 @@
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
+### 0.9 Local email delivery — 24 November 2026
+
+- **State before this change:**
+  - LAN mode already sent OTP mail through Gmail when `WORKSPACE_EMAIL_SMTP_ENABLED=1`.
+  - `-Local` forced in-memory mail and turned password recovery off.
+  - The outbox worker existed (lease, retry/backoff, dead-letter, recipient erasure) but was manual-only, and decision emails required an approved HTTPS link.
+- **Implemented:**
+  - An owner-approved opt-in in `config.review_local_settings` (`WORKSPACE_LOCAL_EMAIL_DELIVERY=1`) reuses the validated SMTP settings, restores password recovery per .env, and allows loopback http links in decision emails (DEBUG + local profile only).
+  - `process_registration_outbox --deliver --watch` uses a start-time watermark, so historical queued rows are never sent automatically.
+  - A registry feature makes `-Local` start and stop that watcher. The launcher handles background workers generically.
+  - The three opt-in flags were added once to the git-ignored `backend/.env`. No other value changed and the outbox key was preserved.
+- **Live verification** (disposable replica; all recipients +aliases of the approved inbox; Gmail SMTP acceptance counted in-process, no content logged):
+  - Student OTP, Instructor OTP and password-reset OTP were accepted.
+  - No account was created before OTP verification, and an unknown reset address was sent no email.
+  - 1 approve + 1 reject (School Admin) and bulk 2 approve + 2 reject (Technical Super Admin context) produced 6 separate notifications. The real worker process delivered all 6 (`Delivered`, 1 attempt each, recipients erased).
+  - A pre-existing queued row stayed `Pending` with 0 attempts.
+  - Inbox arrival is for the owner to confirm.
+- **Other checks:** focused tests 99/99, then 28/28 after final changes; registry/gate contracts pass.
+- **Real data:** `ctug_workspace` is unchanged, and applicant #11's queued rejection remains `Pending` (owner decision: leave it queued).
+- **Not verified:** the launcher starting the worker on ports 8000/5173 itself, because the owner's session occupied them and was left running. The worker command and the launcher's worker code path were verified separately.
+
 ### 0.8 Applicant Reviews automatic filtering — 24 November 2026
 
 - **Changes:** Apply filters was removed. Search (debounced ~300 ms; Enter applies at once), Requested role, Email proof and Sort by now update the table automatically and together, through the unchanged server query and pagination (20 per page). Any change returns to page 1 and clears the selection. Responses superseded by a newer request are discarded. Previous rows stay dimmed and inert while loading, and errors replace them. Decision controls are unchanged.

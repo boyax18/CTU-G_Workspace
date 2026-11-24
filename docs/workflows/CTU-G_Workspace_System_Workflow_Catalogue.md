@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.49  |  24 November 2026  |  For stakeholder review
+Draft version 0.3.50  |  24 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
@@ -190,6 +190,12 @@ Each flow has a consistent header, main flow, alternative flow, errors, links an
 Original reusable-template intent retained: purpose/scope, actors/permissions, trigger/preconditions, postconditions, requirement/data traceability, acceptance/testing, approval and version must be confirmed during each flow’s inspection. For **unstarted** entries, the AI Agent Guidelines Checklist is **Inspect → Reconcile → Approve → Implement → Test → Commit**; all stages and the distinct Human Approval stay unchecked until separately evidenced. Historical checklists in already started workflows are not altered.
 
 **Development-complete rule (24 November 2026, permanent).** A workflow is not development-complete until its backend API, frontend interface, authorized routes, exact permissions and development availability are integrated and verified. Development availability is declared once, as a `Feature` entry in `backend/config/dev_features.py` (backend env gate, frontend build flags, launch modes, dependencies, prerequisites); `.\Start-CTUG-LAN.ps1` then provides it on the normal development database without launcher edits. Server-side permission, Active Role and service-state checks remain the authority. Launcher availability is not production activation, and protected governance operations stay separately gated.
+
+**Email evidence (24 November 2026, local development):** live checks used the real views and the real Gmail SMTP backend on a disposable replica, with every recipient a +alias of the owner-approved test inbox. Gmail SMTP accepted:
+- WF-01.01 Student registration OTP, WF-01.02 Instructor registration OTP and WF-01.05 password-recovery OTP; no account was created before OTP verification, and an unknown address received no email;
+- WF-02.03/02.04 approval and rejection notifications, individual and bulk, each delivered by the outbox worker as a separate email.
+
+Acceptance by Gmail is recorded separately from inbox arrival, which the owner confirms. Human Approval fields are unchanged.
 
 ### Group A - Core System Workflows
 

@@ -1,5 +1,14 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Local email delivery (-Local)
+
+- Added an owner-approved `WORKSPACE_LOCAL_EMAIL_DELIVERY` opt-in to the loopback decision profile: Gmail SMTP for OTPs, password recovery, and loopback decision-email links (DEBUG + local only).
+- Added `--watch` to `process_registration_outbox`, with a start-time watermark so historical queued rows are never sent automatically.
+- `-Local` starts and stops the watcher through a registry-declared background worker; the launcher stays feature-agnostic.
+- The three opt-in flags were added to the git-ignored `.env`; no secret or other value changed.
+- Live: Gmail SMTP accepted Student, Instructor and password-reset OTPs plus 6 separate decision notifications (individual and bulk) delivered by the real worker, all to the approved test inbox on a disposable replica. A pre-existing queued row stayed unsent.
+- Tests 99/99 (28/28 re-run). `ctug_workspace` unchanged; applicant #11's queued rejection left queued.
+
 ### 24 November 2026 — Applicant Reviews: Email column (D-32 amended)
 
 - At the owner's direction the pending list API returns each applicant's `email` (or null), and the queue shows an **Email** column in place of Email proof. The Email proof filter dropdown, the proof badges and the proof footnote were removed. The empty search state now has a single Clear filters button, the one under the filters. Pagination shows `<` / `>` beside the page number.

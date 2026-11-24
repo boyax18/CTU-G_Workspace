@@ -59,6 +59,26 @@ WORKSPACE_REGISTRATION_REAPPLICATION_EMAIL_ENABLED = False
 WORKSPACE_REGISTRATION_EMAIL_TEMPLATE_V2_ENABLED = True
 WORKSPACE_PUBLIC_BASE_URL = "http://localhost:5173"  # locmem + loopback only; never an external URL
 
+# 24 Nov 2026 (owner-directed): explicit, one-time opt-in for REAL email from this loopback
+# profile. Off unless backend/.env sets WORKSPACE_LOCAL_EMAIL_DELIVERY=1. It reuses the SMTP
+# configuration already validated by config.settings (credentials are never re-read here),
+# restores password recovery as configured in .env, and lets decision emails carry this
+# loopback http link (WORKSPACE_EMAIL_DEV_LINKS_ALLOWED; DEBUG + local profile only). The
+# outbox worker keeps its own WORKSPACE_OUTBOX_WORKER_ENABLED / _SMTP_DELIVERY_APPROVED gates.
+WORKSPACE_LOCAL_EMAIL_DELIVERY = os.environ.get("WORKSPACE_LOCAL_EMAIL_DELIVERY") == "1"
+WORKSPACE_EMAIL_DEV_LINKS_ALLOWED = False
+if WORKSPACE_LOCAL_EMAIL_DELIVERY:
+    from . import settings as _base_settings
+    if not (_base_settings.WORKSPACE_EMAIL_SMTP_ENABLED
+            and _base_settings.EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend"):
+        raise ImproperlyConfigured(
+            "WORKSPACE_LOCAL_EMAIL_DELIVERY=1 requires WORKSPACE_EMAIL_SMTP_ENABLED=1 and the Gmail settings in backend/.env."
+        )
+    WORKSPACE_EMAIL_SMTP_ENABLED = True
+    EMAIL_BACKEND = _base_settings.EMAIL_BACKEND
+    WORKSPACE_PASSWORD_RESET_ENABLED = _base_settings.WORKSPACE_PASSWORD_RESET_ENABLED
+    WORKSPACE_EMAIL_DEV_LINKS_ALLOWED = True
+
 # WF-03.01 D-100: separate opt-in; ordinary evidence adapter is default-deny.
 # Leave this OFF until D-101/D-102 permission adoption, evidence integration, and deferred tests.
 WORKSPACE_ORDINARY_ROLE_ASSIGNMENT_ENABLED = (

@@ -112,20 +112,34 @@ def _due_filter(now):
     )
 
 
-def due_job_count():
+def due_job_count(*, after_id=None):
     """Read-only operational count. Does not fetch recipient ciphertext."""
     now = _now()
-    return RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS).filter(
-        _due_filter(now)
-    ).count()
+    rows = RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS).filter(_due_filter(now))
+    if after_id is not None:
+        rows = rows.filter(outbox_id__gt=after_id)
+    return rows.count()
 
 
-def _claim_next():
-    """Take one due row with SKIP LOCKED; make expired leases recoverable."""
+def newest_outbox_id():
+    """Watermark for watch mode: rows queued later than this are 'new'."""
+    last = (RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS)
+            .order_by("-outbox_id").values_list("outbox_id", flat=True).first())
+    return last or 0
+
+
+def _claim_next(after_id=None):
+    """Take one due row with SKIP LOCKED; make expired leases recoverable.
+
+    ``after_id`` (watch mode) limits claims to rows queued after the worker started, so a
+    background worker never mails older queued notifications by itself.
+    """
     now = _now()
     with transaction.atomic(using=DEFAULT_DB_ALIAS):
-        row = (RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS)
-               .filter(_due_filter(now))
+        due = RegistrationNotificationOutbox.objects.using(DEFAULT_DB_ALIAS).filter(_due_filter(now))
+        if after_id is not None:
+            due = due.filter(outbox_id__gt=after_id)
+        row = (due
                .select_for_update(skip_locked=True)
                .order_by("outbox_id")
                .first())
@@ -247,7 +261,7 @@ def _valid_recipient(email):
     return True
 
 
-def process_one():
+def process_one(*, after_id=None):
     """Process at most one job. Never hold a database lock during email I/O.
 
     Returns empty, delivered, retry, dead, or lost_lease. Exceptions from the
@@ -255,7 +269,7 @@ def process_one():
     fail closed *before* any row is claimed.
     """
     _require_delivery_enabled()
-    claim = _claim_next()
+    claim = _claim_next(after_id)
     if claim is None:
         return "empty"
     if claim == "exhausted":
@@ -317,14 +331,14 @@ def process_one():
             return "lost_lease"
 
 
-def process_due(*, limit=25):
+def process_due(*, limit=25, after_id=None):
     """Bounded single invocation; no daemon, automatic scheduler or HTTP API."""
     if type(limit) is not int or not 1 <= limit <= MAX_BATCH:
         raise ValueError("Worker limit must be between 1 and 100.")
     _require_delivery_enabled()
     results = {"delivered": 0, "retry": 0, "dead": 0, "lost_lease": 0}
     for _ in range(limit):
-        outcome = process_one()
+        outcome = process_one(after_id=after_id)
         if outcome == "empty":
             break
         results[outcome] += 1

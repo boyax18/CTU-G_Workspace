@@ -28,12 +28,17 @@ def _public_url(path):
     backend = getattr(settings, "EMAIL_BACKEND", "")
     is_test_mail = backend == "django.core.mail.backends.locmem.EmailBackend"
     local = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+    # Owner-directed local development delivery (config.review_local_settings opt-in): a loopback
+    # http link is acceptable only in a DEBUG, local-profile process that explicitly allows it.
+    dev_links = (getattr(settings, "WORKSPACE_EMAIL_DEV_LINKS_ALLOWED", False) is True
+                 and getattr(settings, "DEBUG", False) is True
+                 and getattr(settings, "WORKSPACE_DEPLOYMENT_PROFILE", "local") == "local")
     safe = (
         parsed.scheme in {"https", "http"} and parsed.netloc and
         not parsed.username and not parsed.password and
         not parsed.query and not parsed.fragment and not parsed.path.rstrip("/") and
         (parsed.scheme == "https" and parsed.hostname in approved or
-         is_test_mail and local and parsed.scheme == "http")
+         (is_test_mail or dev_links) and local and parsed.scheme == "http")
     )
     if not safe:
         raise ValueError("An approved HTTPS public application URL is required for email.")

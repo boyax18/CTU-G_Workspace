@@ -23,6 +23,14 @@
 - Decryption is an **internal library function only** for a future trusted worker; never expose it through an HTTP endpoint, audit log, management listing or untrusted serializer. Tampering/unknown versions fail closed.
 - **Production deployment remains blocked:** env-only local key storage is not an institutionally approved KMS/HSM/key rotation/recovery design. A managed key provider and restricted worker identity must be reviewed first.
 
+## Local development delivery (24 Nov 2026)
+
+`manage.py process_registration_outbox --deliver --watch SECONDS` reuses the same gated worker in a loop. It records a
+watermark (the newest outbox ID) at start and claims only rows queued after it, so a background watcher never mails
+previously queued notifications; those still need an explicit one-off `--deliver`. `.\Start-CTUG-LAN.ps1 -Local`
+starts this watcher only when the backend/.env opt-in described in the runbook §2A is present. All existing gates,
+leases, retry/dead-letter rules and recipient erasure are unchanged.
+
 ## Default-off configuration
 
 ```env

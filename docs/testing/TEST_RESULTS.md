@@ -3,6 +3,20 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — local email delivery (live Gmail SMTP)
+
+| Check | Result |
+| --- | --- |
+| SMTP settings (`-Local` + opt-in) | `smtp.gmail.com:587`, TLS on, username/App Password present; password recovery enabled; outbox + v2 template on; worker gates pass; decision link `http://localhost:5173/`. Without opt-in: locmem, reset off (unchanged) |
+| Registration OTP | Student and Instructor: HTTP 202, Gmail SMTP accepted 1 message each; no Account before verification |
+| Password recovery OTP | Neutral 202; Gmail SMTP accepted 1 message, sent on the background thread by design; unknown address: same 202 and no message |
+| Decisions to notifications | Approve, reject (registration deleted), bulk approve 2 and bulk reject 2 (Technical Super Admin context): 6 separate outbox rows (3 approved, 3 rejected) |
+| Outbox worker (real `--watch 5` process) | `delivered=6, retry=0, dead=0`; every row `Delivered` after 1 attempt; encrypted recipients erased; pre-existing queued row left `Pending`/0 attempts ("1 earlier queued notification(s) are left for a manual --deliver") |
+| Safety | Every message checked to be addressed to the approved inbox (+aliases) before sending; no codes, bodies or credentials printed; anonymous decision refused; replica dropped |
+| Automated (disposable MySQL, locmem) | 99/99 across `test_local_email_delivery` (watermark, held-back rows, watch fail-closed, dev-link rules), outbox worker, notifications, bulk, password reset and instructor OTP; 28/28 re-run after final edits; registry/gate contracts OK |
+| Real data | `ctug_workspace` fingerprint unchanged; applicant #11 rejection notification `Pending`, 0 attempts |
+| Inbox arrival | Not observable by the assistant; for the owner to confirm in the approved inbox (9 messages expected) |
+
 ## 24 November 2026 — Applicant Reviews automatic filtering
 
 | Check | Result |

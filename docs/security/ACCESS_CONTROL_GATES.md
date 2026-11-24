@@ -3,11 +3,9 @@
 **Current checkpoint:** WF-02 dashboard and isolated bulk-route integration, 24 November 2026, as described below. Historical catalogue proposals and local approvals do not authorize production operations.
 **Last planner run referenced:** 2026-11-08; pinned SHA-256 `56ccd699a127ac7a734bd53a2cb7d4a30a1d3953413e4c423897b4a9c9398b78`.
 
-## Synthetic LAN development profile — 24 November 2026
+## Development launcher — 24 November 2026
 
-`config.dev_lan_settings` (started by `Start-CTUG-LAN.ps1`) opens only the gates of features that `config/dev_features.py` approves for `lan-synthetic`: WF-02 applicant reads, individual and bulk decisions, and the read-only Account Directory. Registered-but-unapproved gates are forced off in the profile, including account-status writes and all WF-03 role-assignment, grant, restriction, inspector and audit-history gates; env flags and acknowledgments from the shell or `.env` are neutralized before settings load. The profile adds no permission, role-name shortcut or executor path. It seeds the synthetic schema only from the pinned, validated catalogue v2.2 definitions and default Admin bindings (each binding audited), and every request still requires session, CSRF, an active Admin assignment, the exact effective permission, Active Role scope and active services.
-
-Option A (`config/lan_role_context.py`) now requires the hard-named synthetic database `ctug_lan_synthetic` instead of `ctug_workspace`, and accepts `config.dev_lan_settings` as well as `config.settings`, so unencrypted LAN HTTP cannot serve real applicant data. Decisions durably queue encrypted notifications with a dedicated synthetic key; SMTP and the outbox worker stay off. The unfinished HTTPS profile is not activated.
+`Start-CTUG-LAN.ps1` adds no settings profile, permission, route or bypass. LAN mode runs `config.settings` with the existing Option A gate (unchanged: `ctug_workspace`, loopback Django behind Vite, protected-writer flags refused) and opens only the default-off applicant and directory read gates. `-Local` runs the existing loopback decision profile. Feature selection is centralized in `backend/config/dev_features.py`; account-status writes and WF-03 governance are registered but not enabled in either mode. Every request still requires session, CSRF, an active Admin assignment, exact effective permission, Active Role scope and active services. A synthetic-database variant tried earlier the same day was removed; no grants, migrations or records were created in `ctug_workspace`.
 
 ## WF-02 operational access — 23 November 2026
 

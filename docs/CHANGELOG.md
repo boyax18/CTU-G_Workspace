@@ -1,6 +1,13 @@
 # CTU-G Workspace — Development Changelog
 
-### 24 November 2026 — Permanent one-command LAN development system
+### 24 November 2026 — Synthetic LAN setup removed; launcher uses `ctug_workspace`
+
+- Removed the synthetic-database development variant: `ctug_lan_synthetic` profile/settings/URLconf, `ctug_lan` command, initializer, seeding, live synthetic verifier, local-secrets generator and `Initialize-CTUG-LAN.ps1`.
+- Restored the original Option A gate (`ctug_workspace`, `config.settings` only) and its tests.
+- Adapted `Start-CTUG-LAN.ps1` to existing profiles on `backend/.env`. LAN mode = `config.settings` + Option A for the detected address; `-Local` = the loopback decision profile. `backend/config/dev_features.py` now defines the two modes, and the new `backend/scripts/ctug_dev_preflight.py` is read-only. No application module, model, migration or permission changed.
+- Verification: `ctug_workspace` counts/checksums unchanged across 11 tables; live LAN smoke; WF-01 68/68 and WF-02/WF-03 103/103 focused tests on disposable MySQL; 43/43 registry/Option A contracts. The `ctug_lan_synthetic` schema and `.local/ctug-lan/` files are retained pending explicit deletion approval.
+
+### 24 November 2026 — Permanent one-command LAN development system (superseded the same day; see entry above)
 
 - Added `Start-CTUG-LAN.ps1` (automatic LAN IPv4 detection, preflight, Django on loopback + Vite on the LAN address, readiness and security probes, clean Ctrl+C shutdown, leftover-process recovery) and `Initialize-CTUG-LAN.ps1` (one-time synthetic setup/top-up, explicit `-Reset`). The launcher is feature-agnostic.
 - Added the central development feature registry `backend/config/dev_features.py` and the `lan-synthetic` profile (`config/dev_lan_environment.py`, `config/dev_lan_settings.py`, `config/dev_lan_urls.py`). WF-02 applicant reviews, individual and bulk decisions, and the read-only directory are approved; account-status writes and WF-03 governance are registered but forced off.

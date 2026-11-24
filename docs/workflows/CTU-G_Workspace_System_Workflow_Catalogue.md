@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.46  |  24 November 2026  |  For stakeholder review
+Draft version 0.3.47  |  24 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
@@ -189,7 +189,7 @@ Each flow has a consistent header, main flow, alternative flow, errors, links an
 
 Original reusable-template intent retained: purpose/scope, actors/permissions, trigger/preconditions, postconditions, requirement/data traceability, acceptance/testing, approval and version must be confirmed during each flow’s inspection. For **unstarted** entries, the AI Agent Guidelines Checklist is **Inspect → Reconcile → Approve → Implement → Test → Commit**; all stages and the distinct Human Approval stay unchecked until separately evidenced. Historical checklists in already started workflows are not altered.
 
-**Development-complete rule (24 November 2026, permanent).** A workflow is not development-complete until its backend API, frontend interface, authorized routes, exact permissions and development availability are integrated and verified. Development availability is declared once, as a `Feature` entry in `backend/config/dev_features.py` (settings gates, frontend build flags, route includes, catalogue permission codes, dependencies, prerequisites), approved for the `lan-synthetic` profile only when development-ready. `.\Start-CTUG-LAN.ps1` then makes it available automatically; the launcher is never edited for a new feature, and a registered-but-unapproved feature is forced off. Server-side permission, Active Role and service-state checks remain the authority. Approval for the synthetic LAN profile is not production activation, and protected governance operations stay separately gated.
+**Development-complete rule (24 November 2026, permanent).** A workflow is not development-complete until its backend API, frontend interface, authorized routes, exact permissions and development availability are integrated and verified. Development availability is declared once, as a `Feature` entry in `backend/config/dev_features.py` (backend env gate, frontend build flags, launch modes, dependencies, prerequisites); `.\Start-CTUG-LAN.ps1` then provides it on the normal development database without launcher edits. Server-side permission, Active Role and service-state checks remain the authority. Launcher availability is not production activation, and protected governance operations stay separately gated.
 
 ### Group A - Core System Workflows
 

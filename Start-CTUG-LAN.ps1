@@ -1,35 +1,39 @@
 <#
 .SYNOPSIS
-    CTU-G Workspace - one-command LAN development (synthetic data only).
+    CTU-G Workspace - one-command development startup on the normal development database.
 
 .DESCRIPTION
-    Detects this laptop's active LAN IPv4 address, runs the synthetic-database
-    preflight, starts Django on 127.0.0.1:8000 and Vite on <LAN IP>:5173, verifies
-    both, prints the application URL and stops both cleanly on Ctrl+C.
+    Uses backend/.env (ctug_workspace and your existing accounts). Runs a read-only
+    preflight, starts Django on 127.0.0.1:8000 and Vite, verifies both, prints the
+    application URL and stops both cleanly on Ctrl+C. It never changes the
+    database schema, seeds accounts or resets data.
 
-    This launcher is deliberately feature-agnostic. It never names a workflow,
-    feature flag or API route: feature availability comes from the central
-    registry (backend/config/dev_features.py) through `manage.py ctug_lan
-    preflight`. Finishing a new module never requires editing this file.
+      .\Start-CTUG-LAN.ps1          LAN mode: detects this laptop's Wi-Fi/Ethernet IPv4
+                                    address and serves http://<LAN IP>:5173 through the
+                                    existing Option A gate (role switching, applicant
+                                    and directory reads).
+      .\Start-CTUG-LAN.ps1 -Local   Loopback mode: http://127.0.0.1:5173 with the existing
+                                    loopback-only decision profile (approve/reject/bulk).
 
-    One-time setup (first run, or after new migrations): .\Initialize-CTUG-LAN.ps1
+    The launcher is feature-agnostic: modes, settings profiles and feature flags come
+    from backend/config/dev_features.py via backend/scripts/ctug_dev_preflight.py.
+    Finishing a new module never requires editing this file.
+
+.PARAMETER Local
+    Loopback-only mode with the existing applicant-decision profile (this laptop only).
 
 .PARAMETER LanIp
-    Use this private IPv4 address of a local adapter instead of auto-detection.
+    LAN mode: use this private IPv4 address of a local adapter instead of auto-detection.
 
 .PARAMETER InterfaceAlias
-    Use the adapter with this name (for example "Wi-Fi" or "Ethernet").
+    LAN mode: use the adapter with this name (for example "Wi-Fi" or "Ethernet").
 
 .PARAMETER CheckOnly
-    Detect the network and run the preflight, then exit without starting servers.
-
-.EXAMPLE
-    .\Start-CTUG-LAN.ps1
-.EXAMPLE
-    .\Start-CTUG-LAN.ps1 -InterfaceAlias Ethernet
+    Run detection and the preflight, then exit without starting servers.
 #>
 [CmdletBinding()]
 param(
+    [switch]$Local,
     [string]$LanIp,
     [string]$InterfaceAlias,
     [switch]$CheckOnly
@@ -42,10 +46,9 @@ $Root = $PSScriptRoot
 $Backend = Join-Path $Root 'backend'
 $Frontend = Join-Path $Root 'frontend'
 $Python = Join-Path $Backend '.venv\Scripts\python.exe'
-$StateDir = Join-Path $Root '.local\ctug-lan'
+$StateDir = Join-Path $Root '.local\ctug-dev'
 $LogDir = Join-Path $StateDir 'logs'
-$SecretsFile = Join-Path $StateDir 'synthetic.env'
-$AccountsFile = Join-Path $StateDir 'synthetic-accounts.txt'
+$Preflight = Join-Path $Backend 'scripts\ctug_dev_preflight.py'
 $BackendPort = 8000
 $FrontendPort = 5173
 $PidFile = Join-Path $StateDir 'servers.json'
@@ -74,9 +77,6 @@ function Test-Prerequisites {
     }
     if (-not (Test-Path (Join-Path $Frontend 'node_modules\vite\package.json'))) {
         Stop-Launcher 'Frontend dependencies are missing (frontend\node_modules).' 'Install them once: cd frontend; npm ci'
-    }
-    if (-not (Test-Path $SecretsFile)) {
-        Stop-Launcher 'The synthetic development database has not been set up yet.' 'Run the one-time setup: .\Initialize-CTUG-LAN.ps1'
     }
 }
 
@@ -341,14 +341,19 @@ $django = $null
 $vite = $null
 $exitCode = 0
 try {
+    $mode = if ($Local) { 'local' } else { 'lan' }
+    $title = if ($Local) { 'Local Development' } else { 'LAN Development' }
     Write-Host ''
-    Write-Host "CTU-G Workspace $Dash LAN Development (starting)" -ForegroundColor Cyan
+    Write-Host "CTU-G Workspace $Dash $title (starting)" -ForegroundColor Cyan
     Test-Prerequisites
 
-    $selection = Select-LanAddress
-    $ip = $selection.IP
-    Write-Info "LAN address: $ip ($($selection.Alias))"
-    Show-NetworkDiagnostics $selection
+    $ip = '127.0.0.1'
+    if (-not $Local) {
+        $selection = Select-LanAddress
+        $ip = $selection.IP
+        Write-Info "LAN address: $ip ($($selection.Alias))"
+        Show-NetworkDiagnostics $selection
+    }
 
     Stop-LeftoverServers
     foreach ($port in @($BackendPort, $FrontendPort)) {
@@ -358,20 +363,12 @@ try {
         }
     }
 
-    # Only two inputs cross into Django; config/dev_lan_settings.py derives the rest.
-    $backendEnv = @{
-        DJANGO_SETTINGS_MODULE = 'config.dev_lan_settings'
-        CTUG_DEV_LAN_IP = $ip
-        PYTHONIOENCODING = 'utf-8'
-        PYTHONUNBUFFERED = '1'
-    }
-
-    Write-Info 'Checking the synthetic database and development features...'
-    $check = Invoke-Captured $Python 'manage.py ctug_lan preflight --json' $Backend $backendEnv
+    Write-Info 'Checking the database and development features (read-only)...'
+    $check = Invoke-Captured $Python ('"' + $Preflight + '" --mode ' + $mode + ' --lan-ip ' + $ip) $Backend @{ PYTHONIOENCODING = 'utf-8' }
     $json = ($check.Out -split "`r?`n" | Where-Object { $_.Trim().StartsWith('{') } | Select-Object -Last 1)
     if (-not $json) {
         $detail = (($check.Err -split "`r?`n") | Where-Object { $_.Trim() } | Select-Object -Last 3) -join ' '
-        Stop-Launcher 'The backend preflight could not run (configuration or database error).' $detail
+        Stop-Launcher 'The backend preflight could not run.' $detail
     }
     $report = $json | ConvertFrom-Json
     foreach ($warning in @($report.warnings)) { if ($warning) { Write-Warn $warning } }
@@ -380,22 +377,20 @@ try {
     }
 
     $features = @($report.features)
-    $approved = @($features | Where-Object { $_.status -ne 'not-approved' })
+    $approved = @($features | Where-Object { $_.status -ne 'not-in-mode' })
     $available = @($features | Where-Object { $_.status -eq 'available' })
     $blocked = @($features | Where-Object { $_.status -eq 'blocked' })
 
-    # The frontend listener script is named by the backend profile, not by this launcher.
-    $viteLauncher = Join-Path $Frontend ([string]$report.frontend_script)
-    if (-not $report.frontend_script -or -not (Test-Path $viteLauncher)) {
-        Stop-Launcher "The LAN frontend listener script is missing: $viteLauncher" ''
-    }
-
+    $backendEnv = @{}
+    foreach ($property in $report.backend_env.PSObject.Properties) { $backendEnv[$property.Name] = [string]$property.Value }
     $frontendEnv = @{}
     foreach ($property in $report.frontend_env.PSObject.Properties) { $frontendEnv[$property.Name] = [string]$property.Value }
+    $frontendCommand = 'node ' + ((@($report.frontend_args) | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+    $appUrl = [string]$report.url
 
     if ($CheckOnly) {
         Write-Host ''
-        Write-Host "Preflight passed for $ip; $($available.Count) of $($approved.Count) approved features available. (-CheckOnly: no servers started)" -ForegroundColor Green
+        Write-Host "Preflight passed: $($report.database) via $($report.settings_module); $($available.Count) of $($approved.Count) mode features available. (-CheckOnly: no servers started)" -ForegroundColor Green
         foreach ($f in $blocked) { Write-Warn "$($f.title): $(@($f.reasons) -join '; ')" }
         return
     }
@@ -410,39 +405,45 @@ try {
     Wait-Http "http://127.0.0.1:$BackendPort/api/v1/auth/csrf/" $django 90 $backendLog 'The backend'
 
     Write-Info "Starting frontend ($ip`:$FrontendPort)..."
-    $vite = Start-Logged ('node "' + $viteLauncher + '"') $Frontend $frontendEnv $frontendLog
+    $vite = Start-Logged $frontendCommand $Frontend $frontendEnv $frontendLog
     Save-ServerRecord @($django, $vite)
-    $appUrl = "http://$ip`:$FrontendPort"
     Wait-Http "$appUrl/" $vite 90 $frontendLog 'The frontend'
 
     # Verify the real request path and the security posture before claiming success.
     $proxy = Invoke-Probe "$appUrl/api/v1/auth/session/"
-    if ($proxy.Status -ne 200 -or $proxy.Body -notmatch '"authenticated"\s*:\s*false') {
+    if ($proxy.Status -ne 200 -or $proxy.Body -notmatch '"authenticated"') {
         Stop-Launcher "The frontend API proxy did not reach the backend (HTTP $($proxy.Status))." "See $frontendLog and $backendLog"
     }
     $anonymous = Invoke-Probe "$appUrl/api/v1/admin/school-accounts/"
-    $direct = Invoke-Probe "http://$ip`:$BackendPort/api/v1/auth/session/" 1500
-    if ($anonymous.Status -notin @(401, 403) -or $direct.Status -ne 0) {
-        Stop-Launcher 'Security check failed: protected data must require sign-in and Django must stay loopback-only.' "anonymous=$($anonymous.Status) direct=$($direct.Status)"
+    if ($anonymous.Status -notin @(401, 403)) {
+        Stop-Launcher 'Security check failed: protected data must require sign-in.' "anonymous=$($anonymous.Status)"
+    }
+    if (-not $Local) {
+        $direct = Invoke-Probe "http://$ip`:$BackendPort/api/v1/auth/session/" 1500
+        if ($direct.Status -ne 0) { Stop-Launcher 'Security check failed: Django must stay loopback-only behind Vite.' "direct=$($direct.Status)" }
     }
 
     $featureLine = if ($approved.Count -gt 0 -and $available.Count -eq $approved.Count) { 'Ready' } else { "$($available.Count) of $($approved.Count) ready" }
     Write-Host ''
-    Write-Host "CTU-G Workspace $Dash LAN Development" -ForegroundColor Cyan
+    Write-Host "CTU-G Workspace $Dash $title" -ForegroundColor Cyan
     Write-Host ''
     Write-Host 'Backend: Running'
     Write-Host 'Frontend: Running'
-    Write-Host "Database: Synthetic development database ($($report.database))"
+    Write-Host "Database: $($report.database) (existing development database)"
     Write-Host "Development features: $featureLine"
-    Write-Host 'Security: Role-based access enforced'
+    Write-Host "Security: Role-based access enforced$(if ($report.role_context) { '; Active Role switching on' })"
     Write-Host ''
     Write-Host "Application: $appUrl" -ForegroundColor Green
     Write-Host ''
     foreach ($f in $available) { Write-Info "+ $($f.title)" }
     foreach ($f in $blocked) { Write-Warn "$($f.title) unavailable: $(@($f.reasons) -join '; ')" }
-    Write-Info "Synthetic sign-in details: $AccountsFile"
-    Write-Info "Logs: $LogDir"
-    Write-Info 'Plain HTTP on a shared network: use only the synthetic accounts and data.'
+    foreach ($f in @($features | Where-Object { $_.status -eq 'not-in-mode' -and @($_.reasons).Count -gt 0 })) {
+        Write-Info "- $($f.title): $(@($f.reasons) -join '; ')"
+    }
+    Write-Info "Sign in with your existing CTU-G accounts. Logs: $LogDir"
+    if (-not $Local) {
+        Write-Warn 'Plain HTTP over Wi-Fi: passwords and applicant data are readable on this network. Use only a trusted network.'
+    }
     Write-Host ''
     Write-Host 'Press Ctrl+C to stop.' -ForegroundColor Cyan
     try { [Console]::TreatControlCAsInput = $true } catch { }

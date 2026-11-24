@@ -4,7 +4,7 @@ Run: python -m unittest config.test_wf0301_lan_dev_gate
 """
 import unittest
 
-from config.lan_role_context import LAN_ACK, SYNTHETIC_LAN_DATABASE, validate_lan_dev_role_context
+from config.lan_role_context import LAN_ACK, validate_lan_dev_role_context
 
 
 class LANDevRoleContextGateTests(unittest.TestCase):
@@ -18,7 +18,7 @@ class LANDevRoleContextGateTests(unittest.TestCase):
             "WORKSPACE_TRUST_PROXY_SSL_HEADER": "0",
         }
         self.allowed = ["localhost", "127.0.0.1", "[::1]", "192.168.100.46"]
-        self.db = {"ENGINE": "django.db.backends.mysql", "NAME": SYNTHETIC_LAN_DATABASE, "HOST": "127.0.0.1"}
+        self.db = {"ENGINE": "django.db.backends.mysql", "NAME": "ctug_workspace", "HOST": "127.0.0.1"}
         self.origins = ["http://192.168.100.46:5173"]
 
     def gate(self, **overrides):
@@ -66,18 +66,12 @@ class LANDevRoleContextGateTests(unittest.TestCase):
     def test_only_loopback_database_accepted(self):
         for change in (
             {"NAME": "ctug_production"},
-            # The real development database is never served over HTTP LAN.
-            {"NAME": "ctug_workspace"},
             {"ENGINE": "django.db.backends.sqlite3"},
             {"HOST": "192.168.100.46"},
         ):
             with self.subTest(change=change):
                 with self.assertRaisesRegex(ValueError, "MySQL"):
                     self.gate(database={**self.db, **change})
-
-    def test_launcher_synthetic_profile_module_is_accepted(self):
-        self.env["DJANGO_SETTINGS_MODULE"] = "config.dev_lan_settings"
-        self.assertEqual(self.gate(), "192.168.100.46")
 
     def test_reject_public_and_non_rfc1918_ips(self):
         for ip in ("8.8.8.8", "127.0.0.1", "169.254.1.1", "100.100.1.1", "0.0.0.0", "::1", "hostname"):

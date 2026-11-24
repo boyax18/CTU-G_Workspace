@@ -3,7 +3,20 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
-## 24 November 2026 — permanent one-command LAN development system
+## 24 November 2026 — synthetic setup removal and `ctug_workspace` startup
+
+| Check | Result |
+| --- | --- |
+| Database integrity | Read-only `COUNT(*)` + `CHECKSUM TABLE` on `accounts`, `roles`, `account_roles`, `services`, `permissions`, `role_permissions`, `account_permissions`, `access_audit_logs`, `registration_notification_outbox`, `django_migrations`: identical before cleanup and after a live LAN run (8 accounts, 4 pending applicants) |
+| Settings | `config.settings` (LAN/Option A) and `config.review_decision_local_settings` (`-Local`) both load; preflight confirms the connected schema is `ctug_workspace`; role context enabled in both |
+| Launcher | `-CheckOnly` passes in both modes; LAN run on `http://192.168.100.46:5173` printed Running only after page 200, proxied session, anonymous 401 and direct-Django refusal |
+| Live read-only probes | Page 200; CSRF 200; session `authenticated=false`; anonymous applicant/directory 401; Django returns 404 for approve/bulk in LAN mode (unmounted; Vite answers bare OPTIONS itself with 204); direct `:8000` from LAN refused; build flags list/directory `1`, decision/status/governance `0` |
+| WF-01 (disposable MySQL) | `test_session_auth`, `test_password_reset`, `test_instructor_registration_otp`: 68/68 |
+| WF-02/WF-03 (disposable MySQL) | `test_wf02_dashboard_integration`, `test_registration_review_routing`, `test_wf0301_option_a_proxy`, `test_registration_bulk`, `test_wf0203_approval`, `test_registration_review_notifications`, `test_registration_outbox`, `test_wf0301_d113_role_context`: 103/103 |
+| Contracts | `config.test_dev_features` + `config.test_wf0301_lan_dev_gate`: 43/43 (restored Option A gate accepts `ctug_workspace`; launcher feature-agnostic and ASCII) |
+| Not performed | Sign-in with the owner's existing accounts (credentials not used by the assistant); no real-data decisions; no migrations; no SMTP |
+
+## 24 November 2026 — permanent one-command LAN development system (superseded; synthetic variant removed)
 
 | Check | Result |
 | --- | --- |

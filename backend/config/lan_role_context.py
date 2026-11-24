@@ -4,18 +4,10 @@ Only for synthetic development accounts/data. Not an HTTPS deployment mode,
 not device authentication, and not a firewall replacement. No public/VPN
 interfaces should be exposed. The launcher binds Vite once per approved local
 physical LAN interface and Django to loopback only.
-
-Since the permanent LAN launcher (Start-CTUG-LAN.ps1), Option A refuses the real
-``ctug_workspace`` database: HTTP LAN sessions may only reach the hard-named,
-marker-verified synthetic database below (see config/dev_lan_settings.py).
 """
 from ipaddress import IPv4Address, IPv4Network
 
 LAN_ACK = "LAN_HTTP_SYNTHETIC_ONLY_WF0301_A"
-# The only database an HTTP LAN listener may use. Never ctug_workspace.
-SYNTHETIC_LAN_DATABASE = "ctug_lan_synthetic"
-# config.settings (manual Option A) or the launcher's synthetic LAN profile.
-LAN_SETTINGS_MODULES = frozenset({"config.settings", "config.dev_lan_settings"})
 LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "[::1]"})
 _PRIVATE_LAN = (
     IPv4Network("10.0.0.0/8"),
@@ -77,7 +69,7 @@ def validate_lan_dev_role_context(env, *, debug, allowed_hosts, database,
         raise ValueError("Invalid CTUG_ROLE_CONTEXT_LAN_DEV_ACK; LAN test mode refused.")
     if env.get("CTUG_ROLE_CONTEXT_NORMAL_DEV_ACK"):
         raise ValueError("Localhost and LAN role-context development opt-ins are mutually exclusive.")
-    if (env.get("DJANGO_SETTINGS_MODULE") not in LAN_SETTINGS_MODULES
+    if (env.get("DJANGO_SETTINGS_MODULE") != "config.settings"
             or env.get("WORKSPACE_DEPLOYMENT_SETTINGS") == "1"
             or env.get("WORKSPACE_DEPLOYMENT_PROFILE", "local") != "local"
             or debug is not True):
@@ -87,13 +79,9 @@ def validate_lan_dev_role_context(env, *, debug, allowed_hosts, database,
             or session_secure or csrf_secure):
         raise ValueError("Option A is HTTP-only testing; HTTPS/proxy deployment requires Option B.")
     if (database.get("ENGINE") != "django.db.backends.mysql"
-            or database.get("NAME") != SYNTHETIC_LAN_DATABASE
+            or database.get("NAME") != "ctug_workspace"
             or database.get("HOST") not in {"localhost", "127.0.0.1", "::1"}):
-        raise ValueError(
-            "LAN role switching requires the local synthetic MySQL database "
-            f"{SYNTHETIC_LAN_DATABASE}; real data is never served over HTTP LAN. "
-            "Use .\\Start-CTUG-LAN.ps1 and remove CTUG_ROLE_CONTEXT_LAN_DEV_* from backend/.env."
-        )
+        raise ValueError("LAN role switching requires local ctug_workspace MySQL.")
 
     lan_ips = _parse_lan_ips(env)
     permitted_hosts = LOOPBACK_HOSTS | set(lan_ips)

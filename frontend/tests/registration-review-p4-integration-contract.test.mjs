@@ -35,6 +35,7 @@ const record = {
   requested_role: 'Student',
   created_at: '2026-11-12T10:30:00+08:00',
   email_verified: true,
+  email: 'test.applicant@example.edu',
 };
 function response(status, body) {
   return { status, ok: status >= 200 && status < 300, json: async () => body };
@@ -52,7 +53,7 @@ test('Django pending list envelope is accepted without exposing private account 
   assert.deepEqual(result.results[0], record);
   assert.equal(result.page_size, 20);
   assert.throws(() => contract.parsePendingRegistrationPage({
-    results: [{ ...record, email: 'private@example.invalid' }], page: 1, page_size: 20, has_next: false,
+    results: [{ ...record, password_hash: 'pbkdf2$private' }], page: 1, page_size: 20, has_next: false,
   }));
 });
 

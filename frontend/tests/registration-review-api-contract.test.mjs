@@ -40,6 +40,7 @@ const example = () => ({
     requested_role: 'Student',
     created_at: '2026-11-10T09:15:00+08:00',
     email_verified: false,
+    email: null,
   }],
   page: 1,
   page_size: 20,
@@ -60,9 +61,13 @@ test('allows empty pages without inventing a total count', () => {
 
 test('rejects unexpected or sensitive fields instead of forwarding them to the UI', () => {
   assert.throws(() => parsePendingRegistrationPage({ ...example(), total: 5 }));
-  const payload = example();
-  payload.results[0].email = 'must-not-display@example.invalid';
-  assert.throws(() => parsePendingRegistrationPage(payload));
+  // D-32 (amended 24 Nov 2026) allows the email address; every other private field is still refused.
+  for (const [field, value] of [['password_hash', 'pbkdf2$x'], ['email_verified_address', 'a@example.invalid'],
+    ['password_reset_token', 'token'], ['reviewed_by', 1]]) {
+    const payload = example();
+    payload.results[0][field] = value;
+    assert.throws(() => parsePendingRegistrationPage(payload), undefined, field);
+  }
 });
 
 test('rejects invalid role, CTU-G ID and missing required fields', () => {
@@ -276,13 +281,17 @@ test('WF-02.01 parser requires an accurate has_next and typed name/proof fields'
   }
   for (const patch of [
     { email_verified: 'true' }, { email_verified: 1 }, { email_verified: undefined },
+    { email: 42 }, { email: '' }, { email: 'no-at-sign' }, { email: `${'x'.repeat(251)}@a.b` }, { email: undefined },
     { full_name: '' }, { full_name: 42 }, { full_name: 'x'.repeat(401) },
   ]) {
     const payload = example();
     Object.assign(payload.results[0], patch);
-    if ('email_verified' in patch && patch.email_verified === undefined) delete payload.results[0].email_verified;
+    for (const key of ['email_verified', 'email']) if (key in patch && patch[key] === undefined) delete payload.results[0][key];
     assert.throws(() => parsePendingRegistrationPage(payload), undefined, JSON.stringify(patch));
   }
+  const withEmail = example();
+  withEmail.results[0].email = 'fictional.applicant@example.edu';
+  assert.equal(parsePendingRegistrationPage(withEmail).results[0].email, 'fictional.applicant@example.edu');
   const nameless = example();
   nameless.results[0].full_name = null;
   assert.equal(parsePendingRegistrationPage(nameless).results[0].full_name, null);

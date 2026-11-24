@@ -16,6 +16,7 @@ const anonymous = { authenticated: false };
 const row = (n, role = 'Student') => ({
   account_id: 5000 + n, school_id: `72400${String(n).padStart(2, '0')}`, full_name: `Applicant ${n} Santos`,
   requested_role: role, created_at: '2026-11-10T09:15:00+08:00', email_verified: true,
+  email: `applicant${n}@example.edu`,
 });
 const listPage = (number, hasNext) => ({
   results: Array.from({ length: hasNext ? 20 : 2 }, (_, i) => row(i + 1 + (number - 1) * 20, i % 2 ? 'Instructor' : 'Student')),
@@ -93,7 +94,6 @@ test('Back restores filters, sort and page without refetching, and returns focus
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
     await page.getByLabel('Sort by').selectOption('-submitted');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
     await until(() => fake.state.lists.some((q) => q.includes('sort=-submitted')), 'sorted list');
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByText('Page 2', { exact: true }).waitFor();

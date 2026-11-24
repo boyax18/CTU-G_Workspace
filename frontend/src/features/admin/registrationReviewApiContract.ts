@@ -19,6 +19,8 @@ export interface PendingRegistrationItem {
   created_at: string;
   /** WF-02.01 D-34: proof recorded for the address now on file. False is never "verified". */
   email_verified: boolean;
+  /** D-32 (amended 24 Nov 2026): the applicant's email address on file, or null when none is recorded. */
+  email: string | null;
 }
 
 export interface PendingRegistrationPage {
@@ -206,7 +208,7 @@ export function parsePendingRegistrationPage(value: unknown): PendingRegistratio
   const seen = new Set<number>();
   const items: PendingRegistrationItem[] = results.map((item: unknown) => {
     if (!isRecord(item)
-      || !hasExactKeys(item, ['account_id', 'school_id', 'full_name', 'requested_role', 'created_at', 'email_verified'])
+      || !hasExactKeys(item, ['account_id', 'school_id', 'full_name', 'requested_role', 'created_at', 'email_verified', 'email'])
       || !isAccountId(item.account_id)
       || typeof item.school_id !== 'string' || item.school_id.length < 1 || item.school_id.length > 50
       || !(item.full_name === null || (typeof item.full_name === 'string'
@@ -214,6 +216,8 @@ export function parsePendingRegistrationPage(value: unknown): PendingRegistratio
       || typeof item.requested_role !== 'string' || !['Student', 'Instructor'].includes(item.requested_role)
       || !isServerTimestamp(item.created_at)
       || typeof item.email_verified !== 'boolean'
+      || !(item.email === null || (typeof item.email === 'string' && item.email.length >= 3
+        && item.email.length <= 254 && item.email.includes('@')))
       || seen.has(item.account_id)) {
       throw new Error(INVALID_RESPONSE);
     }
@@ -225,6 +229,7 @@ export function parsePendingRegistrationPage(value: unknown): PendingRegistratio
       requested_role: item.requested_role as RegistrationReviewRole,
       created_at: item.created_at,
       email_verified: item.email_verified,
+      email: item.email as string | null,
     };
   });
   return { results: items, page: page as number, page_size: PAGE_SIZE, has_next: hasNext };

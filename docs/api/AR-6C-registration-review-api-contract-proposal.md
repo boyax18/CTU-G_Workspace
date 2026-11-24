@@ -2,6 +2,8 @@
 
 ## 0. Verified WF-02 implementation — 24 November 2026
 
+- **D-32 amendment (24 Nov 2026, owner):** each `GET /api/v1/admin/registration-requests/` item is `{account_id, school_id, full_name, requested_role, created_at, email_verified, email}`; `email` is the address on file or `null`. The frontend parser accepts exactly these keys and still refuses any other field (hashes, tokens, evidence, reviewer data).
+
 This section supersedes the historical candidate routes and payloads in §§1–5 below. Source: `config/urls.py`, the isolated review URLconfs, `registration_review_api.py`, `account_status_api.py`, their services, and the test evidence in `../testing/TEST_RESULTS.md`. Route presence is not activation or release approval. No live account mutations or provisioning were performed for this integration.
 
 ### Availability and authorization

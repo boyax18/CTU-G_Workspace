@@ -19,6 +19,7 @@ const session = (permissions) => ({ authenticated: true, account: { school_id: '
 const row = (n) => ({
   account_id: 6000 + n, school_id: `72410${String(n).padStart(2, '0')}`, full_name: `Applicant ${n} Cruz`,
   requested_role: 'Student', created_at: '2026-11-10T09:15:00+08:00', email_verified: true,
+  email: `applicant${n}@example.edu`,
 });
 const detail = (id, overrides = {}) => ({
   account_id: id, school_id: '7241001', id_label: 'CTU-G ID',

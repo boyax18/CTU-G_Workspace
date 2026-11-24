@@ -295,7 +295,9 @@ class PendingRegistrationRequestsView(RegistrationReviewAPI):
 
         start = (page - 1) * PAGE_SIZE
         rows = list(qs[start:start + PAGE_SIZE + 1])
-        # D-32: permitted fields only; no email address, hashes, tokens or reviewer data.
+        # D-32 (amended 24 Nov 2026 by the owner): permitted fields plus the applicant's email
+        # address on file, which the queue now shows instead of an email-proof column. Still no
+        # hashes, tokens, verification evidence details or reviewer data.
         results = [
             {
                 "account_id": account.pk,
@@ -304,6 +306,7 @@ class PendingRegistrationRequestsView(RegistrationReviewAPI):
                 "requested_role": account.requested_role.role_name,
                 "created_at": account.created_at.isoformat(),
                 "email_verified": bool(account.email_verified),
+                "email": account.email or None,
             }
             for account in rows[:PAGE_SIZE]
         ]

@@ -204,8 +204,11 @@ class RegistrationReviewAPITests(TestCase):
         )
         self.assertEqual(
             set(response.json()["results"][0]),
-            {"account_id", "school_id", "full_name", "requested_role", "created_at", "email_verified"},
+            {"account_id", "school_id", "full_name", "requested_role", "created_at", "email_verified", "email"},
         )
+        emails = {row["account_id"]: row["email"] for row in response.json()["results"]}
+        self.assertEqual(emails[self.target.pk], self.target.email)  # D-32 amendment: address on file
+        self.assertIsNone(emails[other.pk])  # no address recorded -> null, never a placeholder
         self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(self.client.get("/?page=0").status_code, 400)
         self.assertEqual(self.client.get("/?status=Approved").status_code, 400)

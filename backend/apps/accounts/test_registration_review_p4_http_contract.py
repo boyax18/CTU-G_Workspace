@@ -142,14 +142,16 @@ class RegistrationReviewP4HTTPContractTests(TestCase):
         self.assertEqual(payload["page_size"], 20)
         self.assertEqual(len(payload["results"]), 1)
         item = payload["results"][0]
-        # WF-02.01 D-32: name and proof state added; still no email address.
-        self.assertEqual(set(item), {"account_id", "school_id", "full_name", "requested_role", "created_at", "email_verified"})
+        # WF-02.01 D-32 (amended 24 Nov 2026 by the owner): name, proof state and the email address on file.
+        self.assertEqual(set(item), {"account_id", "school_id", "full_name", "requested_role", "created_at",
+                                     "email_verified", "email"})
+        self.assertEqual(item["email"], self.pending.email or None)
         self.assertEqual(item["account_id"], self.pending.pk)
         self.assertEqual(item["school_id"], "P4-CONTRACT-PENDING")
         self.assertEqual(item["requested_role"], "Student")
         self.assertIn("T", item["created_at"])
-        self.assertNotIn("email", item)
-        self.assertNotIn("password_hash", item)
+        for private in ("password_hash", "password", "email_verified_address", "password_reset_token"):
+            self.assertNotIn(private, item)
 
     def test_pending_list_page_two_and_empty_page_are_bounded(self):
         for number in range(20):

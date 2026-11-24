@@ -1,5 +1,11 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Applicant Reviews: Email column (D-32 amended)
+
+- At the owner's direction the pending list API returns each applicant's `email` (or null), and the queue shows an **Email** column in place of Email proof. The Email proof filter dropdown, the proof badges and the proof footnote were removed. The empty search state now has a single Clear filters button, the one under the filters. Pagination shows `<` / `>` beside the page number.
+- Tests updated where they encoded the old "no email in the list" rule. They now refuse other private fields (password hash, verification evidence, reset token, reviewer) instead.
+- Verification: backend 38/38 (list API, HTTP contract, dashboard integration) on disposable MySQL; frontend unit 243/244 (the existing permission-inventory failure only); browser `pending-applications` 11/11, `applicant-approval` 17/17, `applicant-detail` 8/8, `applicant-rejection` 10/10; real browser 5/5 on a disposable replica; lint and build pass.
+
 ### 24 November 2026 — Applicant Reviews: Select All across pages
 
 - "Select All" selects every pending applicant matching the applied filters on every page, capped at 10 pages. The selection persists across Previous/Next; search, filter and sort changes clear it. Approve All / Reject All send groups of 20 to the existing bulk endpoint one after another, and the results are combined. The run stops without retrying at any interruption, uncertain group or refusal, including the server's 3-per-minute bulk limit, and reports the rest as not attempted. The server still rechecks every applicant.

@@ -24,7 +24,6 @@ import { approveApplication, decideBulkApplications, listPendingApplications, re
 import { normalizePendingSearch, PENDING_APPLICATION_SEARCH_MAX } from './registrationReviewApiContract.ts';
 import type {
   BulkRegistrationDecisionResult,
-  PendingApplicationProofFilter,
   PendingApplicationSort,
   PendingApplicationsQuery,
   PendingRegistrationItem,
@@ -42,7 +41,6 @@ import {
 interface Filters {
   q: string;
   role: '' | RegistrationReviewRole;
-  proof: '' | PendingApplicationProofFilter;
   sort: PendingApplicationSort;
 }
 
@@ -78,11 +76,11 @@ function decisionRefusal(code: string, action: BulkAction): string {
   }
 }
 
-const DEFAULT_FILTERS: Filters = { q: '', role: '', proof: '', sort: 'submitted' };
+const DEFAULT_FILTERS: Filters = { q: '', role: '', sort: 'submitted' };
 const SEARCH_DEBOUNCE_MS = 300;
 
 function sameFilters(a: Filters, b: Filters): boolean {
-  return a.q === b.q && a.role === b.role && a.proof === b.proof && a.sort === b.sort;
+  return a.q === b.q && a.role === b.role && a.sort === b.sort;
 }
 const SORT_LABELS: Record<PendingApplicationSort, string> = {
   submitted: 'Oldest submitted first',
@@ -90,7 +88,6 @@ const SORT_LABELS: Record<PendingApplicationSort, string> = {
   school_id: 'CTU-G ID, ascending',
   '-school_id': 'CTU-G ID, descending',
 };
-const NO_PROOF = 'No email proof on record';
 
 const fieldClass = 'dashboard-panel min-h-11 rounded-lg border px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 const primaryButton = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)] disabled:cursor-not-allowed disabled:opacity-50';
@@ -98,19 +95,17 @@ const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:o
 // Same destructive confirm style as ApplicantRejectionPanel (PATTERNS.md §4: destructive confirm for reject).
 const destructiveButton = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#b91c1c] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#991b1b] disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 const secondaryButton = 'dashboard-outline-button inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)] disabled:cursor-not-allowed disabled:opacity-50';
-const badgeClass = 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap';
 
 function toQuery(filters: Filters): PendingApplicationsQuery {
   const query: PendingApplicationsQuery = {};
   if (filters.q) query.q = filters.q;
   if (filters.role) query.role = filters.role;
-  if (filters.proof) query.proof = filters.proof;
   if (filters.sort !== 'submitted') query.sort = filters.sort;
   return query;
 }
 
 function hasActiveFilters(filters: Filters): boolean {
-  return Boolean(filters.q || filters.role || filters.proof);
+  return Boolean(filters.q || filters.role);
 }
 
 /** Fixed, non-sensitive messages; server text is never displayed. */
@@ -139,12 +134,8 @@ function formatTimestamp(value: string): string {
   return new Date(value).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-function ProofBadge({ verified }: { verified: boolean }) {
-  return verified ? (
-    <span className={`${badgeClass} dashboard-heading`}><span aria-hidden="true">✓</span>Email verified</span>
-  ) : (
-    <span className={`${badgeClass} dashboard-muted border-dashed`}><span aria-hidden="true">!</span>{NO_PROOF}</span>
-  );
+function ApplicantEmail({ email }: { email: string | null }) {
+  return email ? <span className="break-all">{email}</span> : <span className="dashboard-muted italic">Not recorded</span>;
 }
 
 function ApplicantName({ name }: { name: string | null }) {
@@ -526,7 +517,7 @@ export default function PendingApplicationsPanel() {
         </div>
 
         <form role="search" aria-label="Pending applications" noValidate onSubmit={submitSearch}
-          className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
+          className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(2,minmax(0,1fr))]">
           <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium sm:col-span-2 lg:col-span-1">
             Search CTU-G ID or name
             <input ref={searchRef} type="search" value={draft.q} maxLength={PENDING_APPLICATION_SEARCH_MAX}
@@ -546,15 +537,6 @@ export default function PendingApplicationsPanel() {
             </select>
           </label>
           <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium">
-            Email proof
-            <select value={draft.proof} className={fieldClass}
-              onChange={(event) => setDraft({ ...draft, proof: event.target.value as Filters['proof'] })}>
-              <option value="">All applications</option>
-              <option value="verified">Email verified</option>
-              <option value="legacy">{NO_PROOF}</option>
-            </select>
-          </label>
-          <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium">
             Sort by
             <select value={draft.sort} className={fieldClass}
               onChange={(event) => setDraft({ ...draft, sort: event.target.value as PendingApplicationSort })}>
@@ -563,17 +545,17 @@ export default function PendingApplicationsPanel() {
               ))}
             </select>
           </label>
-          <p id={searchHint} className="dashboard-muted text-xs sm:col-span-2 lg:col-span-4">
+          <p id={searchHint} className="dashboard-muted text-xs sm:col-span-2 lg:col-span-3">
             CTU-G IDs match from the start; names match any part. Results update as you type or choose a filter.
           </p>
           {searchError && (
             // Existing tokens only: --db-error is still Proposed (TOKENS.md §1.4). Not colour-only.
-            <p id={searchErrorId} role="alert" className="dashboard-heading flex gap-2 text-sm font-semibold sm:col-span-2 lg:col-span-4">
+            <p id={searchErrorId} role="alert" className="dashboard-heading flex gap-2 text-sm font-semibold sm:col-span-2 lg:col-span-3">
               <span aria-hidden="true">!</span>{searchError}
             </p>
           )}
           {(hasActiveFilters(draft) || filtered) && (
-            <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-4">
+            <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-3">
               <button type="button" className={secondaryButton} onClick={clearFilters}>Clear filters</button>
             </div>
           )}
@@ -691,7 +673,6 @@ export default function PendingApplicationsPanel() {
                 {filtered ? 'Change or clear the search and filters to see other applications.'
                   : 'New Student and Instructor registrations appear here after email verification.'}
               </p>
-              {filtered && <button type="button" className={`${secondaryButton} mt-4`} onClick={clearFilters}>Clear filters</button>}
             </div>
           )}
 
@@ -716,7 +697,7 @@ export default function PendingApplicationsPanel() {
                       <th scope="col" className="px-2 py-3">Name</th>
                       <th scope="col" className="px-2 py-3">Requested role</th>
                       <th scope="col" className="px-2 py-3">Submitted</th>
-                      <th scope="col" className="px-2 py-3">Email proof</th>
+                      <th scope="col" className="px-2 py-3">Email</th>
                       <th scope="col" className="px-2 py-3">Status</th>
                       <th scope="col" className="px-2 py-3 text-right">Actions</th>
                     </tr>
@@ -736,7 +717,7 @@ export default function PendingApplicationsPanel() {
                         <td className="px-2 py-3"><ApplicantName name={item.full_name} /></td>
                         <td className="px-2 py-3">{item.requested_role}</td>
                         <td className="dashboard-muted px-2 py-3"><Submitted value={item.created_at} /></td>
-                        <td className="px-2 py-3"><ProofBadge verified={item.email_verified} /></td>
+                        <td className="max-w-[16rem] px-2 py-3"><ApplicantEmail email={item.email} /></td>
                         <td className="dashboard-muted px-2 py-3">Pending review</td>
                         <td className="px-2 py-1 text-right"><ReviewLink item={item} onOpen={openApplicant} /></td>
                       </tr>
@@ -759,10 +740,10 @@ export default function PendingApplicationsPanel() {
                       ) : (
                         <p className="dashboard-heading min-w-0 font-semibold break-words">{item.school_id}</p>
                       )}
-                      <ProofBadge verified={item.email_verified} />
                     </div>
                     <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
                       <dt className="dashboard-muted">Name</dt><dd className="min-w-0"><ApplicantName name={item.full_name} /></dd>
+                      <dt className="dashboard-muted">Email</dt><dd className="min-w-0"><ApplicantEmail email={item.email} /></dd>
                       <dt className="dashboard-muted">Requested role</dt><dd>{item.requested_role}</dd>
                       <dt className="dashboard-muted">Submitted</dt><dd><Submitted value={item.created_at} /></dd>
                       <dt className="dashboard-muted">Status</dt><dd>Pending review</dd>
@@ -786,8 +767,7 @@ export default function PendingApplicationsPanel() {
         </nav>
 
         <p className="dashboard-muted mt-4 text-xs leading-relaxed">
-          Applications marked “{NO_PROOF}” were created without a recorded email verification for their current address.
-          This is not proof of eligibility. Django verifies your permission on every request.
+          Django verifies your permission on every request.
         </p>
       </section>
 

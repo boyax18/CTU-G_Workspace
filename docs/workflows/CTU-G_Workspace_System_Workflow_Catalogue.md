@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.48  |  24 November 2026  |  For stakeholder review
+Draft version 0.3.49  |  24 November 2026  |  For stakeholder review
 
 ## 1. Purpose and scope
 
@@ -976,6 +976,8 @@ Next flow: WF-02.01. Do not start until Approved is ticked.
 - R-17 UI design. The panel follows PATTERNS §6 (table, muted dates, labelled filters, overflow-x-auto) and §5 states. Gaps: loading and empty states lack the aria-live pattern of §5.1; the decision dialog is out of scope; no name column.
 
 **Implementation basis:** On 17 November 2026 the owner approved P-01 to P-08 and decided D-31 (mount only the read-only list behind an independent switch, off by default), D-32 (applicant name and email-verification state; no email address or sensitive registration data), D-33 (server-side search, filters and sort; 20 per page; stable oldest-first default; accurate next-page flag), D-34 (list eligible legacy Pending applications marked "No email proof on record"; missing proof is never verified or approval-eligible), D-35 (keep excluding anomalous rows, document the limitation and track count-only visibility as a follow-up; never hide valid Pending applications) and D-36 (separate 60-per-minute per-account listing limit). Additional owner conditions: reuse the existing services, evaluator, API patterns and components; no parallel access control; navigation follows the backend's effective-permission result, never role names; read-only; no tables, migrations or ERD changes; registration, authentication, session and CSRF behavior preserved; isolated test data only. Files changed:
+
+**Amendment (24 November 2026, owner-directed):** D-32 is amended so the pending list also returns `email` (the address on file, or null), and the queue shows an Email column in place of the Email proof column and filter. `email_verified` stays in the response, and the `proof` query parameter stays supported but is no longer offered in the UI. Hashes, tokens, verification evidence details and reviewer data remain excluded. The list is also served in LAN mode over plain HTTP, so addresses are visible on that network. Original decisions and approval records above are unchanged.
 - backend/apps/accounts/registration_review_api.py. PendingRegistrationRequestsView: own review_gate_open() (list gate, or the existing decision-gate pair used by the isolated review URLconfs); strict single-valued page, status, q, role, proof and sort; up to 5 search terms, each matching School ID prefix or any name part (ORM lookups, wildcards literal); proof annotation (email, email_verified_at and email_verified_address present and the address equal to the current email, case-insensitive); allowlisted sorts with account_id tie-breaker; 21-row look-ahead for has_next; select_related requested_role and profile (constant query count). New ReviewListThrottle (60/min keyed by the session account; address only for anonymous callers). RegistrationReviewAPI: gate check moved to review_gate_open(); DatabaseError now returns 503 review_unavailable for every review view (status code unchanged, error code corrected). Eligibility filter unchanged.
 - backend/config/urls.py. Adds only path('api/v1/admin/registration-requests/', PendingRegistrationRequestsView.as_view()).
 - backend/config/settings.py. WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED from the environment, "1" only; default off.

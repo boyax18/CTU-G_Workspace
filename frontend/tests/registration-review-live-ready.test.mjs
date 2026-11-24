@@ -24,8 +24,8 @@ const read = 'accounts.registration_requests.read';
 const approve = 'accounts.registration_requests.approve';
 const reject = 'accounts.registration_requests.reject';
 const records = [
-  { account_id: 9101, school_id: 'CTU-100', full_name: 'Ana Reyes', requested_role: 'Student', created_at: '2026-11-12T10:00:00+08:00', email_verified: true },
-  { account_id: 9102, school_id: 'CTU-200', full_name: null, requested_role: 'Instructor', created_at: '2026-11-12T10:00:00+08:00', email_verified: false },
+  { account_id: 9101, school_id: 'CTU-100', full_name: 'Ana Reyes', requested_role: 'Student', created_at: '2026-11-12T10:00:00+08:00', email_verified: true, email: 'ana.reyes@example.edu' },
+  { account_id: 9102, school_id: 'CTU-200', full_name: null, requested_role: 'Instructor', created_at: '2026-11-12T10:00:00+08:00', email_verified: false, email: null },
 ];
 
 test('live API gate stays disabled and approved route remains unset', () => {

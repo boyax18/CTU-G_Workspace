@@ -6,6 +6,18 @@
 **Last reviewed:** 2026-11-23
 **Scope:** Mandatory durable email notification for individual and bulk Student/Instructor registration decisions.
 
+## Branded email design (24 November 2026)
+
+All CTU-G Workspace emails share one design in `backend/apps/accounts/email_design.py`. That covers the registration OTP (Student and Instructor), the password-recovery OTP, the password-changed notice, and approval and rejection, including each applicant's separate email from a bulk decision.
+
+- **Structure:** multipart `alternative(text/plain, related(text/html, image/png))`. The plain-text fallback keeps its established wording, and the approved campus logo (`email_assets/ctug-logo.png`, the app's logo) travels inline as `cid:ctug-logo`. There are no remote images, web fonts, scripts or tracking.
+- **Layout:** table-based with inline CSS, a 600 px card and a phone media query; forest-green header, emerald accents, white rounded card, footer identifying CTU-G Workspace.
+- **OTP:** one run of digits at 38 px bold monospace with visual letter-spacing only, so copying yields exactly the six digits. It is never in a link, image URL or the inbox preview text. The expiry and a security reminder are shown, and recovery emails contain no links.
+- **Decisions:** approval shows a success pill and the login button; rejection shows a respectful message, the reason, the fact that registration data was removed, and the option to register again with the same CTU-G ID and email.
+- **Greeting:** OTP emails greet by first name when known. Decision emails stay neutral because they render only the immutable decision snapshot (no account lookup).
+- **Safety:** every dynamic value is HTML-escaped. Senders keep a module-level `send_mail` (same signature) so failure handling, retries and tests are unchanged. OTP generation, validation, expiry, rate limits, the outbox, encryption, audit and SMTP settings are unchanged.
+
+
 ## Current implementation status — 23 November 2026
 
 This update supersedes the historical best-effort design and checklist below. The approval and rejection services now require the existing durable outbox, a usable active encryption key and a valid recipient before making a decision. The encrypted recipient, individual audit record and decision-specific outbox row are written atomically with the decision. Rejection preserves its outbox row while deleting the rejected account and registration profile in the same transaction. The old post-commit best-effort email path cannot substitute for or bypass the outbox.

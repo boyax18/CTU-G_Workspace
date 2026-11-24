@@ -7,7 +7,7 @@ notifications prefer the audited encrypted v2 outbox, not this best-effort path.
 import logging
 
 from django.conf import settings
-from django.core.mail import send_mail
+from .email_design import send_mail  # branded multipart drop-in
 from django.db import DEFAULT_DB_ALIAS, transaction
 
 from .registration_email_templates import render_decision_email, branded_sender_address

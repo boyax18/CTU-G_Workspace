@@ -9,7 +9,8 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
-from django.core.mail import send_mail
+from . import email_design
+from .email_design import send_mail
 from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -146,9 +147,10 @@ def _summary(stage, now, *, status="verification_required"):
 class _PendingDelivery:
     """A code whose digest is stored; it is mailed only after that write commits."""
 
-    def __init__(self, stage, code, digest, recipient, role, now):
+    def __init__(self, stage, code, digest, recipient, role, now, first_name=None):
         self.stage, self.code, self.digest = stage, code, digest
         self.recipient, self.role, self.now = recipient, role, now
+        self.first_name = first_name  # greeting only; held in memory, never logged
 
 
 def _prepare_code(stage, now):
@@ -174,7 +176,8 @@ def _prepare_code(stage, now):
     stage.otp_expires_at = min(stage.expires_at, now + timedelta(seconds=policy()["otp_seconds"]))
     stage.last_sent_at = now
     stage.save()
-    return _PendingDelivery(stage, code, digest, payload["email"], role, now), None
+    return _PendingDelivery(stage, code, digest, payload["email"], role, now,
+                            first_name=payload.get("first_name") or None), None
 
 
 def _deliver_code(delivery):
@@ -186,14 +189,12 @@ def _deliver_code(delivery):
     """
     stage, now = delivery.stage, delivery.now
     try:
-        delivered = send_mail(
-            "CTU-G Workspace registration verification code",
-            f"Your {delivery.role} registration verification code is: {delivery.code}\n\n"
-            f"This code expires in {policy()['otp_seconds'] // 60} minutes. "
-            "It does not approve or activate your account.\n"
-            "If you did not request this registration, ignore this email.",
-            settings.DEFAULT_FROM_EMAIL, [delivery.recipient], fail_silently=False,
+        subject, text, html = email_design.registration_otp(
+            role=delivery.role, code=delivery.code, minutes=policy()["otp_seconds"] // 60,
+            first_name=delivery.first_name,
         )
+        delivered = send_mail(subject, text, settings.DEFAULT_FROM_EMAIL, [delivery.recipient],
+                              fail_silently=False, html_message=html)
         if delivered != 1:
             raise RuntimeError("Mail backend did not accept the message.")
     except Exception:

@@ -3,6 +3,16 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — branded HTML email design
+
+| Check | Result |
+| --- | --- |
+| Design tests (`test_email_design`) | 8/8: OTP as one unbroken selectable run (38 px), never in href/src or preheader, expiry shown; plain-text wording kept (test regexes unchanged); recovery emails have no links; escaping of name/reason/URL; no scripts, fonts or remote resources, viewport meta + 600 px card + media query; approval/rejection content and links; MIME `alternative(text/plain, related(text/html, image/png cid=<ctug-logo> inline))`; plain messages stay single-part |
+| Regression (disposable MySQL) | 255/255 across student/instructor OTP, password reset, outbox worker, decision notifications, WF-02.04 rejection/outbox erasure/release settings, WF-02.03 approval, reapplication, local delivery, bulk, audit corrections, public API errors |
+| Rendering | Headless Edge, 6 templates at 680 px and 375 px: all fit, no horizontal overflow |
+| Live SMTP | 6 `[Design preview]` messages (Student OTP, Instructor OTP, reset OTP, approved, rejected, password changed) ACCEPTED by Gmail SMTP for `juls16125+design-*` aliases only; no database records used |
+| Real data | Applicant #11 notification `Pending`, 0 attempts |
+
 ## 24 November 2026 — local email delivery (live Gmail SMTP)
 
 | Check | Result |

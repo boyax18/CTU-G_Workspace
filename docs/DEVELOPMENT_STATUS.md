@@ -48,6 +48,16 @@
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
+### 0.10 Branded HTML email design — 24 November 2026
+
+- **Implemented:** one shared design (`email_design.py`) for registration OTPs, password recovery and password-changed notices, and approval/rejection notifications, individual and bulk. It is an HTML + plain-text multipart message with the approved campus logo inline (CID), inline CSS, a responsive table layout and a large copyable OTP, and every dynamic value is escaped. Senders keep a drop-in `send_mail`. Django 6.1 no longer supports `mixed_subtype`, so the logo is added with the standard `add_related` on the HTML part. Business rules, OTP policy, outbox/encryption/audit and SMTP settings are unchanged.
+- **Verified:**
+  - New design tests 8/8.
+  - Existing email-related suites 255/255: student/instructor OTP, password reset, outbox worker/erasure, approval, rejection, bulk, reapplication, release settings and local delivery, with the release-settings test now pinning the default posture and covering the opt-in.
+  - Headless Edge renders at 680 px and 375 px: no horizontal overflow.
+  - Six design previews (`[Design preview]`, sample data) accepted by Gmail SMTP for the approved test inbox only; inbox arrival is for the owner to confirm.
+- **Real data:** `ctug_workspace` was not accessed for sending; applicant #11's notification remains `Pending`.
+
 ### 0.9 Local email delivery — 24 November 2026
 
 - **State before this change:**

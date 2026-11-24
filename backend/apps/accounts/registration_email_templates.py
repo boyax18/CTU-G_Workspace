@@ -5,7 +5,6 @@ render current Account.rejection_reason for a queued historical notification.
 """
 
 from email.utils import parseaddr
-from html import escape
 from urllib.parse import urlsplit
 
 from django.conf import settings
@@ -58,52 +57,17 @@ def branded_sender_address():
 
 
 def render_decision_email(*, approved, rejection_code=None):
+    """Return (subject, plain text, HTML) for one decision. Validation and links are decided here;
+    the branded presentation lives in email_design (the same design for individual and bulk)."""
     if type(approved) is not bool:
         raise ValueError("Invalid decision type.")
     if approved:
         if rejection_code is not None:
             raise ValueError("Approval must not have a rejection code.")
-        status = "APPROVED"
-        description = "Your account registration has been approved by the administrator."
-        action = "Log In to CTU-G Workspace"
-        url = _public_url("/")
-        subject = "CTU-G Workspace | Registration Approved"
-        reason = None
+        url, reason = _public_url("/"), None
     else:
         if rejection_code not in REJECTION_LABELS:
             raise ValueError("A supported immutable rejection reason is required.")
-        status = "REJECTED"
-        description = "Your account registration has been rejected by the administrator."
-        action = "Register Again"
-        url = _public_url("/register")
-        subject = "CTU-G Workspace | Registration Rejected"
-        reason = REJECTION_LABELS[rejection_code]
-
-    reason_text = f"\nReason: {reason}\n" if reason else ""
-    further = (
-        "You can now sign in using your registered CTU-G ID and password."
-        if approved else
-        "You may submit a new registration by completing the registration form again."
-    )
-    body = (
-        "CTU-G Workspace\nCebu Technological University - Ginatilan Campus\n\n"
-        f"Registration status: {status}\n\n{description}\n"
-        f"{reason_text}\n{further}\n\n{action}: {url}\n\n"
-        "This is an automated notification. If you need help, contact the campus administrator."
-    )
-    reason_html = (
-        f'<p><strong>Reason:</strong> {escape(reason)}</p>' if reason else ""
-    )
-    html = (
-        '<!doctype html><html><body style="margin:0;padding:24px;font-family:Arial,sans-serif;color:#17312a">'
-        '<main style="max-width:580px;margin:auto;border:1px solid #d6e2dc;border-radius:12px;padding:24px">'
-        '<h1 style="color:#165e42;font-size:22px;margin:0">CTU-G Workspace</h1>'
-        '<p style="color:#536a5f;font-size:13px">Cebu Technological University - Ginatilan Campus</p>'
-        f'<h2 style="font-size:18px">Registration Status: {status}</h2>'
-        f'<p>{escape(description)}</p>{reason_html}<p>{escape(further)}</p>'
-        f'<p><a href="{escape(url, quote=True)}" style="display:inline-block;background:#166b4a;color:#fff;'
-        f'padding:12px 18px;border-radius:6px;text-decoration:none">{escape(action)}</a></p>'
-        '<p style="font-size:12px;color:#536a5f">Automated notification. Contact the campus administrator if you need help.</p>'
-        '</main></body></html>'
-    )
-    return subject, body, html
+        url, reason = _public_url("/register"), REJECTION_LABELS[rejection_code]
+    from .email_design import registration_decision
+    return registration_decision(approved=approved, url=url, reason=reason)

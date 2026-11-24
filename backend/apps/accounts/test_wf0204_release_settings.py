@@ -32,10 +32,12 @@ LOCMEM = "django.core.mail.backends.locmem.EmailBackend"
 KEY_LIKE = re.compile(r"['\"][A-Za-z0-9+/]{43}=['\"]")  # a literal base64 256-bit key
 
 
-def local_review():
+def local_review(local_email="0"):
     database = {**base_settings.DATABASES["default"], "ENGINE": "django.db.backends.mysql",
                 "NAME": "ctug_workspace", "HOST": "127.0.0.1"}
-    with patch.dict("os.environ", {"CTUG_REVIEW_LOCAL_ACK": "LOCAL_REVIEW_ONLY"}), \
+    # The developer's own backend/.env may opt in to local email; this helper pins the setting.
+    with patch.dict("os.environ", {"CTUG_REVIEW_LOCAL_ACK": "LOCAL_REVIEW_ONLY",
+                                   "WORKSPACE_LOCAL_EMAIL_DELIVERY": local_email}), \
             patch.object(base_settings, "DEBUG", True), \
             patch.object(base_settings, "DATABASES", {"default": database}):
         return importlib.reload(importlib.import_module("config.review_local_settings"))
@@ -63,6 +65,23 @@ class ReviewModeMailSafetyTests(SimpleTestCase):
                 self.assertIn(cfg.ROOT_URLCONF, {"config.review_local_urls", "config.review_sandbox_urls"})
                 self.assertFalse([n for n in dir(cfg) if n.startswith("WORKSPACE_OUTBOX_KEK")], "no key in settings")
         self.assertIs(local_review().WORKSPACE_REGISTRATION_REAPPLICATION_ENABLED, False)
+
+    def test_local_email_opt_in_uses_the_validated_smtp_settings_only(self):
+        smtp = "django.core.mail.backends.smtp.EmailBackend"
+        with patch.object(base_settings, "WORKSPACE_EMAIL_SMTP_ENABLED", True), \
+                patch.object(base_settings, "EMAIL_BACKEND", smtp), \
+                patch.object(base_settings, "WORKSPACE_PASSWORD_RESET_ENABLED", True):
+            cfg = local_review(local_email="1")
+        self.assertEqual(cfg.EMAIL_BACKEND, smtp)
+        self.assertIs(cfg.WORKSPACE_EMAIL_SMTP_ENABLED, True)
+        self.assertIs(cfg.WORKSPACE_PASSWORD_RESET_ENABLED, True)
+        self.assertIs(cfg.WORKSPACE_EMAIL_DEV_LINKS_ALLOWED, True)
+        self.assertIs(cfg.WORKSPACE_REGISTRATION_OUTBOX_ENABLED, True)
+        self.assertEqual(cfg.ALLOWED_HOSTS, ["127.0.0.1", "localhost"])  # still loopback-only
+        with patch.object(base_settings, "WORKSPACE_EMAIL_SMTP_ENABLED", False), \
+                self.assertRaises(ImproperlyConfigured):
+            local_review(local_email="1")
+        self.assertIs(local_review().WORKSPACE_EMAIL_DEV_LINKS_ALLOWED, False)
 
     def test_no_key_or_credential_is_in_source_control(self):
         for path in (CONFIG / "review_local_settings.py", CONFIG / "review_sandbox_settings.py"):

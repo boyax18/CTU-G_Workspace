@@ -14,12 +14,13 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import get_connection, send_mail
+from django.core.mail import get_connection
 from django.core.validators import validate_email
 from django.db import DEFAULT_DB_ALIAS, connections, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from .email_design import send_mail  # branded multipart drop-in (patched by tests)
 from .outbox_crypto import OutboxCryptoUnavailable, decrypt_recipient
 from .registration_email_templates import (
     REJECTION_LABELS, branded_sender_address, render_decision_email,

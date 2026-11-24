@@ -16,7 +16,7 @@ import queue
 import threading
 
 from django.conf import settings
-from django.core.mail import send_mail
+from .email_design import send_mail
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,9 @@ _worker = None
 
 def _run():
     while True:
-        kind, subject, body, recipient = _queue.get()
+        kind, subject, body, recipient, html = _queue.get()
         try:
-            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False)
+            send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, [recipient], fail_silently=False, html_message=html)
         except Exception as exc:
             # Never log the recipient, the body or any link.
             logger.warning("Workspace recovery mail (%s) could not be sent (%s).", kind, type(exc).__name__)
@@ -46,11 +46,11 @@ def _ensure_worker():
             _worker.start()
 
 
-def enqueue(kind, subject, body, recipient):
+def enqueue(kind, subject, body, recipient, html=None):
     """Queue one message. Returns False (and logs only `kind`) when the queue is full."""
     _ensure_worker()
     try:
-        _queue.put_nowait((kind, subject, body, recipient))
+        _queue.put_nowait((kind, subject, body, recipient, html))
     except queue.Full:
         logger.warning("Workspace recovery mail (%s) was dropped: queue full.", kind)
         return False

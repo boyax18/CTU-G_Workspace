@@ -1,5 +1,12 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Branded HTML email design
+
+- Added `apps/accounts/email_design.py`: one responsive, table-based, inline-CSS design (forest-green header, emerald accents, white rounded card, footer) with the approved campus logo attached inline. It covers registration OTPs, password-recovery OTP, the password-changed notice, and approval/rejection, including each bulk-decision email.
+- OTPs are large, bold and copy as exactly six digits; they never appear in links, images or preview text, and the expiry and a security reminder are shown. All dynamic values are escaped, and plain-text fallbacks keep their wording.
+- Senders keep a drop-in `send_mail`; no business rule, OTP policy, outbox, encryption, audit or SMTP setting changed.
+- Verification: design tests 8/8; email regression 255/255; 680/375 px renders; 6 previews accepted by Gmail SMTP for the approved inbox only.
+
 ### 24 November 2026 — Local email delivery (-Local)
 
 - Added an owner-approved `WORKSPACE_LOCAL_EMAIL_DELIVERY` opt-in to the loopback decision profile: Gmail SMTP for OTPs, password recovery, and loopback decision-email links (DEBUG + local only).

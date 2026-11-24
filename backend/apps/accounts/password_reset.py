@@ -28,7 +28,7 @@ from rest_framework import exceptions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
-from . import recovery_mail, session_revocation
+from . import email_design, recovery_mail, session_revocation
 from .email_identity import normalize_account_email
 from .models import Account
 from .session_auth import WorkspaceSessionAPI
@@ -160,6 +160,15 @@ def eligible_account_queryset():
     ).distinct()
 
 
+def _first_name(account):
+    """Greeting only. A missing profile simply means a neutral greeting."""
+    try:
+        name = (account.profile.first_name or "").strip()
+    except Exception:
+        return None
+    return name[:100] or None
+
+
 def _lock_eligible(email):
     """Inside a transaction: lock and return the one eligible account using `email`, or None."""
     ids = list(eligible_account_queryset().filter(email__iexact=email).values_list("pk", flat=True)[:2])
@@ -269,13 +278,10 @@ class PasswordResetRequestView(WorkspaceSessionAPI):
                         record.digest = _code_digest(account, record, code)
                         _save(account, record, min(now + p["code"], window_end))
                         recipient, minutes = account.email, max(1, p["code"] // 60)
+                        message = email_design.password_reset_otp(
+                            code=code, minutes=minutes, first_name=_first_name(account))
                         transaction.on_commit(lambda: recovery_mail.enqueue(
-                            "reset_code",
-                            "CTU-G Workspace password reset code",
-                            f"Your CTU-G Workspace password reset code is {code}.\n\n"
-                            f"It expires in {minutes} minutes. Do not share it with anyone.\n\n"
-                            "If you did not request this, ignore this email.",
-                            recipient,
+                            "reset_code", message[0], message[1], recipient, html=message[2],
                         ))
         except Exception as exc:
             # Never reveal the target identity or code to API callers or logs.
@@ -388,14 +394,11 @@ class PasswordResetConfirmView(WorkspaceSessionAPI):
                 # old password hash alone cannot revive them. _lock_eligible already holds this row's lock.
                 session_revocation.advance(account.pk)
                 recipient = account.email
+                notice = email_design.password_changed(first_name=_first_name(account))
                 # D-22: queued only if the password update commits.
                 transaction.on_commit(lambda: recovery_mail.enqueue(
-                    "password_changed",
-                    "CTU-G Workspace password changed",
-                    "The password for your CTU-G Workspace account was just changed.\n\n"
-                    "If you made this change, no action is needed. "
-                    "If you did not, contact support immediately.",
-                    recipient,
+                    "password_changed", notice[0], notice[1],
+                    recipient, html=notice[2],
                 ))
         except DatabaseError:
             logger.warning("Workspace password recovery confirmation database error.")

@@ -1,5 +1,13 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Isolated WF-02 bulk route integration
+
+- Added the existing bulk-decision view to the shared registration-review URLconf used only by the loopback local-review/decision-local profiles and synthetic sandbox. Normal `config.urls` and production routing remain unchanged; source defaults remain off, with flags enabled only in the current local processes.
+- Added a narrower loopback decision profile that retains applicant/account reads but omits account-status and WF-03 mutation routes.
+- Verified route isolation (11/11 backend tests), bulk service/release safeguard (50/50 backend tests), and the frontend bulk/API contract (36/36). Started Django/Vite on loopback with local WF-02 flags; unauthenticated API requests preserve 401 and the CSRF endpoint returns 200. Read-only MySQL counts found 4 eligible Pending applicants and 1 eligible ordinary directory account.
+- The active outbox encryption key is absent in the inspected local environment, so decision controls remain fail-closed; SMTP and the outbox worker remain off. No applicant records, migrations, secrets, or SMTP deliveries were changed.
+- Recorded the local-only route scope in the existing workflow catalogue, API contract, access-control gates, implementation status, and test evidence. This does not mark a workflow newly approved or production-ready.
+
 ### 23 November 2026 — WF-02.03/02.04 durable notifications and bulk decisions
 
 - Made the durable outbox mandatory for both individual and bulk approvals/rejections. Each successful decision, individual audit record and encrypted notification row commit atomically; rejected registration/profile deletion cannot erase its queued notification. API/UI language now distinguishes queued from delivered.

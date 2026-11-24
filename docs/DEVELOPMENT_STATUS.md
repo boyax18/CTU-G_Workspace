@@ -1,6 +1,6 @@
 ﻿# CTU-G Workspace — Development Status
 
-**As of:** November 23, 2026
+**As of:** November 24, 2026
 **Basis:** Current WF-02 source inspection and isolated verification below. Older phase records are historical evidence, not a continuous live database audit.
 
 ## 0. WF-02 dashboard integration — current checkpoint
@@ -38,6 +38,15 @@
 - **Authorization and activation:** No role-name bypass or new permission was added. School Admin requires the exact effective action permission and active Admin assignment; Technical Super Admin relies on the same effective inherited Admin grant in its selected context. The bulk URLconf remains detached from normal application URLs and its backend/frontend switches default off. Approval/rejection remain unmounted from `config.urls`; decision, outbox-worker and SMTP activation were not enabled.
 - **Verification:** 78/78 backend API/approval/bulk tests, 36/36 backend notification/outbox/review tests, and 6/6 dashboard action-availability integration tests passed on disposable MySQL databases; focused frontend tests 47/47 and applicant-review browser tests 22/22 passed; production build passed. These checks used synthetic data; no real records were mutated and no SMTP was sent. The historical read-only database observations remain separate in §0.1.
 - **Release boundary:** This is source implementation and isolated test evidence, not live authenticated decision verification, local write activation, production readiness, or a new Human Approval. Previous workflow IDs and approval fields are unchanged. No real database mutation or migration was performed.
+
+### 0.4 Isolated bulk route and current activation blockers — 24 November 2026
+
+- Added `/api/v1/admin/registration-requests/bulk/` to the shared registration-review URLconf. It is included only by loopback local-review/decision-local profiles and the synthetic sandbox; normal `config.urls` and production remain unchanged. This is the narrow local-route scope requested by the owner after D-53; it does not change permission policy or mark WF-02.03/02.04 newly approved.
+- Added `config.review_decision_local_settings` and its URLconf for this runtime: loopback-only, applicant decisions plus read-only dashboard routes, no account-status or WF-03 mutation routes. Normal `config.urls` remains unchanged.
+- Focused evidence: isolated routing 11/11; bulk decision and release safeguard 50/50; frontend bulk/API contract 36/36. No test used `ctug_workspace` for writes.
+- A read-only count against `ctug_workspace` found 4 eligible Pending applicants and 1 eligible ordinary directory account; the decision outbox has zero rows. No personal fields were selected. No valid active wrapping key was present in process, user, machine or project `.env` configuration, so the backend advertises no usable decision actions and approval/rejection refuse before mutation.
+- Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
+- Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
 The sections below retain the November 8 historical baseline. Their earlier inactive/deferred statements must be read with this checkpoint and the current workflow catalogue, including its later local-development approvals and protected WF-03 blockers. API contracts are in `api/AR-6C-registration-review-api-contract-proposal.md` §0; operational access and governance separation are in `security/ACCESS_CONTROL_GATES.md`.
 

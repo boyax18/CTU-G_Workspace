@@ -1,6 +1,6 @@
 # CTU-G Workspace — Account Management API Contract and Historical Proposal
 
-## 0. Verified WF-02 implementation — 23 November 2026
+## 0. Verified WF-02 implementation — 24 November 2026
 
 This section supersedes the historical candidate routes and payloads in §§1–5 below. Source: `config/urls.py`, the isolated review URLconfs, `registration_review_api.py`, `account_status_api.py`, their services, and the test evidence in `../testing/TEST_RESULTS.md`. Route presence is not activation or release approval. No live account mutations or provisioning were performed for this integration.
 
@@ -16,6 +16,7 @@ Every data request resolves the authenticated Django Workspace session, checks a
 | GET | `registration-requests/{id}/` | Same read permission | Mounted, same read gate | Same eligibility as list |
 | POST | `registration-requests/{id}/approve/` | `accounts.registration_requests.approve` | Unmounted (404) | Review API + approval gates; locked service checks |
 | POST | `registration-requests/{id}/reject/` | `accounts.registration_requests.reject` | Unmounted (404) | Same gate pair; durable outbox + v2 template required |
+| POST | `registration-requests/bulk/` | Exact approve or reject permission, per item | Unmounted (404) | Bulk gate; per-item locked checks, audit and durable outbox |
 | GET | `school-accounts/` | `accounts.school_accounts.read` | Mounted, directory gate default off | Existing status gate also opens reads |
 | GET | `school-accounts/{id}/` | Same school-account read permission | Mounted, same directory gate | Same target exclusions |
 | GET | `school-accounts/{id}/history/` | Same school-account read permission | Mounted, same directory gate | Minimized history only |
@@ -44,18 +45,18 @@ Rejection body: `{ "rejection_code": "identity_mismatch" }`. Allowed codes: `inc
 
 Suspend body: `{ "expected_active": true }`; activate body: `{ "expected_active": false }`. Exactly one boolean field is accepted. Success: `{ "account_id": 123, "is_active": false }` (or true for activation). The locked service checks the expected state, target eligibility, permissions and protected-account restrictions, changes active status, advances the persistent session-revocation counter, and records the audit event atomically. Reactivation requires an existing active role and never restores old sessions. Approval, identity, roles and permissions are not edited here. Protected-executor status writes remain refused.
 
-### Bulk applicant decisions — implemented, not activated
+### Bulk applicant decisions — implemented; isolated route mounted, still gated
 
-The bounded bulk service and UI are implemented, but the only current bulk HTTP route is `/bulk/` in the detached `apps.accounts.registration_bulk_urls` test URLconf. It is not mounted under the normal API or production URL configuration. The backend `WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED` and frontend bulk switch default off.
+The bounded bulk service and UI are implemented. `/bulk/` is part of `apps.accounts.registration_review_urls`, included only by the loopback-only `config.review_local_urls`, the narrower `config.review_decision_local_urls`, and synthetic `config.review_sandbox_urls`. The decision-local profile mounts no account-status or WF-03 mutation routes. Bulk remains absent from normal `config.urls` and production configuration. The backend `WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED` and frontend `VITE_WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED` switches default off. In the inspected local environment the active outbox wrapping key is absent, so approval/rejection actions are not advertised and the services fail closed before writes. Local review suppresses external SMTP; delivery requires the separately gated, approved worker.
 
 The request is an explicit snapshot, never a filter or `select_all` instruction:
 
 - Approve: `{ "action": "approve", "account_ids": [123, 124], "eligibility_confirmed": true }`. IDs must be unique integers; batch size is 1–20. The server verifies each account and derives the applicable fixed eligibility source from its requested role while locked. The reviewer affirmation applies to every selected applicant.
 - Reject: `{ "action": "reject", "account_ids": [123, 124], "rejection_code": "identity_mismatch" }`. The rejection code is one of the individual workflow's fixed allowlisted values and applies to each selected applicant.
 
-The endpoint validates the complete request before processing, then independently rechecks session authority, exact action permission, active services and each target using the existing locked single-applicant service. Every committed item has its own transaction, audit record and encrypted notification row. The response includes aggregate counts and per-ID `Approved`, `Rejected`, `Skipped`, `Failed` or `Unconfirmed` outcomes; notification status `queued` is not delivery confirmation. A permission/service change stops the batch. An infrastructure/commit-acknowledgement uncertainty is reported as `Unconfirmed`, stops further work and must not be automatically retried. Duplicate IDs in a request are rejected; already-decided accounts are not processed again.
+The endpoint validates the complete request before processing, then independently rechecks session authority, exact action permission, active services and each target using the existing locked single-applicant service. For approval, the reviewer explicitly confirms eligibility for every selected applicant; the service derives the fixed D-45 source from each locked requested role and records the attestation in that applicant's audit. Every committed item has its own transaction, audit record and encrypted notification row. The response includes aggregate counts and per-ID `Approved`, `Rejected`, `Skipped`, `Failed` or `Unconfirmed` outcomes; notification status `queued` is not delivery confirmation. A permission/service change stops the batch. An infrastructure/commit-acknowledgement uncertainty is reported as `Unconfirmed`, stops further work and must not be automatically retried. Duplicate IDs in a request are rejected; already-decided accounts are not processed again.
 
-The dashboard offers row checkboxes, Select All on Current Page, Clear Selection, count, action-specific confirmation and a result summary. It refreshes after confirmed outcomes and does not replay a request whose outcome is uncertain. Bulk decisions are not available to mobile clients; the future-client authentication constraints below still apply. The test URLconf and automated tests are not evidence of live route activation or production authorization.
+The dashboard offers row checkboxes, Select All on Current Page, Clear Selection, count, action-specific confirmation and a result summary. It refreshes after confirmed outcomes and does not replay a request whose outcome is uncertain. Bulk decisions are not available to mobile clients; the future-client authentication constraints below still apply. Route resolution and automated tests do not prove live authenticated access or production authorization.
 
 ### Authentication, errors and future mobile clients
 

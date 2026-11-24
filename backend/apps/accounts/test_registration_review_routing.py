@@ -13,6 +13,9 @@ class RegistrationReviewRoutingSafetyTests(TestCase):
     self.assertFalse(
       getattr(settings, "WORKSPACE_REGISTRATION_APPROVAL_ENABLED", False)
     )
+    self.assertFalse(
+      getattr(settings, "WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED", False)
+    )
 
   def test_pending_list_is_not_live(self):
     with self.assertRaises(Resolver404):
@@ -45,6 +48,7 @@ class RegistrationReviewRoutingSafetyTests(TestCase):
       "/": "registration-review-pending",
       "/1/approve/": "registration-review-approve",
       "/1/reject/": "registration-review-reject",
+      "/bulk/": "bulk-registration-review",
     }
 
     for route, expected_name in routes.items():
@@ -67,6 +71,34 @@ class RegistrationReviewRoutingSafetyTests(TestCase):
     ):
       with self.subTest(route=route), self.assertRaises(Resolver404):
         resolve(route, urlconf="config.urls")
+
+  def test_bulk_route_is_available_only_in_the_isolated_review_urlconf(self):
+    for urlconf in ("config.review_local_urls", "config.review_sandbox_urls"):
+      with self.subTest(urlconf=urlconf):
+        match = resolve(
+          "/api/v1/admin/registration-requests/bulk/",
+          urlconf=urlconf,
+        )
+        self.assertEqual(match.url_name, "bulk-registration-review")
+        self.assertEqual(match.func.view_class.__name__, "BulkRegistrationReviewView")
+    decision_profile = resolve(
+      "/api/v1/admin/registration-requests/bulk/",
+      urlconf="config.review_decision_local_urls",
+    )
+    self.assertEqual(decision_profile.url_name, "bulk-registration-review")
+    with self.assertRaises(Resolver404):
+      resolve(
+        "/api/v1/admin/registration-requests/bulk/",
+        urlconf="config.urls",
+      )
+
+  def test_decision_profile_does_not_mount_account_status_writes(self):
+    for route in (
+      "/api/v1/admin/school-accounts/1/suspend/",
+      "/api/v1/admin/school-accounts/1/activate/",
+    ):
+      with self.subTest(route=route), self.assertRaises(Resolver404):
+        resolve(route, urlconf="config.review_decision_local_urls")
 
   def test_wf0201_list_gate_defaults_off(self):
     # Checked in source so a developer's backend/.env cannot change the result.

@@ -1,4 +1,4 @@
-"""Detached AR-6C5C bulk API: NEVER include in config.urls without approval.
+"""Isolated AR-6C5C bulk API; never include it in the normal config.urls.
 
 Requires three independent feature gates and the existing exact-permission
 Workspace session / CSRF / scoped-review checks. No role-name bypass.

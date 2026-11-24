@@ -1,6 +1,6 @@
 # Hybrid Dynamic Access Control — Release Gates
 
-**Current checkpoint:** WF-02 read-only dashboard integration, 23 November 2026, as described below. Historical catalogue proposals and later local approvals do not authorize new protected operations.
+**Current checkpoint:** WF-02 dashboard and isolated bulk-route integration, 24 November 2026, as described below. Historical catalogue proposals and local approvals do not authorize production operations.
 **Last planner run referenced:** 2026-11-08; pinned SHA-256 `56ccd699a127ac7a734bd53a2cb7d4a30a1d3953413e4c423897b4a9c9398b78`.
 
 ## WF-02 operational access — 23 November 2026
@@ -14,7 +14,7 @@
 
 Approval, rejection, suspension and activation require their exact `accounts.registration_requests.approve`, `.reject`, `accounts.school_accounts.suspend`, `.activate` permissions. Normal routes mount none of these writes. Isolated review gates, locked target/state checks, CSRF and transaction/audit controls remain authoritative. Approval does not provision Technical Super Admin; status management excludes administrator/governance/framework targets and the actor. Rejection preserves durable delivery intent across deletion and never reactivates rejected registrations.
 
-Bulk applicant approval/rejection introduces no bulk permission or role-name bypass: it requires the same exact action permission and active Admin assignment as the corresponding individual decision, rechecked for each explicit applicant ID. The bounded endpoint remains detached from normal URL configuration and default-off. Each successful item uses an independent locked transaction with its own audit and encrypted outbox row; an uncertain result stops the batch without automatic replay. Outbox queueing does not itself authorize a decision or prove email delivery.
+Bulk applicant approval/rejection introduces no bulk permission or role-name bypass: it requires the same exact action permission and active Admin assignment as the corresponding individual decision, rechecked for each explicit applicant ID. The bounded endpoint is mounted only through isolated local-review/sandbox URLconfs; the narrower decision-local profile omits account-status and WF-03 mutation routes. It remains absent from normal URL configuration and default-off. Each successful item uses an independent locked transaction with its own audit and encrypted outbox row; an uncertain result stops the batch without automatic replay. The current local environment lacks the active outbox encryption key, so decisions remain unavailable. Outbox queueing does not itself authorize a decision or prove email delivery; SMTP worker delivery is separately gated.
 
 `WORKSPACE_ACCOUNT_DIRECTORY_ENABLED` independently opens read-only school-account APIs; `WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED` opens applicant reads. Both default off. Frontend read flags control integration only. Action controls also require `X-Workspace-Available-Actions` from the authorized detail response, effective permission hints and separate mutation build flags; the server advertises no actions for absent routes, disabled gates or an enabled protected executor. Availability hints are not transaction authorization.
 

@@ -1,7 +1,23 @@
 ﻿# Test Results and Evidence — CTU-G Workspace
 
-**As of:** November 23, 2026
+**As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
+
+## 24 November 2026 — isolated bulk route integration
+
+| Check | Result |
+| --- | --- |
+| Review-route resolution | 11/11 passed; `/bulk/` resolves in local-review, decision-local and sandbox URLconfs, remains absent from normal `config.urls`, and decision-local omits status-write routes |
+| Bulk decision and release safeguard | 50/50 passed across `test_registration_bulk` and `test_wf0201_release_safeguard`; disposable test database destroyed |
+| Frontend bulk/API contract | 36/36 passed across the bulk and applicant-review API contract tests |
+| Decision-local profile | Django system check clean; account-status writes disabled, SMTP disabled, applicant/directory reads enabled |
+| Runtime database | Read-only `ctug_workspace` count: 4 eligible Pending applicants, 1 eligible ordinary directory account; outbox status count zero; no personal fields selected |
+| Local services / browser | Django and Vite both bound to `127.0.0.1`; browser renders sign-in page; session `authenticated=false`; CSRF 200; applicant and directory APIs 401 unauthenticated; bulk OPTIONS 200 |
+| Runtime outbox readiness | No valid active wrapping key found in process, user, machine, or project `.env` configuration; decisions remain fail-closed |
+| Real records / email | No account decisions, migrations, SMTP authentication, or SMTP delivery performed |
+| Activation | Local backend bulk/read gates and frontend WF-02 flags are enabled only in the current localhost processes. The route is mounted only in isolated local-review/decision-local/sandbox URLconfs; the active key is absent, so no decision controls are advertised. SMTP worker/delivery remains separately gated and off |
+
+The routing and bulk suites ran with `config.test_settings` against disposable MySQL test databases. Environment and outbox checks queried only key-format presence and aggregate status counts; no key contents or personal fields were printed. Live authenticated School Admin/Technical Super Admin access and role-level Student/Instructor denial were not browser-verified because no credentials were supplied; existing authorization tests remain the evidence for those paths.
 
 ## 23 November 2026 — WF-02.03/02.04 durable notifications and bulk decisions
 

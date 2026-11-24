@@ -3,6 +3,15 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — Applicant Reviews automatic filtering
+
+| Check | Result |
+| --- | --- |
+| Real browser (headless Edge, real frontend + real loopback decision profile, disposable replica, 28 pending incl. three "Janrey" across role/proof) | 19/19: no Apply button; typing "Janrey" (6 keys) sent 1 request `?page=1&status=Pending&q=Janrey`; role, email proof (verified and no-proof) and sort applied immediately; combined `q=Janrey&role=Student&sort=-submitted` ordered newest first; ID prefix search; clearing search restores 20 Students newest first; no-match empty state; Clear filters; page 2 keeps filters; filter change returns to page 1 and clears selection; Approve All on a filtered view approved exactly the 2 rows shown with filters kept; Technical Super Admin context filtering and controls. Replica dropped |
+| Mocked browser | `pending-applications-errors` + `applicant-approval-errors`: 26/26 (debounced single request, immediate dropdowns, combined query, Enter, cleared search, invalid text without request, empty states, page reset, keyboard, responsive/AA) |
+| Unit / lint / build | 47/47; ESLint on changed files clean; build passed |
+| Real data | `ctug_workspace` fingerprint identical to baseline |
+
 ## 24 November 2026 — Applicant Reviews selection and decision controls
 
 | Check | Result |

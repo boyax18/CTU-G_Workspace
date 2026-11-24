@@ -48,6 +48,16 @@
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
+### 0.8 Applicant Reviews automatic filtering — 24 November 2026
+
+- **Changes:** Apply filters was removed. Search (debounced ~300 ms; Enter applies at once), Requested role, Email proof and Sort by now update the table automatically and together, through the unchanged server query and pagination (20 per page). Any change returns to page 1 and clears the selection. Responses superseded by a newer request are discarded. Previous rows stay dimmed and inert while loading, and errors replace them. Decision controls are unchanged.
+- **Real browser** (real frontend and decision profile on a disposable replica with 28 pending applicants; dropped afterwards), 19/19:
+  - One request for six typed characters; each dropdown and the sort applied at once.
+  - Combined Janrey + Student + Email verified + newest-first query; CTU-G ID prefix search; cleared search restores results; filtered empty state; Clear filters.
+  - Page 2 keeps filters; a filter change resets to page 1 and clears the selection.
+  - Approve All on a filtered view decided exactly the shown rows; Technical Super Admin context works.
+- **Other checks:** mocked browser 26/26; unit 47/47; lint and build pass. `ctug_workspace` unchanged.
+
 ### 0.7 Applicant Reviews selection and decision controls — 24 November 2026
 
 - **Cause of the disabled buttons:** the owner was running LAN mode, whose `config.urls` mounts no decision route. The server therefore advertised no actions, but the page still drew a permanent, disabled bulk toolbar. Backend gates, outbox readiness and the `-Local` profile were already correct, and no backend change was made.

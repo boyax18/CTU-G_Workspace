@@ -80,28 +80,32 @@ test('an authorized reviewer sees the list and no decision controls without deci
   }, VIEW);
 });
 
-test('search, filters and sort go to the server only when applied, never per keystroke', async () => {
+test('search is debounced, dropdowns apply at once, and every control combines into one server query', async () => {
   const fake = server((query) => [page(query.includes('q=') ? [row(2)] : [row(1), row(2)])]);
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Apply filters' }).count(), 0);
     const baseline = fake.state.lists.length;
     const search = page.getByLabel('Search CTU-G ID or name');
-    await search.pressSequentially('  santos ');
+    await search.pressSequentially('  santos ', { delay: 40 });
+    await until(() => fake.state.lists.length === baseline + 1, 'one debounced search request');
+    await page.waitForTimeout(500);
+    assert.equal(fake.state.lists.length, baseline + 1, 'typing sends one request after the pause, not one per keystroke');
+    assert.equal(fake.state.lists.at(-1), '?page=1&status=Pending&q=santos');
     await page.getByLabel('Requested role').selectOption('Instructor');
+    await until(() => fake.state.lists.at(-1) === '?page=1&status=Pending&q=santos&role=Instructor', 'role applies at once');
     await page.getByLabel('Email proof').selectOption('legacy');
+    await until(() => fake.state.lists.at(-1) === '?page=1&status=Pending&q=santos&role=Instructor&proof=legacy', 'proof applies at once');
     await page.getByLabel('Sort by').selectOption('-submitted');
-    await page.waitForTimeout(300);
-    assert.equal(fake.state.lists.length, baseline, 'typing and selecting must not send requests');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await until(() => fake.state.lists.at(-1) === '?page=1&status=Pending&q=santos&role=Instructor&proof=legacy&sort=-submitted', 'sort applies at once');
     await page.getByText('7240002').first().waitFor();
-    assert.equal(fake.state.lists.at(-1), '?page=1&status=Pending&q=santos&role=Instructor&proof=legacy&sort=-submitted');
-    assert.equal(await search.inputValue(), 'santos');
-    // Enter in the search box also applies.
+    assert.equal(await search.inputValue(), '  santos ', 'the input is never rewritten while typing');
+    // Enter applies immediately; clearing the search restores the unsearched results.
     await search.fill('7240');
     await search.press('Enter');
-    await until(() => fake.state.lists.length === baseline + 2, 'Enter to apply');
-    await page.getByText('7240002').first().waitFor();
-    assert.equal(fake.state.lists.at(-1), '?page=1&status=Pending&q=7240&role=Instructor&proof=legacy&sort=-submitted');
+    await until(() => fake.state.lists.at(-1) === '?page=1&status=Pending&q=7240&role=Instructor&proof=legacy&sort=-submitted', 'Enter applies');
+    await search.fill('');
+    await until(() => fake.state.lists.at(-1) === '?page=1&status=Pending&role=Instructor&proof=legacy&sort=-submitted', 'cleared search');
   }, VIEW);
 });
 
@@ -112,11 +116,11 @@ test('invalid search text is refused in the browser without a request', async ()
     const baseline = fake.state.lists.length;
     const search = page.getByLabel('Search CTU-G ID or name');
     await search.fill('Ñame');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
     await page.getByRole('alert').filter({ hasText: 'no accents' }).waitFor();
     assert.equal(await search.getAttribute('aria-invalid'), 'true');
-    assert.ok(await search.evaluate((element) => element === document.activeElement));
+    await page.waitForTimeout(400);
     assert.equal(fake.state.lists.length, baseline);
+    await page.getByRole('table').waitFor(); // the current results stay
   }, VIEW);
 });
 
@@ -125,12 +129,27 @@ test('empty and filtered-empty states are distinct, and Clear filters restores t
   await scene(fake.handle, async (page) => {
     await page.getByRole('heading', { name: 'No pending applications.' }).waitFor();
     await page.getByLabel('Requested role').selectOption('Student');
-    await page.getByRole('button', { name: 'Apply filters' }).click();
     await page.getByRole('heading', { name: 'No applications match these filters.' }).waitFor();
     await page.getByRole('button', { name: 'Clear filters' }).first().click();
     await page.getByRole('heading', { name: 'No pending applications.' }).waitFor();
     assert.equal(fake.state.lists.at(-1), '?page=1&status=Pending');
     assert.equal(await page.getByLabel('Requested role').inputValue(), '');
+  }, VIEW);
+});
+
+test('a filter change returns to page 1', async () => {
+  const fake = server((query) => {
+    if (query.includes('page=2')) return [page([row(21)], 2, false)];
+    return [page(Array.from({ length: 20 }, (_, i) => row(i + 1)), 1, true)];
+  });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await until(() => fake.state.lists.at(-1) === '?page=2&status=Pending', 'page 2');
+    await page.getByText('Page 2', { exact: true }).waitFor();
+    await page.getByLabel('Email proof').selectOption('verified');
+    await until(() => fake.state.lists.at(-1) === '?page=1&status=Pending&proof=verified', 'reset to page 1');
+    await page.getByText('Page 1', { exact: true }).waitFor();
   }, VIEW);
 });
 
@@ -208,17 +227,14 @@ test('keyboard: the search form is reachable and operable without a pointer', as
     const baseline = fake.state.lists.length;
     await page.getByLabel('Search CTU-G ID or name').focus();
     const order = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {
       await page.keyboard.press('Tab');
-      order.push(await page.evaluate(() => document.activeElement?.getAttribute('aria-label')
-        || document.activeElement?.closest('label')?.firstChild?.textContent?.trim() || document.activeElement?.textContent?.trim()));
+      order.push(await page.evaluate(() => document.activeElement?.closest('label')?.firstChild?.textContent?.trim()));
     }
-    assert.deepEqual(order.slice(0, 4), ['Requested role', 'Email proof', 'Sort by', 'Apply filters']);
+    assert.deepEqual(order, ['Requested role', 'Email proof', 'Sort by']);
     await page.getByLabel('Requested role').focus();
     await page.keyboard.press('ArrowDown');
-    await page.getByRole('button', { name: 'Apply filters' }).focus();
-    await page.keyboard.press('Enter');
-    await until(() => fake.state.lists.length === baseline + 1, 'keyboard apply');
+    await until(() => fake.state.lists.length === baseline + 1, 'keyboard change applies');
     await page.getByRole('table').waitFor();
     assert.equal(fake.state.lists.at(-1), '?page=1&status=Pending&role=Student');
   }, VIEW);

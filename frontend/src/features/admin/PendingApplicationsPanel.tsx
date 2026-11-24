@@ -1,5 +1,8 @@
 /** WF-02.01 View pending applications (and the WF-02.02 entry point).
  *
+ * Search (debounced ~300 ms), the dropdown filters and the sort apply automatically and together
+ * through the existing server-side query; every change returns to page 1 and clears the selection.
+ *
  * `?applicant={id}` opens the WF-02.02 detail inside this same view; the list state (filters,
  * sort, page and loaded rows) stays in memory, so Back to pending applications restores it.
  *
@@ -10,7 +13,7 @@
  * The session permission hint only decides navigation; Django checks the Admin assignment and the
  * exact effective permission on every request, and this view shows only what the server returns.
  */
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 import type { FormEvent, MouseEvent } from 'react';
 import { useDashboardContext } from '../../hooks/useDashboardContext';
 import Modal from '../../components/common/Modal';
@@ -42,7 +45,8 @@ interface Filters {
 }
 
 type Listing =
-  | { status: 'loading' }
+  // `previous` keeps the last results visible, dimmed and inert, while newer ones load.
+  | { status: 'loading'; previous?: PendingRegistrationPage }
   | { status: 'failed'; code: string }
   | { status: 'ready'; data: PendingRegistrationPage };
 
@@ -71,6 +75,11 @@ function decisionRefusal(code: string, action: BulkAction): string {
 }
 
 const DEFAULT_FILTERS: Filters = { q: '', role: '', proof: '', sort: 'submitted' };
+const SEARCH_DEBOUNCE_MS = 300;
+
+function sameFilters(a: Filters, b: Filters): boolean {
+  return a.q === b.q && a.role === b.role && a.proof === b.proof && a.sort === b.sort;
+}
 const SORT_LABELS: Record<PendingApplicationSort, string> = {
   submitted: 'Oldest submitted first',
   '-submitted': 'Newest submitted first',
@@ -170,6 +179,8 @@ export default function PendingApplicationsPanel() {
   const searchRef = useRef<HTMLInputElement>(null);
   const [draft, setDraft] = useState<Filters>(DEFAULT_FILTERS);
   const [applied, setApplied] = useState<Filters>(DEFAULT_FILTERS);
+  const appliedRef = useRef<Filters>(DEFAULT_FILTERS);
+  const appliedSearchRaw = useRef('');
   const [page, setPage] = useState(1);
   const [version, setVersion] = useState(0);
   const [listing, setListing] = useState<Listing>({ status: 'loading' });
@@ -223,47 +234,72 @@ export default function PendingApplicationsPanel() {
   }
 
   function load(next: { filters?: Filters; page?: number }, preserveBulkSummary = false) {
-    setListing({ status: 'loading' });
+    setListing((current) => ({
+      status: 'loading',
+      previous: current.status === 'ready' ? current.data : current.status === 'loading' ? current.previous : undefined,
+    }));
     setSelectedIds(new Set());
     setBulkAction(null);
     setBulkEligibilityConfirmed(false);
     setBulkRejectionCode('');
     setBulkError('');
     if (!preserveBulkSummary) setBulkSummary(null);
-    if (next.filters) setApplied(next.filters);
+    if (next.filters) {
+      appliedRef.current = next.filters;
+      setApplied(next.filters);
+    }
     if (next.page !== undefined) setPage(next.page);
     if (!next.filters && next.page === undefined) setVersion((current) => current + 1);
   }
 
-  function applyFilters(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  /** Apply the current control values (already-applied values are not re-requested). */
+  function commitFilters(values: Filters) {
     let q: string;
     try {
-      q = normalizePendingSearch(draft.q);
+      q = normalizePendingSearch(values.q);
     } catch (error: unknown) {
+      // Invalid search text never reaches the server; the current results stay as they are.
       setSearchError(error instanceof Error ? error.message : 'Check the search text.');
-      searchRef.current?.focus();
       return;
     }
     setSearchError('');
-    const filters = { ...draft, q };
-    setDraft(filters);
-    load({ filters, page: 1 });
+    appliedSearchRaw.current = values.q;
+    const filters = { ...values, q };
+    if (!sameFilters(filters, appliedRef.current)) load({ filters, page: 1 });
+  }
+
+  const commitDraft = useEffectEvent((values: Filters) => commitFilters(values));
+
+  // Dropdowns and sort apply at once; typing is debounced. Stale responses are discarded by
+  // the listing effect, so a slower earlier request can never overwrite newer results.
+  useEffect(() => {
+    const typing = draft.q !== appliedSearchRaw.current;
+    const timer = window.setTimeout(() => commitDraft(draft), typing ? SEARCH_DEBOUNCE_MS : 0);
+    return () => window.clearTimeout(timer);
+  }, [draft]);
+
+  function submitSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); // Enter applies immediately instead of waiting for the debounce
+    commitFilters(draft);
   }
 
   function clearFilters() {
     setSearchError('');
+    appliedSearchRaw.current = '';
     setDraft(DEFAULT_FILTERS);
-    load({ filters: DEFAULT_FILTERS, page: 1 });
+    if (!sameFilters(DEFAULT_FILTERS, appliedRef.current)) load({ filters: DEFAULT_FILTERS, page: 1 });
   }
 
   const loading = listing.status === 'loading';
   const rows: readonly PendingRegistrationItem[] = listing.status === 'ready' ? listing.data.results : [];
+  const shown = listing.status === 'ready' ? listing.data : listing.status === 'loading' ? listing.previous : undefined;
+  const tableRows: readonly PendingRegistrationItem[] = shown?.results ?? [];
+  const refreshing = loading && tableRows.length > 0;
   const filtered = hasActiveFilters(applied);
   const searchHint = `${ids}-search-hint`;
   const searchErrorId = `${ids}-search-error`;
   const failure = listing.status === 'failed' ? failureMessage(listing.code) : null;
-  const available = listing.status === 'ready' ? listing.data.available_actions ?? [] : [];
+  const available = shown?.available_actions ?? [];
   const permissions = session.permissions;
   const individualApprove = APPLICANT_APPROVAL_ENABLED && available.includes('approve') && permissions.includes(APPROVE_PERMISSION);
   const individualReject = APPLICANT_REJECTION_ENABLED && available.includes('reject') && permissions.includes(REJECT_PERMISSION);
@@ -412,7 +448,7 @@ export default function PendingApplicationsPanel() {
           <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting} onClick={() => load({})}>Refresh list</button>
         </div>
 
-        <form role="search" aria-label="Pending applications" noValidate onSubmit={applyFilters}
+        <form role="search" aria-label="Pending applications" noValidate onSubmit={submitSearch}
           className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_repeat(3,minmax(0,1fr))]">
           <label className="dashboard-muted flex min-w-0 flex-col gap-1 text-xs font-medium sm:col-span-2 lg:col-span-1">
             Search CTU-G ID or name
@@ -451,7 +487,7 @@ export default function PendingApplicationsPanel() {
             </select>
           </label>
           <p id={searchHint} className="dashboard-muted text-xs sm:col-span-2 lg:col-span-4">
-            CTU-G IDs match from the start; names match any part. Select Apply filters or press Enter to search.
+            CTU-G IDs match from the start; names match any part. Results update as you type or choose a filter.
           </p>
           {searchError && (
             // Existing tokens only: --db-error is still Proposed (TOKENS.md §1.4). Not colour-only.
@@ -459,12 +495,11 @@ export default function PendingApplicationsPanel() {
               <span aria-hidden="true">!</span>{searchError}
             </p>
           )}
-          <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-4">
-            <button type="submit" className={primaryButton} disabled={loading}>Apply filters</button>
-            {(hasActiveFilters(draft) || filtered) && (
-              <button type="button" className={secondaryButton} disabled={loading} onClick={clearFilters}>Clear filters</button>
-            )}
-          </div>
+          {(hasActiveFilters(draft) || filtered) && (
+            <div className="flex flex-wrap gap-3 sm:col-span-2 lg:col-span-4">
+              <button type="button" className={secondaryButton} onClick={clearFilters}>Clear filters</button>
+            </div>
+          )}
         </form>
 
         {listing.status === 'ready' && rows.length > 0 && !selectionEnabled && (
@@ -544,8 +579,11 @@ export default function PendingApplicationsPanel() {
         )}
 
         <div className="mt-5 border-t pt-4">
-          {listing.status === 'loading' && (
+          {loading && !refreshing && (
             <p role="status" className="dashboard-muted py-8 text-sm">Loading pending applications…</p>
+          )}
+          {refreshing && (
+            <p role="status" className="dashboard-muted pb-3 text-xs">Updating results…</p>
           )}
 
           {failure && (
@@ -569,9 +607,10 @@ export default function PendingApplicationsPanel() {
             </div>
           )}
 
-          {listing.status === 'ready' && rows.length > 0 && (
-            <>
-              <p className="sr-only" role="status">Showing {rows.length} pending {rows.length === 1 ? 'application' : 'applications'} on page {page}.</p>
+          {tableRows.length > 0 && (listing.status === 'ready' || refreshing) && (
+            <div aria-busy={refreshing}
+              className={refreshing ? 'pointer-events-none opacity-60 transition-opacity motion-reduce:transition-none' : 'transition-opacity motion-reduce:transition-none'}>
+              <p className="sr-only" role="status">Showing {tableRows.length} pending {tableRows.length === 1 ? 'application' : 'applications'} on page {page}.</p>
               <div className="hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[580px] text-left text-sm">
                   <caption className="sr-only">Pending applications, page {page}</caption>
@@ -595,7 +634,7 @@ export default function PendingApplicationsPanel() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((item) => (
+                    {tableRows.map((item) => (
                       <tr key={item.account_id} className="border-b last:border-0">
                         {selectionEnabled && (
                           <td className="px-2 py-3">
@@ -618,7 +657,7 @@ export default function PendingApplicationsPanel() {
                 </table>
               </div>
               <ul className="space-y-3 md:hidden" aria-label={`Pending applications, page ${page}`}>
-                {rows.map((item) => (
+                {tableRows.map((item) => (
                   <li key={item.account_id} className="rounded-xl border p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       {selectionEnabled ? (
@@ -644,7 +683,7 @@ export default function PendingApplicationsPanel() {
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </div>
 

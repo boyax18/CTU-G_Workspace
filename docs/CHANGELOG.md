@@ -1,5 +1,10 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Applicant Reviews: automatic filtering
+
+- Removed Apply filters. Search updates after a ~300 ms pause (Enter applies at once); Requested role, Email proof and Sort by apply immediately. All of them combine in the existing server query, and each change resets to page 1 and clears the selection. Superseded responses are discarded, and the previous rows stay dimmed during loading.
+- Verification: real browser 19/19 on a disposable replica; mocked browser 26/26; unit 47/47; lint and build. `ctug_workspace` unchanged.
+
 ### 24 November 2026 — Applicant Reviews: selection-first table and contextual decision controls
 
 - Moved the selection checkbox to the first column and added a header select-all checkbox. The decision toolbar now appears only while applicants are selected: Approve/Reject, renamed Approve All/Reject All when the whole current page is selected, Select All on Current Page, and Unselect All.

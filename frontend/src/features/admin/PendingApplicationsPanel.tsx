@@ -775,12 +775,14 @@ export default function PendingApplicationsPanel() {
           )}
         </div>
 
-        <nav aria-label="Pending applications pages" className="mt-4 flex items-center justify-between gap-3 border-t pt-3 text-sm">
-          <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting || page <= 1} onClick={() => load({ page: page - 1 }, false, true)}>Previous</button>
+        <nav aria-label="Pending applications pages" className="mt-4 flex items-center justify-center gap-4 border-t pt-3 text-sm">
+          <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting || page <= 1} aria-label="Previous page" title="Previous page"
+            onClick={() => load({ page: page - 1 }, false, true)}><span aria-hidden="true">{'<'}</span></button>
           <span className="dashboard-muted">Page {page}</span>
           <button type="button" className={secondaryButton}
             disabled={listing.status !== 'ready' || !listing.data.has_next || page >= 10000 || bulkSubmitting}
-            onClick={() => load({ page: page + 1 }, false, true)}>Next</button>
+            aria-label="Next page" title="Next page"
+            onClick={() => load({ page: page + 1 }, false, true)}><span aria-hidden="true">{'>'}</span></button>
         </nav>
 
         <p className="dashboard-muted mt-4 text-xs leading-relaxed">

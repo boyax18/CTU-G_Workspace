@@ -20,7 +20,9 @@ from django.db import DEFAULT_DB_ALIAS, connections, transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from . import email_design
 from .email_design import send_mail  # branded multipart drop-in (patched by tests)
+from .email_trace import mask, trace
 from .outbox_crypto import OutboxCryptoUnavailable, decrypt_recipient
 from .registration_email_templates import (
     REJECTION_LABELS, branded_sender_address, render_decision_email,
@@ -298,6 +300,9 @@ def process_one(*, after_id=None):
             return _finish(claim, failure_code="crypto_unavailable")
         if not _valid_recipient(address):
             return _finish(claim, failure_code="recipient_unavailable", permanent=True)
+        corr, flow = f"dec-{row.pk}", row.template_code.replace(".", "_")
+        message_id = email_design.new_message_id(branded_sender_address())
+        trace("smtp_attempt", corr, flow=flow, outbox=row.pk, attempt=claim.attempt, to=mask(address))
         try:
             # No raw exception/recipient/details are surfaced to the CLI.
             connection = get_connection(timeout=15)
@@ -305,22 +310,25 @@ def process_one(*, after_id=None):
                 subject=message[0], message=message[1],
                 from_email=branded_sender_address(),
                 recipient_list=[address], fail_silently=False,
-                connection=connection,
+                connection=connection, headers={"Message-ID": message_id},
                 **({"html_message": message[2]} if len(message) == 3 else {}),
             )
         except smtplib.SMTPRecipientsRefused:
-            return _finish(claim, failure_code="recipient_rejected", permanent=True)
+            return _traced(claim, corr, flow, "recipient_rejected", permanent=True)
         except smtplib.SMTPAuthenticationError:
             # Admin may fix mail credentials without replacing outbox rows.
-            return _finish(claim, failure_code="mail_configuration_unavailable")
+            return _traced(claim, corr, flow, "mail_configuration_unavailable")
         except smtplib.SMTPResponseException as exc:
             permanent = 500 <= exc.smtp_code < 600
-            return _finish(claim, failure_code="smtp_rejected" if permanent else "smtp_unavailable",
+            return _traced(claim, corr, flow, "smtp_rejected" if permanent else "smtp_unavailable",
                            permanent=permanent)
         except Exception:
-            return _finish(claim, failure_code="mail_backend_unavailable")
+            return _traced(claim, corr, flow, "mail_backend_unavailable")
         if accepted != 1:
-            return _finish(claim, failure_code="mail_not_accepted")
+            return _traced(claim, corr, flow, "mail_not_accepted")
+        trace("smtp_accepted", corr, flow=flow, outbox=row.pk, attempt=claim.attempt, msgid=message_id,
+              to=mask(address))
+        trace("recipient_unconfirmed", corr, flow=flow, outbox=row.pk, status="awaiting_recipient")
         return _finish(claim)
     except Exception:
         # Unexpected errors still consume the lease safely; do not leak raw
@@ -330,6 +338,16 @@ def process_one(*, after_id=None):
             return _finish(claim, failure_code="worker_unavailable")
         except Exception:
             return "lost_lease"
+
+
+def _traced(claim, corr, flow, failure_code, *, permanent=False):
+    """_finish() plus the matching diagnostic event (no address, body or SMTP text)."""
+    result = _finish(claim, failure_code=failure_code, permanent=permanent)
+    event = {"retry": "retry_scheduled", "dead": "permanent_failure"}.get(result, "temporary_failure")
+    if result == "retry":
+        trace("temporary_failure", corr, flow=flow, outbox=claim.outbox_id, attempt=claim.attempt, code=failure_code)
+    trace(event, corr, flow=flow, outbox=claim.outbox_id, attempt=claim.attempt, code=failure_code)
+    return result
 
 
 def process_due(*, limit=25, after_id=None):

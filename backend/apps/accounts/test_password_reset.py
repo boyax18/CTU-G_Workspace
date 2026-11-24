@@ -20,6 +20,7 @@ from rest_framework.test import APIClient
 from apps.access_control.models import AccountRole, Role
 from . import password_reset, recovery_mail
 from .models import Account
+from .security_mail_models import SecurityMailOutbox
 
 if not getattr(settings, "REGISTRATION_TEST_DATABASE", "").startswith("test_ctug_registration_"):
     raise ImproperlyConfigured("Password reset tests require --settings=config.test_settings")
@@ -256,12 +257,14 @@ class PasswordRecoveryOTPTests(TestCase):
         self.assertEqual(mail.outbox[0].to, [EMAIL])
         self.assertNotRegex(mail.outbox[0].body, r"\d{6}|http")
 
-    # ---- delivery (D-20) ----
+    # ---- delivery (durable security outbox, 24 Nov 2026; replaces D-20's in-memory queue) ----
     def test_response_does_not_wait_for_mail_delivery(self):
         def slow_send(*args, **kwargs):
             time.sleep(1.0)
             return 1
-        with mock.patch("apps.accounts.recovery_mail.send_mail", side_effect=slow_send):
+        # Real configuration: the kick runs on the background sender, not in the request.
+        with override_settings(WORKSPACE_SECURITY_MAIL_INLINE=False), \
+                mock.patch("apps.accounts.recovery_mail.process_one", side_effect=lambda **kw: slow_send()):
             started = time.monotonic()
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(REQUEST, {"email": EMAIL}, format="json", HTTP_X_CSRFTOKEN=self.token)
@@ -270,22 +273,29 @@ class PasswordRecoveryOTPTests(TestCase):
         self.assertEqual(response.status_code, 202)
         self.assertLess(elapsed, 0.8)
 
-    def test_mail_failure_is_neutral_and_logs_no_identity_or_code(self):
+    def test_mail_failure_is_neutral_durable_and_logs_no_identity_or_code(self):
         with mock.patch("apps.accounts.recovery_mail.send_mail", side_effect=OSError("smtp down")), \
-                self.assertLogs("apps.accounts.recovery_mail", level="WARNING") as logs:
+                self.assertLogs("ctug.email", level="INFO") as logs:
             response = self.request()
         self.assertEqual(response.status_code, 202)
+        row = SecurityMailOutbox.objects.get()
+        self.assertEqual(row.status, "Retry")  # kept durably for the worker, not lost
+        self.assertIsNotNone(row.encrypted_secret)
         text = " ".join(logs.output)
-        self.assertIn("reset_code", text)
-        self.assertNotRegex(text, r"\d{6}")
+        self.assertIn("event=temporary_failure", text)
+        self.assertIn("event=retry_scheduled", text)
+        self.assertNotRegex(text, r"(?<![0-9a-f])\d{6}(?![0-9a-f])")
         for secret in ("0012345", EMAIL):
             self.assertNotIn(secret, text)
 
-    def test_full_queue_is_dropped_and_logged(self):
-        with mock.patch.object(recovery_mail._queue, "put_nowait", side_effect=queue.Full), \
+    def test_full_kick_queue_keeps_the_row_durable(self):
+        with override_settings(WORKSPACE_SECURITY_MAIL_INLINE=False), \
+                mock.patch.object(recovery_mail._kicks, "put_nowait", side_effect=queue.Full), \
                 self.assertLogs("apps.accounts.recovery_mail", level="WARNING") as logs:
-            self.assertFalse(recovery_mail.enqueue("reset_code", "s", "b", "r@example.edu"))
-        self.assertNotIn("r@example.edu", " ".join(logs.output))
+            response = self.request()
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(SecurityMailOutbox.objects.get().status, "Pending")  # the worker will deliver it
+        self.assertNotIn(EMAIL, " ".join(logs.output))
 
     # ---- limits (P-03, D-26) ----
     def test_request_budget_per_email_applies_across_ip_addresses(self):

@@ -295,3 +295,14 @@ if WORKSPACE_ROLE_CONTEXT_LAN_DEV_IP is not None:
 if WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED:
     # After authentication + session timeout, before any API view permission checks.
     MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware"]
+
+# 24 Nov 2026: internal email-delivery diagnostics (apps.accounts.email_trace) at INFO on the
+# console, i.e. the launcher's backend.log. Correlation IDs, masked recipients and Message-IDs
+# only: never codes, message bodies, passwords or keys. Django's default logging is kept.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"ctug": {"format": "[{asctime}] {name} {message}", "style": "{"}},
+    "handlers": {"ctug_console": {"class": "logging.StreamHandler", "formatter": "ctug"}},
+    "loggers": {"ctug.email": {"handlers": ["ctug_console"], "level": "INFO", "propagate": False}},
+}

@@ -24,3 +24,7 @@ TEST_RUNNER = "config.test_runner.IsolatedMySQLRunner"
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.PBKDF2PasswordHasher"]
 ALLOWED_HOSTS = ["testserver", "localhost", "127.0.0.1"]
 DEBUG = False
+# Keep test output readable; tests assert on email diagnostics with assertLogs where needed.
+LOGGING["loggers"]["ctug.email"]["level"] = "WARNING"  # noqa: F405
+# Durable security mail: attempt kicked rows in the calling thread (test transactions are uncommitted).
+WORKSPACE_SECURITY_MAIL_INLINE = True

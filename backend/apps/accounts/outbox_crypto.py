@@ -120,3 +120,44 @@ def decrypt_recipient(*, encrypted_recipient, recipient_nonce, wrapped_data_key,
     except Exception as exc:
         # Do not include ciphertext, raw recipient or third-party errors.
         raise OutboxCryptoUnavailable("Registration outbox recipient cannot be decrypted.") from exc
+
+
+# ---------------------------------------------------------------------------------------------
+# 24 Nov 2026: generic envelope for the durable security-mail outbox (password-reset and email
+# verification codes). Same active KEK and AES-256-GCM envelope as the decision outbox; the
+# associated data binds every ciphertext to its own row token, kind and account.
+def _security_aad(*, row_token, kind, account_id):
+    if (type(row_token) is not str or not row_token.isalnum() or not 16 <= len(row_token) <= 64
+            or type(kind) is not str or not kind.replace("_", "").isalnum()
+            or type(account_id) is not int or account_id <= 0):
+        raise OutboxCryptoUnavailable("Security outbox context is invalid.")
+    return f"ctug:security-outbox:v1:{row_token}:{kind}:{account_id}".encode("ascii")
+
+
+def seal_secret(value, *, row_token, kind, account_id):
+    """Encrypt a short secret (an OTP) for storage; returns envelope fields."""
+    if type(value) is not str or not value or len(value) > 64:
+        raise OutboxCryptoUnavailable("Security outbox secret is invalid.")
+    version = getattr(settings, "WORKSPACE_OUTBOX_ACTIVE_KEY_VERSION", "v1")
+    aad = _security_aad(row_token=row_token, kind=kind, account_id=account_id)
+    AESGCM = _aesgcm()
+    data_key, nonce, wrapped_nonce = secrets.token_bytes(32), secrets.token_bytes(12), secrets.token_bytes(12)
+    encrypted = AESGCM(data_key).encrypt(nonce, value.encode("utf-8"), aad + b":secret")
+    wrapped = wrapped_nonce + AESGCM(_wrapping_key(version)).encrypt(wrapped_nonce, data_key, aad + b":dek")
+    return {"encrypted_secret": encrypted, "secret_nonce": nonce, "wrapped_data_key": wrapped,
+            "encryption_key_version": version}
+
+
+def open_secret(*, encrypted_secret, secret_nonce, wrapped_data_key, encryption_key_version,
+                row_token, kind, account_id):
+    """Internal-only: decrypt a sealed secret for immediate sending; never log or return it via API."""
+    aad = _security_aad(row_token=row_token, kind=kind, account_id=account_id)
+    AESGCM = _aesgcm()
+    try:
+        nonce, wrapped = bytes(secret_nonce), bytes(wrapped_data_key)
+        if len(nonce) != 12 or len(wrapped) != 60:
+            raise ValueError("Invalid envelope sizes")
+        key = AESGCM(_wrapping_key(encryption_key_version)).decrypt(wrapped[:12], wrapped[12:], aad + b":dek")
+        return AESGCM(key).decrypt(nonce, bytes(encrypted_secret), aad + b":secret").decode("utf-8")
+    except Exception as exc:
+        raise OutboxCryptoUnavailable("Security outbox secret cannot be decrypted.") from exc

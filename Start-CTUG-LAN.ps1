@@ -476,6 +476,9 @@ try {
     Write-Host "Database: $($report.database) (existing development database)"
     Write-Host "Development features: $featureLine"
     Write-Host "Security: Role-based access enforced$(if ($report.role_context) { '; Active Role switching on' })"
+    $emailMode = if ($report.email -eq 'smtp') { 'SMTP (real email is sent)' } elseif ($report.email) { "$($report.email) only (no email leaves this computer)" } else { 'unknown' }
+    $workerNote = if ($workers.Count -gt 0) { "; delivery worker running" } else { "; no delivery worker" }
+    Write-Host "Email: $emailMode$workerNote"
     Write-Host ''
     Write-Host "Application: $appUrl" -ForegroundColor Green
     Write-Host ''

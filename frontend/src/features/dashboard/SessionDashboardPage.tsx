@@ -7,6 +7,7 @@ import type { DashboardNavItem, DashboardView } from './navigation';
 import type { CSSProperties } from 'react';
 import campusPhoto from '../../assets/campus-building.jpg';
 import DashboardIcon from '../../components/dashboard/DashboardIcon';
+import EmailVerificationCard from './EmailVerificationCard';
 import { AccessDenied, ModuleUnavailable, NoModules } from '../../components/dashboard/DashboardStates';
 import RegistrationReviewLivePanel from '../admin/RegistrationReviewLivePanel';
 import { REGISTRATION_REVIEW_LIVE_API_ENABLED } from '../admin/registrationReviewApiGate';
@@ -164,6 +165,7 @@ function Profile() {
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Session status</dt><dd className="dashboard-heading mt-2 font-semibold">Authenticated</dd></div>
         <div><dt className="dashboard-muted text-xs font-medium uppercase tracking-wider">Effective permission hints</dt><dd className="dashboard-heading mt-2 font-semibold">{permissions.length}</dd></div>
       </dl>
+      <EmailVerificationCard />
       <p className="dashboard-muted mt-7 border-t pt-4 text-xs leading-relaxed">
         Role names and permission hints never authorize an API call. Django verifies access on every protected request.
       </p>

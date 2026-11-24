@@ -28,7 +28,8 @@ from rest_framework import exceptions, serializers, status
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 
-from . import email_design, recovery_mail, session_revocation
+from . import recovery_mail, session_revocation
+from .email_trace import new_correlation_id, trace
 from .email_identity import normalize_account_email
 from .models import Account
 from .session_auth import WorkspaceSessionAPI
@@ -203,6 +204,28 @@ class _Record:
         return ":".join([RECORD_VERSION, self.state, str(self.attempts), str(self.window_start), str(self.issued_at), self.digest])
 
 
+def reset_challenge_state(account, challenge_issued_at, code):
+    """Is this queued code still the account's CURRENT live reset challenge?
+
+    Returns ("current", expires_epoch) or ("expired" | "superseded", None). Superseded covers a
+    resend (new issued_at), a verified/locked challenge, a changed password or email, and an
+    account that is no longer eligible. Used by the durable sender before every attempt.
+    """
+    account = Account.objects.filter(pk=account.pk).first()
+    if account is None or not eligible_account_queryset().filter(pk=account.pk).exists():
+        return "superseded", None
+    record = _Record.load(account.password_reset_token)
+    if record is None or record.state != "otp" or record.issued_at != challenge_issued_at:
+        return "superseded", None
+    if not hmac.compare_digest(record.digest, _code_digest(account, record, code)):
+        return "superseded", None
+    p = _policy()
+    expires_at = min(record.issued_at + p["code"], record.window_start + p["window"])
+    if record.attempts >= p["attempts"] or _now() >= expires_at:
+        return "expired", None
+    return "current", expires_at
+
+
 def _code_digest(account, record, code):
     return _digest("password-recovery-otp",
                    f"{account.pk}:{record.window_start}:{record.issued_at}:{account.password}:{account.email.lower()}:{code}")
@@ -262,9 +285,14 @@ class PasswordResetRequestView(WorkspaceSessionAPI):
         email = normalize_account_email(serializer.validated_data["email"])
         _enforce_identity_budget(email, "request", REQUEST_IDENTITY_RATES)
         p = _policy()
+        corr = new_correlation_id()
+        trace("request_accepted", corr, flow="reset_code")
         try:
             with transaction.atomic():
                 account = _lock_eligible(email)
+                if account is None:
+                    # Server log only; the HTTP response below stays identical (no enumeration).
+                    trace("account_ineligible", corr, flow="reset_code")
                 if account is not None:
                     now = _now()
                     record = _Record.load(account.password_reset_token)
@@ -277,12 +305,11 @@ class PasswordResetRequestView(WorkspaceSessionAPI):
                         record.state, record.issued_at = "otp", now
                         record.digest = _code_digest(account, record, code)
                         _save(account, record, min(now + p["code"], window_end))
-                        recipient, minutes = account.email, max(1, p["code"] // 60)
-                        message = email_design.password_reset_otp(
-                            code=code, minutes=minutes, first_name=_first_name(account))
-                        transaction.on_commit(lambda: recovery_mail.enqueue(
-                            "reset_code", message[0], message[1], recipient, html=message[2],
-                        ))
+                        trace("otp_created", corr, flow="reset_code")
+                        # Durable, encrypted, bound to THIS challenge; sent after commit and
+                        # re-validated before every attempt (a superseded code is never mailed).
+                        recovery_mail.queue("reset_code", account, code=code,
+                                            challenge_issued_at=record.issued_at, correlation_id=corr)
         except Exception as exc:
             # Never reveal the target identity or code to API callers or logs.
             logger.warning("Workspace password recovery request could not be completed (%s).", type(exc).__name__)
@@ -393,13 +420,8 @@ class PasswordResetConfirmView(WorkspaceSessionAPI):
                 # SR-1: the new password already ends old sessions; the counter also means restoring an
                 # old password hash alone cannot revive them. _lock_eligible already holds this row's lock.
                 session_revocation.advance(account.pk)
-                recipient = account.email
-                notice = email_design.password_changed(first_name=_first_name(account))
-                # D-22: queued only if the password update commits.
-                transaction.on_commit(lambda: recovery_mail.enqueue(
-                    "password_changed", notice[0], notice[1],
-                    recipient, html=notice[2],
-                ))
+                # D-22: durably queued in the same transaction, so it exists only if the change commits.
+                recovery_mail.queue("password_changed", account)
         except DatabaseError:
             logger.warning("Workspace password recovery confirmation database error.")
             return _recovery_unavailable()

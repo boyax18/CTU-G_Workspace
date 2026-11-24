@@ -6,6 +6,26 @@
 **Last reviewed:** 2026-11-23
 **Scope:** Mandatory durable email notification for individual and bulk Student/Instructor registration decisions.
 
+## Security mail outbox, email verification and delivery diagnostics (24 November 2026)
+
+**Durable security mail.** Password-reset codes, the password-changed notice and email-verification codes now go through a durable table, `security_mail_outbox` (migration `accounts 0007`). It replaces the in-memory daemon queue, which lost mail on restart and never retried.
+- The OTP is sealed with AES-256-GCM under the existing outbox key (`WORKSPACE_OUTBOX_KEK_V1_B64`, v1, not regenerated). The AAD binds the row token, kind and account. Plaintext codes are never stored or logged.
+- Rows move `Pending → Leased → Accepted`. A temporary SMTP failure moves a row to `Retry` with backoff from 30 s up to 10 min. A row becomes `Dead` after 5 attempts or on a permanent 5xx/recipient refusal. Claims use `SELECT … FOR UPDATE SKIP LOCKED` with a 120 s lease, and every finish is fenced by the lease token.
+- Before each attempt the worker re-checks the challenge. A code that has expired or been replaced by a newer one is marked `Expired`/`Superseded` and is never sent. On every terminal state the sealed secret is erased.
+- After commit, the request kicks a background sender. The `-Local` watch worker (`process_registration_outbox --watch`) also drains due rows, so pending mail survives a restart. The reset API still answers a neutral `202`.
+
+**Signed-in email verification.** `GET/POST /api/v1/auth/email-verification/`, `…/request/` and `…/confirm/` require a signed-in session and CSRF, and use the registration OTP policy and rate limits.
+- The code goes to the account's current address. The code digest is bound to the account, the challenge and that address, so changing the email invalidates the code.
+- Only a correct code records `email_verified_at` and `email_verified_address`. Wrong codes count toward a lockout.
+- An `account.email.verified` audit event is written with no state snapshot: no address, code or digest.
+- The D-21 password-reset eligibility rule is unchanged. A verified account simply meets it.
+- The UI is the Email verification card on My profile.
+- Accounts that cannot sign in need a separately authorized assisted-recovery procedure (not implemented).
+
+**Diagnostics.** The `ctug.email` logger writes one line per event with a correlation ID: `request_accepted`, `account_ineligible`, `otp_created`, `email_queued`, `smtp_attempt`, `smtp_accepted`, `temporary_failure`, `permanent_failure`, `retry_scheduled`, `expired`, `superseded`, `recipient_unconfirmed`. Each line carries the outbox id, the attempt, the Message-ID, and a masked recipient (`ab***@domain`), never a code or secret. `manage.py email_delivery_report` is a read-only summary of both outboxes.
+
+**`smtp_accepted` means Gmail accepted the message for relay. It is not proof that the message reached the inbox; arrival is always `recipient_unconfirmed` until the recipient confirms.**
+
 ## Branded email design (24 November 2026)
 
 All CTU-G Workspace emails share one design in `backend/apps/accounts/email_design.py`. That covers the registration OTP (Student and Instructor), the password-recovery OTP, the password-changed notice, and approval and rejection, including each applicant's separate email from a bulk decision.

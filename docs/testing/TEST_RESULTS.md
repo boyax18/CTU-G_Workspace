@@ -3,6 +3,17 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — durable security mail, email verification, diagnostics
+
+| Check | Result |
+| --- | --- |
+| `test_security_mail` (disposable MySQL, locmem) | 16/16. Covers: code sealed at rest and absent from logs; Message-ID recorded; temporary failure → Retry → recovery; pending row survives a restart; superseded and expired codes never sent; dead-letter after 5 attempts with erasure; permanent 550 → Dead; live lease blocks a second worker and a stale lease cannot finish; ineligible request neutral with no row. Verification: unauthenticated 401; proof recorded only after the correct code, with no other account field changed; reset eligibility after verification; audit row without snapshot; lockout; resend wait and superseded code; cross-account code and email change rejected; queued code superseded once verified. Watch worker: a missing security table warns once and decision delivery continues |
+| Email suites (security mail, reset, Student/Instructor OTP, outbox worker, local delivery, design, registry) | 128/128; `test_password_reset` 26/26 with its delivery tests rewritten for the durable outbox |
+| Accounts suite + `config.test_dev_features` | 649/653. 4 pre-existing stale tests, outside this change: 3 assert the pending list has no `email` field (changed by `bac9967`); 1 p3c test disables the outbox, which approval has required since WF-02.03 |
+| Frontend | eslint clean on changed files; `npm run build` passes |
+| Live SMTP | Not run (requires owner authorization) |
+| Real data | `ctug_workspace` untouched; migration 0007 not applied; applicant #11 notification `Pending` |
+
 ## 24 November 2026 — branded HTML email design
 
 | Check | Result |

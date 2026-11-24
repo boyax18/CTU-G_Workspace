@@ -203,10 +203,18 @@ class BrandedEmail(EmailMultiAlternatives):
         return msg
 
 
-def build_message(subject, text, html, recipients, *, from_email=None, connection=None):
+def new_message_id(from_email=None):
+    """RFC 5322 Message-ID on the sender's domain, used to trace a message in the Sent folder."""
+    from email.utils import make_msgid, parseaddr
+    address = parseaddr(from_email or settings.DEFAULT_FROM_EMAIL)[1]
+    domain = address.rpartition("@")[2] or "ctug-workspace.local"
+    return make_msgid(idstring="ctug", domain=domain)
+
+
+def build_message(subject, text, html, recipients, *, from_email=None, connection=None, headers=None):
     """Multipart message: plain text first, HTML alternative, inline logo when the HTML uses it."""
     message = BrandedEmail(subject, text, from_email or settings.DEFAULT_FROM_EMAIL,
-                           list(recipients), connection=connection)
+                           list(recipients), connection=connection, headers=dict(headers or {}))
     if html:
         message.attach_alternative(html, "text/html")
         logo = _logo_bytes()
@@ -216,12 +224,12 @@ def build_message(subject, text, html, recipients, *, from_email=None, connectio
 
 
 def send_mail(subject, message, from_email, recipient_list, fail_silently=False, html_message=None,
-              connection=None):
+              connection=None, headers=None):
     """Drop-in for django.core.mail.send_mail: same signature and return value, but the HTML
     alternative is sent as the branded multipart message with the inline logo. Senders keep a
     module-level ``send_mail`` name, so existing failure-path tests still patch the same seam."""
     return build_message(subject, message, html_message, recipient_list, from_email=from_email,
-                         connection=connection).send(fail_silently=fail_silently)
+                         connection=connection, headers=headers).send(fail_silently=fail_silently)
 
 
 def send(subject, text, html, recipients, *, from_email=None, connection=None):
@@ -274,6 +282,26 @@ def password_reset_otp(*, code, minutes, first_name=None):
                  "your new password; you are not signed in automatically."],
         security=("Didn't request this?", "Ignore this email and your password stays the same. Never share "
                                           "this code, not even with CTU-G Workspace staff."),
+    )
+    return subject, text, html
+
+
+def email_verification_otp(*, code, minutes, first_name=None):
+    """Signed-in account confirming its CURRENT email address (enables password recovery)."""
+    subject = "CTU-G Workspace email verification code"
+    text = (
+        f"Your CTU-G Workspace email verification code is {code}.\n\n"
+        f"It expires in {minutes} minutes. Enter it on your My profile page to confirm this email address.\n\n"
+        "If you did not request this, ignore this email and contact the campus administrator."
+    )
+    html = render(
+        title=subject, preheader="Confirm your email address for CTU-G Workspace.",
+        eyebrow="Account security", heading="Confirm your email address",
+        greeting=f"Hello {first_name}," if first_name else "Hello,",
+        paragraphs=["Enter this code on your My profile page to confirm that this email address belongs to you. "
+                    "A confirmed address lets you recover your password by email."],
+        otp=code, otp_label="Your email verification code", expires_minutes=minutes,
+        security=("Didn't request this?", "Ignore this email. Never share this code, not even with CTU-G Workspace staff."),
     )
     return subject, text, html
 

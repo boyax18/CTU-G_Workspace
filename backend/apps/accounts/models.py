@@ -293,3 +293,4 @@ class StudentRegistrationStage(models.Model):
 
 
 from .outbox_models import RegistrationNotificationOutbox  # noqa: E402,F401
+from .security_mail_models import AccountEmailVerification, SecurityMailOutbox  # noqa: E402,F401

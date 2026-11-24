@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from . import email_design
 from .email_design import send_mail
+from .email_trace import mask, new_correlation_id, trace
 from django.db import DatabaseError, IntegrityError, transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -188,16 +189,25 @@ def _deliver_code(delivery):
     back (WF-01 R-02, owner-approved 16 Nov 2026).
     """
     stage, now = delivery.stage, delivery.now
+    corr, flow = new_correlation_id(), f"registration_otp_{delivery.role.lower()}"
+    message_id = email_design.new_message_id()
+    trace("otp_created", corr, flow=flow)
     try:
         subject, text, html = email_design.registration_otp(
             role=delivery.role, code=delivery.code, minutes=policy()["otp_seconds"] // 60,
             first_name=delivery.first_name,
         )
+        trace("smtp_attempt", corr, flow=flow, attempt=1 + stage.resend_count, to=mask(delivery.recipient))
         delivered = send_mail(subject, text, settings.DEFAULT_FROM_EMAIL, [delivery.recipient],
-                              fail_silently=False, html_message=html)
+                              fail_silently=False, html_message=html, headers={"Message-ID": message_id})
         if delivered != 1:
             raise RuntimeError("Mail backend did not accept the message.")
-    except Exception:
+        trace("smtp_accepted", corr, flow=flow, msgid=message_id, to=mask(delivery.recipient))
+        trace("recipient_unconfirmed", corr, flow=flow, status="awaiting_recipient")
+    except Exception as exc:
+        # Registration OTPs are not retried automatically: the code is invalidated and the
+        # applicant can press Resend (existing WF-01 behaviour).
+        trace("permanent_failure", corr, flow=flow, code=type(exc).__name__[:40], status="user_may_resend")
         # Retain encrypted stage for bounded resend; the uncertain code is invalid.
         # The digest guard never clears a newer code issued by a concurrent resend.
         # Never log the exception/message/recipient/code or claim delivery succeeded.

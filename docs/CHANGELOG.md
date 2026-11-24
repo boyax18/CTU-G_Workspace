@@ -1,5 +1,26 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Email delivery reliability, email verification, diagnostics
+
+- **Root causes found:**
+  - Password-reset mail used an in-memory daemon queue: lost on restart, never retried.
+  - Reset requests for accounts without email proof (D-21) are correctly sent nothing. Both test accounts had no proof, and there was no way to add it.
+- **Durable security mail:** new `security_mail_outbox` (migration `accounts 0007`, not yet applied to `ctug_workspace`) holds reset codes, password-changed notices and email-verification codes.
+  - Codes are sealed with AES-256-GCM under the existing outbox key.
+  - Lease + `SKIP LOCKED` claims, retry with backoff, dead-letter after 5 attempts or a permanent refusal, and secrets erased on every terminal state.
+  - Expired or superseded codes are never sent.
+  - The `-Local` watch worker also drains due rows. The reset API stays a neutral `202`.
+- **Signed-in email verification:** `/api/v1/auth/email-verification/` (status, request, confirm) and an Email verification card on My profile.
+  - A one-time code goes to the current address. Only the correct code records `email_verified_at`/`email_verified_address`, with lockout, resend wait and an `account.email.verified` audit event (no address, code or digest).
+  - D-21 eligibility is unchanged.
+- **Diagnostics:** the `ctug.email` logger writes correlation-ID events, from `request_accepted` through `smtp_accepted` to `recipient_unconfirmed`, with masked recipients and Message-IDs, never codes.
+  - Registration OTPs and decision notifications now carry Message-IDs and traces.
+  - New read-only `manage.py email_delivery_report`.
+  - The launcher prints an Email line (SMTP or local-only, worker running or not).
+- **Registration OTP:** no application defect found. The MIME structure is valid, the SMTP backend is active in `-Local`, and Gmail accepted both sends. Arrival at the recipient remains unconfirmed.
+- **Tests:** security mail and verification 16/16; email suites (reset, OTP, outbox worker, local delivery, design, registry) 128/128; full accounts suite plus registry 649/653. The 4 failures are stale tests from earlier commits (pending-list `email` field from `bac9967`; a p3c test that disables the outbox approval now requires). Frontend lint and build pass.
+- **Not sent:** no live email. `ctug_workspace` unchanged; applicant #11's notification still `Pending`.
+
 ### 24 November 2026 — Branded HTML email design
 
 - Added `apps/accounts/email_design.py`: one responsive, table-based, inline-CSS design (forest-green header, emerald accents, white rounded card, footer) with the approved campus logo attached inline. It covers registration OTPs, password-recovery OTP, the password-changed notice, and approval/rejection, including each bulk-decision email.

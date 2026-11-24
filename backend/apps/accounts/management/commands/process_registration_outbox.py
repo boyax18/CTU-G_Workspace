@@ -5,6 +5,8 @@
     process_registration_outbox --deliver --watch 15
         keep delivering every 15 s, but ONLY notifications queued after the watcher started;
         older queued rows are left for an explicit one-off --deliver (used by -Local mode).
+        The watcher also retries the durable security-mail outbox (password reset, password
+        changed, email verification); those rows are re-validated before every attempt.
 
 All existing gates apply (WORKSPACE_OUTBOX_WORKER_ENABLED, outbox writer gate, SMTP delivery
 approval, approved link/sender). Output is aggregate counts only: no address, body or error text.
@@ -15,6 +17,7 @@ import time
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DatabaseError, close_old_connections
 
+from apps.accounts import recovery_mail
 from apps.accounts.outbox_worker import (
     MAX_BATCH, OutboxWorkerUnavailable, due_job_count, newest_outbox_id, process_due,
 )
@@ -65,9 +68,29 @@ class Command(BaseCommand):
                 if any(result.values()):
                     self.stdout.write("Delivery batch: " + ", ".join(f"{k}={v}" for k, v in result.items()))
                     self.stdout.flush()
+                security = self._security_batch(limit)
+                if security:
+                    self.stdout.write("Security mail batch: " + ", ".join(f"{k}={v}" for k, v in sorted(security.items())))
+                    self.stdout.flush()
             except OutboxWorkerUnavailable as exc:
                 raise CommandError(str(exc)) from None
             except DatabaseError:
                 self.stdout.write("Delivery paused: database unavailable; retrying on the next cycle.")
                 close_old_connections()
             time.sleep(seconds)
+
+    def _security_batch(self, limit):
+        # Separate from decision delivery: a missing security_mail_outbox table (migration
+        # accounts 0007 not yet applied) must not pause decision notifications or flood the log.
+        try:
+            result = recovery_mail.process_due(limit=limit)
+        except DatabaseError:
+            if not getattr(self, "_security_warned", False):
+                self._security_warned = True
+                self.stdout.write("Security mail unavailable (is migration accounts 0007 applied?); "
+                                  "decision notifications continue.")
+                self.stdout.flush()
+            close_old_connections()
+            return {}
+        self._security_warned = False
+        return result

@@ -48,6 +48,17 @@
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
+### 0.11 Email delivery reliability and email verification — 24 November 2026
+
+- **Implemented in source:**
+  - A durable, encrypted, lease-protected `security_mail_outbox` for password-reset codes, password-changed notices and email-verification codes. It retries with backoff, dead-letters failures, and never sends expired or superseded codes.
+  - Signed-in email verification (API + My profile card) that records proof only after the correct code.
+  - `ctug.email` correlation-ID diagnostics and the read-only `email_delivery_report` command.
+- **Pending owner authorization:** migration `accounts 0007` on `ctug_workspace`. Until it is applied, password-reset requests on the real database cannot queue mail. A minimal live SMTP test to the approved inbox is also pending.
+- **Tests:** new 16/16; email suites 128/128. Accounts suite 649/653: the 4 failures are stale tests from earlier commits, unrelated to this change.
+- **Real data:** `ctug_workspace` is unchanged; applicant #11's notification is still `Pending`.
+- **Not verified:** inbox arrival. SMTP acceptance is reported as `recipient_unconfirmed`.
+
 ### 0.10 Branded HTML email design — 24 November 2026
 
 - **Implemented:** one shared design (`email_design.py`) for registration OTPs, password recovery and password-changed notices, and approval/rejection notifications, individual and bulk. It is an HTML + plain-text multipart message with the approved campus logo inline (CID), inline CSS, a responsive table layout and a large copyable OTP, and every dynamic value is escaped. Senders keep a drop-in `send_mail`. Django 6.1 no longer supports `mixed_subtype`, so the logo is added with the standard `add_related` on the HTML part. Business rules, OTP policy, outbox/encryption/audit and SMTP settings are unchanged.

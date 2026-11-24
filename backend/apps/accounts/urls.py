@@ -1,6 +1,10 @@
 
 from django.urls import path
 
+from .email_verification import (
+    EmailVerificationConfirmView, EmailVerificationRequestView, EmailVerificationStatusView,
+)
+
 from .views import CSRFView, RegistrationView
 from .student_registration_api import (
     StudentVerificationStatusView, StudentVerificationActionView,
@@ -26,4 +30,8 @@ urlpatterns = [
   path("forgot-password/", PasswordResetRequestView.as_view(), name="workspace-forgot-password"),
   path("forgot-password/verify/", PasswordResetVerifyView.as_view(), name="workspace-forgot-password-verify"),
   path("reset-password/", PasswordResetConfirmView.as_view(), name="workspace-reset-password"),
+  # 24 Nov 2026: signed-in owner confirms the account's current email (enables recovery, D-21).
+  path("email-verification/", EmailVerificationStatusView.as_view(), name="workspace-email-verification"),
+  path("email-verification/request/", EmailVerificationRequestView.as_view(), name="workspace-email-verification-request"),
+  path("email-verification/confirm/", EmailVerificationConfirmView.as_view(), name="workspace-email-verification-confirm"),
 ]

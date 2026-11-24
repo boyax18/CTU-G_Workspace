@@ -8,8 +8,10 @@
  *
  * Decision controls appear only when the frontend switches, the session permission hints and the
  * server's request-local availability header (route, gate, outbox, executor) all allow them.
- * Selecting ONE applicant uses the individual approve/reject endpoint (WF-02.03/02.04); selecting
- * two to twenty uses the bounded bulk endpoint. The backend rechecks every selected applicant.
+ * Selecting ONE applicant uses the individual approve/reject endpoint (WF-02.03/02.04); more use the
+ * bounded bulk endpoint in sequential groups of at most 20 (never retried automatically). "Select All"
+ * selects every applicant matching the applied filters across all pages (capped), and the selection
+ * survives Previous/Next; search, filter and sort changes clear it. The backend rechecks every one.
  * The session permission hint only decides navigation; Django checks the Admin assignment and the
  * exact effective permission on every request, and this view shows only what the server returns.
  */
@@ -57,6 +59,8 @@ type BulkSummary = Pick<BulkRegistrationDecisionResult, 'action' | 'requested' |
 const APPROVE_PERMISSION = 'accounts.registration_requests.approve';
 const REJECT_PERMISSION = 'accounts.registration_requests.reject';
 const MAX_BULK = 20;
+// Select All reads at most this many list pages (20 each) to stay well inside the list rate limit.
+const MAX_SELECT_ALL_PAGES = 10;
 
 /** Fixed messages for definite refusals of ONE decision; server text is never displayed. */
 function decisionRefusal(code: string, action: BulkAction): string {
@@ -185,7 +189,12 @@ export default function PendingApplicationsPanel() {
   const [version, setVersion] = useState(0);
   const [listing, setListing] = useState<Listing>({ status: 'loading' });
   const [searchError, setSearchError] = useState('');
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  // Selected applicants by ID, possibly from several pages (Select All).
+  const [selection, setSelection] = useState<Map<number, PendingRegistrationItem>>(() => new Map());
+  const [allMatchingSelected, setAllMatchingSelected] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
+  const [selectAllNote, setSelectAllNote] = useState('');
+  const selectAllInFlight = useRef(false);
   const [bulkAction, setBulkAction] = useState<BulkAction | null>(null);
   const [bulkEligibilityConfirmed, setBulkEligibilityConfirmed] = useState(false);
   const [bulkRejectionCode, setBulkRejectionCode] = useState<RegistrationReviewRejectionCode | ''>('');
@@ -233,12 +242,18 @@ export default function PendingApplicationsPanel() {
     }
   }
 
-  function load(next: { filters?: Filters; page?: number }, preserveBulkSummary = false) {
+  function clearSelection() {
+    setSelection(new Map());
+    setAllMatchingSelected(false);
+    setSelectAllNote('');
+  }
+
+  function load(next: { filters?: Filters; page?: number }, preserveBulkSummary = false, keepSelection = false) {
     setListing((current) => ({
       status: 'loading',
       previous: current.status === 'ready' ? current.data : current.status === 'loading' ? current.previous : undefined,
     }));
-    setSelectedIds(new Set());
+    if (!keepSelection) clearSelection();
     setBulkAction(null);
     setBulkEligibilityConfirmed(false);
     setBulkRejectionCode('');
@@ -307,29 +322,72 @@ export default function PendingApplicationsPanel() {
   const bulkRejectAvailable = BULK_APPLICANT_DECISIONS_ENABLED && available.includes('bulk-reject');
   // Checkboxes exist only when at least one decision can actually be performed in this session.
   const selectionEnabled = individualApprove || individualReject || bulkApproveAvailable || bulkRejectAvailable;
-  const selectedRows = rows.filter((item) => selectedIds.has(item.account_id));
-  const count = selectedRows.length;
-  const allRowsSelected = rows.length > 0 && rows.every((item) => selectedIds.has(item.account_id));
-  const someRowsSelected = count > 0 && !allRowsSelected;
+  const count = selection.size;
+  const pageSelected = rows.filter((item) => selection.has(item.account_id)).length;
+  const allRowsSelected = rows.length > 0 && pageSelected === rows.length;
+  const someRowsSelected = pageSelected > 0 && !allRowsSelected;
+  const onlyThisPage = count > 0 && count === pageSelected;
+  const singlePageList = page === 1 && listing.status === 'ready' && !listing.data.has_next;
+  const everythingSelected = allMatchingSelected || (allRowsSelected && onlyThisPage && singlePageList);
   const canDecide = (action: BulkAction) => {
     if (count === 1) return action === 'approve' ? individualApprove || bulkApproveAvailable : individualReject || bulkRejectAvailable;
-    return count > 1 && count <= MAX_BULK && (action === 'approve' ? bulkApproveAvailable : bulkRejectAvailable);
+    return count > 1 && (action === 'approve' ? bulkApproveAvailable : bulkRejectAvailable);
   };
-  const single = count === 1 ? selectedRows[0] : null;
+  const single = count === 1 ? [...selection.values()][0] : null;
 
-  function toggleSelected(accountId: number, checked: boolean) {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (checked) next.add(accountId);
-      else next.delete(accountId);
+  function toggleSelected(item: PendingRegistrationItem, checked: boolean) {
+    setSelection((current) => {
+      const next = new Map(current);
+      if (checked) next.set(item.account_id, item);
+      else next.delete(item.account_id);
       return next;
     });
+    if (!checked) setAllMatchingSelected(false);
     setBulkError('');
   }
 
-  function selectAllOnPage(checked: boolean) {
-    setSelectedIds(checked ? new Set(rows.map((item) => item.account_id)) : new Set());
+  /** Header checkbox: add or remove only the rows on this page. */
+  function selectPage(checked: boolean) {
+    setSelection((current) => {
+      const next = new Map(current);
+      for (const item of rows) {
+        if (checked) next.set(item.account_id, item);
+        else next.delete(item.account_id);
+      }
+      return next;
+    });
+    if (!checked) setAllMatchingSelected(false);
     setBulkError('');
+  }
+
+  /** Select every applicant matching the applied filters, across all pages (read-only GETs). */
+  async function selectAll() {
+    if (selectAllInFlight.current) return;
+    selectAllInFlight.current = true;
+    setSelectingAll(true);
+    setBulkError('');
+    const filters = appliedRef.current;
+    const found = new Map<number, PendingRegistrationItem>();
+    let truncated = false;
+    try {
+      for (let next = 1; next <= MAX_SELECT_ALL_PAGES; next++) {
+        const data = await listPendingApplications(next, toQuery(filters));
+        for (const item of data.results) found.set(item.account_id, item);
+        if (!data.has_next) break;
+        if (next === MAX_SELECT_ALL_PAGES) truncated = true;
+      }
+      if (!sameFilters(filters, appliedRef.current)) return; // filters changed meanwhile: discard
+      setSelection(found);
+      setAllMatchingSelected(!truncated);
+      setSelectAllNote(truncated
+        ? `Only the first ${found.size} matching applicants were selected. Decide on them, then select again for the rest.`
+        : '');
+    } catch {
+      setBulkError('Could not select all applicants. Check your connection, then try again.');
+    } finally {
+      selectAllInFlight.current = false;
+      setSelectingAll(false);
+    }
   }
 
   function openConfirmation(action: BulkAction) {
@@ -352,7 +410,6 @@ export default function PendingApplicationsPanel() {
       counts: { Approved: 0, Rejected: 0, Skipped: 0, Failed: 0, Unconfirmed: items.length },
       results: items.map((item) => ({ school_id: item.school_id, outcome: 'Unconfirmed' })),
     });
-    setSelectedIds(new Set());
     setBulkAction(null);
     load({}, true);
   }
@@ -367,7 +424,6 @@ export default function PendingApplicationsPanel() {
         counts: { Approved: action === 'approve' ? 1 : 0, Rejected: action === 'reject' ? 1 : 0, Skipped: 0, Failed: 0, Unconfirmed: 0 },
         results: [{ school_id: item.school_id, outcome: action === 'approve' ? 'Approved' : 'Rejected', notification: 'queued' }],
       });
-      setSelectedIds(new Set());
       setBulkAction(null);
       load({}, true);
     } catch (error: unknown) {
@@ -379,40 +435,61 @@ export default function PendingApplicationsPanel() {
     }
   }
 
-  /** Two to twenty applicants: the bounded bulk endpoint. */
+  /** Several applicants: the bounded bulk endpoint, one group of at most 20 at a time.
+   * Any interruption, uncertain group or refused request stops the run; nothing is retried. */
   async function decideMany(action: BulkAction, items: readonly PendingRegistrationItem[], code: RegistrationReviewRejectionCode | '') {
-    try {
-      const result = await decideBulkApplications(items.map((item) => item.account_id), action,
-        action === 'reject' ? code || undefined : undefined);
-      const labels = new Map(items.map((item) => [item.account_id, item.school_id]));
-      setBulkSummary({
-        action: result.action, requested: result.requested, processed: result.processed, remaining: result.remaining,
-        interrupted: result.interrupted, counts: result.counts,
-        results: result.results.map((item) => ({
+    const labels = new Map(items.map((item) => [item.account_id, item.school_id]));
+    const summary: BulkSummary = {
+      action, requested: items.length, processed: 0, remaining: items.length, interrupted: false,
+      counts: { Approved: 0, Rejected: 0, Skipped: 0, Failed: 0, Unconfirmed: 0 }, results: [],
+    };
+    let stopMessage = '';
+    for (let start = 0; start < items.length; start += MAX_BULK) {
+      const group = items.slice(start, start + MAX_BULK);
+      try {
+        const result = await decideBulkApplications(group.map((item) => item.account_id), action,
+          action === 'reject' ? code || undefined : undefined);
+        summary.processed += result.processed;
+        summary.remaining -= result.processed;
+        for (const key of Object.keys(summary.counts) as Array<keyof BulkSummary['counts']>) summary.counts[key] += result.counts[key];
+        summary.results.push(...result.results.map((item) => ({
           school_id: labels.get(item.account_id) ?? null,
           outcome: item.outcome,
           ...(item.notification ? { notification: item.notification } : {}),
-        })),
-      });
-      setSelectedIds(new Set());
-      setBulkAction(null);
-      load({}, true);
-    } catch (error: unknown) {
-      const errorCode = error && typeof error === 'object' && 'code' in error ? String((error as { code: unknown }).code) : '';
-      if (errorCode === 'outcome_unknown') { unconfirmed(action, items); return; }
-      setBulkAction(null);
-      setBulkError(errorCode === 'access_denied' ? 'You are no longer authorized to perform this bulk decision.'
-        : errorCode === 'authentication_required' ? 'Your session has ended. Sign in again to continue.'
-          : errorCode === 'rate_limited' ? 'Too many requests. Wait before trying again.'
-            : 'The bulk decision could not be completed. No automatic retry was made.');
+        })));
+        if (result.interrupted || result.remaining > 0) { summary.interrupted = true; break; }
+      } catch (error: unknown) {
+        const errorCode = error && typeof error === 'object' && 'code' in error ? String((error as { code: unknown }).code) : '';
+        summary.interrupted = true;
+        if (errorCode === 'outcome_unknown') {
+          summary.processed += group.length;
+          summary.remaining -= group.length;
+          summary.counts.Unconfirmed += group.length;
+          summary.results.push(...group.map((item) => ({ school_id: item.school_id, outcome: 'Unconfirmed' })));
+        } else {
+          stopMessage = errorCode === 'access_denied' ? 'You are no longer authorized to perform this decision.'
+            : errorCode === 'authentication_required' ? 'Your session has ended. Sign in again to continue.'
+              : errorCode === 'rate_limited' ? 'The server allows 3 group decisions per minute. Wait a minute, then select the remaining applicants again.'
+                : 'The decision could not be completed. No automatic retry was made.';
+        }
+        break;
+      }
     }
+    setBulkAction(null);
+    if (summary.processed === 0 && stopMessage) {
+      setBulkError(stopMessage); // nothing was decided; the selection stays
+      return;
+    }
+    setBulkSummary(summary);
+    load({}, true);
+    if (stopMessage) setBulkError(stopMessage);
   }
 
   async function confirmDecision() {
     if (!bulkAction || bulkInFlight.current || !canDecide(bulkAction)) return;
     if (bulkAction === 'approve' && !bulkEligibilityConfirmed) return;
     if (bulkAction === 'reject' && !bulkRejectionCode) return;
-    const items = [...selectedRows];
+    const items = [...selection.values()];
     const action = bulkAction;
     bulkInFlight.current = true;
     setBulkSubmitting(true);
@@ -427,8 +504,8 @@ export default function PendingApplicationsPanel() {
     }
   }
 
-  const approveLabel = allRowsSelected ? 'Approve All' : 'Approve';
-  const rejectLabel = allRowsSelected ? 'Reject All' : 'Reject';
+  const approveLabel = everythingSelected ? 'Approve All' : 'Approve';
+  const rejectLabel = everythingSelected ? 'Reject All' : 'Reject';
   const subject = single ? `${single.school_id}${single.full_name ? ` (${single.full_name})` : ''}` : `${count} applicants`;
 
   if (applicant !== null) {
@@ -512,9 +589,9 @@ export default function PendingApplicationsPanel() {
           <section aria-label="Decisions for selected applicants" className="dashboard-panel mt-5 rounded-xl border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="dashboard-heading text-sm font-semibold">Select applicants to approve or reject them.</p>
-              <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting}
-                onClick={() => selectAllOnPage(true)}>
-                Select All on Current Page
+              <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting || selectingAll}
+                onClick={() => { void selectAll(); }}>
+                {selectingAll ? 'Selecting…' : 'Select All'}
               </button>
             </div>
           </section>
@@ -524,7 +601,8 @@ export default function PendingApplicationsPanel() {
           <section aria-label="Decisions for selected applicants" className="dashboard-panel mt-5 rounded-xl border p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p role="status" aria-live="polite" className="dashboard-heading text-sm font-semibold">
-                {count} {count === 1 ? 'applicant' : 'applicants'} selected on this page
+                {count} {count === 1 ? 'applicant' : 'applicants'} selected{onlyThisPage ? ' on this page'
+                  : `, including ${count - pageSelected} on other pages`}
               </p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" className={primaryButton} disabled={!canDecide('approve') || bulkSubmitting || loading}
@@ -535,22 +613,20 @@ export default function PendingApplicationsPanel() {
                   onClick={() => openConfirmation('reject')}>
                   {rejectLabel}
                 </button>
-                {!allRowsSelected && (
-                  <button type="button" className={secondaryButton} disabled={bulkSubmitting || loading}
-                    onClick={() => selectAllOnPage(true)}>
-                    Select All on Current Page
+                {!everythingSelected && (
+                  <button type="button" className={secondaryButton} disabled={bulkSubmitting || loading || selectingAll}
+                    onClick={() => { void selectAll(); }}>
+                    {selectingAll ? 'Selecting…' : 'Select All'}
                   </button>
                 )}
                 <button type="button" className={secondaryButton} disabled={bulkSubmitting}
-                  onClick={() => selectAllOnPage(false)}>
+                  onClick={clearSelection}>
                   Unselect All
                 </button>
               </div>
             </div>
-            {count > MAX_BULK && (
-              <p className="dashboard-muted mt-2 text-xs">Select at most {MAX_BULK} applicants per decision.</p>
-            )}
-            {count > 1 && count <= MAX_BULK && (!bulkApproveAvailable || !bulkRejectAvailable) && (
+            {selectAllNote && <p className="dashboard-muted mt-2 text-xs">{selectAllNote}</p>}
+            {count > 1 && (!bulkApproveAvailable || !bulkRejectAvailable) && (
               <p className="dashboard-muted mt-2 text-xs">
                 Decisions for several applicants at once are not available in this session. Select one applicant at a time.
               </p>
@@ -630,10 +706,10 @@ export default function PendingApplicationsPanel() {
                     <tr className="dashboard-muted border-b text-xs uppercase tracking-wide">
                       {selectionEnabled && (
                         <th scope="col" className="w-10 px-2 py-3">
-                          <input type="checkbox" checked={allRowsSelected} disabled={loading || bulkSubmitting}
+                          <input type="checkbox" checked={allRowsSelected} disabled={loading || bulkSubmitting || selectingAll}
                             ref={(element) => { if (element) element.indeterminate = someRowsSelected; }}
                             aria-label="Select all applicants on this page"
-                            onChange={(event) => selectAllOnPage(event.target.checked)} />
+                            onChange={(event) => selectPage(event.target.checked)} />
                         </th>
                       )}
                       <th scope="col" className="px-2 py-3">CTU-G ID</th>
@@ -650,10 +726,10 @@ export default function PendingApplicationsPanel() {
                       <tr key={item.account_id} className="border-b last:border-0">
                         {selectionEnabled && (
                           <td className="px-2 py-3">
-                            <input type="checkbox" checked={selectedIds.has(item.account_id)}
-                              disabled={loading || bulkSubmitting}
+                            <input type="checkbox" checked={selection.has(item.account_id)}
+                              disabled={loading || bulkSubmitting || selectingAll}
                               aria-label={`Select CTU-G ID ${item.school_id}`}
-                              onChange={(event) => toggleSelected(item.account_id, event.target.checked)} />
+                              onChange={(event) => toggleSelected(item, event.target.checked)} />
                           </td>
                         )}
                         <td className="dashboard-heading px-2 py-3 font-semibold">{item.school_id}</td>
@@ -674,10 +750,10 @@ export default function PendingApplicationsPanel() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       {selectionEnabled ? (
                         <label className="dashboard-heading flex min-h-11 min-w-0 items-center gap-3 font-semibold break-words">
-                          <input type="checkbox" checked={selectedIds.has(item.account_id)}
-                            disabled={loading || bulkSubmitting}
+                          <input type="checkbox" checked={selection.has(item.account_id)}
+                            disabled={loading || bulkSubmitting || selectingAll}
                             aria-label={`Select CTU-G ID ${item.school_id}`}
-                            onChange={(event) => toggleSelected(item.account_id, event.target.checked)} />
+                            onChange={(event) => toggleSelected(item, event.target.checked)} />
                           {item.school_id}
                         </label>
                       ) : (
@@ -700,11 +776,11 @@ export default function PendingApplicationsPanel() {
         </div>
 
         <nav aria-label="Pending applications pages" className="mt-4 flex items-center justify-between gap-3 border-t pt-3 text-sm">
-          <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting || page <= 1} onClick={() => load({ page: page - 1 })}>Previous</button>
+          <button type="button" className={secondaryButton} disabled={loading || bulkSubmitting || page <= 1} onClick={() => load({ page: page - 1 }, false, true)}>Previous</button>
           <span className="dashboard-muted">Page {page}</span>
           <button type="button" className={secondaryButton}
             disabled={listing.status !== 'ready' || !listing.data.has_next || page >= 10000 || bulkSubmitting}
-            onClick={() => load({ page: page + 1 })}>Next</button>
+            onClick={() => load({ page: page + 1 }, false, true)}>Next</button>
         </nav>
 
         <p className="dashboard-muted mt-4 text-xs leading-relaxed">
@@ -734,8 +810,14 @@ export default function PendingApplicationsPanel() {
         )}>
         <p className="dashboard-heading">
           {count === 1 ? `This decides the application of ${subject}.`
-            : `This will process ${count} selected applicants independently.`}
+            : `This will process ${count} selected applicants independently${onlyThisPage ? '' : ', including applicants on other pages'}.`}
         </p>
+        {count > MAX_BULK && (
+          <p className="dashboard-muted">
+            They are sent in groups of up to {MAX_BULK}. The server accepts at most 3 groups per minute, so a larger selection
+            stops at that limit and reports the rest as not attempted.
+          </p>
+        )}
         {bulkAction === 'approve' && (
           <>
             <p className="dashboard-muted">

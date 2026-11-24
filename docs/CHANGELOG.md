@@ -1,5 +1,10 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Applicant Reviews: Select All across pages
+
+- "Select All" selects every pending applicant matching the applied filters on every page, capped at 10 pages. The selection persists across Previous/Next; search, filter and sort changes clear it. Approve All / Reject All send groups of 20 to the existing bulk endpoint one after another, and the results are combined. The run stops without retrying at any interruption, uncertain group or refusal, including the server's 3-per-minute bulk limit, and reports the rest as not attempted. The server still rechecks every applicant.
+- Verification: real browser 10/10 on a disposable replica with 25 pending applicants. Select All took 25 across 2 pages, page 2 stayed selected, a filter change cleared it, and Approve All sent 20 + 5 requests: 23 approved, and 2 skipped because they had no email proof. Mocked browser 17/17 + 11/11, including grouped and rate-limited runs; build passes. Real-data note: the owner's own `-Local` session rejected one existing applicant at 18:17 UTC (audited, notification queued); the assistant's tests never used `ctug_workspace`.
+
 ### 24 November 2026 — Applicant Reviews: neutral subtitle and selection hint
 
 - Removed "This list is read-only." from the page subtitle, because decision availability depends on the session. The table now shows "Select applicants to approve or reject them." when decisions are available and nothing is selected; the toolbar itself still appears only with a selection.

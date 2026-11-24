@@ -34,6 +34,7 @@ const detail = (id, overrides = {}) => ({
 /** approve(id, state) returns [body, status] or 'abort'; it may be async (to hold the request open). */
 function server({
   permissions = [READ, APPROVE], actions = 'approve,reject', bulkActions = '',
+  listPage = () => ({ results: [row(1), row(2)], page: 1, page_size: 20, has_next: false }),
   detailFor = (id) => detail(id),
   approve = (id) => [{ account_id: id, status: 'Approved', notification: 'queued' }],
   bulkDecision = (body) => {
@@ -67,7 +68,7 @@ function server({
     }
     if (path === LIST) {
       state.lists++;
-      return respond({ results: [row(1), row(2)], page: 1, page_size: 20, has_next: false },
+      return respond(listPage(Number(new URL(request.url()).searchParams.get('page') || '1')),
         200, bulkActions ? { 'X-Workspace-Available-Actions': bulkActions } : {});
     }
     const match = path.match(/^\/api\/v1\/admin\/registration-requests\/(\d+)\/$/);
@@ -105,7 +106,7 @@ test('selection comes first, the toolbar appears only with a selection, and labe
     assert.equal(await table.locator('tbody tr').first().locator('td').first().locator('input[type="checkbox"]').count(), 1);
     assert.equal(await page.getByRole('button', { name: /^Approve/ }).count(), 0, 'decision buttons hidden with no selection');
     // Select All is offered even before anything is ticked.
-    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
+    await page.getByRole('button', { name: 'Select All', exact: true }).click();
     await page.getByText('2 applicants selected on this page').waitFor();
     await page.getByRole('button', { name: 'Approve All' }).waitFor();
     await page.getByRole('button', { name: 'Unselect All' }).click();
@@ -114,14 +115,72 @@ test('selection comes first, the toolbar appears only with a selection, and labe
     await page.getByText('1 applicant selected on this page').waitFor();
     assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isEnabled(), true);
     assert.equal(await page.getByRole('button', { name: 'Reject', exact: true }).isEnabled(), true);
-    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
+    await page.getByRole('button', { name: 'Select All', exact: true }).click();
     await page.getByText('2 applicants selected on this page').waitFor();
     await page.getByRole('button', { name: 'Approve All' }).waitFor();
     await page.getByRole('button', { name: 'Reject All' }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Select All on Current Page' }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Select All', exact: true }).count(), 0);
     await page.getByRole('button', { name: 'Unselect All' }).click();
     assert.equal(await page.getByRole('button', { name: /^Approve/ }).count(), 0, 'toolbar hidden after Unselect All');
     assert.equal(fake.state.approvals.length + fake.state.bulkDecisions.length, 0);
+  }, VIEW);
+});
+
+test('Select All includes every matching applicant on every page; groups of 20 are sent in turn', async () => {
+  const fake = server({
+    bulkActions: ALL,
+    listPage: (n) => (n === 1
+      ? { results: Array.from({ length: 20 }, (_, i) => row(i + 1)), page: 1, page_size: 20, has_next: true }
+      : { results: [row(21)], page: 2, page_size: 20, has_next: false }),
+  });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('button', { name: 'Select All', exact: true }).click();
+    await page.getByText('21 applicants selected, including 1 on other pages').waitFor();
+    await page.getByRole('button', { name: 'Approve All' }).waitFor();
+    // The selection survives moving to the next page.
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByText('Page 2', { exact: true }).waitFor();
+    assert.equal(await page.getByRole('checkbox', { name: 'Select CTU-G ID 7241021' }).isChecked(), true);
+    await page.getByRole('button', { name: 'Approve All' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Confirm approval of 21 applicants?' });
+    await dialog.waitFor();
+    assert.ok((await dialog.innerText()).includes('groups of up to 20'));
+    await dialog.getByRole('checkbox').check();
+    await dialog.getByRole('button', { name: 'Confirm bulk approval' }).click();
+    const summary = page.getByRole('status', { name: 'Decision results' });
+    await summary.getByText('Approved 21; rejected 0').waitFor();
+    assert.deepEqual(fake.state.bulkDecisions.map((d) => d.body.account_ids.length), [20, 1]);
+    assert.deepEqual(new Set(fake.state.bulkDecisions.flatMap((d) => d.body.account_ids)).size, 21);
+  }, VIEW);
+});
+
+test('a rate-limited group stops the run without retrying and reports the rest as not attempted', async () => {
+  const fake = server({
+    bulkActions: ALL,
+    listPage: (n) => (n === 1
+      ? { results: Array.from({ length: 20 }, (_, i) => row(i + 1)), page: 1, page_size: 20, has_next: true }
+      : { results: [row(21), row(22)], page: 2, page_size: 20, has_next: false }),
+    bulkDecision: (body, state) => {
+      if (state.bulkDecisions.length > 1) return [{ error: { code: 'rate_limited', message: 'Too many attempts. Try later.' } }, 429];
+      const counts = { Approved: body.account_ids.length, Rejected: 0, Skipped: 0, Failed: 0, Unconfirmed: 0 };
+      return [{ action: 'approve', requested: body.account_ids.length, processed: body.account_ids.length, remaining: 0,
+        interrupted: false, counts, results: body.account_ids.map((account_id) => ({ account_id, outcome: 'Approved', notification: 'queued' })) }];
+    },
+  });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('button', { name: 'Select All', exact: true }).click();
+    await page.getByText('22 applicants selected, including 2 on other pages').waitFor();
+    await page.getByRole('button', { name: 'Approve All' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Confirm approval of 22 applicants?' });
+    await dialog.getByRole('checkbox').check();
+    await dialog.getByRole('button', { name: 'Confirm bulk approval' }).click();
+    const summary = page.getByRole('status', { name: 'Decision results' });
+    await summary.getByText('Approved 20; rejected 0').waitFor();
+    assert.ok((await summary.innerText()).includes('2 applicant(s) were not attempted'));
+    await page.getByRole('alert').filter({ hasText: '3 group decisions per minute' }).waitFor();
+    assert.equal(fake.state.bulkDecisions.length, 2, 'the refused group is never resent');
   }, VIEW);
 });
 

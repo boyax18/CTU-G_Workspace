@@ -13,7 +13,7 @@
 - **Signed-in email verification:** `/api/v1/auth/email-verification/` (status, request, confirm) and an Email verification card on My profile.
   - A one-time code goes to the current address. Only the correct code records `email_verified_at`/`email_verified_address`, with lockout, resend wait and an `account.email.verified` audit event (no address, code or digest).
   - D-21 eligibility is unchanged.
-- **Diagnostics:** the `ctug.email` logger writes correlation-ID events, from `request_accepted` through `smtp_accepted` to `recipient_unconfirmed`, with masked recipients and Message-IDs, never codes.
+- **Diagnostics:** the `ctug.email` logger writes correlation-ID events, from `request_accepted` through `smtp_accepted` to `recipient_unconfirmed`, with masked recipients and Message-IDs, never codes. An ineligible reset request logs a fixed reason (`no_account`, `email_unverified`, `proof_mismatch`, `not_approved`, …) in the server log only; the API response is unchanged.
   - Registration OTPs and decision notifications now carry Message-IDs and traces.
   - New read-only `manage.py email_delivery_report`.
   - The launcher prints an Email line (SMTP or local-only, worker running or not).

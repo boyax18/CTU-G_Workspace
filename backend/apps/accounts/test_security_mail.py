@@ -167,7 +167,14 @@ class DurableResetMailTests(_Base):
         with self.assertLogs("ctug.email", level="INFO") as logs:
             self.assertEqual(self.request().status_code, 202)
         self.assertFalse(SecurityMailOutbox.objects.exists())
-        self.assertIn("event=account_ineligible", " ".join(logs.output))
+        text = " ".join(logs.output)
+        self.assertIn("event=account_ineligible", text)
+        self.assertIn("code=email_unverified", text)  # server-log reason only; the response is unchanged
+        self.assertNotIn(EMAIL, text)
+        with self.assertLogs("ctug.email", level="INFO") as logs:
+            response = self.post(self.client, "/api/v1/auth/forgot-password/", {"email": "nobody@example.edu"})
+        self.assertEqual(response.status_code, 202)
+        self.assertIn("code=no_account", " ".join(logs.output))
 
 
 @override_settings(**SETTINGS)

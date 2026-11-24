@@ -161,6 +161,32 @@ def eligible_account_queryset():
     ).distinct()
 
 
+def ineligible_reason(email):
+    """Server-log diagnostics only (never an API response): why D-21 refused this address.
+
+    Returns a fixed reason code; no identity, address or account id is ever part of it.
+    """
+    matches = list(Account.objects.filter(email__iexact=email)[:2])
+    if not matches:
+        return "no_account"
+    if len(matches) > 1:
+        return "ambiguous"
+    account = matches[0]
+    if account.is_staff or account.is_superuser:
+        return "framework_admin"
+    if account.request_status != "Approved":
+        return "not_approved"
+    if not account.is_active:
+        return "inactive"
+    if not account.role_assignments.filter(role__is_active=True).exists():
+        return "no_active_role"
+    if account.email_verified_at is None or not account.email_verified_address:
+        return "email_unverified"
+    if account.email_verified_address.lower() != (account.email or "").lower():
+        return "proof_mismatch"
+    return "changed_during_request"
+
+
 def _first_name(account):
     """Greeting only. A missing profile simply means a neutral greeting."""
     try:
@@ -292,7 +318,7 @@ class PasswordResetRequestView(WorkspaceSessionAPI):
                 account = _lock_eligible(email)
                 if account is None:
                     # Server log only; the HTTP response below stays identical (no enumeration).
-                    trace("account_ineligible", corr, flow="reset_code")
+                    trace("account_ineligible", corr, flow="reset_code", code=ineligible_reason(email))
                 if account is not None:
                     now = _now()
                     record = _Record.load(account.password_reset_token)

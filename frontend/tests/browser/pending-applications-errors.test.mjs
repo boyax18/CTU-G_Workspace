@@ -46,7 +46,7 @@ const heading = (page) => page.getByRole('heading', { name: 'Pending application
 // Tests therefore assert on requests made after the initial render.
 const initialOnly = (lists) => lists.length >= 1 && lists.every((query) => query === '?page=1&status=Pending');
 
-test('an authorized reviewer sees the list and gated bulk decisions remain disabled', async () => {
+test('an authorized reviewer sees the list and no decision controls without decision availability', async () => {
   const fake = server(() => [page([
     row(1),
     row(3, { full_name: null }),
@@ -62,9 +62,10 @@ test('an authorized reviewer sees the list and gated bulk decisions remain disab
       assert.ok(text.includes(expected), `missing ${expected}`);
     }
     assert.equal(await page.locator('time[datetime="2026-11-10T09:15:00+08:00"]').first().count(), 1);
-    // Bulk controls are visible for clarity but must remain unavailable without release gates.
-    for (const name of ['Bulk Approve', 'Bulk Reject']) {
-      assert.equal(await page.getByRole('button', { name, exact: true }).isDisabled(), true);
+    // Without decision availability there are no selection checkboxes and no decision toolbar.
+    assert.equal(await page.getByRole('checkbox').count(), 0);
+    for (const name of [/^Approve/, /^Reject/, 'Unselect All']) {
+      assert.equal(await page.getByRole('button', { name }).count(), 0);
     }
     for (const name of [/delete/i, /confirm/i]) {
       assert.equal(await page.getByRole('button', { name }).count(), 0);

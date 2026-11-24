@@ -79,36 +79,101 @@ function server({
 
 const at = (id) => `${VIEW}&applicant=${id}`;
 
-test('bulk selection is current-page scoped and actions stay disabled without release gates', async () => {
+const ALL = 'approve,reject,bulk-approve,bulk-reject';
+const selectAll = (page) => page.getByRole('checkbox', { name: 'Select all applicants on this page' });
+
+test('without decision availability there are no checkboxes and no decision toolbar', async () => {
   const fake = server({ actions: '' });
   await scene(fake.handle, async (page) => {
-    await page.getByRole('heading', { name: 'Pending applications' }).waitFor();
-    const first = page.getByRole('checkbox', { name: /Select CTU-G ID .* for bulk decisions/ }).first();
-    await first.check();
-    await page.getByText('1 applicant selected on this page').waitFor();
-    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
-    await page.getByText('2 applicants selected on this page').waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Bulk Approve' }).isDisabled(), true);
-    assert.equal(await page.getByRole('button', { name: 'Bulk Reject' }).isDisabled(), true);
-    await page.getByRole('button', { name: 'Clear Selection' }).click();
-    await page.getByText('0 applicants selected on this page').waitFor();
+    await page.getByRole('table').waitFor();
+    assert.equal(await page.getByRole('checkbox').count(), 0);
+    for (const name of [/^Approve/, /^Reject/, /Select All/, 'Unselect All']) {
+      assert.equal(await page.getByRole('button', { name }).count(), 0);
+    }
+    await page.getByText('Approve and Reject are not available in this session.').waitFor();
     assert.equal(fake.state.approvals.length, 0);
   }, VIEW);
 });
 
-test('bulk approval confirms the selected count and reports independently queued outcomes', async () => {
-  const fake = server({ bulkActions: 'bulk-approve,bulk-reject' });
+test('selection comes first, the toolbar appears only with a selection, and labels follow it', async () => {
+  const fake = server({ bulkActions: ALL });
   await scene(fake.handle, async (page) => {
-    await page.getByRole('table').waitFor();
+    const table = page.getByRole('table');
+    await table.waitFor();
+    const headers = await table.locator('thead th').allInnerTexts();
+    assert.equal(headers[1].trim().toUpperCase(), 'CTU-G ID', JSON.stringify(headers));
+    assert.equal(await table.locator('tbody tr').first().locator('td').first().locator('input[type="checkbox"]').count(), 1);
+    assert.equal(await page.getByRole('button', { name: /^Approve/ }).count(), 0, 'toolbar hidden with no selection');
+    await page.getByRole('checkbox', { name: 'Select CTU-G ID 7241001' }).check();
+    await page.getByText('1 applicant selected on this page').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Approve', exact: true }).isEnabled(), true);
+    assert.equal(await page.getByRole('button', { name: 'Reject', exact: true }).isEnabled(), true);
     await page.getByRole('button', { name: 'Select All on Current Page' }).click();
     await page.getByText('2 applicants selected on this page').waitFor();
-    await page.getByRole('button', { name: 'Bulk Approve' }).click();
+    await page.getByRole('button', { name: 'Approve All' }).waitFor();
+    await page.getByRole('button', { name: 'Reject All' }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Select All on Current Page' }).count(), 0);
+    await page.getByRole('button', { name: 'Unselect All' }).click();
+    assert.equal(await page.getByRole('button', { name: /^Approve/ }).count(), 0, 'toolbar hidden after Unselect All');
+    assert.equal(fake.state.approvals.length + fake.state.bulkDecisions.length, 0);
+  }, VIEW);
+});
+
+test('one selected applicant is approved through the individual endpoint after confirmation', async () => {
+  const fake = server({ bulkActions: ALL });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('checkbox', { name: 'Select CTU-G ID 7241001' }).check();
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Confirm approval?' });
+    await dialog.waitFor();
+    assert.ok((await dialog.innerText()).includes(STUDENT_SOURCE));
+    assert.equal(await dialog.getByRole('button', { name: 'Confirm approval' }).isDisabled(), true);
+    await dialog.getByRole('checkbox').check();
+    await dialog.getByRole('button', { name: 'Confirm approval' }).click();
+    const summary = page.getByRole('status', { name: 'Decision results' });
+    await summary.waitFor();
+    assert.ok((await summary.innerText()).includes('7241001 — Approved (email queued; delivery not confirmed)'));
+    assert.equal(fake.state.bulkDecisions.length, 0);
+    assert.equal(fake.state.approvals.length, 1);
+    assert.deepEqual(fake.state.approvals[0], {
+      id: 6001, body: { eligibility_confirmed: true, eligibility_source: 'ctu_main_system_records' },
+      csrf: fake.state.approvals[0].csrf,
+    });
+    assert.ok(fake.state.approvals[0].csrf);
+  }, VIEW);
+});
+
+test('an uncertain single approval is reported as unconfirmed and never retried', async () => {
+  const fake = server({ bulkActions: ALL, approve: () => 'abort' });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await page.getByRole('checkbox', { name: 'Select CTU-G ID 7241002' }).check();
+    await page.getByRole('button', { name: 'Approve', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: 'Confirm approval?' });
+    await dialog.getByRole('checkbox').check();
+    await dialog.getByRole('button', { name: 'Confirm approval' }).click();
+    const summary = page.getByRole('status', { name: 'Decision results' });
+    await summary.waitFor();
+    assert.ok((await summary.innerText()).includes('unconfirmed 1'));
+    assert.ok((await summary.innerText()).includes('not retried automatically'));
+    assert.equal(fake.state.approvals.length, 1);
+  }, VIEW);
+});
+
+test('bulk approval confirms the selected count and reports independently queued outcomes', async () => {
+  const fake = server({ bulkActions: ALL });
+  await scene(fake.handle, async (page) => {
+    await page.getByRole('table').waitFor();
+    await selectAll(page).check();
+    await page.getByText('2 applicants selected on this page').waitFor();
+    await page.getByRole('button', { name: 'Approve All' }).click();
     const dialog = page.getByRole('dialog', { name: 'Confirm approval of 2 applicants?' });
     await dialog.waitFor();
     assert.ok((await dialog.innerText()).includes('process 2 selected applicants independently'));
     await dialog.getByRole('checkbox').check();
     await dialog.getByRole('button', { name: 'Confirm bulk approval' }).click();
-    const summary = page.getByRole('status', { name: 'Bulk decision results' });
+    const summary = page.getByRole('status', { name: 'Decision results' });
     await summary.waitFor();
     assert.ok((await summary.innerText()).includes('Approved 2; rejected 0; skipped 0; failed 0; unconfirmed 0.'));
     assert.ok((await summary.innerText()).includes('7241001 — Approved (email queued; delivery not confirmed)'));
@@ -121,17 +186,17 @@ test('bulk approval confirms the selected count and reports independently queued
 });
 
 test('bulk rejection is explicitly irreversible, uses one fixed reason, and reports outcomes', async () => {
-  const fake = server({ bulkActions: 'bulk-approve,bulk-reject' });
+  const fake = server({ bulkActions: ALL });
   await scene(fake.handle, async (page) => {
     await page.getByRole('table').waitFor();
-    await page.getByRole('button', { name: 'Select All on Current Page' }).click();
-    await page.getByRole('button', { name: 'Bulk Reject' }).click();
+    await selectAll(page).check();
+    await page.getByRole('button', { name: 'Reject All' }).click();
     const dialog = page.getByRole('dialog', { name: 'Confirm rejection of 2 applicants?' });
     await dialog.waitFor();
     assert.ok((await dialog.innerText()).includes('Irreversible'));
     await dialog.getByLabel('Reason for every selected applicant').selectOption('identity_mismatch');
     await dialog.getByRole('button', { name: 'Confirm bulk rejection' }).click();
-    const summary = page.getByRole('status', { name: 'Bulk decision results' });
+    const summary = page.getByRole('status', { name: 'Decision results' });
     await summary.waitFor();
     assert.ok((await summary.innerText()).includes('Approved 0; rejected 2; skipped 0; failed 0; unconfirmed 0.'));
     assert.equal(fake.state.bulkDecisions.length, 1);

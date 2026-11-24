@@ -1,5 +1,13 @@
 # CTU-G Workspace — Development Changelog
 
+### 24 November 2026 — Applicant Reviews: selection-first table and contextual decision controls
+
+- Moved the selection checkbox to the first column and added a header select-all checkbox. The decision toolbar now appears only while applicants are selected: Approve/Reject, renamed Approve All/Reject All when the whole current page is selected, Select All on Current Page, and Unselect All.
+- One selected applicant goes through the existing individual approve/reject endpoint; two to twenty go through the existing bulk endpoint. Each decision has its own confirmation and a results panel with honest queued/unconfirmed wording; nothing is retried automatically.
+- Without decision availability (LAN mode) the page shows no checkboxes or dead buttons and says decisions are not available in this session. No backend change.
+- Updated the design pattern (PATTERNS.md §6/§7) and the affected mocked browser tests.
+- Verification: real-browser 16/16 on a disposable replica with the real decision profile; replica database effects verified; mocked browser 25/25; unit 47/47; lint and build pass; `ctug_workspace` unchanged.
+
 ### 24 November 2026 — WF-02 individual and bulk decisions working in `-Local`
 
 - Provisioned the development outbox key (v1) once in the git-ignored `backend/.env` (no prior key or outbox rows existed). The loopback decision profile now offers approve, reject and bulk approve/reject on `ctug_workspace` through `.\Start-CTUG-LAN.ps1 -Local`, with the existing permission, CSRF, audit and outbox rules. No application code or permission changed.

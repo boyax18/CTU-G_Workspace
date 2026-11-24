@@ -48,6 +48,22 @@
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
+### 0.7 Applicant Reviews selection and decision controls — 24 November 2026
+
+- **Cause of the disabled buttons:** the owner was running LAN mode, whose `config.urls` mounts no decision route. The server therefore advertised no actions, but the page still drew a permanent, disabled bulk toolbar. Backend gates, outbox readiness and the `-Local` profile were already correct, and no backend change was made.
+- **New queue layout:** Select | CTU-G ID | Name | Requested role | Submitted | Email proof | Status | Actions, plus a header select-all checkbox.
+  - The toolbar appears only while applicants are selected: Approve/Reject (labelled Approve All/Reject All when every current-page row is selected), Select All on Current Page while rows remain unselected, and Unselect All.
+  - One selection uses the existing individual endpoints (with the role's required eligibility source); 2–20 selections use the bulk endpoint. Every decision is confirmed first, with a destructive confirm for reject.
+  - The results panel reports approved, rejected, skipped, failed and unconfirmed outcomes; queued is never shown as delivered, and nothing is retried automatically. The table refreshes after each decision.
+  - Without decision availability, as in LAN mode, there are no checkboxes and the page says decisions are not available in this session.
+- **Verified in a real browser** (headless Edge, real frontend and the real loopback decision profile, disposable replica of the `ctug_workspace` schema, dropped afterwards), 16/16:
+  - Column order and hidden toolbar; School Admin individual approve and reject.
+  - Technical Super Admin bulk approve in its default context without a switch, then Approve All/Reject All labels, Unselect All, and Reject All in the Technical Super Admin context.
+  - The detail page no longer claims read-only when decisions are available; Student, Instructor and Treasurer see no controls and get 403.
+- **Database effects:** one audit record and one encrypted `Pending` outbox row per decision (10/10 decrypt with the stored key; the address is absent from stored fields). Approved accounts are active with the requested role; rejected registrations and profiles are deleted, and the ID and email can register again.
+- **Other checks:** mocked browser suites 25/25 (including 360–1440 px in Light, System-dark and Dark with AA contrast); related unit tests 47/47; changed-file lint and production build pass. `ctug_workspace` is unchanged and no existing applicant was decided.
+- **Not done:** a sign-in at `http://127.0.0.1:5173` with the owner's own accounts. The owner's LAN launcher was running on those ports and was left untouched; the assistant has no credentials.
+
 ### 0.6 WF-02.03/02.04 decisions operational in `-Local` — 24 November 2026
 
 - **Resolved blockers:** The only missing prerequisite was the outbox key encryption key. With 0 outbox rows and no key anywhere (process, user, machine, `.env`), a v1 key was generated once and stored in the git-ignored `backend/.env`, following the documented env-only development contract. `.\Start-CTUG-LAN.ps1 -Local` now reports all four WF-02 features ready. The existing loopback decision profile mounts approve, reject and bulk, approval/rejection notification readiness is true, and the frontend gets the decision build flags from `dev_features.py`. No application code, permission, role binding, migration or route policy changed. LAN mode still mounts no decision route.

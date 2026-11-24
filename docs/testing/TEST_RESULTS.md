@@ -3,6 +3,19 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 24 November 2026 — Applicant Reviews selection and decision controls
+
+| Check | Result |
+| --- | --- |
+| Runtime cause | Owner's session was LAN mode (`config.settings`): list response advertises no actions; decision routes unmounted (by design). `-Local` profile readiness unchanged and correct |
+| Real browser (headless Edge, real frontend, real `review_decision_local_settings`, disposable replica of `ctug_workspace` schema, 15 test accounts, 10 pending) | 16/16: header order `[select]` CTU-G ID, Name, Requested role, Submitted, Email proof, Status, Actions; toolbar hidden with no selection; one selection shows Approve, Reject, Select All on Current Page and Unselect All; individual approve (confirm, result, row removed) and reject (School Admin); "queued; delivery not confirmed" wording; detail page not "read-only" with decisions available; 2 selected keep Approve/Reject; TSA bulk approve 2 in default context; all rows selected show Approve All/Reject All and hide Select All; Unselect All hides toolbar; Reject All of 6 in TSA context empties the list; Student/Instructor/Treasurer no controls, API 403 |
+| Replica database | 3 approved (active, Student role, reviewer); 7 rejected and deleted with profiles; 10 outbox rows (3 approved, 7 rejected) `Pending`, none delivered, key v1, plaintext address absent, 10/10 decrypt; one audit per decision; rejected ID/email re-creatable. Replica dropped |
+| Mocked browser | `applicant-approval-errors` + `pending-applications-errors`: 25/25, including new single-approval (individual endpoint body), uncertain-single (unconfirmed, one POST), All-label and hidden-toolbar tests, responsive/AA checks |
+| Unit | `registration-review-bulk`, `registration-review-approval`, `registration-review-api-contract`: 47/47 |
+| Lint / build | ESLint on changed files clean; `npm run build` passed |
+| Real data | `ctug_workspace` counts + `CHECKSUM TABLE` identical to baseline; no existing applicant decided |
+| Not performed | Owner sign-in at `127.0.0.1:5173` (owner's LAN launcher was running; credentials not used) |
+
 ## 24 November 2026 — WF-02 decisions in `-Local` mode
 
 | Check | Result |

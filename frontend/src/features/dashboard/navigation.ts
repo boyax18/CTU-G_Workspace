@@ -18,6 +18,7 @@ import { ACCOUNT_GRANTS_ENABLED } from '../access-control/accountGrantConfig.ts'
 import { ACCOUNT_RESTRICTIONS_ENABLED } from '../access-control/accountRestrictionConfig.ts';
 import { EFFECTIVE_ACCESS_INSPECT_ENABLED } from '../access-control/effectiveAccessConfig.ts';
 import { ACCESS_AUDIT_ENABLED } from '../access-control/accessAuditConfig.ts';
+import { ACADEMIC_PERIODS_ENABLED } from '../academic/academicPeriodsConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -189,8 +190,10 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     requiredAny: ['reports.financial.drafts.read', 'reports.financial.final.read'], integration: planned,
     description: 'Draft and finalized financial reports.' },
 
+  // WF-11.01 (restricted local development): Draft management only; live only when its switch is on.
+  // Django still decides access (academic.periods.manage, Admin role context, Deny precedence).
   { id: 'school-periods', label: 'School years & semesters', icon: 'calendar', group: 'academic-configuration',
-    requiredAny: ['academic.periods.manage'], integration: planned,
+    requiredAny: ['academic.periods.manage'], integration: ACADEMIC_PERIODS_ENABLED ? 'shell' : planned,
     description: 'School years, semesters and their dates.' },
   { id: 'academic-references', label: 'Academic references', icon: 'book', group: 'academic-configuration',
     requiredAny: ['academic.courses.manage', 'academic.sections.manage'], integration: planned,

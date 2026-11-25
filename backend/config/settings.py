@@ -217,6 +217,12 @@ WORKSPACE_BULK_REGISTRATION_REVIEW_ENABLED = os.environ.get(
 WORKSPACE_ACCOUNT_DIRECTORY_ENABLED = os.environ.get(
     "WORKSPACE_ACCOUNT_DIRECTORY_ENABLED", "0"
 ) == "1"
+# WF-11.01 (restricted local development, 25 Nov 2026): Draft School Year/semester management.
+# Off unless explicitly "1"; never in the production profile. It enables no activation, closure,
+# archiving or fee write (WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED is deliberately undefined).
+WORKSPACE_ACADEMIC_PERIODS_ENABLED = os.environ.get("WORKSPACE_ACADEMIC_PERIODS_ENABLED", "0") == "1"
+if WORKSPACE_ACADEMIC_PERIODS_ENABLED and WORKSPACE_DEPLOYMENT_PROFILE != "local":  # noqa: F821
+    raise ImproperlyConfigured("WF-11.01 academic-period management is not authorized for production.")
 EMAIL_BACKEND = (
     "django.core.mail.backends.smtp.EmailBackend"
     if WORKSPACE_EMAIL_SMTP_ENABLED

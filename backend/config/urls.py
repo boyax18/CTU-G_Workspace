@@ -50,5 +50,9 @@ urlpatterns = [
     path('api/v1/admin/school-accounts/', SchoolAccountListView.as_view(), name='school-accounts-list'),
     path('api/v1/admin/school-accounts/<int:account_id>/', SchoolAccountDetailView.as_view(), name='school-accounts-detail'),
     path('api/v1/admin/school-accounts/<int:account_id>/history/', SchoolAccountHistoryView.as_view(), name='school-accounts-history'),
+    # WF-11.01 Draft academic periods: every view answers 503 unless WORKSPACE_ACADEMIC_PERIODS_ENABLED
+    # is on; HDAC (academic.periods.manage, Admin assignment/context, Deny precedence) on every request.
+    # No activation, closure, archiving, fee or curriculum route exists.
+    path('api/v1/academic/', include('apps.academic.urls')),
     path('admin/', admin.site.urls),
 ]

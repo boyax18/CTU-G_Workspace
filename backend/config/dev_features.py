@@ -92,6 +92,14 @@ FEATURES = (
                             "VITE_WORKSPACE_WF0303_ACCOUNT_GRANTS_ENABLED", "VITE_WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED",
                             "VITE_WORKSPACE_WF0305_EFFECTIVE_ACCESS_INSPECT_ENABLED", "VITE_WORKSPACE_WF0306_AUDIT_HISTORY_ENABLED"),
             note="Protected Access Control Management keeps its own acknowledgments and executor boundary."),
+    # WF-11.01 restricted local development (25 Nov 2026): registered, NOT approved for any launcher
+    # mode. Both modes use ctug_workspace, which does not have the academic 0001 tables yet; applying
+    # that migration there and approving a mode are separate owner decisions.
+    Feature("wf11.academic_periods", "WF-11.01", "School years & semesters (Draft management only)",
+            backend_env={"WORKSPACE_ACADEMIC_PERIODS_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED",),
+            note="Needs the academic 0001 migration on ctug_workspace (separately approved) and a mode approval. "
+                 "Activation, closure, archiving and fee setting are not available."),
 )
 
 # One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).

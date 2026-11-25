@@ -2,31 +2,32 @@
 
 * Table-based layout with inline CSS (Gmail, Outlook, Apple Mail and mobile clients). The only
   <style> block holds a mobile media query and is optional: the layout already fits 320 px.
-* No JavaScript, web fonts, external images, tracking pixels or remote resources. The approved
-  campus logo travels INSIDE the message as an inline attachment (Content-ID ``ctug-logo``).
+* No JavaScript, web fonts, tracking pixels or remote resources, and NO IMAGES AT ALL (see below).
 * Every dynamic value is HTML-escaped here; callers pass plain text.
 * OTPs are rendered as one run of digits (visual letter-spacing only, no separator characters),
   so selecting or long-pressing the code copies exactly the six digits. Codes are never placed in
   links, image URLs or the inbox preview text.
-* ``send()`` is the single multipart sender: plain-text body + HTML alternative + inline logo.
-  It returns the backend's accepted-message count and lets SMTP exceptions propagate unchanged,
-  so existing retry/dead-letter handling keeps working. Nothing here logs content or recipients.
+* ``send_mail()`` is the single sender: multipart/alternative(text/plain, text/html). It returns
+  the backend's accepted-message count and lets SMTP exceptions propagate unchanged, so existing
+  retry/dead-letter handling keeps working. Nothing here logs content or recipients.
+
+25 Nov 2026, delivery evidence: the campus logo used to travel inside every message as an inline
+``multipart/related`` PNG (Content-ID ``ctug-logo``). From the campus Gmail sender, Gmail accepted
+those messages (250 OK, present in Sent, no bounce) but they never reached the recipient, in any
+folder. Owner-authorized single-variable tests to the same mailbox: plain text arrived; the same
+branded HTML WITHOUT the embedded logo arrived; the identical message WITH it did not. The embedded
+image was removed for that reason. Do not reintroduce images without a real inbox-delivery test.
 """
 
 import re
 import smtplib
 import threading
-from functools import lru_cache
 from html import escape
-from pathlib import Path
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.core.mail import get_connection as _django_get_connection
 from django.core.mail.backends.smtp import EmailBackend as _DjangoSMTPBackend
-
-LOGO_CID = "ctug-logo"
-LOGO_PATH = Path(__file__).resolve().parent / "email_assets" / "ctug-logo.png"
 
 # CTU-G Workspace palette (frontend/src/css/theme.css): forest green, emerald accents, white.
 FOREST = "#143823"
@@ -46,14 +47,6 @@ DECLINE_LINE = "#fed7aa"
 FONT = "'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
 MONO = "'Courier New',Consolas,'Liberation Mono',monospace"
 CAMPUS = "Cebu Technological University – Ginatilan Campus"
-
-
-@lru_cache(maxsize=1)
-def _logo_bytes():
-    try:
-        return LOGO_PATH.read_bytes()
-    except OSError:
-        return None
 
 
 def _e(value):
@@ -126,10 +119,6 @@ def _security_block(title, text):
 def render(*, title, preheader, eyebrow, heading, greeting, paragraphs, otp=None, otp_label="Your verification code",
            expires_minutes=None, status=None, details=(), action=None, closing=(), security=None):
     """Return the complete HTML document. All arguments are plain text (escaped here)."""
-    has_logo = _logo_bytes() is not None
-    logo = (f'<img src="cid:{LOGO_CID}" width="44" height="44" alt="CTU-G" '
-            f'style="display:block;width:44px;height:44px;border:0;border-radius:10px;background:#ffffff;">'
-            if has_logo else "")
     parts = [_paragraph(greeting)] + [_paragraph(p) for p in paragraphs]
     if status:
         parts.insert(0, _status_block(status))
@@ -143,7 +132,6 @@ def render(*, title, preheader, eyebrow, heading, greeting, paragraphs, otp=None
     if security:
         parts.append(_security_block(*security))
     body = "\n".join(parts)
-    logo_cell = f'<td width="56" valign="middle" style="padding-right:12px;">{logo}</td>' if has_logo else ""
     return f'''<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -165,7 +153,6 @@ def render(*, title, preheader, eyebrow, heading, greeting, paragraphs, otp=None
     style="max-width:600px;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #d7e5dc;">
     <tr><td style="background:{FOREST};background-image:linear-gradient(135deg,{FOREST} 0%,{FOREST_2} 100%);padding:20px 24px;">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-        {logo_cell}
         <td valign="middle">
           <div style="font-family:{FONT};font-size:19px;line-height:24px;font-weight:700;color:#ffffff;">CTU-G Workspace</div>
           <div style="font-family:{FONT};font-size:12px;line-height:18px;color:#bbf7d0;">{_e(CAMPUS)}</div>
@@ -187,25 +174,6 @@ def render(*, title, preheader, eyebrow, heading, greeting, paragraphs, otp=None
 </td></tr>
 </table>
 </body></html>'''
-
-
-class BrandedEmail(EmailMultiAlternatives):
-    """multipart/alternative(text/plain, multipart/related(text/html, image/png logo)).
-
-    Django 6 builds messages with the modern ``email`` API, so the logo is added to the HTML
-    part with ``add_related`` after the standard message is built (no private hooks).
-    """
-
-    inline_logo = None
-
-    def message(self, *args, **kwargs):
-        msg = super().message(*args, **kwargs)
-        if self.inline_logo:
-            html_part = msg.get_body(preferencelist=("html",))
-            if html_part is not None:
-                html_part.add_related(self.inline_logo, "image", "png", cid=f"<{LOGO_CID}>",
-                                      disposition="inline", filename="ctug-logo.png")
-        return msg
 
 
 # ----------------------------------------------------------------------------- SMTP receipt
@@ -280,23 +248,20 @@ def new_message_id(from_email=None):
 
 
 def build_message(subject, text, html, recipients, *, from_email=None, connection=None, headers=None):
-    """Multipart message: plain text first, HTML alternative, inline logo when the HTML uses it."""
+    """multipart/alternative(text/plain, text/html), or text/plain alone. Never any image part."""
     _receipt.reply = None  # never report a previous message's reply for this one
-    message = BrandedEmail(subject, text, from_email or settings.DEFAULT_FROM_EMAIL,
-                           list(recipients), connection=connection, headers=dict(headers or {}))
+    message = EmailMultiAlternatives(subject, text, from_email or settings.DEFAULT_FROM_EMAIL,
+                                     list(recipients), connection=connection, headers=dict(headers or {}))
     if html:
         message.attach_alternative(html, "text/html")
-        logo = _logo_bytes()
-        if logo and f"cid:{LOGO_CID}" in html:
-            message.inline_logo = logo
     return message
 
 
 def send_mail(subject, message, from_email, recipient_list, fail_silently=False, html_message=None,
               connection=None, headers=None):
-    """Drop-in for django.core.mail.send_mail: same signature and return value, but the HTML
-    alternative is sent as the branded multipart message with the inline logo. Senders keep a
-    module-level ``send_mail`` name, so existing failure-path tests still patch the same seam."""
+    """Drop-in for django.core.mail.send_mail: same signature and return value, built by
+    build_message() and sent through the reply-recording backend. Senders keep a module-level
+    ``send_mail`` name, so existing failure-path tests still patch the same seam."""
     if connection is not None:  # unchanged behaviour for callers that bring their own connection
         return build_message(subject, message, html_message, recipient_list, from_email=from_email,
                              connection=connection, headers=headers).send(fail_silently=fail_silently)

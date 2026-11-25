@@ -78,7 +78,8 @@ class EmailDesignTests(SimpleTestCase):
         ]
         for html in samples:
             self.assertNotRegex(html, r"(?i)<script|@import|<link |@font-face|javascript:")
-            self.assertNotRegex(html, r'src="(?!cid:)')  # the only image is the inline logo
+            # 25 Nov 2026: no images at all. With the embedded logo, Gmail accepted but never delivered.
+            self.assertNotRegex(html, r"(?i)<img|src=|cid:")
             self.assertIn('<meta name="viewport" content="width=device-width,initial-scale=1">', html)
             self.assertIn("max-width:600px", html)
             self.assertIn("@media only screen and (max-width:620px)", html)
@@ -102,14 +103,22 @@ class EmailDesignTests(SimpleTestCase):
         self.assertIn('href="http://localhost:5173/register"', html)
         self.assertIn("Reason: Duplicate registration request", text)
 
-    def test_message_structure_carries_the_inline_logo(self):
-        subject, text, html = email_design.password_reset_otp(code="222222", minutes=10)
-        self.assertEqual(send_mail(subject, text, None, ["applicant@example.edu"], html_message=html), 1)
-        tree = mime_tree(mail.outbox[0].message())
-        self.assertEqual([(d, t) for d, t, _, _ in tree], [
-            (0, "multipart/alternative"), (1, "text/plain"), (1, "multipart/related"), (2, "text/html"), (2, "image/png")])
-        self.assertEqual(tree[-1][2:], ("<ctug-logo>", "inline"))
-        self.assertIn('src="cid:ctug-logo"', html)
+    def test_message_structure_has_no_embedded_image(self):
+        """25 Nov 2026 delivery evidence: the same message WITH an inline multipart/related logo was
+        accepted by Gmail but never delivered; WITHOUT it, it arrived. Every kind stays image-free."""
+        samples = [m for m in self.otp_messages()] + [
+            email_design.email_verification_otp(code="048213", minutes=10),
+            email_design.registration_decision(approved=True, url="http://localhost:5173/"),
+            email_design.registration_decision(approved=False, url="http://localhost:5173/register",
+                                               reason="Duplicate registration request"),
+            email_design.password_changed(),
+        ]
+        for subject, text, html in samples:
+            mail.outbox.clear()
+            self.assertEqual(send_mail(subject, text, None, ["applicant@example.edu"], html_message=html), 1)
+            tree = mime_tree(mail.outbox[0].message())
+            self.assertEqual([(d, t) for d, t, _, _ in tree], [
+                (0, "multipart/alternative"), (1, "text/plain"), (1, "text/html")], subject)
 
     def test_plain_messages_stay_single_part(self):
         self.assertEqual(send_mail("Subject", "Body only", None, ["applicant@example.edu"]), 1)

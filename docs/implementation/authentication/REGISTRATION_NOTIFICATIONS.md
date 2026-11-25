@@ -58,7 +58,14 @@ Legacy accounts approved before OTP registration have no email proof, so passwor
 
 All CTU-G Workspace emails share one design in `backend/apps/accounts/email_design.py`. That covers the registration OTP (Student and Instructor), the password-recovery OTP, the password-changed notice, and approval and rejection, including each applicant's separate email from a bulk decision.
 
-- **Structure:** multipart `alternative(text/plain, related(text/html, image/png))`. The plain-text fallback keeps its established wording, and the approved campus logo (`email_assets/ctug-logo.png`, the app's logo) travels inline as `cid:ctug-logo`. There are no remote images, web fonts, scripts or tracking.
+- **Structure:** multipart `alternative(text/plain, text/html)`, with no images of any kind. The plain-text fallback keeps its established wording. There are no remote images, web fonts, scripts or tracking.
+- **No embedded logo (25 Nov 2026):** the campus logo used to travel inline (`multipart/related`, `cid:ctug-logo`). From the campus Gmail sender, those messages were accepted by Gmail (250 OK, in Sent, no bounce) but never reached the recipient, in any folder. Owner-authorized single-variable tests to the same mailbox showed:
+  - plain text arrived;
+  - the OTP plain text arrived;
+  - the same branded HTML without the logo arrived;
+  - the identical message with the logo did not.
+
+  The logo was therefore removed. `email_assets/ctug-logo.png` is kept but unused. Do not add images back without a real inbox-delivery test.
 - **Layout:** table-based with inline CSS, a 600 px card and a phone media query; forest-green header, emerald accents, white rounded card, footer identifying CTU-G Workspace.
 - **OTP:** one run of digits at 38 px bold monospace with visual letter-spacing only, so copying yields exactly the six digits. It is never in a link, image URL or the inbox preview text. The expiry and a security reminder are shown, and recovery emails contain no links.
 - **Decisions:** approval shows a success pill and the login button; rejection shows a respectful message, the reason, the fact that registration data was removed, and the option to register again with the same CTU-G ID and email.

@@ -1,5 +1,22 @@
 # CTU-G Workspace — Development Changelog
 
+### 25 November 2026 — Root cause of missing emails: the embedded logo
+
+- **Confirmed cause:** every branded email carried the campus logo as an inline `multipart/related` PNG. From the campus Gmail sender (a Google account created 23 Nov), Gmail accepted those messages (250 OK, present in Sent, no bounce) and then never delivered them, in any folder.
+- **Evidence:** owner-authorized single-variable tests to account #9's mailbox, all with Gmail-assigned Message-IDs:
+
+  | Test | Content | Arrived? |
+  |---|---|---|
+  | A | plain text | yes |
+  | B | full branded verification email | no |
+  | C | the verification plain text (OTP wording) | yes, Inbox |
+  | D | B without the logo | yes |
+  | E | B with the logo but without the hidden preheader | not reported |
+
+  B and D differ only in the logo.
+- **Fix:** `email_design` no longer embeds any image. Every notification is `multipart/alternative(text/plain, text/html)` with the same branded layout, about 6 KB instead of 33 KB. This covers registration OTP (Student and Instructor), My profile verification, password reset, password changed, and approval and rejection, including bulk. The design tests now guard against any image part.
+- **Tests:** email, OTP, recovery, outbox, approval, rejection and bulk suites 284/284.
+
 ### 25 November 2026 — Email delivery evidence: provider reply, receipt proof, durable trace
 
 - **Investigation (live `ctug_workspace`, read-only):** account #9's two My profile verification requests (corr `f9c7e177f833b96a`, `186e70a37696aefa`; outbox #2, #3) went request → challenge → sealed outbox → kick → SMTP and were accepted by Gmail on attempt 1, in 7.5 s and 4.3 s. There were no retries or dead letters, secrets were erased, and the challenge is intact. The recipient is not the sender account, and the address is a syntactically valid Gmail address. The MIME is valid (alternative/related, QP, ≤78-char lines, Date and Message-ID, From matching the authenticated user). No application defect was found up to Gmail's acceptance.

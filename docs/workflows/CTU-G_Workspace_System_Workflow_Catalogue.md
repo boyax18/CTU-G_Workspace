@@ -3,7 +3,7 @@ SYSTEM DOCUMENTATION  /  WORKFLOW CLASSIFICATION
 # CTU-G Workspace
 System Workflow Catalogue
 
-Draft version 0.3.50  |  24 November 2026  |  For stakeholder review
+Consolidated documentation version 0.3.53  |  25 November 2026  |  WF-11 planning and R-01–R-03 documentation targets approved; individual workflows, HDAC governance and institutional evidence authorization remain pending
 
 ## 1. Purpose and scope
 
@@ -19,7 +19,7 @@ These entries are proposed workflow definitions, not a statement that each funct
 | WF-02 | Account Management | Group A | 6 |
 | WF-03 | Access Control Management | Group A | 6 |
 | WF-04 | Profile Management | Group A | 5 |
-| WF-05 | Academic Information | Group B | 4 |
+| WF-05 | Academic Information | Group B | 5 |
 | WF-06 | Clearance Management | Group B | 5 |
 | WF-07 | SSG Financial Management | Group B | 8 |
 | WF-08 | Group Rating | Group B | 6 |
@@ -87,15 +87,15 @@ Index only. Actor and status are documented here; detailed specifications are in
 | WF-05.01 | View authorized academic information | Not yet inspected | Draft |
 | WF-05.02 | View assigned subjects (instructor) | Not yet inspected | Draft |
 | WF-05.03 | View enrolled students where authorized | Not yet inspected | Draft |
-| WF-05.04 | Obtain or verify academic status from CTU main system | Not yet inspected | Draft |
-| Not assigned (WF-05 candidate) | Complete Student Semester Onboarding — Semester Academic Information Setup | Student (own current-period information); authorized verifier | Proposed addition; subflow ID/count not approved |
+| WF-05.04 | Obtain or verify academic status from CTU main system | Authorized CTU source / verified School Admin process | Source-inspected reconciliation draft; workflow approval pending |
+| WF-05.05 | Complete Student Semester Onboarding — Semester Academic Information Setup | Student (own Active semester); School Admin for in-person corrections/verified gap | **Workflow ID adopted for documentation (R-03)**; individual workflow Human Approval unchecked; not implemented |
 
 #### WF-06  Clearance Management
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-06.01 | Request clearance | Not yet inspected | Draft |
-| WF-06.02 | Verify clearance eligibility and requirements | Not yet inspected | Draft |
+| WF-06.01 | Request clearance | System at onboarding finalization; Student owns view (legacy title retained) | Source-inspected reconciliation draft; workflow approval pending |
+| WF-06.02 | Verify clearance eligibility and requirements | Authorized service and assigned signatories | Source-inspected reconciliation draft; workflow approval pending |
 | WF-06.03 | Review and decide assigned clearance items | Not yet inspected | Draft |
 | WF-06.04 | Track clearance progress and decisions | Not yet inspected | Draft |
 | WF-06.05 | Generate an authorized clearance PDF | Not yet inspected | Draft |
@@ -104,14 +104,14 @@ Index only. Actor and status are documented here; detailed specifications are in
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-07.01 | Verify academic-period fee eligibility | Not yet inspected | Draft |
-| WF-07.02 | Assess organizational fee obligation | Not yet inspected | Draft |
+| WF-07.01 | Verify academic-period fee eligibility | Verified eligibility service; Treasurer read as permitted | Source-inspected reconciliation draft; workflow approval pending |
+| WF-07.02 | Assess organizational fee obligation | System at onboarding finalization; School Admin configures fee | Source-inspected reconciliation draft; workflow approval pending |
 | WF-07.03 | Record and validate payments | Not yet inspected | Draft |
 | WF-07.04 | Generate and view authorized receipts | Not yet inspected | Draft |
 | WF-07.05 | Record and categorize expenses | Not yet inspected | Draft |
 | WF-07.06 | View balances, payment status, and history | Not yet inspected | Draft |
 | WF-07.07 | Prepare authorized financial reports | Not yet inspected | Draft |
-| WF-07.08 | Process returning, transferee, and newcomer scenarios | Not yet inspected | Draft |
+| WF-07.08 | Process returning, transferee, and newcomer scenarios | School Admin verified gap; Student/Finance authorized scope | Source-inspected reconciliation draft; workflow approval pending |
 
 #### WF-08  Group Rating
 
@@ -146,7 +146,7 @@ Index only. Actor and status are documented here; detailed specifications are in
 
 | Workflow ID | Proposed workflow | Actor | Status |
 | --- | --- | --- | --- |
-| WF-11.01 | Manage authorized academic-period settings | Not yet inspected | Draft |
+| WF-11.01 | Manage authorized academic-period settings | School Admin via effective HDAC operational permissions; Super Admin via genuine Admin inheritance | Source-inspected reconciliation draft; planning approved; workflow Human Approval pending |
 | WF-11.02 | Manage system operational settings | Not yet inspected | Draft |
 | WF-11.03 | Configure services within authorized boundaries | Not yet inspected | Draft |
 | WF-11.04 | Review operational configuration changes | Not yet inspected | Draft |
@@ -2677,15 +2677,15 @@ Next flow: WF-05.01. Do not start until Approved is ticked.
 
 2. Read approved period-specific academic profile and verification state; distinguish official data from submitted provisional details.
 
-3. For a Student, present **Student Semester Onboarding** status and direct them to **Semester Academic Information Setup** if the active-period record is not Verified.
+3. For an eligible Student without **completed and verifiably valid** onboarding for the Active period, automatically direct to required **Semester Academic Information Setup** before ordinary Student dashboard access. A continuing Student with uncleared adjacent prior clearance sees the prior-clearance resolution state; a returning Student may use a School Admin-verified non-enrollment-gap exception (WF11-D15–D17).
 
 4. Display approved historical periods without changing their records; link only to authorized corrections or support.
 
 #### Alternative flows
 
-- A1. Missing active-period onboarding: provide the onboarding entry/status link, not an invented enrollment record.
+- A1. Missing current-period onboarding: enforce required onboarding on the backend, not merely a passive entry link. Preserve independent authorized roles, logout and historical clearance/fee resolution.
 - A2. Irregular/mixed-section or returning Student: display verified subject-level assignments without assuming a single section.
-- A3. CTU source unavailable: show provisional/pending status and historical information where authorized.
+- A3. CTU source unavailable: show provisional/pending status and permitted historical information; do not finalize participation, clearance, fee or official subject evidence on self-confirmation alone.
 
 #### Errors
 
@@ -2699,7 +2699,7 @@ Next flow: WF-05.01. Do not start until Approved is ticked.
 
 Depends on: WF-01.03/01.06, WF-03.05, WF-11.01; official academic verification in WF-05.04.
 
-Feeds: Proposed Student Semester Onboarding (ID pending), WF-06.01/02, WF-07.01, WF-08 proposed activity eligibility.
+Feeds: Required Student Semester Onboarding (WF-05.05), WF-06.01/02, WF-07.01, WF-08 proposed activity eligibility.
 
 Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-03, FR-ACA-07–10, FR-AUTH-09; UC-D12 and Section 6.2.
 
@@ -2817,234 +2817,255 @@ Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-05.04.. Do not start until Approved is ticked.
+Next flow: WF-05.04. Do not start until Approved is ticked.
 
 #### WF-05.04 — Obtain or verify academic status from CTU main system
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Authorized academic verification process or institutional verifier; CTU main system remains authoritative |
-| Trigger | **Proposed:** Student submits onboarding details, authorized synchronization arrives, or an eligible staff member requests reverification. |
-| Preconditions | **Proposed:** Identifiable Student and academic period; authenticated trusted upstream evidence or approved manual-verification authority. |
-| Result | **Proposed:** Attributable, period-specific Verified/Needs Correction/Not Enrolled outcome; no authoritative Workspace enrollment administration. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | Institutional CTU authoritative source or School Admin with **explicit operational verification permission**; Student cannot self-verify official enrollment and access-control governance alone does not authorize academic writes. |
+| Trigger | School Admin prepares curriculum/offering evidence, trusted CTU status is available, returning-student gap is reviewed, or Student attempts onboarding final confirmation. |
+| Preconditions | Identifiable Student and period; trusted official CTU evidence or accountable authorized manual verification. Verification is an eligibility safeguard, not a Workspace enrollment-management module. |
+| Result | Attributable period-specific verified/not verified/not enrolled or needs-correction determination, including separate **verified non-enrollment gap** decisions. Existing academic and historical records retained. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Receive a submitted Student Semester Onboarding record or an authorized CTU academic-status event for a defined period.
+1. Locate a Student+semester-specific enrollment-verification record derived either from an authorized CTU source or from an **earlier documented, authorized School Admin review** of CTU evidence. Verify provenance, source/reference, verification time, period, CTU-G identity match, reviewer/integration authority, any expiry/revocation and access scope. **A configured curriculum/offering by itself does not prove an individual Student is enrolled.**
 
-2. Validate the institutional source, course/program, year level, section where applicable, each subject/class and assigned Instructor evidence.
+2. Verify the Student's enrollment eligibility and match the actual course/year, enrolled subject identifiers, eligible offered sections and effective Instructor/signatory assignments to the student's final selections. Student-selected subjects and a mere declared Regular/Irregular type are **not** official evidence. Preserve the provenance of each source-backed result.
 
-3. Compare the submission with CTU records or log authorized manual verification; do not accept typed subjects as official evidence.
+3. For a claimed skipped semester/year, verify **non-enrollment** using supporting official CTU records. Record School Admin actor, evidence reference, decision, time and reason; treat missing Workspace records as unknown, not proof of non-enrollment (WF11-D16).
 
-4. Record verified or correction-needed status and evidence references within approved scope, preserving past periods.
+4. Apply the **two-lane verification gate**: **(a) trusted source/preverified lane** — if a currently valid, attributable Student+semester evidence record already supports enrollment and the exact subjects, course/year and Instructor assignment map, the student's explicit final confirmation may complete immediately **without a new routine School Admin approval** (WF11-D23); **(b) manual evidence lane** — if no adequate preverified record exists, keep onboarding `Pending Verification` and direct the Student to personally present official CTU enrollment evidence to an authorized School Admin for verification. Once recorded and validated, the student resumes their final confirmation. This does not add an online correction-request feature.
 
-5. Provide resulting verified enrollment/subject eligibility to WF-07.01, WF-06.02 and WF-08.
+5. If source evidence is unavailable, expired, contradictory, mismatched or invalid, keep `Pending Verification`/`Needs Correction`, deny official completion and route to authorized manual resolution. Do not prematurely create new semester participation, clearance, fee or signatories; do not claim CTU official enrollment based solely on Workspace data.
+
+6. Preserve separate period-specific verification outcomes and historical audit; provide scoped result to WF-05 onboarding, WF-06 and WF-07.
 
 #### Alternative flows
 
-- A1. Student irregular/no single section: verify subjects individually rather than reject legitimate mixed sections.
-- A2. Integration unavailable or evidence conflicts: retain Submitted/Needs Correction; no fee or clearance assignment on provisional subjects.
-- A3. Official non-enrollment or return after gap: record eligibility for that period only; no invented gap-period enrollment.
+- A1. Irregular or mixed-section enrolment: verify the actual offered subject list individually; do not force a single section.
+- A2. Trusted integration absent: use documented, evidence-backed School Admin manual verification; if the Student+semester evidence has not yet been verified, leave `Pending Verification` and allow in-person verification and subsequent final confirmation; never silently approve Student input.
+- A3. Officially not enrolled during a gap: no clearance or new fee is assigned for that gap, while old uncleared signature status and historical debts remain untouched.
+- A4. A catalogue of preverified **offerings only** is available but no Student+semester CTU enrollment evidence exists: that catalogue permits subject selection but **cannot unlock final onboarding or create fees**.
+- A5. Previously verified Student evidence is stale, revoked or newly contradicted: revalidate or route to authorized School Admin; do not treat the earlier check as perpetual enrollment authority.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 2 | Untrusted/contradictory source | Refuse verification; require authorized reconciliation. |
-| 4 | Write or evidence verification failure | No false Verified status, no downstream assessment. |
+| 1–3 | Untrusted/contradictory academic source or absent proof of skipped enrollment | Refuse verification/exception; do not infer enrollment or skipped term. |
+| 4–6 | Evidence or audit-write failure | No false Verified status; protect downstream atomic onboarding transaction. |
 
 #### Links
 
-Depends on: WF-11.01, CTU-owned academic records or authorized verification procedure.
+Depends on: WF-11.01 and CTU-owned academic information or authorized accountable manual-verification procedure, WF-03.05.
 
-Feeds: Proposed Student Semester Onboarding (ID pending), WF-07.01, WF-06.02, WF-08 group eligibility.
+Feeds: WF-05.05 Student Semester Onboarding, WF-06.02, WF-07.01 and WF-08 eligibility.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-08–10, FR-FIN-09–14, UC-D12/D13.
+Requirement/use-case traceability (reconciliation draft): WF11-D15/D16/D19/D22/D23/D24; SRS v0.4 FR-ACA-08–10, FR-FIN-09–14, FR-CLR-06.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Official source contract, verifier appointment, retention and schema reconciliation; no new enrollment-management table. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: Formal approval and feasibility of the **proposed two-lane Student+semester verification contract**, exact source/evidence freshness and retention policy, a scoped verifier operational permission and safe audit storage; the contract is drafted in `WF11_Official_CTU_Verification_Contract_PROPOSED.md`. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-06.01.. Do not start until Approved is ticked.
+Next flow: WF-05.05 / WF-06.01. Do not start until Approved is ticked.
 
-#### WF-05 (ID pending) — Complete Student Semester Onboarding — Semester Academic Information Setup (proposed additional subflow)
+#### WF-05.05 — Complete Student Semester Onboarding — Semester Academic Information Setup
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Approved Student; authorized academic verifier for review (separate duties) |
-| Trigger | **Proposed:** First eligible login in Active period, or newly Active semester with no Verified onboarding for that Student/period. |
-| Preconditions | **Proposed:** Authenticated approved Student; one Active period; CTU main system or an authorized verifier is the enrollment authority. |
-| Result | **Proposed:** Verified period-specific course/program, year level, section and subjects are available to eligible services; no self-created official enrollment. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | Approved **Student acting in selected Student role context**, own current-period record; School Admin only for in-person correction/evidence verification using separate operational permissions. Backend must enforce effective permission, selected role, service state, own-record scope, and account-specific Deny; an alternate active role cannot bypass Student-context restrictions. |
+| Trigger | Eligible Student login with a campus Active semester and no completed participation/onboarding for that period (WF11-D17). |
+| Preconditions | Exactly one campus Active semester; authenticated/approved Student in selected Student role context; clearance gate evaluated according to WF11-D15/16; **valid Student+semester official enrollment evidence or an authorized School Admin verification already recorded before finalization**; confirmed subject codes/offered classes/Instructors match that evidence; approved full semester fee. An offered-subject catalogue alone does not attest Student enrollment. |
+| Result | One completed **Student + Active semester** participation and confirmed-subject record; in the same transaction one period clearance with required signatories and one full organization-fee obligation. Student Dashboard is unlocked only after commit; no routine School Admin approval for a valid, already-verifiable submission (WF11-D23/24). |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. After login, Student service checks Verified onboarding for the campus Active period and opens **Semester Academic Information Setup** when missing.
+1. After Student login, check active role and service state, whether Student has already finalized this Active period, and previous-clearance eligibility. If completed, open dashboard. If a continuing Student has an uncleared immediately previous applicable enrolled semester, show the prior Clearance Required resolution view rather than onboarding (WF11-D15).
 
-2. Show School Year and Semester read-only; prefill trusted course/program, year level, section and subjects where available.
+2. If a return after a **genuinely un-enrolled intervening semester/year** is claimed, require School Admin verification against official CTU records and attributable audit **before granting the gap exception**; this bypasses the *old clearance prerequisite*, not prior debt or history. Missing Workspace records are not proof of non-enrollment (WF11-D15/16).
 
-3. Student reviews or enters permitted current academic details, including irregular/mixed-section subjects; Save Draft or Submit for Verification.
+3. For eligible Students, automatically open required onboarding before the normal Student dashboard. Keep Logout, account/help and authorized historical clearance/fee resolution available where needed (WF11-D17).
 
-4. Authorized verification compares official CTU information or approved manual evidence; return Verified or Needs Correction and retain audit/evidence references.
+4. **Step 1 — Student Type:** Student selects **Regular** or **Irregular**. School Year, Semester and CTU-G ID are assigned/read-only from trusted active-period/account data (WF11-D18).
 
-5. Upon Verified, allow normal Student Dashboard; trigger/confirm separate period-specific fee eligibility and clearance preparation.
+5. **Step 2 — Subject Confirmation:** For **Regular**, prepare curriculum subjects from relevant approved course/year context and let Student explicitly confirm; for **Irregular**, let Student select eligible configured offered subjects. Reject unoffered, incompatible, unverifiable or incomplete Instructor assignment; do not infer official CTU enrollment from a student tick-box (WF11-D18/19).
+
+6. If a subject is missing/incorrect, Student **visits School Admin personally**, who verifies CTU records and corrects the authoritative Workspace offering data within their permissions and audit. Student resumes and confirms the corrected list; **no online correction-request/approval workflow** is introduced (WF11-D20 skipped, WF11-D22).
+
+7. **Step 3 — Course and Year Level Confirmation:** Student reviews and confirms course and year level. If this makes prepared subjects inconsistent, redirect to subject re-confirmation before finalizing (WF11-D18).
+
+8. Present a final review of student type, confirmed subjects, course, year level, active school year and semester. Student explicitly confirms. If a valid Student+semester official verification/evidence record already covers these selections, finalization proceeds immediately without a new routine School Admin approval. Otherwise, show recoverable `Pending Verification` and direct the Student to **in-person** School Admin verification; after verification, the Student resumes final review and confirmation (WF11-D23, proposed evidence contract).
+
+9. Under a server-validated, atomic transaction, revalidate the selected Student context, effective permission/Denies, campus Active semester, **fresh applicable Student+period CTU evidence**, verified subject/offering/Instructor mapping, approved rate snapshot and uniqueness constraints. Create or reuse unique semester participation, subject links, one clearance with required signatures and one **snapshotted full semester organizational-fee obligation**; commit all or none (WF11-D24). Do not bill merely because a Student began onboarding, logged in, or appears on a campus offering list.
+
+10. After transaction commit, allow normal Student dashboard; display current clearance and organizational fee status. **Cleared means all required signatures and final approval**, not simply paid. Payment is a separate Treasurer cash workflow; repeated submissions never create duplicate records.
 
 #### Alternative flows
 
-- A1. Student remains Draft/Submitted/Needs Correction: restrict normal Student services but preserve Logout, support, onboarding status/correction and permitted historical obligations; other independently authorized roles are not blocked.
-- A2. Not officially enrolled: no invented enrollment, fee or clearance; show corrections/support.
-- A3. Student already verified by an upstream integration: prefill/confirm as policy allows; never duplicate fee assessments.
-- A4. School period changes during entry: prevent write into the wrong period; preserve previous submission and request confirmation.
+- A1. Already completed: return existing participation, clearance and obligation records without duplication; dashboard allowed.
+- A2. Continuing Student, directly adjacent prior eligible period Uncleared: block new onboarding and provide old clearance completion/resolution; no new fee or clearance for the new period.
+- A3. Returning Student after School Admin-verified CTU non-enrollment gap: onboard despite old **Uncleared** signatures; preserve that old status and any unpaid past fees, with audited exception. Do not create clearances for truly non-enrolled skipped periods.
+- A4. First-time student with no relevant previous participation: proceed through first-time eligibility and official-evidence checks; missing Workspace history is not enrollment proof (student-category policy beyond this remains out of scope).
+- A5. Missing subject/instructor or conflicting course/year: hold onboarding; Student approaches School Admin in person; resume only after record correction and explicit reconfirmation.
+- A6. No Active semester, switched Active semester, CTU evidence unavailable, or verification cannot be established: hold safely in draft/pending; do not commit records or falsely claim official enrollment.
+- A7. Another independently authorized role on same account: its permitted non-Student operations remain available but Student-context onboarding and self-dealing restrictions cannot be bypassed.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 2 | No Active period | Hold onboarding; do not accept period selected by Student. |
-| 4 | Source unavailable or discrepancy | Retain Submitted/Needs Correction, not Verified. |
-| 5 | Unverified subject or official class assignment | No clearance signatory or Group Rating eligibility. |
+| 1–2 | Claimed skipped period not verified or previous clearance prerequisite unmet | Do not grant exception or onboard; give safe route to School Admin/previous clearance. |
+| 4–7 | Missing or invalid subject, course, year-level or teaching-assignment data | Hold finalization; direct to in-person School Admin correction without invented online workflow. |
+| 8–9 | Official CTU enrollment/subject evidence absent or contradicted | Do not infer Verified from self-confirmation; preserve draft/pending and require authorized evidence. |
+| 9 | Semester changed, duplicate request, concurrency or database/audit failure | Revalidate on transaction boundary; return existing unique records or rollback all creations. |
 
 #### Links
 
-Depends on: WF-01.03/01.06, WF-11.01, WF-05.04, WF-03.05.
+Depends on: WF-01.03/01.06, WF-03.05, WF-11.01, WF-05.04, WF-06.02, WF-07.01/02 and verified gap determination.
 
-Feeds: WF-05.01, WF-06.01/02, WF-07.01/02, WF-08 group formation.
+Feeds: WF-05.01, WF-06.01/02, WF-07.06, Student dashboard and future authorized services.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-07–10, FR-AUTH-09, FR-FIN-15–16; UC-D12/D13, Section 6.2.
+Requirement/use-case traceability (reconciliation draft): WF11-D15–D19, WF11-D22–D24 approved; WF11-D20/D21 intentionally **skipped**; SRS v0.4 FR-ACA-07–10, FR-AUTH-09, FR-FIN-09–16, FR-CLR-06–08; UC-D12/D13.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Owner adoption of new subflow ID/count, onboarding gate, verification authority, correction policy, and compatibility with existing WF-01.01 registration field contract. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: WF-05.05 ID/count **adopted for documentation only under R-03**; separate workflow Human Approval still required. The R-02 two-lane verification requirements are reconciled at documentation level but implementation remains blocked by authorized CTU evidence source, privacy/freshness and verification permission contracts; course/curriculum/subject schema, exact permission/selected-role contract, signatory mapping and transaction/unique constraints. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-05.04 / next approved academic service. Do not start until Approved is ticked.
-
-### WF-06  Clearance Management
+Next flow: WF-05.04 / WF-06.01. Do not start until Approved is ticked.
 
 #### WF-06.01 — Request clearance
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Approved eligible Student |
-| Trigger | **Proposed:** Student requests current-period clearance. |
-| Preconditions | **Proposed:** Eligible academic period; approved prior-semester clearance policy; verified enrollment and required signatories where applicable. |
-| Result | **Proposed:** One valid period-linked clearance request, without auto-clearing previous-period obligations. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | System creates current-semester clearance atomically at verified Student onboarding finalization; Student may view their **own** clearance. Instructor/Treasurer/School Admin signatory actions require separate effective permissions and real assignments. **Existing title retained pending explicit owner-approved rename**; Student does not manually create a duplicate request. |
+| Trigger | WF-05.05 Student Semester Onboarding successfully finalized for Student + Active semester; existing clearance is opened for tracking. |
+| Preconditions | Officially verifiable, confirmed subject offerings and valid required Instructor/Treasurer/final School Admin signatories; School Admin configured period; eligibility under WF11-D15/16; authorized fee amount/unique record creation. |
+| Result | Exactly one pending period clearance associated with confirmed participation and its required signatures; no historical clearance is auto-cleared, reused across periods, or deleted. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Identify current period and check Student ownership.
+1. Within the **same onboarding finalization transaction** as participation, confirmed subjects and fee creation (WF11-D24), verify one Student + period scope and effective service/permission safeguards.
 
-2. Check Verified period academic eligibility and separately approved previous-clearance prerequisite; never infer from self-reported subjects.
+2. Derive required academic and organizational/final-approval signatories from period-specific verified subjects, actual teaching assignments, applicable fee requirement and authorized signatory appointments.
 
-3. Load verified current-period subjects, required signatories and applicable fee-clearance item.
+3. Create or return exactly one clearance with **Pending** required signatures and correctly scoped status; never mark Cleared just because the organization fee is paid.
 
-4. Create/return the scoped request idempotently and show pending requirements.
+4. Provide Student own current clearance tracking and old historical clearance resolution links under proper permissions; do not create another clearance when Student accesses a “request” or tracking UI.
 
 #### Alternative flows
 
-- A1. First-year, returning, transferee or irregular Student: follow separately approved exception policy, not an arbitrary block.
-- A2. Older clearance outstanding: show separately and apply only approved gating; do not erase it.
+- A1. Returning Student with verified non-enrolled gap: do not demand completion of old signatures as a prerequisite; preserve previous records as **Uncleared** and unpaid fees as balances (WF11-D15/16).
+- A2. Continuing Student with uncleared adjacent previous semester: no new onboarding/future clearance until old required signatures/final approval are complete.
+- A3. Retry or concurrent onboarding: return existing period clearance, never create duplicate signatory rows or fee.
+- A4. Closed-period authorized historical late-entry under WF11-D14: allow an evidenced, audited unique historical record without reopening period or duplicating obligations.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 2 | No verified eligibility | Keep request pending/ineligible; link to onboarding/verification. |
-| 4 | Duplicate request/concurrent creation | Return existing valid period request; prevent duplicates. |
+| 1–2 | Unverified subject, missing teaching assignment, fee schedule or no matching CTU evidence | Refuse finalization/roll back onboarding; no phantom clearance. |
+| 3 | Concurrent/duplicate clearance creation or missing audit | Uniqueness and atomic rollback; preserve existing valid record. |
+| 4 | User lacks own or assigned permission | Deny read/sign; do not leak a signature or other Student record. |
 
 #### Links
 
-Depends on: WF-05.04, proposed Student Semester Onboarding, WF-07.01/02, WF-11.01.
+Depends on: WF-05.04, WF-05.05 Student Semester Onboarding, WF-06.02, WF-07.01/02, WF-11.01, WF-03.05.
 
-Feeds: WF-06.02–05.
+Feeds: WF-06.02–05 and Student clearance tracking.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-CLR-01, FR-CLR-06–08; UC-D07/D13.
+Requirement/use-case traceability (reconciliation draft): WF11-D15/D16/D23/D24; SRS v0.4 FR-CLR-01/02/04/06–08 (FR-CLR-01 student-request language requires SRS reconciliation).
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Previous-period prerequisite/exception policy, idempotent schema and signing contracts. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: SRS FR-CLR-01/request-title mismatch, unique clearance/signature schema, preverified source and signed item controls; approval of any rename is separate. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-06.02.. Do not start until Approved is ticked.
+Next flow: WF-06.02. Do not start until Approved is ticked.
 
 #### WF-06.02 — Verify clearance eligibility and requirements
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Student (own status) and authorized clearance/verifier service |
-| Trigger | **Proposed:** Clearance requirement evaluation for a valid period. |
-| Preconditions | **Proposed:** Verified period enrollment and instructor/signatory assignments; current fee assessment evidence. |
-| Result | **Proposed:** Correct current-period academic and financial clearance requirements without false auto-approval. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | Authorized clearance service with effective scoped permissions; Student views own eligibility, Instructor/Treasurer/School Admin only their relevant signed/assigned items. |
+| Trigger | Before new-semester onboarding access; while preparing its atomic clearance; when checking current/historical clearance progress. |
+| Preconditions | Authenticated and role-context scoped; real CTU-verified academic participation/gap evidence; approved period subject/signatory and fee rules. |
+| Result | Clear eligible/blocked/onboarding-pending state and accurate period-specific list of still-required signatures and financial item; old balances/signatures preserved. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Validate Student and period, including current or approved historical scope.
+1. At eligible Student login and again inside finalization transaction, identify latest actually participated/officially verified prior semester(s) and skipped non-enrolled gaps; missing Workspace record alone does not prove a gap.
 
-2. Retrieve verified subject/class-to-Instructor signatory assignments and current-period fee status.
+2. For consecutive participation, require the applicable prior clearance to be **Cleared = all required signatures plus final clearance approval** before new onboarding; fee paid alone is insufficient (WF11-D15).
 
-3. Apply separately approved previous-term clearance and exception rules, without changing academic enrollment records.
+3. For return after one or more School Admin-verified skipped semesters/years, permit onboarding despite old **Uncleared** clearance; preserve old missing signatures and unpaid organization-fee balances and audit the exception (WF11-D15/D16).
 
-4. Record or present current-period clearance requirements and explicit unresolved items, preserving historical records.
+4. For the current period, derive signature requirements only from verified confirmed enrolled subjects and real Instructor appointments, applicable Treasurer organizational fee sign-off and School Admin final approval; bind requirements to period.
+
+5. Show Student unresolved old requirements and current pending signatures without misleading “Cleared” status. Never auto-create skipped-period clearances or reset old signatures.
 
 #### Alternative flows
 
-- A1. Official subject or Instructor assignment missing: hold that academic item for verification.
-- A2. Fee not yet assessed or eligibility unresolved: show pending verification, not a paid/cleared state.
-- A3. Prior semester uncleared: show a distinct historical issue and follow approved exception rules.
+- A1. New Student with no prior applicable clearance: use first-time verification and onboarding; do not invent an old debt/clearance.
+- A2. Official enrollment gap unverifiable: hold exception pending manual School Admin evidence-based review, not a presumed automatic gap.
+- A3. Period closed/archived: old clearance and fee resolution remain available through authorized historical operations; do not reopen or auto-clear.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 2 | Provisional subjects | Do not create official Instructor clearance assignments. |
-| 3 | No approved previous-clearance gate | Do not silently apply an invented rule. |
+| 1–3 | Unverified skipped term or uncleared consecutive previous semester | Block onboarding unless applicable verified-gap exception is recorded; show permitted resolution access. |
+| 4 | Missing Instructor assignment or conflicting academic/fee state | Hold creation; do not assign unverified signatories or falsely grant Cleared. |
 
 #### Links
 
-Depends on: WF-05.04, WF-07.01/02, WF-11.01.
+Depends on: WF-05.04, WF-05.05 Student Semester Onboarding, WF-07.01/02, WF-11.01, WF-03.05.
 
-Feeds: WF-06.01, WF-06.03–05.
+Feeds: WF-06.01 and WF-06.03–05.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-CLR-02–04, FR-CLR-06–08; UC-D13.
+Requirement/use-case traceability (reconciliation draft): WF11-D15/D16/D24; SRS v0.4 FR-CLR-02–04/06–08.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Signatory rules, old-clearance exceptions, fee interpretation and approval policy. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: Exact first-time case rules for edge cases, assigned signatory source and guarded historical clearance operations; schema and source verification. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-06.03.. Do not start until Approved is ticked.
+Next flow: WF-06.03. Do not start until Approved is ticked.
 
 #### WF-06.03 — Review and decide assigned clearance items
 
@@ -3178,111 +3199,115 @@ Next flow: WF-07.01. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Authorized SSG Finance eligibility service / Treasurer reviewing permitted evidence |
-| Trigger | **Proposed:** Active-period eligibility check, verified upstream sync, or Student onboarding confirmation. |
-| Preconditions | **Proposed:** Verifiable CTU enrollment state for the exact period and an approved fee policy. |
-| Result | **Proposed:** An explainable eligible/ineligible/unverified fee decision for the period; no arbitrary charge. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | Authorized Finance/academic eligibility service; Treasurer may inspect authorized results, **not** set School Admin-approved full semester fee amount by default; exact permission/grant boundary pending v2 catalogue reconciliation. |
+| Trigger | Immediately before Student onboarding finalization or authorized, evidenced historical late-entry. |
+| Preconditions | Exactly one semester scope, CTU-backed or authorized manual verification of current actual participation; approved school fee and no previous failed prerequisites; active student role context. |
+| Result | Explicit eligible/ineligible/unverified decision; eligible may be assessed once **in the same successful onboarding transaction**, not at login or semester activation. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Identify Student, academic period and fee type; verify authorization and policy version.
+1. Identify Student + relevant period and read official CTU enrollment status/authorized evidence, student onboarding verification, approved fee amount and relevant fee-rule version.
 
-2. Fetch trusted enrollment status or recorded authorized manual verification.
+2. Check valid current-period actual participation only; never infer enrollment from Student login, missing Workspace record, calendar activation, or checked boxes alone.
 
-3. Classify eligible, verified not enrolled, or unresolved; explain decision source/date.
+3. For verified consecutive Students or returning Students, apply WF11-D15/16 clearance gating independently of fee eligibility; old debt persists but gap exemption allows new onboarding.
 
-4. Pass only verified eligible outcomes to WF-07.02; preserve gap-period and past-balance history.
+4. Pass verified eligible result to atomic WF-07.02 assessment executed only with successful onboarding confirmation; preserve reasoning, source/evidence, time and actor for audit.
 
 #### Alternative flows
 
-- A1. First-year/newcomer/transferee: use verified first applicable enrolled period.
-- A2. Returning after gap: assess only the return period; do not charge gap periods automatically.
-- A3. Conflicting or unavailable evidence: hold for review and never silently mark enrolled.
+- A1. First-year/newcomer/transferee: assess only verified applicable periods when onboarding is finalized.
+- A2. Non-enrolled skipped semester/year: create no new participation, clearance or fee for that gap; preserve past assessed balance.
+- A3. Upstream or authorized evidence missing: hold onboarding and fee assessment; no speculative charge.
+- A4. WF11-D14 authorized late historical participation: guarded duplicate-free historical fee and clearance assessment without reopening Closed semester.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 2 | Untrusted or absent evidence | No new obligation; show pending verification. |
-| 3 | Invalid fee period | Refuse and preserve existing records. |
+| 1–2 | Official status missing, untrusted or contradicted | No fee; no falsely finalized semester participation. |
+| 3–4 | Incorrect fee schedule or earlier unpaid debt misinterpreted as a new charge | Hold or correct policy; do not duplicate balances. |
 
 #### Links
 
-Depends on: WF-05.04; WF-11.01; approved campus fee policy.
+Depends on: WF-05.04, WF-05.05 Student Semester Onboarding, WF-11.01 and official fee policy.
 
-Feeds: WF-07.02, WF-06.02.
+Feeds: WF-07.02 and WF-06.02.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-09–14, FR-FIN-16; UC-D13.
+Requirement/use-case traceability (reconciliation draft): WF11-D14–D16, WF11-D23/24; SRS v0.4 FR-FIN-09–16, with FR-FIN-15/16 scope-conflict pending.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: CTU verification contract, effective fee policy, audit/retention safeguards. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: SRS allows assessment from upstream verified eligibility without onboarding whereas owner requires final onboarding as creation trigger; fee authority permission policy and idempotent unique scheme. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-07.02.. Do not start until Approved is ticked.
+Next flow: WF-07.02. Do not start until Approved is ticked.
 
 #### WF-07.02 — Assess organizational fee obligation
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Authorized SSG Finance assessment service / Treasurer with protected approval rights |
-| Trigger | **Proposed:** Verified eligible enrollment in an applicable academic period, even before Student first login. |
-| Preconditions | **Proposed:** WF-07.01 positive verified eligibility; approved rate and exemption policy; trusted period and identity. |
-| Result | **Proposed:** Exactly one valid obligation for Student + period + fee type, with policy/effective-date evidence and unchanged historical balances. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | **System** creates one organizational fee obligation as part of successful verified Student onboarding (or WF11-D14 authorized historical correction). **School Admin** alone configures/approves each semester **full organizational fee amount** through an eligible **Admin-context effective operational permission**. A **proposed future versioned catalogue overlay** would move the sole `finance.fee_schedule.manage` default from Treasurer (`T`) to Admin (`A`), retain explicit Deny precedence and constrain the operation to school-period fee policy; this is **NOT an applied grant or approved v2.2 change**. Treasurer retains scoped cash collection/receipts/financial views, not the organization-fee rate mutation. See `WF11_Fee_Authority_HDac_Change_PROPOSED.md`. |
+| Trigger | Verified eligible Student confirms the final onboarding review for Active semester; exceptional historical correction after School Admin verification and audit. |
+| Preconditions | Valid CTU-backed eligibility, approved semester full fee (including specifically approved zero), unique participation+period, correct policy/rate snapshot and locked consistent transaction; no automatic pre-login charge. |
+| Result | Exactly **one full semester organizational fee obligation** for each successful Student+semester onboarding, with amount/rate/version snapshot, original period and unpaid status; no duplicate or silent rewriting of prior obligations. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Read verified eligibility and approved current-period fee schedule, including any lawful exemption.
+1. In the onboarding transaction, verify period, effective fee policy, official/authorized enrollment evidence and successfully confirmed Student academic details.
 
-2. Check existing assessed obligation for the same Student, period and fee type.
+2. Acquire/enforce unique Student+period+fee-type protection. Reuse an existing legitimate obligation on idempotent retry; reject conflicting duplicate amounts for independent review.
 
-3. Atomically create one valid obligation or return existing obligation, with evidence and audit according to approved schema.
+3. Atomically persist the **full configured semester amount** and policy version/effective snapshot with participation, confirmed subjects and clearance; if any component or required audit fails, roll back all records (WF11-D24).
 
-4. Present current obligation separately from historic unpaid balances and send only approved notifications.
+4. Show Student current-period organizational fee **Unpaid/Outstanding** until confirmed cash payment through Treasurer workflow, separate from the overall clearance signature status; retain all previous semesters and their unpaid balance history.
 
 #### Alternative flows
 
-- A1. Student submits onboarding repeatedly, logs in late or background sync repeats: return existing charge without duplication.
-- A2. Not enrolled/verification missing: assess nothing.
-- A3. Approved exemption, amendment or reversal: require separate attributable action, never silently rewrite posted history.
+- A1. No Student onboarding yet: **do not create** fee solely on school-period activation, upstream status refresh or time of login, even if source reports enrollment (owner WF11-D24 takes priority over current draft/SRS until formal SRS alignment).
+- A2. Zero fee: permitted only as an explicit School Admin-approved zero amount, captured in snapshot; do not imply paid simply because no money is due.
+- A3. Student with verified non-enrolled gaps: only returning enrolled period is assessed, and old unpaid balances remain; no gap-period charges.
+- A4. School Admin historical late entry (WF11-D14): safely create/reuse original-period fee with evidence, snapshot and nonduplication; do not reopen the period.
+- A5. Rate correction while Active or historical reversal: require controlled audited financial adjustment and preserve prior fee snapshots/ledger integrity; never bulk-silently rewrite.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 1 | Missing approved rate or verified enrollment | Stop; no speculative charge. |
-| 3 | Concurrent assessments or failure | Unique/transaction protection prevents double obligation or partial write. |
+| 1 | Missing confirmed fee amount, official academic proof, or active/historical authority | Do not assess; fail onboarding atomically or request authorized historical review. |
+| 2–3 | Concurrent submissions, mismatched amounts or write/audit failure | Uniqueness guard, return same valid record or rollback entire transaction. |
+| 4 | Attempt to treat payment receipt as complete clearance | Show separate financial and signature statuses; never auto-mark Cleared. |
 
 #### Links
 
-Depends on: WF-07.01, WF-11.01; approved fee amount/exemption policy.
+Depends on: WF-07.01, WF-05.05 Student Semester Onboarding, WF-11.01, WF-06.01, WF-03.05.
 
-Feeds: WF-07.06, WF-06.02, WF-07.03/04.
+Feeds: WF-07.03/04/06 and WF-06.02.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-13–18, UC-D13.
+Requirement/use-case traceability (reconciliation draft): WF11-D03/D06/D14/D15/D24; SRS v0.4 FR-FIN-01/13–18 (FR-FIN-01, 15/16 amendments required).
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Unique/index design against official ERD, amount/effective date policy, exemption/reversal and audit governance. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: Fee-setting authority conflict with SRS and v2 catalogue; official eligibility vs onboarding-timing conflict; original fee snapshot/schema, audited adjustment rules, uniqueness and atomic workflow implementation. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-07.03.. Do not start until Approved is ticked.
+Next flow: WF-07.03. Do not start until Approved is ticked.
 
 #### WF-07.03 — Record and validate payments
 
@@ -3510,59 +3535,58 @@ Next flow: WF-07.08. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** Authorized Treasurer / eligibility verification workflow |
-| Trigger | **Proposed:** Fee evaluation of Student newly entering, transferring or returning after an inactive period. |
-| Preconditions | **Proposed:** Official period-by-period enrollment evidence and applicable fee schedule. |
-| Result | **Proposed:** Correct treatment of newcomer, transferee and returning Student without fabricated retroactive charges. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | Authorized School Admin verified-gap determination (not Treasurer-only permission), Student own onboarding, Treasurer read/record permitted finance; no role-name bypass. |
+| Trigger | Student returns after a confirmed non-enrolled gap or first joins CTU-G; separate verified fee eligibility checks are needed. |
+| Preconditions | Per-period authoritative CTU enrollment evidence or authorized School Admin verification, audited gap decision, current active semester and configured fee. |
+| Result | No fee/clearance created for confirmed skipped terms; old uncleared signatures and unpaid fees remain visible; approved returner may proceed and incur current full-period fee once upon successful onboarding. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Classify each relevant period using trusted CTU enrollment evidence.
+1. Classify recorded CTU attendance for relevant periods; distinguish actual non-enrollment from missing Workspace onboarding data.
 
-2. Apply fee eligibility and policy for the first/current eligible enrolled period.
+2. For a skipped term/year, require School Admin verification with CTU supporting evidence and log decision/evidence/time/actor (WF11-D16).
 
-3. For absences, leave non-enrolled periods unassessed; preserve legitimate earlier debts unchanged.
+3. If a student returns after one or more verified non-enrolled periods, permit new-period onboarding **without completing older clearance signatures**; preserve historical clearance as **Uncleared** and unpaid prior fees (WF11-D15).
 
-4. Document decision and exceptions, sending eligible period for idempotent assessment.
+4. For a continuing Student without qualifying enrollment gap, enforce immediate previous clearance-signature completion as an onboarding prerequisite.
+
+5. On verified and successfully confirmed return/newcomer onboarding, create current-period participation, clearance and one full fee obligation together, with strict uniqueness; do not assess skipped periods.
 
 #### Alternative flows
 
-- A1. Irregular program or subject mix: apply verified enrolled status, not number of subjects entered.
-- A2. Conflict between sources: require authorized reconciliation.
+- A1. First-time Student with no older record: apply normal current-period identity/enrollment verification; do not invent previous clearance.
+- A2. Unclear history or inadequate CTU evidence: hold the gap exception; route in person to School Admin for verification.
+- A3. Legitimate old unpaid fees: remain collectible/visible historically and do not morph into new semester fees.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 1 | Enrollment status not verified | No automatic charge. |
-| 4 | Retry | Existing valid obligation is reused. |
+| 1–2 | Gap inferred only from absence of Workspace record | Do not grant exception; retain status pending official verification. |
+| 3–5 | Attempt to auto-clear old signatures or double-bill | Refuse, preserve old statuses, enforce transactional unique current obligation. |
 
 #### Links
 
-Depends on: WF-05.04, WF-07.01/02.
+Depends on: WF-05.04, WF-05.05 Student Semester Onboarding, WF-06.02, WF-07.01/02, WF-11.01 and WF-03.05.
 
-Feeds: WF-07.02 and WF-07.06.
+Feeds: WF-07.02/06 and authorized historical clearance access.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-FIN-09–18; UC-D13.
+Requirement/use-case traceability (reconciliation draft): WF11-D15/D16/D24; SRS v0.4 FR-FIN-10–18, FR-CLR-07–08.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Institutional verification, fee exemptions/returner policy and evidence retention. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: Case-specific Student evidence retention, approval of exact technical privilege and compatibility with SRS fee timing. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-09.01.. Do not start until Approved is ticked.
-
-### WF-08  Group Rating
-
-**Category status: Draft — proposed breakdown for discussion only. No WF-08.xx identifiers are assigned or approved.** This section incorporates SRS v0.4 FR-RAT-01–17 and Use Case Specification v0.4.1 UC-D09, UC-D14–D16. It does not approve any scoring formula, grades, privacy/release policy, ERD changes, or implementation.
+Next flow: WF-09.01. Do not start until Approved is ticked.
 
 #### WF-08 (ID pending) — Create group-rating activity and Instructor-defined rating sheet (proposed subflow)
 
@@ -4296,58 +4320,95 @@ Next flow: WF-11.01. Do not start until Approved is ticked.
 
 | Field | Definition |
 | --- | --- |
-| Actor / required permission | **Proposed, not inspected:** School Admin with approved academic-period operational permission; Technical Super Admin inherits via effective Admin permissions |
-| Trigger | **Proposed:** Admin creates, schedules, or requests activation of a new School Year/Semester. |
-| Preconditions | **Proposed:** Authorized account, validated campus calendar and proposed period metadata; prior-period active state known. |
-| Result | **Proposed:** Exactly one Active campus semester; prior period closed transactionally, with complete historical data retained. |
-| Status | **Draft — Not inspected, not approved, not implemented.** Requirements-only proposal; exact permissions, services and schema require Inspect and Reconcile. |
+| Actor / required permission | **School Admin through effective selected Admin-context operational permissions** (existing catalogue proposes `academic.periods.manage`; `academic.courses.manage`, `academic.sections.manage`, `clearance.teaching_assignments.manage` apply to their actions). **Super Admin inherits operations only through genuine Admin assignment/effective HDAC permissions.** Student/Instructor/Treasurer have no implicit settings-write access. Semester **fee-amount** write is a separate protected operational action requiring a school-scoped/Admin-eligible and non-Denied `finance.fee_schedule.manage` under the **proposed future catalogue revision**; the existing pinned v2.2 default remains Treasurer and **must not be enabled for this write** until permission governance resolves that conflict. |
+| Trigger | School Admin creates/edits a School Year, configures semesters/curricula/offerings and semester fee, activates/closes/archives a period, or makes an authorized historical correction (WF11-D01–D14). |
+| Preconditions | Authenticated selected role context and effective permission; one campus scope; database integrity and transaction support; CTU retains enrollment authority. Before activation: valid configured dates, explicitly approved full organization fee (zero only if explicitly authorized), and at least one applicable curriculum/subject offering. Required assignments for any individual Student must be complete before that Student confirms the affected offering. |
+| Result | Draft/Active/Closed/Archived period records and derived School Year status are consistent, auditable and preserved; at most one campus-wide Active semester. Activation alone never creates Student participation, clearance, fee, or official CTU enrollment. |
+| Status | **Reconciliation draft — stakeholder planning decisions approved; individual workflow Human Approval unchecked; not implemented.** Inspected archive baseline v0.3.50. Exact permissions, SRS, data schema and verification gates remain subject to reconciliation. |
 
 #### Main flow
 
-**Proposed target flow (not implementation evidence):**
+**Reconciled target behavior (requirements, not implementation evidence):**
 
-1. Create draft/Scheduled period with verified school year, semester and applicable dates; reject overlaps/duplicates.
+1. School Admin creates a new School Year. The system automatically creates **First Semester and Second Semester as Draft**; never activates them automatically (WF11-D01). Existing school years/semesters remain unique.
 
-2. Preflight eligibility of proposed transition, single-Active invariant and downstream service dependencies.
+2. School Admin configures start/end dates, applicable course/curriculum version, subject offerings, assigned instructors when available and the **full organizational fee amount** for each semester. The fee write requires the independently governed HDAC operational permission **and** School Admin eligibility, school-period scope and explicit Deny checks. The current Treasurer default in pinned v2.2 does **not** authorize this policy; the proposed future v2.3 default move must be reviewed before implementation. CTU enrollment management is not duplicated.
 
-3. Show confirmation/impact preview, obtain authorized School Admin confirmation and write attributable audit.
+3. Validate within-year chronology and nonoverlapping First/Second Semester ranges; allow a break. Warn on cross-year overlaps or activation inconsistent with dates; separately authorize and audit exceptions without allowing two Active semesters (WF11-D10).
 
-4. Atomically close prior Active period and activate next, or roll back everything; never mass-assign fees or claim student enrollment.
+4. Allow future school years and their Draft semesters to be prepared while another semester is Active (WF11-D08). School Year status is **derived** from semester statuses (Draft/Active/Between Semesters/Completed/Archived), never activated by an independent School Year switch (WF11-D09).
 
-5. Publish the current academic period for Student Semester Onboarding; Finance and Clearance independently evaluate verified eligibility.
+5. Before activation, check all mandatory preconditions: dates, approved fee amount, at least one applicable curriculum/subject offering and permissions. Unfinished instructor assignments/other offerings may be completed later but must not be treated as valid subject confirmations while incomplete (WF11-D03).
+
+6. Show School Admin a transition preview/warnings; request explicit manual confirmation. **Date thresholds do not automatically activate or close a semester** (WF11-D02).
+
+7. Inside **one atomic DB transaction**, recheck locks/constraints, close the previous Active semester (if any), activate the chosen semester, write attributable audit and commit; on failure, roll back everything. Do not assume fees, clearances, or enrollment for all existing students (WF11-D04).
+
+8. While Active, authorized School Admin edits require impact review and reason/audit; protect existing confirmed academic records and already-created fee obligations. Any full-fee rate change uses controlled financial adjustment policy rather than silently changing old snapshots (WF11-D06).
+
+9. When closing, summarize outstanding clearance signatures, unpaid fees, incomplete onboarding, and downstream impact. Permit **manual closure despite unresolved items** only after explicit warning and confirmation; preserve access to old clearance/fee resolution; normal new onboarding on Closed periods is not available (WF11-D11).
+
+10. An authorized School Admin may **manually archive** a Closed semester after a review; keep all participation, subject, signature, financial and audit records and permit authorized historical resolution without reopening (WF11-D12).
+
+11. For Closed/Archived periods, perform separately authorized, evidenced and audited historical academic corrections **without changing the period back to Active**; support School Admin creation of missing participation only after official CTU evidence is verified, without duplicate clearance or fee (WF11-D05 and WF11-D14).
+
+12. Permanently delete only a genuinely unused Draft period/year that has never been Active and has no dependent records. Deleting a draft School Year accounts for its paired Draft semesters and never orphans data; Closed/Archived history cannot be deleted (WF11-D07).
+
+13. Provide scoped historical read access only: Students own records, Instructors their real historical assigned classes/students, Treasurer authorized historical finance, School Admin authorized academic history, and Super Admin through genuine Admin effective permissions (WF11-D13).
 
 #### Alternative flows
 
-- A1. Future period scheduled: keep current period Active until explicit approved activation (automation is separate).
-- A2. Reopening/correcting Closed period: require exceptional, separately approved workflow.
-- A3. Missing academic source or active-period conflict: stop without changing Active state.
+- A1. Activation preflight finds an incomplete required offering or rate: remain Draft, explain missing items; affected students cannot confirm incomplete offerings.
+- A2. No currently Active semester: activate selected eligible Draft semester atomically without closing another.
+- A3. Closed period has unpaid fees/uncleared Student records: allow explicit warned closure; retain resolution and history, do not auto-clear.
+- A4. Authorized returning Student gap correction or late historical entry: School Admin verifies official CTU proof; history/obligations are created or reused idempotently; period stays Closed/Archived.
+- A5. Authorized operational exception to date warning or active setting edit: record reason and impact; never relax exactly-one-Active, scope or nonduplication constraints.
+- A6. Unused Draft deletion: delete atomically only when period/year and dependencies satisfy safe-deletion rules.
 
 #### Errors
 
 | Step | Problem | What happens |
 | --- | --- | --- |
-| 2 | More than one Active period/overlap | Reject and preserve current period. |
-| 4 | Concurrent activations or audit failure | Full rollback; no dual-Active semester. |
+| 1–3 | Duplicate School Year/semester, invalid dates or overlapping within same year | Reject mutation; retain original state and explain. Cross-year overlap prompts a reviewed warning/exception rather than silent approval. |
+| 5–7 | Missing fee/curriculum/offering, concurrent activation, audit failure or multiple-Active risk | Reject/rollback the complete transition; no half-closed semester or second Active semester. |
+| 8 | Unsafe Active edit or fee change would retroactively rewrite student obligations | Reject pending controlled impact/financial correction process. |
+| 9–11 | Unresolved historical obligations or late correction lacking CTU evidence | Retain historical records; do not falsely mark Cleared or bill skipped periods. |
+| 12–13 | Attempt to delete used or archival data or read outside effective HDAC scope | Deny without deleting or disclosing records; audit where applicable. |
+
+**WF-11 approved decision traceability (namespaced to avoid legacy Appendix A collisions):**
+
+| Planning decision | Approved rule | Reconciled scope |
+| --- | --- | --- |
+| WF11-D01–D04 | Create First/Second Draft semesters; manual status; preflight; atomic one-Active transition | WF-11.01 |
+| WF11-D05–D08 | Audited historical corrections, controlled Active edits, Draft-only safe deletion, future-year Draft creation | WF-11.01 |
+| WF11-D09–D13 | Derived School Year status, dates/warnings, warned closure, manual archiving, historical role-scoped access | WF-11.01 |
+| WF11-D14 | School Admin evidenced late historical semester participation; no duplicate clearance/fee; never reopen | WF-11.01, WF-05, WF-06, WF-07 |
+| WF11-D15–D16 | Consecutive uncleared previous-semester block; verified gap exception preserves **Uncleared** and past fees; School Admin evidence audit | WF-05, WF-06, WF-07 |
+| WF11-D17–D19 | Required Student onboarding; Regular/Irregular → subjects → course/year; controlled subject confirmation | WF-05 |
+| WF11-D20–D21 | **Skipped**; no online correction request or post-finalization subject-change feature | Scope exclusions |
+| WF11-D22–D23 | In-person missing subject correction; final explicit Student confirmation; no routine Admin approval for valid verifiable submission | WF-05 |
+| WF11-D24 | Atomic unique participation + subjects + clearance/signatories + full fee obligation | WF-05, WF-06, WF-07 |
+| WF11-D25 | Planning baseline approved; next reconcile documentation; **not** individual workflow or implementation approval | Document-control only |
 
 #### Links
 
-Depends on: Official campus period policy; WF-03.05; verified schema and audit contract.
+Depends on: WF-03.05 (effective HDAC), campus period policy, verified CTU evidence, permission-catalogue reconciliation, auditable DB period constraints.
 
-Feeds: WF-05.01/04, Proposed Student Semester Onboarding, WF-06/07/08.
+Feeds: WF-05.01/04, WF-05.05 Student Semester Onboarding, WF-06.01/02, WF-07.01/02/08, WF-08 and historical records.
 
-Requirement/use-case traceability (proposed): SRS v0.4 FR-ACA-05–06, FR-AUTH-09; UC-D11.
+Requirement/use-case traceability (reconciliation draft): WF11-D01–D14 (stakeholder-approved planning, 25 Nov 2026); SRS v0.4 FR-ACA-05/06, FR-AUTH-09; UC-D11; permission v2 proposals `academic.periods.manage`, `academic.courses.manage`, `academic.sections.manage`.
 
 Guidelines: Inspect → Reconcile → Approve → Implement → Test → Commit
 
-AI Agent Guidelines Checklist: ☐ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
+AI Agent Guidelines Checklist: ☑ Inspect   ☐ Reconcile   ☐ Approve   ☐ Implement   ☐ Test   ☐ Commit
 
-Blocked by: Single-active DB constraint, period-state mapping/ERD review, reopening/automation decisions and Admin permissions. No ERD, migration, permission grant or code change is approved by this proposal.
+Blocked by: Exact access-control grants for School Admin fee configuration (current v2 defaults to Treasurer), approved fee-correction contract, required data entities/versioned curriculum/offerings, audit/evidence retention, atomic DB uniqueness, source verification and workflow mapping for academic course/curriculum configuration. No ERD, migration, permission grant, runtime change, or new workflow approval is authorized by this documentation pass.
 
-Evidence level: Requirements-only proposal (SRS v0.4; Use Case Specification v0.4.1); **no code, database or test inspection claimed.**
+Evidence level: **Source-inspected documentation baseline** (2026-11-25 uploaded project archive: Catalogue v0.3.50, SRS v0.4, permission catalogue v2 proposal, DBML, placeholder academic/finance/clearance models); stakeholder-approved WF-11 planning **is not workflow implementation approval**. No API, database, UI or test verification of these target flows is claimed.
 
 Human Approval: ☐ Approved by: ______  Date: ______
 
-Next flow: WF-11.02.. Do not start until Approved is ticked.
+Next flow: WF-11.02. Do not start until Approved is ticked.
 
 #### WF-11.02 — Manage system operational settings
 
@@ -4876,10 +4937,13 @@ Next flow: Final pass / owner approval. Do not start until Approved is ticked.
 - Account creation is all-or-nothing, backed by database-level concurrency protection.
 - Roles and permissions attach to the account ID, never to the email.
 - No ERD, migration, or code change is authorized by this document.
-- **Unstarted-module design only:** WF-11.01 activates one campus semester safely; a new period does not automatically prove enrollment or assess a fee. Students use the proposed WF-05 Student Semester Onboarding page; current term and academic status must come from CTU/authorized verification.
-- **Unstarted-module design only:** Fee obligations are independently assessed once per verified eligible Student/period/fee type under approved rate rules, regardless of first login. WF-06 uses verified Instructor subjects/signatories and separately approved old-clearance prerequisites; historical debt/clearance is preserved.
+- **WF-11 approved planning baseline (25 Nov 2026; workflow approval still pending):** School Admin manually activates/closes/archives periods; future years have exactly two Draft semesters; school-year status is derived; exactly one Active campus semester, with atomic transitions. Activation does not prove enrollment or create obligations. Students must complete eligible-period Student Semester Onboarding before normal Student dashboard access, using official CTU/authorized verification as an eligibility safeguard.
+- **WF-11 approved onboarding/clearance/fee baseline:** Students choose Regular/Irregular → confirm offered subjects → confirm course/year → final explicit confirmation. Missing subjects are corrected **in person** by School Admin. Completion atomically creates unique period participation, subjects, pending clearance/signatories and full snapshotted fee obligation; not at semester activation, not solely on verified upstream status, and not merely on login. Old uncleared signatures and unpaid fees survive; Student returning after a School Admin-verified non-enrollment gap is exempt from **prior-clearance onboarding gating**, without rewriting old status. Decisions WF11-D20/D21 are **skipped**; no online correction-request flow or post-onboarding subject-change feature is designed here.
 - **Unstarted-module design only:** WF-08 Group Rating uses Instructor-defined positive **category point budgets**, with groupmates as rows (self excluded), categories as columns and Total last. Every rater, including Group Leaders, allocates the **exact budget in each category**. Zero is valid only when entered deliberately; blanks, duplicate submissions, self-rating and unverified rosters are refused. Aggregation and publication remain open.
 - For every unstarted workflow, the six-stage **AI Agent Guidelines Checklist** and separate Human Approval are unmarked until actual Inspect → Reconcile → Approve → Implement → Test → Commit evidence exists. No AI checklist state is inferred from discussion or from the source requirements alone.
+- **Decision namespace:** WF-11 planning decisions are referenced as `WF11-D01` through `WF11-D25` to avoid collision with legacy global Appendix A `D-01` registration/authentication decisions. `WF11-D20` and `WF11-D21` remain skipped. The adopted **WF-05.05** identifier is a documentation-level catalogue assignment; planning/R-01–R-03 approval does not replace any workflow’s unchecked Human Approval, implementation gate, or separately protected HDAC permission approval.
+- **Hybrid Dynamic Access Control:** Every workflow must check effective explicit permission, account-specific Deny/Grant, active role context, service state, record ownership/assignment and audited privileged action on the backend. School Admin controls authorized academic operations; Super Admin inherits those through genuine Admin-role membership, while Access Control Management remains Super Admin-governed. No extra administrator tier, blanket role-name exception, or frontend-only security check is introduced.
+- **Approved documentation targets R-01/R-02/R-03 (25 Nov 2026):** R-01 sets the **intended School Admin authority to configure semester organizational fee**; `finance.fee_schedule.manage` default remains unchanged in pinned permission v2.2 until independently reviewed governance and authorized enforcement. R-02 requires attributable, current Student+semester **CTU enrollment and subject evidence** before onboarding finalization; preverified matching evidence permits immediate completion without routine Admin approval; missing/contradictory proof remains Pending Verification with in-person Admin verification and later Student final confirmation. R-03 registers **WF-05.05** with its own **unchecked Human Approval**. Neither the specification change nor this approval modifies runtime authorizations, permission Grants/Denies, CTU ownership, data, or code.
 
 ## 6. Appendix A – Decision Register
 
@@ -5055,16 +5119,19 @@ Evidence levels: SRS-only / Code-verified / DB-verified, supplemented by automat
 | Control | Value |
 | --- | --- |
 | Document | CTU-G Workspace System Workflow Catalogue |
-| Version | 0.3.42 |
-| Date | 20 November 2026 |
-| Status | Working Draft — owner approval pending |
-| Scope | Latest change 0.3.42 (see Change log); workflow IDs unchanged |
+| Version | 0.3.53 |
+| Date | 25 November 2026 |
+| Status | **R-01/R-02/R-03 approved as documentation targets**; consolidated specification pending individual workflow Human Approval, institutional evidence/privacy sign-off and separate HDAC governance |
+| Scope | Stakeholder-approved WF11-D01–D25 (WF11-D20/D21 skipped), affected WF-05/06/07 and WF-11 specifications; R-01/R-02/R-03 accepted as documentation targets; WF-05.05 adopted as the fifth WF-05 subflow; **individual workflow approvals still pending** |
 | Approval | Human Approval recorded for 12 workflows (see the workflow register); all others, including WF-03.01, pending. Owner-stated implementation requirements/answers are documented without agent policy approval |
 
 ### Change log
 
 | Version | Date | Changes | Approval |
 | --- | --- | --- | --- |
+| 0.3.53 WF-11 approved documentation consolidation | 25 November 2026 | Owner approved R-01 School Admin organizational-fee authority as a documentation target (**future independently reviewed HDAC catalogue overlay remains pending**), R-02 previously-verified evidence or auditable in-person School Admin verification with safe Pending status (**institutional proof/privacy approval pending**), and R-03 stable **WF-05.05** onboarding ID (WF-05 count 4→5). Aligned official references in Catalogue and proposed SRS. Preserved WF11-D20/D21 skipped, all existing Human Approval fields/checklist gates, protected v2.2 permission pins, unchanged software/DB. | **R-01/R-02/R-03 documentation targets approved by project owner, 25 Nov 2026**; individual workflows and governance approvals pending |
+| 0.3.51 WF-11 reconciliation | 25 November 2026 | Reconciled WF-11.01 and impacted WF-05.04, unnumbered WF-05 onboarding, WF-06.01/02, WF-07.01/02/08 to owner-approved planning Decisions WF11-D01–D25, with WF11-D20/D21 skipped. Preserved existing workflow IDs/titles, all historic approvals and unstarted approvals unchecked. Open SRS fee timing/authority and HDAC permission grants remain explicitly blocked; no implementation/code/schema change. | Stakeholder planning approved; **individual workflow approval pending** |
+| 0.3.52 WF-11 reconciliation Stage 2 (review draft) | 25 November 2026 | Tightened Student+semester official evidence/manual-verification two-lane gate and future fee-setting HDAC change proposal without editing v2.2 pins. Kept WF11-D20/D21 skipped, existing headings/IDs, checklist and Human Approval states. Source, permission-governance and SRS sign-off remain pending; no code/DB changes. | **Review proposal only**; individual workflow Human Approval unchecked |
 | 0.1 | 14 November 2026 | Original classification, 62-entry register, WF-02.04 sample, rules and reusable template. | Not recorded |
 | 0.2 | 15 November 2026 | Added Actor/Status to register; WF-01.01 detailed specification; 61 placeholders; preserved WF-02.04 as Pending detail; cross-cutting rules; Decisions/Evidence/Document Control appendices; updated template and checklist. | Pending owner approval |
 | 0.3 | 15 November 2026 | Added draft WF-13 Group Rating category to classification, register, and detailed-spec section. No new subflow IDs assigned. All 62 existing workflows, WF-01.01 wording, open decisions, and unchecked approvals preserved. | Pending owner approval |
@@ -5199,20 +5266,20 @@ Version 0.3.3 renumbered categories WF-08 to WF-13: Group Rating (formerly WF-13
 | WF-05.01 | WF-05.01 | ID and title unchanged |
 | WF-05.02 | WF-05.02 | ID and title unchanged |
 | WF-05.03 | WF-05.03 | ID and title unchanged |
-| WF-05.04 | WF-05.04 | ID and title unchanged |
-| WF-06.01 | WF-06.01 | ID and title unchanged |
-| WF-06.02 | WF-06.02 | ID and title unchanged |
+| WF-05.04 | Obtain or verify academic status from CTU main system | Authorized CTU source / verified School Admin process | Source-inspected reconciliation draft; workflow approval pending |
+| WF-06.01 | Request clearance | System at onboarding finalization; Student owns view (legacy title retained) | Source-inspected reconciliation draft; workflow approval pending |
+| WF-06.02 | Verify clearance eligibility and requirements | Authorized service and assigned signatories | Source-inspected reconciliation draft; workflow approval pending |
 | WF-06.03 | WF-06.03 | ID and title unchanged |
 | WF-06.04 | WF-06.04 | ID and title unchanged |
 | WF-06.05 | WF-06.05 | ID and title unchanged |
-| WF-07.01 | WF-07.01 | ID and title unchanged |
-| WF-07.02 | WF-07.02 | ID and title unchanged |
+| WF-07.01 | Verify academic-period fee eligibility | Verified eligibility service; Treasurer read as permitted | Source-inspected reconciliation draft; workflow approval pending |
+| WF-07.02 | Assess organizational fee obligation | System at onboarding finalization; School Admin configures fee | Source-inspected reconciliation draft; workflow approval pending |
 | WF-07.03 | WF-07.03 | ID and title unchanged |
 | WF-07.04 | WF-07.04 | ID and title unchanged |
 | WF-07.05 | WF-07.05 | ID and title unchanged |
 | WF-07.06 | WF-07.06 | ID and title unchanged |
 | WF-07.07 | WF-07.07 | ID and title unchanged |
-| WF-07.08 | WF-07.08 | ID and title unchanged |
+| WF-07.08 | Process returning, transferee, and newcomer scenarios | School Admin verified gap; Student/Finance authorized scope | Source-inspected reconciliation draft; workflow approval pending |
 | WF-08.01 | WF-09.01 | Renumbered (Group Rating became WF-08); title unchanged |
 | WF-08.02 | WF-09.02 | Renumbered (Group Rating became WF-08); title unchanged |
 | WF-08.03 | WF-09.03 | Renumbered (Group Rating became WF-08); title unchanged |

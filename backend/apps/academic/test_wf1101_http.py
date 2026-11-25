@@ -63,7 +63,12 @@ class RouteSurfaceTests(SimpleTestCase):
         return found
 
     def test_exact_academic_routes_and_no_fee_curriculum_or_participation_route(self):
-        self.assertEqual(self.academic_routes(), {
+        routes = self.academic_routes()
+        for route in routes:
+            for word in ("fee", "participation", "enrol", "clearance", "signature"):
+                self.assertNotIn(word, route)
+        period_routes = {r: v for r, v in routes.items() if not r.startswith("api/v1/academic/config/")}
+        self.assertEqual(period_routes, {
             "api/v1/academic/school-years/": SchoolYearCollectionView,
             "api/v1/academic/school-years/<int:school_year_id>/delete/": SchoolYearDeleteView,
             "api/v1/academic/school-years/<int:school_year_id>/history/": SchoolYearHistoryView,
@@ -76,8 +81,8 @@ class RouteSurfaceTests(SimpleTestCase):
         self.assertEqual(SemesterDatesView.http_method_names, ["post", "options"])
         self.assertEqual(SchoolYearDeleteView.http_method_names, ["post", "options"])
         self.assertEqual(SchoolYearHistoryView.http_method_names, ["get", "head", "options"])
-        for route in self.academic_routes():
-            for word in ("fee", "curriculum", "offering", "participation", "enrol", "clearance"):
+        for route in period_routes:
+            for word in ("curriculum", "offering"):
                 self.assertNotIn(word, route)
         self.assertEqual(resolve(YEARS).url_name, "academic-school-years")
 

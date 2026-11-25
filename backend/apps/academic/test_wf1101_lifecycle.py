@@ -78,7 +78,8 @@ class ActivationTests(TestCase):
         self.assertEqual(preview["prerequisites"], [
             {"key": "valid_dates", "status": "ready", "reason": ""},
             {"key": "approved_fee", "status": "unavailable", "reason": "fee_schedule_not_implemented"},
-            {"key": "academic_offerings", "status": "unavailable", "reason": "curriculum_offerings_not_implemented"}])
+            # Real since academic.0003: no offering exists for this semester, so it is missing (not ready).
+            {"key": "academic_offerings", "status": "missing", "reason": "no_valid_offerings"}])
         self.assertEqual((preview["can_confirm"], preview["blockers"]), (False, ["prerequisites_missing"]))
         error = self.refused("prerequisites_missing", self.confirm, self.first)
         self.assertEqual(error.missing, ("approved_fee", "academic_offerings"))

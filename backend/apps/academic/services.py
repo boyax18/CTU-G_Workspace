@@ -117,9 +117,15 @@ def _executor_enabled():
         return True  # an invalid writer configuration is never a reason to proceed
 
 
-def authorize(actor):
-    """Steps 1-5 of the module docstring, from fresh database reads. Returns Authorization."""
-    if not gate_open():
+def authorize(actor, permission_code=PERMISSION_CODE, gate=None):
+    """Steps 1-5 of the module docstring, from fresh database reads. Returns Authorization.
+
+    ``permission_code`` is the operation's exact catalogue code (academic configuration reuses this
+    evaluator with academic.courses.manage, clearance.subjects.manage, ...); ``gate`` is the
+    operation's own default-off switch (the period gate when omitted). The code's own service must
+    be active too (has_permission filters on it), in addition to the academic service.
+    """
+    if not (gate or gate_open)():
         raise AcademicPeriodUnavailable("Academic-period management is not activated.")
     if _executor_enabled():
         raise AcademicPeriodUnavailable("The protected writer has no academic-period operation.")
@@ -147,7 +153,7 @@ def authorize(actor):
     service = Service.objects.using(DEFAULT_DB_ALIAS).filter(service_code=SERVICE_CODE).first()
     if service is None or not service.is_active:
         raise AcademicPeriodUnavailable("The academic service is not active.")
-    if not has_permission(account, PERMISSION_CODE):
+    if type(permission_code) is not str or not has_permission(account, permission_code):
         raise AcademicPeriodDenied()
     return Authorization(account, acting_role_id)
 
@@ -156,22 +162,32 @@ def _atomic():
     return transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True)
 
 
-def lock_and_authorize(actor):
-    """Inside the caller's transaction: lock service -> permission -> account, then re-authorize."""
+def lock_and_authorize(actor, permission_code=PERMISSION_CODE, gate=None):
+    """Inside the caller's transaction: lock services -> permission -> account, then re-authorize.
+
+    Every academic write locks the academic service row first, so all academic writes serialize
+    in one order (the code's own service, e.g. clearance, is locked in the same service_id order).
+    """
     connection = transaction.get_connection(DEFAULT_DB_ALIAS)
     if connection.vendor != "mysql" or not connection.in_atomic_block:
         raise AcademicPeriodUnavailable("Academic periods require a primary MySQL transaction.")
+    owning = (Permission.objects.using(DEFAULT_DB_ALIAS).filter(permission_code=permission_code)
+              .values_list("service__service_code", flat=True).first())
+    codes = {SERVICE_CODE, owning} if owning else {SERVICE_CODE}
     services = list(Service.objects.using(DEFAULT_DB_ALIAS).select_for_update()
-                    .filter(service_code=SERVICE_CODE).order_by("service_id"))
-    if len(services) != 1 or not services[0].is_active:
-        raise AcademicPeriodUnavailable("The academic service is not active.")
+                    .filter(service_code__in=codes).order_by("service_id"))
+    by_code = {row.service_code: row for row in services}
+    if set(by_code) != codes or not all(row.is_active for row in services) or owning is None:
+        raise AcademicPeriodUnavailable("The academic service or the operation's service is not active.")
     permissions = list(Permission.objects.using(DEFAULT_DB_ALIAS).select_for_update()
-                       .filter(permission_code=PERMISSION_CODE, service_id=services[0].pk).order_by("permission_id"))
+                       .filter(permission_code=permission_code, service_id=by_code[owning].pk).order_by("permission_id"))
     if len(permissions) != 1:
-        raise AcademicPeriodUnavailable("Academic-period authority is not provisioned.")
+        raise AcademicPeriodUnavailable("Academic authority is not provisioned.")
     if isinstance(actor, Account) and type(actor.pk) is int:
         list(Account.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(pk=actor.pk))
-    return authorize(actor)
+    if permission_code == PERMISSION_CODE and gate is None:
+        return authorize(actor)
+    return authorize(actor, permission_code, gate)
 
 
 def write_audit(auth, *, action, school_year_id, semester_id=None, old_value=None, new_value=None, reason,

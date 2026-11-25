@@ -19,6 +19,7 @@ import { ACCOUNT_RESTRICTIONS_ENABLED } from '../access-control/accountRestricti
 import { EFFECTIVE_ACCESS_INSPECT_ENABLED } from '../access-control/effectiveAccessConfig.ts';
 import { ACCESS_AUDIT_ENABLED } from '../access-control/accessAuditConfig.ts';
 import { ACADEMIC_PERIODS_ENABLED } from '../academic/academicPeriodsConfig.ts';
+import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfigurationConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -195,9 +196,12 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
   { id: 'school-periods', label: 'School years & semesters', icon: 'calendar', group: 'academic-configuration',
     requiredAny: ['academic.periods.manage'], integration: ACADEMIC_PERIODS_ENABLED ? 'shell' : planned,
     description: 'School years, semesters and their dates.' },
-  { id: 'academic-references', label: 'Academic references', icon: 'book', group: 'academic-configuration',
-    requiredAny: ['academic.courses.manage', 'academic.sections.manage'], integration: planned,
-    description: 'Course, year-level and section definitions.' },
+  // Academic configuration foundation: live only when its switch is on; each tab needs its exact code.
+  { id: 'academic-references', label: 'Academic settings', icon: 'book', group: 'academic-configuration',
+    requiredAny: ['academic.courses.manage', 'academic.sections.manage', 'clearance.subjects.manage',
+      'clearance.teaching_assignments.manage'],
+    integration: ACADEMIC_CONFIGURATION_ENABLED ? 'shell' : planned,
+    description: 'Courses, subjects, sections, curriculum versions, offerings and instructor assignments.' },
 
   { id: 'clearance-monitoring', label: 'Clearance monitoring', icon: 'activity', group: 'clearance-oversight',
     requiredAny: ['clearance.progress.read'], integration: planned,

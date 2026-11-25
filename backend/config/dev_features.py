@@ -109,6 +109,23 @@ FEATURES = (
                             "VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"),
             requires=("wf11.academic_periods",),
             note="Depends on the finance fee schedule, curriculum offerings, clearance and WF-05.05 onboarding."),
+    # Academic configuration foundation (25 Nov 2026): registered, NOT approved for any mode. Needs
+    # academic migration 0003 on ctug_workspace. Curriculum and offering writes have no approved exact
+    # permission yet (proposed academic.courses.manage / academic.periods.manage mappings).
+    Feature("wf11.academic_configuration", "WF-11.01 dependency", "Courses, subjects, sections, curricula, offerings",
+            backend_env={"WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED",),
+            note="Curriculum, offering and teaching-assignment writes have their own switches."),
+    Feature("wf11.academic_configuration_governed_writes", "WF-11.01 dependency",
+            "Curriculum, offering and instructor-assignment writes",
+            backend_env={"WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED": "1",
+                         "WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED": "1",
+                         "WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED",
+                            "VITE_WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED",
+                            "VITE_WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED"),
+            requires=("wf11.academic_configuration",),
+            note="Awaits HDAC governance of the curriculum/offering permission mapping."),
 )
 
 # One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).

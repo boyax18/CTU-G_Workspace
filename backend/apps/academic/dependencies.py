@@ -8,9 +8,10 @@ Each check is a small read-side *source* that reports what it can actually estab
   NEVER reported as zero.
 
 Inspected 25 Nov 2026: apps.finance, apps.clearance and apps.group_rating define no models; no
-fee schedule, curriculum/subject offering, Student semester participation (WF-05.05), clearance or
-signature record exists. The default bundle therefore reports those sources as ``unavailable``,
-which keeps activation (and every edit whose impact cannot be evaluated) refused at runtime. When
+fee schedule, Student semester participation (WF-05.05), clearance or signature record exists.
+The default bundle therefore reports those sources as ``unavailable``, which keeps activation
+(the fee is still required) and every edit whose impact cannot be evaluated refused at runtime.
+Academic offerings are real since migration academic.0003 (``OfferingPrerequisite``). When
 a dependent module is implemented, replace its ``Unavailable*`` entry in ``DEFAULT_BUNDLE`` with a
 real read-only adapter; nothing else changes.
 
@@ -72,6 +73,21 @@ class DatesPrerequisite:
         return CheckResult(self.key, READY)
 
 
+class OfferingPrerequisite:
+    """Real read-only check (academic configuration, migration 0003): at least one offering that is
+    valid for THIS semester. Every relationship is re-validated (term, curriculum course/year level,
+    Published/Superseded curriculum, Active subject and section). Instructor gaps do not block
+    activation: they block the individual Student's later subject confirmation instead."""
+
+    key = "academic_offerings"
+
+    def evaluate(self, semester):
+        from .configuration import valid_offerings
+        if not valid_offerings(semester.pk).exists():
+            return CheckResult(self.key, MISSING, "no_valid_offerings")
+        return CheckResult(self.key, READY)
+
+
 class UnavailablePrerequisite:
     def __init__(self, key, reason):
         self.key, self.reason = key, reason
@@ -99,7 +115,9 @@ DEFAULT_BUNDLE = DependencyBundle(
     prerequisites=(
         # The governed semester fee needs the pending finance.fee_schedule.manage revision and a fee model.
         UnavailablePrerequisite("approved_fee", "fee_schedule_not_implemented"),
-        UnavailablePrerequisite("academic_offerings", "curriculum_offerings_not_implemented"),
+        # Real since the academic configuration foundation. A query failure (e.g. tables not yet
+        # migrated) is reported "unavailable" by _by_key, never as ready.
+        OfferingPrerequisite(),
     ),
     obligations=(
         UnavailableCount("outstanding_clearance_signatures", "clearance_not_implemented"),

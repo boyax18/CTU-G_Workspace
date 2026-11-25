@@ -54,6 +54,7 @@
   - A complete signed-in verification card: pending-code state, countdown, distinct incorrect, expired and locked messages, honest copy.
   - Operator-assisted recovery for non-privileged accounts that cannot sign in: identity attestation, code to the current email, public redemption, proof recorded, existing reset ticket.
 - **Boundaries:** D-21 unchanged; privileged accounts stop at the authorization boundary; no session creation or impersonation; the operator never sees the code.
+- **Migration `accounts 0008`: applied to `ctug_workspace` on 25 Nov 2026 with owner approval.** The backup `ctug_workspace_pre-accounts0008_20261125-093430.sql` restored with identical row counts and `CHECKSUM TABLE` results for all 20 tables. Afterwards only `django_migrations` changed (+1). Assisted recovery stays off (owner decision).
 - **Pending owner authorization:**
   - Migration `accounts 0008` on `ctug_workspace`. Until it is applied, the running `-Local` server's email verification fails closed (503 or the card hidden).
   - Provisioning `accounts.school_accounts.assist_recovery` and deciding which role holds it.

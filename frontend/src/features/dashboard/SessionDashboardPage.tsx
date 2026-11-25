@@ -19,6 +19,12 @@ import { ROLE_ASSIGNMENT_ENABLED } from '../access-control/roleAssignmentConfig'
 import RegistrationReviewPreview from '../admin/RegistrationReviewPreview';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 import GroupRatingPage from '../groupRating/GroupRatingPage';
+import FinancePage from '../finance/FinancePage';
+import ClearancePage from '../clearance/ClearancePage';
+import AnnouncementsPage from '../announcements/AnnouncementsPage.tsx';
+import NotificationsPage from '../notifications/NotificationsPage.tsx';
+import HelpPage from '../help/HelpPage';
+import SettingsPage from '../settings/SettingsPage';
 
 const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 
@@ -28,6 +34,39 @@ interface Widget {
   title: string;
   body: string;
   action: string;
+}
+
+interface AdminAction {
+  id: string;
+  view: DashboardView;
+  title: string;
+  body: string;
+  permitted: boolean;
+  action: string;
+}
+
+function getAdminActions(permissions: readonly string[]): AdminAction[] {
+  const grants = new Set(permissions);
+  return [
+    {
+      id: 'review-applications',
+      view: 'registration-review',
+      title: 'Review applications',
+      body: 'Review pending Student and Instructor registration applications.',
+      permitted: grants.has('accounts.registration_requests.read')
+        && PENDING_APPLICATIONS_LIST_ENABLED,
+      action: 'Open applications',
+    },
+    {
+      id: 'manage-school-accounts',
+      view: 'account-directory',
+      title: 'School accounts',
+      body: 'Search approved accounts and manage active or inactive status.',
+      permitted: grants.has('accounts.school_accounts.read')
+        && ACCOUNT_STATUS_ENABLED,
+      action: 'Open account directory',
+    },
+  ];
 }
 
 /** v0.1 §4.4: only permitted, working widgets render; no counts that the API does not provide (D-33). */
@@ -71,6 +110,9 @@ function Overview() {
   const { permissions } = session;
   const widgets = getWidgets(permissions);
   const groups = getVisibleNavGroups(permissions, 'main').filter((group) => group.id !== 'overview');
+  const isAdmin = session.account.roles.includes('Admin');
+  const adminActions = isAdmin ? getAdminActions(permissions) : [];
+  const adminHasAvailableAction = adminActions.some((action) => action.permitted);
 
   return (
     <div className="space-y-8">
@@ -78,9 +120,13 @@ function Overview() {
         style={{ '--db-hero-photo': `url(${campusPhoto})` } as CSSProperties}>
         <div className="relative z-10 max-w-2xl">
           <p className="dashboard-hero-eyebrow text-xs font-semibold uppercase tracking-[0.18em]">Cebu Technological University · Ginatilan</p>
-          <h2 id="dashboard-welcome" className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">Welcome to your workspace</h2>
+          <h2 id="dashboard-welcome" className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            {isAdmin ? 'Admin workspace' : 'Welcome to your workspace'}
+          </h2>
           <p className="dashboard-hero-text mt-3 text-sm leading-relaxed">
-            One shared campus dashboard. The modules below follow your current access, and every request is verified by the server.
+            {isAdmin
+              ? 'Review campus registrations and school accounts using the tools authorized for your account.'
+              : 'One shared campus dashboard. The modules below follow your current access, and every request is verified by the server.'}
           </p>
           <button className="dashboard-hero-button mt-6 inline-flex min-h-11 items-center rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             onClick={() => navigate('account')}>
@@ -89,6 +135,42 @@ function Overview() {
         </div>
         <div aria-hidden="true" className="dashboard-hero-ring absolute -right-20 -top-32 h-96 w-96 rounded-full" />
       </section>
+
+      {isAdmin && (
+        <section aria-labelledby="admin-capabilities">
+          <div className="mb-4">
+            <p className="dashboard-eyebrow">Administration</p>
+            <h2 id="admin-capabilities" className="dashboard-heading mt-1 text-xl font-bold">What you can manage</h2>
+            {!adminHasAvailableAction && (
+              <p className="dashboard-muted mt-2 text-sm">
+                Your Admin account needs activated account-management permissions before these tools can be used.
+              </p>
+            )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {adminActions.map((action) => (
+              <article key={action.id} className="dashboard-glass flex flex-col rounded-2xl p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="dashboard-heading font-semibold">{action.title}</h3>
+                  <span className={`rounded-full border px-2 py-0.5 text-xs font-medium ${action.permitted ? 'dashboard-heading' : 'dashboard-muted'}`}>
+                    {action.permitted ? 'Available' : 'Needs access'}
+                  </span>
+                </div>
+                <p className="dashboard-muted mt-2 flex-1 text-sm leading-relaxed">{action.body}</p>
+                <button
+                  type="button"
+                  className={`${primaryLink} mt-4 self-start ${action.permitted ? '' : 'opacity-50'}`}
+                  disabled={!action.permitted}
+                  onClick={() => action.permitted && navigate(action.view)}
+                >
+                  {action.action}
+                  <DashboardIcon name="chevron" width={15} height={15} />
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {widgets.length > 0 && (
         <section aria-labelledby="dashboard-glance">
@@ -171,6 +253,12 @@ export default function SessionDashboardPage() {
 
   // WF-02.05 (D-69, D-70): account directory and status controls; Django rechecks every request.
   if (view === 'account-directory' && ACCOUNT_STATUS_ENABLED) return <AccountDirectoryPanel />;
+  if (view === 'my-payments') return <FinancePage />;
+  if (view === 'my-clearance') return <ClearancePage />;
+  if (view === 'announcements') return <AnnouncementsPage />;
+  if (view === 'notifications') return <NotificationsPage />;
+  if (view === 'student-assistant') return <HelpPage />;
+  if (view === 'account-settings') return <SettingsPage />;
   if (view === 'group-rating') return <GroupRatingPage />;
   // WF-03.01 (D-86): Technical Super Admin role assignments; Django rechecks every request.
   if (view === 'role-assignments' && ROLE_ASSIGNMENT_ENABLED) return <RoleAssignmentsPanel />;

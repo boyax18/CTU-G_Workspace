@@ -76,6 +76,7 @@ INSTALLED_APPS = [
     'apps.group_rating.apps.GroupRatingConfig',
     'apps.announcements.apps.AnnouncementsConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.helpcenter.apps.HelpcenterConfig',
     'apps.support.apps.SupportConfig',
     'apps.reports.apps.ReportsConfig',
 ]

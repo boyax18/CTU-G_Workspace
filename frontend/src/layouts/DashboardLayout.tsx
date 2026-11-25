@@ -29,7 +29,13 @@ type ScreenState =
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ScreenState>({ status: 'loading' });
   const [refresh, setRefresh] = useState(0);
-  const [view, setView] = useState<DashboardView>(() => getDashboardView(window.location.search));
+  const [view, setView] = useState<DashboardView>(() =>
+    window.location.pathname === '/finance' ? 'my-payments'
+      : window.location.pathname === '/announcements' ? 'announcements'
+      : window.location.pathname === '/notifications' ? 'notifications'
+      : window.location.pathname === '/help' ? 'student-assistant'
+      : window.location.pathname === '/settings' ? 'account-settings'
+      : getDashboardView(window.location.search));
   const [search, setSearch] = useState(() => window.location.search);
   const [subpage, setSubpage] = useState<DashboardSubpage | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -48,7 +54,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const onHistory = () => {
-      setView(getDashboardView(window.location.search));
+      setView(window.location.pathname === '/finance'
+        ? 'my-payments'
+        : window.location.pathname === '/announcements'
+        ? 'announcements'
+        : window.location.pathname === '/notifications'
+        ? 'notifications'
+        : window.location.pathname === '/help'
+        ? 'student-assistant'
+        : window.location.pathname === '/settings'
+        ? 'account-settings'
+        : getDashboardView(window.location.search));
       setSearch(window.location.search);
     };
     window.addEventListener('popstate', onHistory);

@@ -7,6 +7,7 @@ interface Props {
   permissions: readonly string[];
   active: DashboardView;
   navigate: (view: DashboardView) => void;
+  unreadNotifications?: number;
   /** Desktop icon rail: labels stay available to assistive technology and as tooltips. */
   collapsed?: boolean;
 }
@@ -19,8 +20,8 @@ function followLink(event: MouseEvent<HTMLAnchorElement>, view: DashboardView, n
   navigate(view);
 }
 
-export function DashboardNavLink({ item, active, navigate, collapsed = false }: {
-  item: DashboardNavItem; active: DashboardView; navigate: Props['navigate']; collapsed?: boolean;
+export function DashboardNavLink({ item, active, navigate, collapsed = false, unreadNotifications = 0 }: {
+  item: DashboardNavItem; active: DashboardView; navigate: Props['navigate']; collapsed?: boolean; unreadNotifications?: number;
 }) {
   const soon = item.integration === 'planned';
   return (
@@ -34,11 +35,16 @@ export function DashboardNavLink({ item, active, navigate, collapsed = false }: 
       <DashboardIcon name={item.icon} />
       <span className={collapsed ? 'sr-only' : 'min-w-0 flex-1 truncate'}>{item.label}</span>
       {soon && <span className={collapsed ? 'sr-only' : 'dashboard-nav-soon rounded-full px-2 py-0.5 text-xs'}>Soon</span>}
+      {!soon && item.id === 'notifications' && (unreadNotifications ?? 0) > 0 && (
+        <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white" aria-label={`${unreadNotifications} unread notifications`}>
+          {unreadNotifications}
+        </span>
+      )}
     </a>
   );
 }
 
-export default function DashboardNavigation({ permissions, active, navigate, collapsed = false }: Props) {
+export default function DashboardNavigation({ permissions, active, navigate, collapsed = false, unreadNotifications = 0 }: Props) {
   const groups = getVisibleNavGroups(permissions, 'main');
   const onlyOverview = groups.every((group) => group.id === 'overview');
 
@@ -52,7 +58,7 @@ export default function DashboardNavigation({ permissions, active, navigate, col
           </p>
           <div className="space-y-1">
             {group.items.map((item) => (
-              <DashboardNavLink key={item.id} item={item} active={active} navigate={navigate} collapsed={collapsed} />
+              <DashboardNavLink key={item.id} item={item} active={active} navigate={navigate} collapsed={collapsed} unreadNotifications={unreadNotifications} />
             ))}
           </div>
         </div>

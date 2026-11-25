@@ -17,6 +17,7 @@ export type DashboardView =
   | 'overview'
   | 'account'
   | 'account-settings'
+  | 'student-assistant'
   // Account operations
   | 'registration-review'
   | 'account-directory'
@@ -60,7 +61,6 @@ export type DashboardNavGroupId =
   | 'finance'
   | 'teaching'
   | 'clearance'
-  | 'academic-services'
   | 'financial-management'
   | 'reports'
   | 'academic-configuration'
@@ -73,7 +73,7 @@ export type DashboardNavGroupId =
 
 export type DashboardIconName =
   | 'home' | 'user' | 'users' | 'wallet' | 'clipboard' | 'book' | 'bell' | 'settings'
-  | 'calendar' | 'chart' | 'receipt' | 'lock' | 'key' | 'list' | 'activity' | 'star';
+  | 'calendar' | 'chart' | 'receipt' | 'lock' | 'key' | 'list' | 'activity' | 'star' | 'help';
 
 export interface DashboardNavGroup {
   id: DashboardNavGroupId;
@@ -102,7 +102,6 @@ export const DASHBOARD_NAV_GROUPS: readonly DashboardNavGroup[] = [
   { id: 'finance', label: 'Finance', placement: 'main' },
   { id: 'teaching', label: 'Teaching', placement: 'main' },
   { id: 'clearance', label: 'Clearance', placement: 'main' },
-  { id: 'academic-services', label: 'Academic services', placement: 'main' },
   { id: 'financial-management', label: 'Financial management', placement: 'main' },
   { id: 'reports', label: 'Reports', placement: 'main' },
   { id: 'academic-configuration', label: 'Academic configuration', placement: 'main' },
@@ -134,11 +133,11 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     requiredAny: ['academic.profile.self.read'], integration: planned,
     description: 'Your academic profile and the subjects you submitted for the current period.' },
   { id: 'my-clearance', label: 'My clearance', icon: 'clipboard', group: 'academic',
-    requiredAny: ['clearance.requests.self.read'], integration: planned,
+    requiredAny: ['clearance.requests.self.read'], integration: 'shell',
     description: 'Your clearance requests and their progress.' },
 
   { id: 'my-payments', label: 'Payments & receipts', icon: 'wallet', group: 'finance',
-    requiredAny: ['finance.payments.self.read', 'finance.receipts.self.read'], integration: planned,
+    requiredAny: ['finance.payments.self.read', 'finance.receipts.self.read'], integration: 'shell',
     description: 'Your organizational-fee payments and receipts.' },
 
   { id: 'student-lists', label: 'Student lists', icon: 'users', group: 'teaching',
@@ -149,7 +148,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     requiredAny: ['clearance.requests.assigned.read'], integration: planned,
     description: 'Clearance requests assigned to you for review.' },
 
-  { id: 'group-rating', label: 'Group rating', icon: 'star', group: 'academic-services',
+  { id: 'group-rating', label: 'Group rating', icon: 'star', group: 'academic',
     requiredAny: ['group_rating.sheets.assigned.read'], integration: 'shell',
     description: 'Rating sheets for your assigned classes.' },
 
@@ -185,10 +184,10 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     description: 'School-wide clearance progress.' },
 
   { id: 'announcements', label: 'Announcements', icon: 'bell', group: 'campus',
-    requiredAny: ['announcements.read'], integration: planned,
+    requiredAny: ['announcements.read'], integration: 'shell',
     description: 'Official campus announcements.' },
   { id: 'notifications', label: 'Notifications', icon: 'bell', group: 'campus',
-    requiredAny: ['notifications.read_state.self.read'], integration: planned,
+    requiredAny: ['notifications.read_state.self.read'], integration: 'shell',
     description: 'Your announcement notifications.' },
 
   { id: 'role-assignments', label: 'Role assignments', icon: 'users', group: 'access-control',
@@ -222,8 +221,10 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
   { id: 'account', label: 'My profile', icon: 'user', group: 'account', integration: 'shell',
     description: 'Read-only details from your verified session.' },
   { id: 'account-settings', label: 'Account settings', icon: 'settings', group: 'account',
-    requiredAny: ['accounts.profile.self.update'], integration: planned,
+    requiredAny: ['accounts.profile.self.update'], integration: 'shell',
     description: 'Update your personal details.' },
+  { id: 'student-assistant', label: 'Help / Student Assistant', icon: 'help', group: 'account', integration: 'shell',
+    description: 'Find answers or contact the Admin Office.' },
 ];
 
 export function getVisibleDashboardItems(permissions: readonly string[]): DashboardNavItem[] {
@@ -270,5 +271,11 @@ export function getDashboardView(search: string): DashboardView {
 }
 
 export function getDashboardHref(view: DashboardView): string {
+  if (view === 'my-payments') return '/finance';
+  if (view === 'my-clearance') return '/clearance';
+  if (view === 'announcements') return '/announcements';
+  if (view === 'notifications') return '/notifications';
+  if (view === 'student-assistant') return '/help';
+  if (view === 'account-settings') return '/settings';
   return view === 'overview' ? '/dashboard' : `/dashboard?view=${encodeURIComponent(view)}`;
 }

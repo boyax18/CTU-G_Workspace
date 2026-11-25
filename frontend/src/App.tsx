@@ -8,6 +8,11 @@ import VerifyEmailPage from './features/auth/VerifyEmailPage';
 import ForgotPasswordPage from './features/auth/ForgotPasswordPage';
 import ResetPasswordPage from './features/auth/ResetPasswordPage';
 import SessionDashboardPage from './features/dashboard/SessionDashboardPage';
+import FinancePage from './features/finance/FinancePage';
+import HelpPage from './features/help/HelpPage';
+import SettingsPage from './features/settings/SettingsPage';
+import AnnouncementsPage from './features/announcements/AnnouncementsPage.tsx';
+import NotificationsPage from './features/notifications/NotificationsPage.tsx';
 
 export default function App() {
   const path = window.location.pathname.replace(/\/$/, '') || '/';
@@ -18,6 +23,30 @@ export default function App() {
         <SessionDashboardPage />
       </DashboardLayout>
     );
+  }
+
+  if (path === '/finance') {
+    return (
+      <DashboardLayout>
+        <FinancePage />
+      </DashboardLayout>
+    );
+  }
+
+  if (path === '/help') {
+    return <DashboardLayout><HelpPage /></DashboardLayout>;
+  }
+
+  if (path === '/settings') {
+    return <DashboardLayout><SettingsPage /></DashboardLayout>;
+  }
+
+  if (path === '/announcements') {
+    return <DashboardLayout><AnnouncementsPage /></DashboardLayout>;
+  }
+
+  if (path === '/notifications') {
+    return <DashboardLayout><NotificationsPage /></DashboardLayout>;
   }
 
   return (

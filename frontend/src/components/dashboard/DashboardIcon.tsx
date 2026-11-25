@@ -28,6 +28,7 @@ export default function DashboardIcon({ name, ...props }: Props) {
     list: <><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></>,
     activity: <path d="M3 12h4l3-8 4 16 3-8h4"/>,
     star: <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9L12 3Z"/>,
+    help: <><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.5 2.5 0 1 1 3.2 2.4c-.9.4-1.9 1-1.9 2.1M12 17h.01"/></>,
     menu: <path d="M4 7h16M4 12h16M4 17h16"/>,
     close: <path d="M5 5l14 14M19 5L5 19"/>,
     chevron: <path d="m9 6 6 6-6 6"/>,

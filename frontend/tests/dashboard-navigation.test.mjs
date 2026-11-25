@@ -44,17 +44,17 @@ test('ids are unique and every item belongs to a known group', () => {
 });
 
 test('no grants shows only the dashboard and the profile', () => {
-  assert.deepEqual(ids([]), ['overview', 'account']);
+  assert.deepEqual(ids([]), ['overview', 'account', 'student-assistant']);
   assert.deepEqual(groups([], 'main'), ['overview']);
   assert.deepEqual(groups([], 'utility'), ['account']);
 });
 
 test('role names do not authorize any module', () => {
-  assert.deepEqual(ids(['Admin', 'Student', 'Treasurer', 'Technical Super Admin']), ['overview', 'account']);
+  assert.deepEqual(ids(['Admin', 'Student', 'Treasurer', 'Technical Super Admin']), ['overview', 'account', 'student-assistant']);
 });
 
 test('the exact registration read grant reveals Applicant reviews under Account operations', () => {
-  assert.deepEqual(ids([READ]), ['overview', 'registration-review', 'account']);
+  assert.deepEqual(ids([READ]), ['overview', 'registration-review', 'account', 'student-assistant']);
   assert.deepEqual(groups([READ], 'main'), ['overview', 'account-operations']);
   assert.equal(getDashboardItem('registration-review').label, 'Applicant reviews');
   assert.equal(getDashboardGroup('registration-review').label, 'Account operations');
@@ -63,7 +63,7 @@ test('the exact registration read grant reveals Applicant reviews under Account 
 });
 
 test('explicit deny text is not transformed into a grant by the frontend', () => {
-  assert.deepEqual(ids([`Deny:${READ}`]), ['overview', 'account']);
+  assert.deepEqual(ids([`Deny:${READ}`]), ['overview', 'account', 'student-assistant']);
 });
 
 test('School Admin catalogue defaults show no Access control, Security or System links (v0.1 §8)', () => {
@@ -100,7 +100,7 @@ test('groups with no permitted links are hidden', () => {
 
 test('unfinished modules are marked planned; only working views are shell', () => {
   const working = DASHBOARD_NAV_ITEMS.filter((item) => item.integration === 'shell').map((item) => item.id);
-  assert.deepEqual(working, ['overview', 'account']); // list switch is off in unit tests
+  assert.deepEqual(working, ['overview', 'my-clearance', 'my-payments', 'group-rating', 'announcements', 'notifications', 'account', 'account-settings', 'student-assistant']);
 });
 
 test('querystring view is parsed only from known route keys', () => {

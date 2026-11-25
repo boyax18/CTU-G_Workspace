@@ -25,6 +25,7 @@ import DashboardNavigation, { DashboardNavLink } from './DashboardNavigation';
 import DashboardIcon from './DashboardIcon';
 import PageHeader, { Breadcrumbs } from './PageHeader';
 import UserMenu from './UserMenu';
+import { getJSON } from '../../api/client';
 
 interface Props {
   children: ReactNode;
@@ -60,6 +61,7 @@ export default function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   // Desktop expand/collapse lives in memory only (only the theme may use localStorage).
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
@@ -67,6 +69,30 @@ export default function DashboardShell({
   const item = getDashboardItem(view);
   const roles = session.account.roles.join(' · ') || 'Assigned account';
   const utilities = getVisibleNavGroups(session.permissions, 'utility').flatMap((group) => group.items);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!session.permissions.includes('notifications.read_state.self.read')) {
+      setUnreadNotifications(0);
+      return;
+    }
+    const refreshUnread = () => {
+      getJSON('/api/v1/notifications/')
+        .then((body) => {
+          if (!cancelled && body && typeof body === 'object') {
+            const count = (body as { unread_count?: unknown }).unread_count;
+            if (typeof count === 'number') setUnreadNotifications(count);
+          }
+        })
+        .catch(() => { /* keep the current badge */ });
+    };
+    refreshUnread();
+    window.addEventListener('notifications-updated', refreshUnread);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('notifications-updated', refreshUnread);
+    };
+  }, [session.permissions, view]);
 
   const closeDrawer = (restore: boolean) => {
     returnFocus.current = restore;
@@ -200,7 +226,13 @@ export default function DashboardShell({
           </button>
         </div>
 
-        <DashboardNavigation permissions={session.permissions} active={view} navigate={goTo} collapsed={rail} />
+        <DashboardNavigation
+          permissions={session.permissions}
+          active={view}
+          navigate={goTo}
+          collapsed={rail}
+          unreadNotifications={unreadNotifications}
+        />
 
         <div className="dashboard-sidebar-divider mt-auto border-t pt-4">
           <div role="group" aria-label="Account" className="mb-3 space-y-1">

@@ -285,13 +285,42 @@ try:
 except ValueError as exc:
     raise ImproperlyConfigured(str(exc)) from exc
 
+# WF-03.01: separate fail-closed HTTPS LAN *development* role context.
+# Existing localhost and HTTP Option A activation remain unchanged.
+from .https_lan_role_context import validate_https_lan_dev_role_context
+
+try:
+    WORKSPACE_ROLE_CONTEXT_HTTPS_LAN_IPS = validate_https_lan_dev_role_context(
+        os.environ,
+        debug=DEBUG,
+        allowed_hosts=ALLOWED_HOSTS,
+        database=DATABASES["default"],
+        csrf_origins=CSRF_TRUSTED_ORIGINS,
+        session_secure=SESSION_COOKIE_SECURE,
+        csrf_secure=CSRF_COOKIE_SECURE,
+        ssl_redirect=SECURE_SSL_REDIRECT,
+        proxy_ssl_header=SECURE_PROXY_SSL_HEADER,
+        hsts_seconds=SECURE_HSTS_SECONDS,
+    )
+except ValueError as exc:
+    raise ImproperlyConfigured(str(exc)) from exc
+
 WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED = (
     _WORKSPACE_NORMAL_ROLE_CONTEXT_ACK
     or WORKSPACE_ROLE_CONTEXT_LAN_DEV_IP is not None
+    or WORKSPACE_ROLE_CONTEXT_HTTPS_LAN_IPS is not None
 )
 if WORKSPACE_ROLE_CONTEXT_LAN_DEV_IP is not None:
     # Django must stay loopback-only behind Vite; refuse direct LAN callers.
     MIDDLEWARE = ["apps.accounts.lan_dev_proxy_guard.LANDevLoopbackProxyGuard", *MIDDLEWARE]
+if WORKSPACE_ROLE_CONTEXT_HTTPS_LAN_IPS is not None:
+    # Both the loopback source address and Vite's forced HTTPS proxy header
+    # are required before Django may accept authenticated API requests.
+    MIDDLEWARE = [
+        "apps.accounts.https_lan_proxy_guard.HTTPSLANProxyGuard",
+        "apps.accounts.lan_dev_proxy_guard.LANDevLoopbackProxyGuard",
+        *MIDDLEWARE,
+    ]
 if WORKSPACE_ACTIVE_ROLE_CONTEXT_ENABLED:
     # After authentication + session timeout, before any API view permission checks.
     MIDDLEWARE = [*MIDDLEWARE, "apps.accounts.active_role_context.ActiveRoleContextMiddleware"]

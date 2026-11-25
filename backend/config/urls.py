@@ -54,5 +54,9 @@ urlpatterns = [
     # is on; HDAC (academic.periods.manage, Admin assignment/context, Deny precedence) on every request.
     # No activation, closure, archiving, fee or curriculum route exists.
     path('api/v1/academic/', include('apps.academic.urls')),
+    # Semester organizational fee configuration: 503 unless WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED;
+    # approval also needs WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED. Exact finance.fee_schedule.manage via a
+    # genuine Admin role grant (not provided by the pinned v2.2 catalogue). No payment/obligation route.
+    path('api/v1/finance/', include('apps.finance.urls')),
     path('admin/', admin.site.urls),
 ]

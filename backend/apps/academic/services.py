@@ -30,7 +30,7 @@ from django.conf import settings
 from django.db import DEFAULT_DB_ALIAS, IntegrityError, transaction
 from django.db.models import ProtectedError, RestrictedError
 
-from apps.access_control.models import AccountRole, Permission, Service
+from apps.access_control.models import AccountRole, Permission, RolePermission, Service
 from apps.access_control.services import has_permission
 from apps.access_control.writer_boundary import WriterBoundaryUnavailable
 from apps.accounts.active_role_context import allowed_role_ids, context_enabled, selected_scope
@@ -117,7 +117,7 @@ def _executor_enabled():
         return True  # an invalid writer configuration is never a reason to proceed
 
 
-def authorize(actor, permission_code=PERMISSION_CODE, gate=None):
+def authorize(actor, permission_code=PERMISSION_CODE, gate=None, admin_role_grant=False):
     """Steps 1-5 of the module docstring, from fresh database reads. Returns Authorization.
 
     ``permission_code`` is the operation's exact catalogue code (academic configuration reuses this
@@ -155,6 +155,14 @@ def authorize(actor, permission_code=PERMISSION_CODE, gate=None):
         raise AcademicPeriodUnavailable("The academic service is not active.")
     if type(permission_code) is not str or not has_permission(account, permission_code):
         raise AcademicPeriodDenied()
+    if admin_role_grant:
+        # Narrowing only (semester fee setting): the code must reach this account through an active
+        # grant of one of its genuine Admin roles. Another role's grant (e.g. the pinned Treasurer
+        # default) or a direct account Grant alone never authorizes, even when role context is off.
+        if not RolePermission.objects.using(DEFAULT_DB_ALIAS).filter(
+                role_id__in=admin_role_ids, role__is_active=True, is_active=True,
+                permission__permission_code=permission_code).exists():
+            raise AcademicPeriodDenied()
     return Authorization(account, acting_role_id)
 
 
@@ -162,7 +170,7 @@ def _atomic():
     return transaction.atomic(using=DEFAULT_DB_ALIAS, durable=True)
 
 
-def lock_and_authorize(actor, permission_code=PERMISSION_CODE, gate=None):
+def lock_and_authorize(actor, permission_code=PERMISSION_CODE, gate=None, admin_role_grant=False):
     """Inside the caller's transaction: lock services -> permission -> account, then re-authorize.
 
     Every academic write locks the academic service row first, so all academic writes serialize
@@ -187,7 +195,7 @@ def lock_and_authorize(actor, permission_code=PERMISSION_CODE, gate=None):
         list(Account.objects.using(DEFAULT_DB_ALIAS).select_for_update().filter(pk=actor.pk))
     if permission_code == PERMISSION_CODE and gate is None:
         return authorize(actor)
-    return authorize(actor, permission_code, gate)
+    return authorize(actor, permission_code, gate, admin_role_grant)
 
 
 def write_audit(auth, *, action, school_year_id, semester_id=None, old_value=None, new_value=None, reason,

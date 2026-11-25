@@ -20,6 +20,7 @@ import { EFFECTIVE_ACCESS_INSPECT_ENABLED } from '../access-control/effectiveAcc
 import { ACCESS_AUDIT_ENABLED } from '../access-control/accessAuditConfig.ts';
 import { ACADEMIC_PERIODS_ENABLED } from '../academic/academicPeriodsConfig.ts';
 import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfigurationConfig.ts';
+import { SEMESTER_FEE_CONFIGURATION_ENABLED } from '../finance/semesterFeesConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -47,6 +48,7 @@ export type DashboardView =
   | 'financial-reports'
   // School configuration and oversight
   | 'school-periods'
+  | 'semester-fees'
   | 'academic-references'
   | 'clearance-monitoring'
   // Campus
@@ -196,6 +198,11 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
   { id: 'school-periods', label: 'School years & semesters', icon: 'calendar', group: 'academic-configuration',
     requiredAny: ['academic.periods.manage'], integration: ACADEMIC_PERIODS_ENABLED ? 'shell' : planned,
     description: 'School years, semesters and their dates.' },
+  // School Admin semester organizational fee. The server additionally requires the code through a genuine
+  // Admin role grant (governance pending); a Treasurer who sees this link is refused before any control shows.
+  { id: 'semester-fees', label: 'Semester fees', icon: 'wallet', group: 'academic-configuration',
+    requiredAny: ['finance.fee_schedule.manage'], integration: SEMESTER_FEE_CONFIGURATION_ENABLED ? 'shell' : planned,
+    description: 'The full organizational fee for each semester: draft, approval and history.' },
   // Academic configuration foundation: live only when its switch is on; each tab needs its exact code.
   { id: 'academic-references', label: 'Academic settings', icon: 'book', group: 'academic-configuration',
     requiredAny: ['academic.courses.manage', 'academic.sections.manage', 'clearance.subjects.manage',

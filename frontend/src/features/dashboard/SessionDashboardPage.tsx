@@ -34,6 +34,8 @@ import SchoolPeriodsPanel from '../academic/SchoolPeriodsPanel';
 import { ACADEMIC_PERIODS_ENABLED } from '../academic/academicPeriodsConfig';
 import AcademicSettingsPanel from '../academic/AcademicSettingsPanel';
 import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfigurationConfig';
+import SemesterFeesPanel from '../finance/SemesterFeesPanel';
+import { SEMESTER_FEE_CONFIGURATION_ENABLED } from '../finance/semesterFeesConfig';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
 
 const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
@@ -216,6 +218,8 @@ export default function SessionDashboardPage() {
   if (view === 'school-periods' && ACADEMIC_PERIODS_ENABLED) return <SchoolPeriodsPanel />;
   // Academic configuration foundation: default-off; each tab's exact code is re-checked by Django.
   if (view === 'academic-references' && ACADEMIC_CONFIGURATION_ENABLED) return <AcademicSettingsPanel />;
+  // Semester organizational fee (School Admin): default-off; Django authorizes every request.
+  if (view === 'semester-fees' && SEMESTER_FEE_CONFIGURATION_ENABLED) return <SemesterFeesPanel />;
 
   return <ModuleUnavailable onBack={back} />;
 }

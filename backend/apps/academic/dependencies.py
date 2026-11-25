@@ -7,11 +7,12 @@ Each check is a small read-side *source* that reports what it can actually estab
   WF11-D05/D06): ``evaluated`` with a real count, or ``unavailable``. An unimplemented module is
   NEVER reported as zero.
 
-Inspected 25 Nov 2026: apps.finance, apps.clearance and apps.group_rating define no models; no
-fee schedule, Student semester participation (WF-05.05), clearance or signature record exists.
-The default bundle therefore reports those sources as ``unavailable``, which keeps activation
-(the fee is still required) and every edit whose impact cannot be evaluated refused at runtime.
-Academic offerings are real since migration academic.0003 (``OfferingPrerequisite``). When
+Inspected 25 Nov 2026: apps.clearance and apps.group_rating define no models; no Student semester
+participation (WF-05.05), fee obligation, clearance or signature record exists. The default bundle
+therefore reports those sources as ``unavailable``, which keeps every edit whose impact cannot be
+evaluated refused at runtime. Academic offerings are real since academic.0003
+(``OfferingPrerequisite``) and the approved semester fee since finance.0001
+(``ApprovedFeePrerequisite``); activation still also needs its own switch and HDAC. When
 a dependent module is implemented, replace its ``Unavailable*`` entry in ``DEFAULT_BUNDLE`` with a
 real read-only adapter; nothing else changes.
 
@@ -88,6 +89,19 @@ class OfferingPrerequisite:
         return CheckResult(self.key, READY)
 
 
+class ApprovedFeePrerequisite:
+    """Real read-only check (finance migration 0001): the semester's genuinely approved full
+    organizational fee. Delegates to apps.finance.fees.fee_readiness, which distinguishes not
+    configured, awaiting approval, disabled, inactive service, inconsistent and unreadable states.
+    An approved ₱0.00 is ready; a missing fee never is. Grants no fee-setting authority."""
+
+    key = "approved_fee"
+
+    def evaluate(self, semester):
+        from apps.finance.fees import fee_readiness
+        return fee_readiness(semester)
+
+
 class UnavailablePrerequisite:
     def __init__(self, key, reason):
         self.key, self.reason = key, reason
@@ -113,8 +127,9 @@ class DependencyBundle:
 
 DEFAULT_BUNDLE = DependencyBundle(
     prerequisites=(
-        # The governed semester fee needs the pending finance.fee_schedule.manage revision and a fee model.
-        UnavailablePrerequisite("approved_fee", "fee_schedule_not_implemented"),
+        # Real since finance.0001. Fee approval itself needs finance.fee_schedule.manage through a
+        # genuine Admin role grant (governance pending), so without one no fee can be approved.
+        ApprovedFeePrerequisite(),
         # Real since the academic configuration foundation. A query failure (e.g. tables not yet
         # migrated) is reported "unavailable" by _by_key, never as ready.
         OfferingPrerequisite(),

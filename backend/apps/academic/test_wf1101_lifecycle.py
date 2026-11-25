@@ -77,7 +77,7 @@ class ActivationTests(TestCase):
         preview = lifecycle.activation_preview(actor=self.w.admin, semester_id=self.first)
         self.assertEqual(preview["prerequisites"], [
             {"key": "valid_dates", "status": "ready", "reason": ""},
-            {"key": "approved_fee", "status": "unavailable", "reason": "fee_schedule_not_implemented"},
+            {"key": "approved_fee", "status": "unavailable", "reason": "fee_source_disabled"},
             # Real since academic.0003: no offering exists for this semester, so it is missing (not ready).
             {"key": "academic_offerings", "status": "missing", "reason": "no_valid_offerings"}])
         self.assertEqual((preview["can_confirm"], preview["blockers"]), (False, ["prerequisites_missing"]))

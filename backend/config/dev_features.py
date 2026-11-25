@@ -126,6 +126,17 @@ FEATURES = (
                             "VITE_WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED"),
             requires=("wf11.academic_configuration",),
             note="Awaits HDAC governance of the curriculum/offering permission mapping."),
+    # Semester organizational fee (25 Nov 2026): registered, NOT approved for any mode. Needs finance
+    # migration 0001 on ctug_workspace and a reviewed overlay giving Admin finance.fee_schedule.manage.
+    Feature("wf11.semester_fee_configuration", "WF-11.01 / WF-07.02 dependency", "Semester fee configuration (Draft)",
+            backend_env={"WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED",),
+            note="Pinned v2.2 binds finance.fee_schedule.manage to Treasurer only; School Admin is refused until governance."),
+    Feature("wf11.semester_fee_approval", "WF-11.01 / WF-07.02 dependency", "Semester fee approval",
+            backend_env={"WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED",),
+            requires=("wf11.semester_fee_configuration",),
+            note="Does not enable academic-period transitions."),
 )
 
 # One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).

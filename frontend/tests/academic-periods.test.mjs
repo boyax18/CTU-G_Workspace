@@ -185,7 +185,7 @@ const ref = (overrides = {}) => ({ semester_id: 7, term: 'first', label: 'First 
   start_date: '2026-08-10', end_date: '2026-12-18', version: 2, school_year_id: 4, school_year_label: '2026–2027', ...overrides });
 const activation = (overrides = {}) => ({ semester: ref(), current_active: null, prerequisites: [
   { key: 'valid_dates', status: 'ready', reason: '' },
-  { key: 'approved_fee', status: 'unavailable', reason: 'fee_schedule_not_implemented' },
+  { key: 'approved_fee', status: 'unavailable', reason: 'fee_source_disabled' },
   { key: 'academic_offerings', status: 'unavailable', reason: 'curriculum_offerings_not_implemented' }],
 warnings: [], blockers: ['prerequisites_missing'], feature_enabled: false, can_confirm: false, ...overrides });
 const counts = (keys, status = 'unavailable', count = null) =>

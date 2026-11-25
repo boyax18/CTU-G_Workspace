@@ -92,7 +92,7 @@ test('with the lifecycle switches off, the activation review is read-only and no
       return args.respond({ semester: { semester_id: 11, term: 'first', label: 'First semester', status: 'Draft',
         start_date: '2026-08-10', end_date: '2026-12-18', version: 2, school_year_id: 1, school_year_label: '2026–2027' },
       current_active: null, prerequisites: [{ key: 'valid_dates', status: 'ready', reason: '' },
-        { key: 'approved_fee', status: 'unavailable', reason: 'fee_schedule_not_implemented' },
+        { key: 'approved_fee', status: 'unavailable', reason: 'fee_source_disabled' },
         { key: 'academic_offerings', status: 'unavailable', reason: 'curriculum_offerings_not_implemented' }],
       warnings: [], blockers: ['prerequisites_missing', 'feature_disabled'], feature_enabled: false, can_confirm: false });
     }

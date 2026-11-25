@@ -1,0 +1,90 @@
+# Proposal: post-v2.2 overlay for `finance.fee_schedule.manage` (semester organizational fee)
+
+**Status:** PROPOSAL ONLY. Not installed, not reviewed and not provisioned. The pinned v2.0, v2.1 and
+v2.2 manifests, validators, digests and default bindings are unchanged. Nothing in this document
+grants any account or role a permission.
+
+**Date:** 25 November 2026 · **Source decisions:** WF11 R-01 (`docs/workflows/WF11_Reconciliation_2026-11-25/WF11_Approved_Documentation_Reconciliation_Record.md`), security readiness review §1 (`WF11_PreImplementation_Security_Readiness_Review_2026-11-25.md`).
+
+## 1. The conflict
+
+| Item | Pinned state (v2.0 → v2.1 → v2.2) | Approved business rule (R-01) |
+| --- | --- | --- |
+| `finance.fee_schedule.manage` default role | **Treasurer** only (v2.1/v2.2 do not touch it) | **School Admin** configures and approves the full semester organizational fee |
+| Definition | "Maintain period fee amounts under approved rules; do not rewrite amounts used by historical payments." Service `finance`, scope `FINANCE`, protection `ORD` | Treasurer keeps cash collection, receipts and payment records |
+
+The v2.2 delta's `independent_review.status` is still `OPEN`.
+
+## 2. How the code behaves today (no overlay)
+
+`apps.finance.fees` authorizes every fee operation with the existing HDAC evaluator and one narrowing
+rule (`services.authorize(..., admin_role_grant=True)`): the exact code must reach the account
+**through an active grant of one of its genuine Admin roles**. It also requires the selected Admin
+context, active academic and finance services, and account-specific Deny precedence.
+
+Consequences under the pinned catalogue:
+- School Admin is refused (no Admin binding exists).
+- Treasurer is refused (no Admin assignment).
+- A dual Treasurer+Admin account is refused even with role context off, because the code reaches it
+  only through the Treasurer role.
+- A direct account Grant alone is refused.
+
+So **no account can configure or approve a semester fee at runtime until a reviewed overlay exists**,
+and semester activation keeps failing closed on `approved_fee`. Isolated tests prove the success path
+with an explicit, throwaway-database-only Admin binding.
+
+## 3. Breadth review
+
+- The `finance` service covers organization fee schedules, payments, receipts, funds, expenses and
+  exemptions. Each of these, except the fee schedule, has its own separate code
+  (`finance.payments.*`, `finance.receipts.issue`, `finance.funds.record`, `finance.expenses.record`,
+  `finance.exemptions.manage`).
+- `finance.fee_schedule.manage` maintains **period fee amounts**. The only period fee the system models
+  is the semester organizational fee (`finance_semester_fee_*` tables), so its present meaning matches
+  R-01.
+- **Risk:** if a future slice adds other period fee types (for example, a separate event fee), this
+  code would silently extend School Admin authority to them. The future slice must then introduce a
+  narrower code rather than reuse this one.
+
+## 4. Proposed overlay (to be reviewed; not executed)
+
+**Option A (recommended, consistent with the readiness review).** A versioned `v2_3_delta.json`
+containing only:
+1. Remove the default binding `Treasurer → finance.fee_schedule.manage`.
+2. Add the default binding `Admin → finance.fee_schedule.manage`.
+
+Keep the exact code, its definition, service, scope and `ORD` protection. Keep every other binding.
+
+**Option B (if reviewers judge the code too broad).** Add a narrow code such as
+`finance.semester_fee.manage` bound to Admin, and leave `finance.fee_schedule.manage` unchanged. This
+needs a one-line code change in `apps/finance/fees.py` (`PERMISSION_CODE`) plus its tests.
+
+**Preserved in both options:**
+- Every account-specific Grant and Deny row; a Deny still overrides.
+- Selected-role context behaviour: Treasurer context never authorizes fee setting.
+- Treasurer keeps `finance.fee_schedule.read` and all payment, receipt, fund, expense and ledger codes.
+- Admin gains no `access_control.*` default.
+- The v2.0, v2.1 and v2.2 files and digests.
+
+## 5. Potentially affected holders
+
+- **Static (catalogue):** the Treasurer role default binding (1 row).
+- **Live `ctug_workspace`:** not inventoried. No connection was made. Before review, run a read-only
+  inventory of:
+  - `role_permissions` rows for the code: role, `is_active`, granted_by.
+  - `account_permissions` Grant/Deny rows for the code: account, effect, `is_active`, and any role scope.
+  - Accounts holding both Treasurer and Admin assignments.
+
+  Report counts only; do not include personal data.
+- **Runtime callers:** only `apps.finance.fees` checks this code. No other endpoint relies on the
+  Treasurer binding.
+
+## 6. Steps still required (none are authorized by this document)
+
+1. Independent security and governance review of the breadth (§3) and of Option A vs B.
+2. Read-only live inventory (§5) and an impact note.
+3. Author the overlay JSON, extend the validator chain (v2.3), pin its digest and add tests.
+4. Separately authorized provisioning on `ctug_workspace`, after the finance `0001` migration has been
+   separately approved and applied.
+5. Separate owner decisions to turn on `WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED` and
+   `WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED` for a launcher mode.

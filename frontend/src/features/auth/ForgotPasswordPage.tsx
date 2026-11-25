@@ -6,7 +6,8 @@ import ApiErrorNotice from '../../components/common/ApiErrorNotice';
 import { ApiError, initializeCSRF } from '../../api/client';
 import { codeGuidance, normalizeCode } from './registrationFeedback';
 import {
-  confirmPasswordReset, describeRecoveryFailure, RECOVERY_ASSISTED_HINT, RECOVERY_ASSISTED_INTRO, RECOVERY_CODE_SENT,
+  ASSISTED_RECOVERY_ENABLED, confirmPasswordReset, describeRecoveryFailure, RECOVERY_ASSISTED_HINT, RECOVERY_ASSISTED_INTRO,
+  RECOVERY_CODE_SENT, RECOVERY_VERIFY_FIRST_HINT,
   RECOVERY_PASSWORD_HINT, requestPasswordReset, verifyAssistedRecoveryCode, verifyPasswordResetCode,
 } from './passwordReset';
 import type { RecoveryFailureKind, RecoveryStep } from './passwordReset';
@@ -14,6 +15,7 @@ import type { RecoveryFailureKind, RecoveryStep } from './passwordReset';
 type Stage = 'email' | 'code' | 'assisted' | 'password' | 'done';
 
 const startsAssisted = () => {
+  if (!ASSISTED_RECOVERY_ENABLED) return false;
   try { return new URLSearchParams(window.location.search).get('recovery') === 'code'; } catch { return false; }
 };
 
@@ -174,9 +176,11 @@ export default function ForgotPasswordPage() {
             <Button type="submit" fullWidth loading={pending} disabled={retryWait > 0}
               aria-describedby={retryWait > 0 ? 'recover-retry-wait' : undefined}>{pending ? 'Sending…' : 'Send code'}</Button>
             {waitNote}
-            <button type="button" className="link-accent text-sm" disabled={pending} onClick={() => switchAssisted(true)}>
-              I have an account recovery code
-            </button>
+            {ASSISTED_RECOVERY_ENABLED && (
+              <button type="button" className="link-accent text-sm" disabled={pending} onClick={() => switchAssisted(true)}>
+                I have an account recovery code
+              </button>
+            )}
           </form>
         )}
 
@@ -219,7 +223,7 @@ export default function ForgotPasswordPage() {
               <Button type="button" variant="outline" size="sm" disabled={pending} onClick={startOver}>Start over</Button>
               {resendWait > 0 && <span id="recover-resend-wait" className="fg-muted text-xs">Resend available in {resendWait}s</span>}
             </div>
-            <p className="fg-muted mt-3 text-xs">{RECOVERY_ASSISTED_HINT}</p>
+            <p className="fg-muted mt-3 text-xs">{ASSISTED_RECOVERY_ENABLED ? RECOVERY_ASSISTED_HINT : RECOVERY_VERIFY_FIRST_HINT}</p>
           </>
         )}
 

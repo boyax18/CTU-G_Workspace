@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { scene, reference, privateText } from './registrationHarness.mjs';
 
+// The assisted-recovery UI is build-gated (default off); this isolated test server turns it on.
+process.env.VITE_WORKSPACE_ASSISTED_RECOVERY_ENABLED = '1';
+
 const fail = (code, fields) => ({ error: { code, message: privateText, ...(fields ? { fields } : {}) } });
 const sent = { status: 'code_requested', message: 'x', resend_after: 60, code_valid_seconds: 600 };
 

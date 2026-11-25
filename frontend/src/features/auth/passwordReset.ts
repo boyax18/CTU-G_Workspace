@@ -48,6 +48,10 @@ export const RECOVERY_RESET_UNCERTAIN = 'We could not confirm whether your passw
 // 25 Nov 2026: an accepted request (HTTP 202) is not a delivered email, so the copy never says "sent".
 export const RECOVERY_CODE_SENT = 'If an eligible account uses this email, a 6-digit code is on its way. It can take a few minutes; check Spam too.';
 export const RECOVERY_ASSISTED_HINT = 'No email? If you never verified your email, sign in and verify it on My profile, or ask the campus administrator for an account recovery code.';
+export const RECOVERY_VERIFY_FIRST_HINT = 'No email? If you never verified your email, sign in and verify it on My profile first. Otherwise contact the campus administrator.';
+/** Assisted recovery UI stays hidden unless the build sets VITE_WORKSPACE_ASSISTED_RECOVERY_ENABLED=1;
+ *  Django's own default-off WORKSPACE_ASSISTED_RECOVERY_ENABLED gate remains the authority. */
+export const ASSISTED_RECOVERY_ENABLED: boolean = import.meta.env?.VITE_WORKSPACE_ASSISTED_RECOVERY_ENABLED === '1';
 export const RECOVERY_ASSISTED_INTRO = 'Enter your registered email and the account recovery code the campus administrator arranged for you.';
 export const RECOVERY_PASSWORD_HINT = 'Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your CTU-G ID or email.';
 

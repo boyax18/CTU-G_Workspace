@@ -1,6 +1,6 @@
 ﻿# CTU-G Workspace — Development Status
 
-**As of:** November 24, 2026
+**As of:** November 25, 2026
 **Basis:** Current WF-02 source inspection and isolated verification below. Older phase records are historical evidence, not a continuous live database audit.
 
 ## 0. WF-02 dashboard integration — current checkpoint
@@ -47,6 +47,40 @@
 - A read-only count against `ctug_workspace` found 4 eligible Pending applicants and 1 eligible ordinary directory account; the decision outbox has zero rows. No personal fields were selected. No valid active wrapping key was present in process, user, machine or project `.env` configuration, so the backend advertises no usable decision actions and approval/rejection refuse before mutation.
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
+
+### 0.13 Email delivery: root cause fixed and verified in real inboxes — 25 November 2026
+
+- **Root cause (confirmed):** every branded email embedded the campus logo as an inline `multipart/related` PNG. From the campus Gmail sender (a Google account created 23 Nov), Gmail accepted those messages (250 OK, in Sent, no bounce) but never delivered them, in any folder. Owner-authorized single-variable tests to the same mailbox:
+
+  | Test | Content | Arrived? |
+  |---|---|---|
+  | A | plain text | yes |
+  | B | full branded email | no |
+  | C | OTP plain text | yes, Inbox |
+  | D | B without the logo | yes |
+
+  The fix is in commit "stop embedding the logo image": every notification is now `alternative(text/plain, text/html)` with no image.
+- **Diagnostics added:**
+  - Gmail's `DATA` reply (queue ID) is recorded per message.
+  - `recipient_confirmed` is logged when the code from that exact message is redeemed.
+  - A durable `.local/ctug-dev/logs/email-trace.log` survives launcher restarts.
+  - `email_delivery_report --trace <corr>` follows one message from request to final state.
+- **Live end-to-end through the real frontend (owner at the browser, `-Local`):**
+  - **My profile verification, #9:** corr `4e62fb735fe9aa30`, outbox #5. Gmail 250, receipt CONFIRMED, proof saved, audit #42.
+  - **Forgot Password, #9:** reset code corr `a9f1508fa9bb5192` (outbox #6), receipt CONFIRMED. Password reset, then sign-in with the new password succeeded. Reset record cleared, so the ticket cannot be reused. Password-changed notice `5f32f8a4931d07e5` (outbox #7): arrival reported by the owner.
+  - **Student registration ×2:** corr `0e00742a46d8c0a3` and `06029e66e6e518fc`, receipt CONFIRMED, Pending accounts #12 and #14 created.
+  - **Instructor registration:** corr `556ed3e27535a9f6`, receipt CONFIRMED, Pending #13 created.
+  - **Decisions through the fixed worker, all Gmail 250:**
+    - Individual reject of #12 (`dec-3`): arrival reported by the owner.
+    - Individual approve of #13 (`dec-4`).
+    - One Bulk Reject (`dec-5`…`dec-7`): arrival reported by the owner for the test applicant.
+- **Real data changed by these owner UI actions:**
+  - #9's email is verified and its password was changed by the owner.
+  - Test Instructor #13 is now **Approved and active**.
+  - The Bulk Reject covered **#8 and #10, pre-existing real Pending applicants**, as well as test applicant #14. Their registrations were deleted under the retention rule, and rejection notices were sent to them.
+  - Applicant #11's 24 Nov rejection (decision outbox #1) is still `Pending` and was not sent.
+- **Tests:** 2227/2231 backend tests. The 4 failures are the pre-existing stale tests listed under 0.11, unrelated to email.
+- **Remaining limitation:** the sender is a two-day-old consumer Gmail account with no delivery events and consumer sending limits. For production, use a transactional provider on an authenticated campus domain (SPF/DKIM/DMARC). That change needs owner approval.
 
 ### 0.12 Email verification and assisted recovery for existing accounts — 25 November 2026
 

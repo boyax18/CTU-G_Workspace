@@ -11,11 +11,17 @@
   | B | full branded verification email | no |
   | C | the verification plain text (OTP wording) | yes, Inbox |
   | D | B without the logo | yes |
-  | E | B with the logo but without the hidden preheader | not reported |
+  | E | B with the logo but without the hidden preheader | not among the messages the owner showed |
 
   B and D differ only in the logo.
+- **Live verification after the fix, through the real frontend:** every OTP flow showed receipt CONFIRMED (code redeemed), each with a Gmail 250 reply:
+  - My profile verification (#9);
+  - Forgot Password (#9), which then reset the password and signed in with the new one;
+  - Student registration ×2 and Instructor registration.
+
+  The owner saw the password-changed notice, the individual rejection and the test applicant's bulk-rejection notice arrive. The approval notice (`dec-4`) was accepted by Gmail; its arrival was not reported. The app's own `@gmail.com` Message-ID did not affect delivery. Details and the real-data effects of the owner's UI actions are in DEVELOPMENT_STATUS §0.13.
 - **Fix:** `email_design` no longer embeds any image. Every notification is `multipart/alternative(text/plain, text/html)` with the same branded layout, about 6 KB instead of 33 KB. This covers registration OTP (Student and Instructor), My profile verification, password reset, password changed, and approval and rejection, including bulk. The design tests now guard against any image part.
-- **Tests:** email, OTP, recovery, outbox, approval, rejection and bulk suites 284/284.
+- **Tests:** email, OTP, recovery, outbox, approval, rejection and bulk suites 284/284; all 124 backend test modules 2227/2231 on the final code. The 4 failures are the same pre-existing stale tests (p3c approval; pending-list/detail `email` field) and none involves email delivery.
 
 ### 25 November 2026 — Email delivery evidence: provider reply, receipt proof, durable trace
 

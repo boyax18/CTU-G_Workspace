@@ -307,3 +307,26 @@ class SchoolYearHistoryView(AcademicPeriodAPI):
         if not raw.isascii() or not raw.isdecimal() or len(raw) > 4:
             raise services.AcademicPeriodInvalid({"page": "invalid"})
         return Response(history.school_year_history(actor=actor, school_year_id=school_year_id, page=int(raw)))
+
+
+class CurrentAcademicPeriodView(AcademicPeriodAPI):
+    """FR-ACA-07 read-only current period for any role with academic.catalogue.read (see catalogue.py)."""
+
+    http_method_names = ["get", "head", "options"]
+
+    def initial(self, request, *args, **kwargs):
+        from . import catalogue
+        if not catalogue.catalogue_enabled():
+            raise AcademicPeriodsUnavailable()
+        WorkspaceSessionAPI.initial(self, request, *args, **kwargs)  # the period-management gate does not apply
+
+    def handle_exception(self, exc):
+        if isinstance(exc, (services.AcademicPeriodUnavailable, AcademicPeriodsUnavailable)):
+            return _error("academic_catalogue_unavailable", "The academic catalogue is unavailable.", 503)
+        return super().handle_exception(exc)
+
+    def get(self, request):
+        from . import catalogue
+        if request.query_params:
+            raise exceptions.ValidationError("Unsupported query fields.")
+        return Response(catalogue.current_period(actor=self.actor(request)))

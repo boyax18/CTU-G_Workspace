@@ -215,9 +215,12 @@ class DraftServiceTests(TestCase):
                          [(SemesterTerm.FIRST, "Draft", None, None, None, None),
                           (SemesterTerm.SECOND, "Draft", None, None, None, None)])
         self.assertEqual([s["term"] for s in payload["semesters"]], ["first", "second"])
-        self.assertTrue(all(s["activation"] == {"available": False, "missing": ["valid_dates", "approved_fee",
-                                                                               "academic_offerings"]}
-                            for s in payload["semesters"]))
+        self.assertTrue(all(s["activation"] == {
+            "available": False, "missing": ["valid_dates", "approved_fee", "academic_offerings"],
+            "checks": [{"key": "valid_dates", "status": "missing", "reason": "dates_incomplete"},
+                       {"key": "approved_fee", "status": "unavailable", "reason": "fee_source_disabled"},
+                       {"key": "academic_offerings", "status": "missing", "reason": "no_valid_offerings"}]}
+            for s in payload["semesters"]))
         self.assertTrue(payload["can_delete"])
         audit = AcademicPeriodAuditLog.objects.get()
         self.assertEqual((audit.actor_account_id, audit.action, audit.school_year_id, audit.acting_role_id, audit.reason),

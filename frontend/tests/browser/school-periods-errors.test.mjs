@@ -77,8 +77,8 @@ test('empty state, create with validation, then both Draft semesters appear with
     assert.ok(fake.state.posts[0].csrf);
     await page.getByRole('heading', { name: 'S.Y. 2026–2027', level: 3 }).waitFor();
     const main = await page.locator('main').innerText();
-    for (const text of ['First semester', 'Second semester', 'Activation prerequisites', 'Not ready',
-      'Review activation for the current details.']) assert.ok(main.includes(text), text);
+    for (const text of ['First semester', 'Second semester', 'Activation readiness', 'Missing configuration',
+      'The server checks everything again when activation is confirmed.']) assert.ok(main.includes(text), text);
     // No fee control is ever offered; lifecycle actions are reviews, not direct operations.
     assert.equal(await page.getByRole('button', { name: /fee/i }).count(), 0);
     assert.equal(await page.getByRole('button', { name: /^(activate|close|archive)/i }).count(), 0);

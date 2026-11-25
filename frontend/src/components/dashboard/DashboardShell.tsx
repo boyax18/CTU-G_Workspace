@@ -18,6 +18,8 @@ import type { KeyboardEvent, ReactNode } from 'react';
 import type { AuthenticatedWorkspaceSession } from '../../features/auth/session';
 import type { DashboardSubpage } from '../../contexts/DashboardContext';
 import type { DashboardView } from '../../features/dashboard/navigation';
+import { ACADEMIC_CATALOGUE_ENABLED, CATALOGUE_CODE, getCurrentPeriod } from '../../features/academic/academicCatalogueApi';
+import type { CurrentPeriod } from '../../features/academic/academicCatalogueApi';
 import { getDashboardItem, getVisibleNavGroups } from '../../features/dashboard/navigation';
 import ThemeToggle from '../common/ThemeToggle';
 import logo from '../../assets/logo.png';
@@ -48,15 +50,33 @@ interface Props {
 
 const DESKTOP = '(min-width: 1024px)';
 const PERIOD_HINT = 'The active school year and semester appear here once academic periods are configured.';
+type PeriodState = { status: 'off' } | { status: 'unknown' } | { status: 'ready'; period: CurrentPeriod | null };
 const iconButton = 'dashboard-topbar-icon rounded-lg p-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 
-function AcademicPeriod({ className }: { className: string }) {
+/** Server-provided current period (FR-ACA-07). A failed or unavailable read is never shown as "no semester". */
+function AcademicPeriod({ className, state }: { className: string; state: PeriodState }) {
+  const value = state.status !== 'ready' ? 'not yet configured'
+    : state.period ? `S.Y. ${state.period.school_year_label} · ${state.period.label}` : 'no active semester';
   return (
-    <p className={`dashboard-muted items-center gap-2 text-xs ${className}`} title={PERIOD_HINT}>
+    <p className={`dashboard-muted items-center gap-2 text-xs ${className}`} title={state.status === 'ready' ? undefined : PERIOD_HINT}>
       <DashboardIcon name="calendar" width={15} height={15} />
-      <span>Academic period: <span className="dashboard-heading font-medium">not yet configured</span></span>
+      <span>Academic period: <span className="dashboard-heading font-medium">{value}</span></span>
     </p>
   );
+}
+
+/** Reads the current period only when this build enables the catalogue and the session reports the exact code. */
+function useCurrentPeriod(permissions: readonly string[]): PeriodState {
+  const allowed = ACADEMIC_CATALOGUE_ENABLED && permissions.includes(CATALOGUE_CODE);
+  const [state, setState] = useState<PeriodState>({ status: 'unknown' });
+  useEffect(() => {
+    if (!allowed) return;
+    let cancelled = false;
+    getCurrentPeriod().then((period) => { if (!cancelled) setState({ status: 'ready', period }); })
+      .catch(() => { if (!cancelled) setState({ status: 'unknown' }); });
+    return () => { cancelled = true; };
+  }, [allowed, permissions]);
+  return allowed ? state : { status: 'off' };
 }
 
 export default function DashboardShell({
@@ -71,6 +91,7 @@ export default function DashboardShell({
   const sidebar = useRef<HTMLElement>(null);
   const returnFocus = useRef(false);
   const item = getDashboardItem(view);
+  const period = useCurrentPeriod(session.permissions);
   const active = session.role_context?.choices.find((r) => r.role_id === session.role_context?.active_role_id);
   const roles = active ? (active.role_name === 'Admin' ? 'School Admin' : active.role_name) : session.account.roles.join(' · ') || 'Assigned account';
   const utilities = getVisibleNavGroups(session.permissions, 'utility').flatMap((group) => group.items);
@@ -157,7 +178,7 @@ export default function DashboardShell({
               <p className="dashboard-muted hidden text-xs sm:block">Ginatilan Campus</p>
             </div>
           </div>
-          <AcademicPeriod className="dashboard-identity ml-2 hidden border-l pl-4 md:flex" />
+          <AcademicPeriod state={period} className="dashboard-identity ml-2 hidden border-l pl-4 md:flex" />
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="hidden sm:block"><ThemeToggle /></div>
@@ -248,7 +269,7 @@ export default function DashboardShell({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <Breadcrumbs view={viewPermitted ? view : 'overview'} navigate={goTo}
                 subpage={viewPermitted ? subpage?.label ?? null : null} onViewCrumb={() => openSubpage(null)} />
-              <AcademicPeriod className="flex md:hidden" />
+              <AcademicPeriod state={period} className="flex md:hidden" />
             </div>
             <PageHeader
               title={title}

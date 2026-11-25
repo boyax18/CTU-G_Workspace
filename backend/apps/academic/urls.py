@@ -4,7 +4,7 @@ from django.urls import include, path
 
 from . import configuration_api as c
 from .api import (
-    SchoolYearCollectionView, SchoolYearDeleteView, SchoolYearHistoryView, SemesterActivationView,
+    CurrentAcademicPeriodView, SchoolYearCollectionView, SchoolYearDeleteView, SchoolYearHistoryView, SemesterActivationView,
     SemesterArchiveView, SemesterClosureView, SemesterCorrectionView, SemesterDatesView,
 )
 
@@ -55,6 +55,8 @@ urlpatterns = [
     # GET impact preview / POST reasoned edit (WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED).
     path("semesters/<int:semester_id>/corrections/", SemesterCorrectionView.as_view(),
          name="academic-semester-corrections"),
+    # Read-only current period for every academic.catalogue.read holder (WORKSPACE_ACADEMIC_CATALOGUE_ENABLED).
+    path("catalogue/current-period/", CurrentAcademicPeriodView.as_view(), name="academic-catalogue-current-period"),
     # Academic configuration (WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED; area write switches).
     path("config/", include(configuration_urls)),
 ]

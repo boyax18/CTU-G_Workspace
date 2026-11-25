@@ -221,6 +221,17 @@ def activation_missing(semester):
     return missing_prerequisites(semester)
 
 
+def activation_readiness(semester):
+    """Presentation only: the real prerequisite checks with fixed reason codes, so the UI can say what to
+    do next. Activation re-evaluates everything under lock; ``available`` never authorizes anything."""
+    from .dependencies import READY, evaluate_prerequisites
+    from .lifecycle import transitions_enabled
+    checks = evaluate_prerequisites(semester)
+    missing = [c.key for c in checks if c.status != READY]
+    return {"available": semester.status == SemesterStatus.DRAFT and not missing and transitions_enabled(),
+            "missing": missing, "checks": [c.as_dict() for c in checks]}
+
+
 def feature_flags():
     """Server-side switch state for the UI ("Feature unavailable"); never authorization."""
     from .corrections import corrections_enabled
@@ -238,9 +249,8 @@ def semester_payload(semester):
     payload.update(
         label=semester.label,
         can_edit_dates=semester.status == SemesterStatus.DRAFT,
-        # Read-only readiness from the real, fail-closed prerequisites. Never an available action.
         # Read-only readiness from the real dependency contract; "available" never authorizes.
-        activation={"available": False, "missing": activation_missing(semester)},
+        activation=activation_readiness(semester),
         updated_at=_iso(semester.updated_at),
     )
     return payload

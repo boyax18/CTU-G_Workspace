@@ -7,6 +7,9 @@ export type SchoolYearStatus = 'Draft' | 'Active' | 'Between semesters' | 'Compl
 export type SemesterTerm = 'first' | 'second';
 export type ActivationRequirement = 'valid_dates' | 'approved_fee' | 'academic_offerings';
 
+/** One server prerequisite check with a fixed reason code (presentation only; Django decides activation). */
+export interface ReadinessCheck { key: ActivationRequirement; status: 'ready' | 'missing' | 'unavailable'; reason: string }
+
 export interface Semester {
   semester_id: number;
   term: SemesterTerm;
@@ -16,7 +19,7 @@ export interface Semester {
   end_date: string | null;
   version: number;
   can_edit_dates: boolean;
-  activation: { available: boolean; missing: ActivationRequirement[] };
+  activation: { available: boolean; missing: ActivationRequirement[]; checks: ReadinessCheck[] };
   updated_at: string | null;
 }
 
@@ -78,6 +81,23 @@ export function isIsoDate(value: unknown): value is string {
 
 const isOptionalDate = (value: unknown): value is string | null => value === null || isIsoDate(value);
 
+const CHECK_STATUSES: readonly string[] = ['ready', 'missing', 'unavailable'];
+const REASON = /^[a-z][a-z_]{0,59}$/;
+
+/** Optional for older payloads; when present every entry must be well formed and the keys distinct. */
+function parseChecks(value: unknown): ReadinessCheck[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > REQUIREMENTS.length) throw invalid();
+  const checks = value.map((item) => {
+    if (!isRecord(item) || typeof item.key !== 'string' || !REQUIREMENTS.includes(item.key)
+      || typeof item.status !== 'string' || !CHECK_STATUSES.includes(item.status)
+      || typeof item.reason !== 'string' || (item.reason !== '' && !REASON.test(item.reason))) throw invalid();
+    return { key: item.key as ActivationRequirement, status: item.status as ReadinessCheck['status'], reason: item.reason };
+  });
+  if (new Set(checks.map((c) => c.key)).size !== checks.length) throw invalid();
+  return checks;
+}
+
 function parseSemester(value: unknown): Semester {
   if (!isRecord(value) || !isRecord(value.activation)) throw invalid();
   const { activation } = value;
@@ -93,7 +113,8 @@ function parseSemester(value: unknown): Semester {
   return {
     semester_id: value.semester_id, term: value.term, label: value.label, status: value.status as SemesterStatus,
     start_date: value.start_date, end_date: value.end_date, version: value.version, can_edit_dates: value.can_edit_dates,
-    activation: { available: activation.available, missing: [...activation.missing] as ActivationRequirement[] },
+    activation: { available: activation.available, missing: [...activation.missing] as ActivationRequirement[],
+      checks: parseChecks(activation.checks) },
     updated_at: value.updated_at,
   };
 }

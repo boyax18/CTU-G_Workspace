@@ -24,6 +24,9 @@ import {
   parseStartYear, schoolYearBounds, semestersOverlap, validateSemesterRange,
 } from './academicPeriodsContract.ts';
 import type { ActivationRequirement, FieldName, SchoolYear, SchoolYearPage, SchoolYearStatus, Semester, SemesterStatus } from './academicPeriodsContract.ts';
+import { useDashboardContext } from '../../hooks/useDashboardContext';
+import { canOpenDashboardView, getDashboardItem } from '../dashboard/navigation';
+import type { DashboardView } from '../dashboard/navigation';
 
 type Listing = { status: 'loading' } | { status: 'failed'; error: AcademicApiError | null } | { status: 'ready'; data: SchoolYearPage };
 type Notice = { kind: 'success' | 'error'; text: string } | null;
@@ -84,26 +87,58 @@ function changeFailure(error: unknown, subject: string): string {
   }
 }
 
+/** Fixed, actionable copy per server reason code (never server text). */
+const READINESS_COPY: Record<string, string> = {
+  dates_incomplete: 'Set both the start and end dates.',
+  dates_invalid: 'Fix the date range so the start date is before the end date.',
+  no_fee_configured: 'Configure the full organizational fee for this semester.',
+  fee_awaiting_approval: 'Approve the Draft semester fee.',
+  fee_source_disabled: 'Semester fees are switched off on the server.',
+  finance_service_inactive: 'The finance service is not active.',
+  approved_fee_inconsistent: 'The fee approval record could not be verified. Ask the Technical Super Admin to check it.',
+  fee_source_unavailable: 'Fee records cannot be read right now.',
+  no_valid_offerings: 'Add at least one valid subject offering for this semester.',
+  source_unavailable: 'This check cannot be completed right now.',
+};
+const STATUS_TEXT = { ready: 'Ready', missing: 'Missing configuration', unavailable: 'Not available yet' } as const;
+const FIX_VIEW: Partial<Record<ActivationRequirement, { view: DashboardView; label: string }>> = {
+  approved_fee: { view: 'semester-fees', label: 'Open semester fees' },
+  academic_offerings: { view: 'academic-references', label: 'Open academic settings' },
+};
+
 function Prerequisites({ semester }: { semester: Semester }) {
+  const { session, navigate } = useDashboardContext();
   const items: ActivationRequirement[] = ['valid_dates', 'approved_fee', 'academic_offerings'];
+  const checks = new Map(semester.activation.checks.map((c) => [c.key, c]));
   return (
     <div className="mt-4 border-t pt-3">
-      <p className="dashboard-muted text-xs font-semibold">Activation prerequisites</p>
-      <ul className="mt-2 space-y-1 text-xs">
+      <p className="dashboard-muted text-xs font-semibold">Activation readiness</p>
+      <ul aria-label={`Activation readiness, ${semester.label}`} className="mt-2 space-y-2 text-xs">
         {items.map((item) => {
-          const missing = semester.activation.missing.includes(item);
-          const note = missing ? 'Not ready' : 'Ready';
+          const check = checks.get(item);
+          const status = check?.status ?? (semester.activation.missing.includes(item) ? 'missing' : 'ready');
+          const ready = status === 'ready';
+          const fix = !ready ? FIX_VIEW[item] : undefined;
+          const canFix = fix && canOpenDashboardView(fix.view, session.permissions) && getDashboardItem(fix.view).integration === 'shell';
           return (
-            <li key={item} className="flex items-start justify-between gap-3">
-              <span className="dashboard-heading">{REQUIREMENT_LABELS[item]}</span>
-              <span className={missing ? 'dashboard-muted whitespace-nowrap' : 'dashboard-accent whitespace-nowrap font-semibold'}>
-                <span aria-hidden="true">{missing ? '○ ' : '✓ '}</span>{note}
-              </span>
+            <li key={item}>
+              <div className="flex items-start justify-between gap-3">
+                <span className="dashboard-heading">{REQUIREMENT_LABELS[item]}</span>
+                <span className={ready ? 'dashboard-accent whitespace-nowrap font-semibold' : 'dashboard-muted whitespace-nowrap'}>
+                  <span aria-hidden="true">{ready ? '✓ ' : status === 'missing' ? '! ' : '○ '}</span>{STATUS_TEXT[status]}
+                </span>
+              </div>
+              {!ready && check?.reason && READINESS_COPY[check.reason] && (
+                <p className="dashboard-muted mt-0.5">{READINESS_COPY[check.reason]}{canFix && fix && <> {' '}
+                  <button type="button" onClick={() => navigate(fix.view)}
+                    className="dashboard-accent rounded font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]">
+                    {fix.label}<span className="sr-only"> for {semester.label}</span></button></>}</p>
+              )}
             </li>
           );
         })}
       </ul>
-      <p className="dashboard-muted mt-2 text-xs">Activation needs every prerequisite. Review activation for the current details.</p>
+      <p className="dashboard-muted mt-2 text-xs">Shown for guidance only. The server checks everything again when activation is confirmed.</p>
     </div>
   );
 }

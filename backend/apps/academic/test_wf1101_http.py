@@ -15,7 +15,7 @@ from apps.accounts.active_role_context import SESSION_ROLE_KEY
 from config import dev_features
 
 from .api import (
-    SchoolYearCollectionView, SchoolYearDeleteView, SchoolYearHistoryView, SemesterActivationView,
+    CurrentAcademicPeriodView, SchoolYearCollectionView, SchoolYearDeleteView, SchoolYearHistoryView, SemesterActivationView,
     SemesterArchiveView, SemesterClosureView, SemesterCorrectionView, SemesterDatesView,
 )
 from .models import AcademicPeriodAuditLog, SchoolYear, Semester
@@ -77,6 +77,7 @@ class RouteSurfaceTests(SimpleTestCase):
             "api/v1/academic/semesters/<int:semester_id>/closure/": SemesterClosureView,
             "api/v1/academic/semesters/<int:semester_id>/archive/": SemesterArchiveView,
             "api/v1/academic/semesters/<int:semester_id>/corrections/": SemesterCorrectionView,
+            "api/v1/academic/catalogue/current-period/": CurrentAcademicPeriodView,
         })
         self.assertEqual(SemesterDatesView.http_method_names, ["post", "options"])
         self.assertEqual(SchoolYearDeleteView.http_method_names, ["post", "options"])

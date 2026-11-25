@@ -137,6 +137,12 @@ FEATURES = (
             frontend_flags=("VITE_WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED",),
             requires=("wf11.semester_fee_configuration",),
             note="Does not enable academic-period transitions."),
+    # Read-only current academic period in the dashboard header (academic.catalogue.read): registered,
+    # NOT approved for any mode; needs the academic migrations on ctug_workspace.
+    Feature("wf11.academic_catalogue", "WF-11.01 (FR-ACA-03/07)", "Current academic period (read-only)",
+            backend_env={"WORKSPACE_ACADEMIC_CATALOGUE_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_ACADEMIC_CATALOGUE_ENABLED",),
+            note="Read-only; no management or student data."),
 )
 
 # One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).

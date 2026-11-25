@@ -36,7 +36,9 @@ from .session_auth import WorkspaceSessionAPI
 
 logger = logging.getLogger(__name__)
 
-NEUTRAL_REQUEST = "If an eligible account uses this email, we sent a 6-digit code. It expires in 10 minutes."
+# 25 Nov 2026: neutral AND honest: an accepted request is not a delivered email.
+NEUTRAL_REQUEST = ("If an eligible account uses this email, a 6-digit code is on its way. "
+                   "It can take a few minutes to arrive and expires in 10 minutes.")
 CODE_INVALID = "The code is incorrect or has expired."
 TICKET_INVALID = "Your verification has expired. Request a new code."
 PASSWORD_FIELD_TEXT = "Choose a stronger password using the requirements shown."
@@ -269,6 +271,29 @@ def _save(account, record, expires_at):
     account.save(update_fields=["password_reset_token", "password_reset_token_expires"])
 
 
+def issue_ticket(account, now=None, record=None):
+    """Turn an eligible, locked account's recovery state into a single-use 10-minute ticket.
+
+    Shared by the code step (which passes its OTP record, keeping its D-26 window and attempt
+    count exactly as before) and the assisted-recovery step (fresh record). One ticket system.
+    Returns the ticket for the HttpOnly cookie; only its keyed digest is stored.
+    """
+    now = _now() if now is None else now
+    ticket = secrets.token_urlsafe(32)
+    record = record or _Record("ticket", 0, now, now, "")
+    record.state, record.issued_at = "ticket", now
+    record.digest = _ticket_digest(account, record, ticket)
+    _save(account, record, now + TICKET_SECONDS)
+    return ticket
+
+
+def ticket_response(ticket):
+    response = Response({"status": "verified"})
+    response.set_cookie(TICKET_COOKIE, ticket, max_age=TICKET_SECONDS, httponly=True,
+                        secure=settings.SESSION_COOKIE_SECURE, samesite="Strict", path=TICKET_COOKIE_PATH)
+    return response
+
+
 def _recovery_unavailable():
     return Response({"error": {"code": "recovery_unavailable", "message": "Password recovery is temporarily unavailable."}},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -386,17 +411,11 @@ class PasswordResetVerifyView(WorkspaceSessionAPI):
                     _save(account, record, record.window_start + p["window"] if record.state == "locked"
                           else min(record.issued_at + p["code"], record.window_start + p["window"]))
                     return _code_invalid()
-                ticket = secrets.token_urlsafe(32)
-                record.state, record.issued_at = "ticket", now
-                record.digest = _ticket_digest(account, record, ticket)
-                _save(account, record, now + TICKET_SECONDS)
+                ticket = issue_ticket(account, now, record)
         except DatabaseError:
             logger.warning("Workspace password recovery verification database error.")
             return _recovery_unavailable()
-        response = Response({"status": "verified"})
-        response.set_cookie(TICKET_COOKIE, ticket, max_age=TICKET_SECONDS, httponly=True,
-                            secure=settings.SESSION_COOKIE_SECURE, samesite="Strict", path=TICKET_COOKIE_PATH)
-        return response
+        return ticket_response(ticket)
 
 
 class PasswordResetConfirmView(WorkspaceSessionAPI):

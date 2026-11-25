@@ -306,6 +306,35 @@ def email_verification_otp(*, code, minutes, first_name=None):
     return subject, text, html
 
 
+def assisted_recovery_otp(*, code, minutes, first_name=None):
+    """Operator-authorized recovery for an account that cannot sign in (25 Nov 2026).
+
+    No link: the holder opens Forgot Password themselves (no phishable URL, no code in a link).
+    """
+    subject = "CTU-G Workspace account recovery code"
+    text = (
+        f"Your CTU-G Workspace account recovery code is {code}.\n\n"
+        "A campus administrator started account recovery for the CTU-G Workspace account that uses this email address. "
+        f"The code expires in {minutes} minutes.\n\n"
+        "To continue, open the CTU-G Workspace sign-in page, choose Forgot password, select "
+        "\"I have an account recovery code\", and enter this email address and the code. "
+        "You will then choose a new password.\n\n"
+        "If you did not ask the campus administrator for help, ignore this email and tell them."
+    )
+    html = render(
+        title=subject, preheader="Use this code to recover your CTU-G Workspace account.",
+        eyebrow="Account security", heading="Recover your account",
+        greeting=f"Hello {first_name}," if first_name else "Hello,",
+        paragraphs=["A campus administrator started account recovery for the CTU-G Workspace account that uses this email address.",
+                    "Open the sign-in page, choose Forgot password, then “I have an account recovery code”. "
+                    "Enter this email address and the code, then choose a new password."],
+        otp=code, otp_label="Your account recovery code", expires_minutes=minutes,
+        security=("Didn't ask for help?", "Ignore this email and tell the campus administrator. "
+                  "Never share this code, not even with CTU-G Workspace staff."),
+    )
+    return subject, text, html
+
+
 def password_changed(*, first_name=None):
     subject = "CTU-G Workspace password changed"
     text = (

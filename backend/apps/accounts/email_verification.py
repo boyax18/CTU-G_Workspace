@@ -61,19 +61,22 @@ def _email_digest(account):
 
 
 def _code_digest(account, challenge, code):
+    # An assisted challenge's digest differs from a self one, so a code never crosses steps.
+    purpose = "" if challenge.purpose == AccountEmailVerification.PURPOSE_SELF else f":{challenge.purpose}"
     return _digest("email-verification-otp",
-                   f"{account.pk}:{challenge.window_start}:{challenge.issued_at}:{(account.email or '').lower()}:{code}")
+                   f"{account.pk}:{challenge.window_start}:{challenge.issued_at}:{(account.email or '').lower()}{purpose}:{code}")
 
 
 def _expires(challenge, p):
     return min(challenge.issued_at + p["code"], challenge.window_start + p["window"])
 
 
-def verification_challenge_state(account, challenge_issued_at, code):
+def verification_challenge_state(account, challenge_issued_at, code, purpose=AccountEmailVerification.PURPOSE_SELF):
     """For the durable sender: ("current", expires_epoch) or ("expired" | "superseded", None)."""
     account = Account.objects.filter(pk=account.pk).first()
     challenge = AccountEmailVerification.objects.filter(account_id=getattr(account, "pk", None)).first()
-    if account is None or challenge is None or is_verified(account) or challenge.locked:
+    if (account is None or challenge is None or is_verified(account) or challenge.locked
+            or challenge.purpose != purpose):
         return "superseded", None
     if (challenge.issued_at != challenge_issued_at
             or not hmac.compare_digest(challenge.email_digest, _email_digest(account))
@@ -137,8 +140,17 @@ class EmailVerificationStatusView(_EmailVerificationAPI):
         account, refusal = self.account_or_refusal(request)
         if refusal is not None:
             return refusal
-        # The signed-in owner's own address only.
-        return Response({"email": account.email or None, "email_verified": is_verified(account)})
+        # The signed-in owner's own address and own pending code only (never the code itself).
+        body = {"email": account.email or None, "email_verified": is_verified(account),
+                "code_pending": False, "resend_after": 0, "code_expires_in": 0}
+        challenge = AccountEmailVerification.objects.filter(
+            account=account, purpose=AccountEmailVerification.PURPOSE_SELF).first()
+        if challenge is not None and not body["email_verified"] and challenge.issued_at and not challenge.locked:
+            p, now = _policy(), _now()
+            if now < _expires(challenge, p) and challenge.attempts < p["attempts"]                     and hmac.compare_digest(challenge.email_digest, _email_digest(account)):
+                body.update(code_pending=True, code_expires_in=_expires(challenge, p) - now,
+                            resend_after=max(0, challenge.issued_at + p["resend"] - now))
+        return Response(body)
 
 
 class EmailVerificationRequestView(_EmailVerificationAPI):
@@ -162,10 +174,13 @@ class EmailVerificationRequestView(_EmailVerificationAPI):
                     return _error("email_missing", "Your account has no email address. Contact the campus administrator.", 409)
                 now = _now()
                 challenge = AccountEmailVerification.objects.select_for_update().filter(account=account).first()
-                if challenge is None or now >= challenge.window_start + p["window"]:
+                if (challenge is None or now >= challenge.window_start + p["window"]
+                        or challenge.purpose != AccountEmailVerification.PURPOSE_SELF):
+                    # A signed-in owner replaces any operator-started (assisted) challenge.
                     challenge = challenge or AccountEmailVerification(account=account)
                     challenge.window_start, challenge.attempts, challenge.sends, challenge.locked = now, 0, 0, False
                     challenge.issued_at = 0
+                    challenge.purpose, challenge.authorized_by = AccountEmailVerification.PURPOSE_SELF, None
                 retry_after = None
                 if challenge.locked or challenge.sends >= p["sends"]:
                     retry_after = challenge.window_start + p["window"] - now
@@ -205,6 +220,9 @@ class EmailVerificationConfirmView(_EmailVerificationAPI):
         serializer.is_valid(raise_exception=True)
         code, p = serializer.validated_data["code"], _policy()
         invalid = _error("verification_code_invalid", "The code is incorrect or has expired.", 400)
+        # The signed-in owner may learn the state of their OWN code (no enumeration concern).
+        expired = _error("verification_code_expired", "This code has expired. Request a new code.", 400)
+        locked = _error("verification_locked", "Too many incorrect codes. Request a new code later.", 400)
         try:
             with transaction.atomic():
                 account = Account.objects.select_for_update().get(pk=account.pk)
@@ -212,16 +230,19 @@ class EmailVerificationConfirmView(_EmailVerificationAPI):
                     return _error("already_verified", "Your email address is already verified.", 409)
                 challenge = AccountEmailVerification.objects.select_for_update().filter(account=account).first()
                 now = _now()
-                live = (challenge is not None and not challenge.locked and challenge.issued_at
-                        and challenge.attempts < p["attempts"] and now < _expires(challenge, p)
-                        and hmac.compare_digest(challenge.email_digest, _email_digest(account)))
-                if not live:
-                    return invalid
+                if (challenge is None or not challenge.issued_at
+                        or challenge.purpose != AccountEmailVerification.PURPOSE_SELF
+                        or not hmac.compare_digest(challenge.email_digest, _email_digest(account))):
+                    return invalid  # no code, or the address changed since it was sent
+                if challenge.locked or challenge.attempts >= p["attempts"]:
+                    return locked
+                if now >= _expires(challenge, p):
+                    return expired
                 if not hmac.compare_digest(challenge.code_digest, _code_digest(account, challenge, code)):
                     challenge.attempts += 1
                     challenge.locked = challenge.attempts >= p["attempts"]
                     challenge.save(update_fields=["attempts", "locked"])
-                    return invalid
+                    return locked if challenge.locked else invalid
                 Account.objects.filter(pk=account.pk).update(
                     email_verified_at=timezone.now(), email_verified_address=account.email)
                 challenge.delete()

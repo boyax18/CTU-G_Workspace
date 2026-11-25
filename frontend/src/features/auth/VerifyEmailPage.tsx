@@ -127,7 +127,7 @@ export default function VerifyEmailPage() {
         if (role === 'Student') window.setTimeout(() => result.current?.focus(), 0);
       } else {
         setVerification(state);
-        setNotice('A new code was sent. The earlier code is no longer valid.');
+        setNotice('A new code is on its way. The earlier code is no longer valid.');
       }
     } catch (error) { showFailure(error); }
     finally { inFlight.current = false; setBusy(false); }

@@ -127,7 +127,7 @@ test('Instructor expired OTP uses the Student error and Resend code action', asy
     assert.match(await page.getByRole('alert').first().innerText(), /The code has expired or is unavailable. Request a new code./);
     assert.equal(await page.getByRole('button', { name: 'Send a new code', exact: true }).count(), 0);
     await page.getByRole('button', { name: 'Resend code', exact: true }).press('Enter');
-    await page.getByRole('status').filter({ hasText: 'A new code was sent' }).waitFor();
+    await page.getByRole('status').filter({ hasText: 'A new code is on its way' }).waitFor();
     assert.equal(seen.mutations.length, 2);
     assert.equal(seen.mutations[1].path, '/api/v1/auth/register/resend/');
   }, verifyPath);

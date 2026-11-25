@@ -1,5 +1,21 @@
 # CTU-G Workspace — Development Changelog
 
+### 25 November 2026 — Email verification and assisted recovery for existing accounts
+
+- **Root cause:** existing approved accounts created before OTP verification have no `email_verified_at`/`email_verified_address`, so Forgot Password correctly refuses them (D-21, unchanged). Accounts that could sign in had a verification card, but its error states never matched (the API client keeps only codes it knows and maps every 409 to `conflict`). Accounts that could not sign in had no path at all.
+- **Signed-in path (My profile → Email verification), made complete:**
+  - The status shows a code that is already on its way after a refresh.
+  - Resend countdown; distinct incorrect, expired and locked messages; the code box focuses after render; one-time-code input that works with paste on mobile.
+  - "On its way" copy instead of "sent".
+- **Assisted recovery (accounts that cannot sign in):**
+  - An operator with the exact permission `accounts.school_accounts.assist_recovery` attests an out-of-band identity check on Account directory → account → **Send recovery code**.
+  - A one-time code (existing challenge table, purpose `assisted`) goes through the durable outbox to the account's current email. The operator never sees it.
+  - The holder enters email + code on Forgot Password → **I have an account recovery code**. Only then are the email proof and an audit event recorded, and the existing single-use reset ticket leads to the normal new-password step.
+  - Never the operator's own account, never Admin, Technical Super Admin or framework accounts: those stop at the authorization boundary (no privileged recovery policy was invented). Inactive accounts and accounts without an active role are refused. Neutral public errors, existing reset throttles and identity budget, and an email change invalidates the code.
+- **Honest copy:** Forgot Password and registration resend now say "on its way", not "sent", while staying neutral.
+- **Schema:** migration `accounts 0008` adds `purpose` and `authorized_by_id` to `account_email_verification`. It is not yet applied to `ctug_workspace`. The permission is not provisioned or granted; that is a governance step.
+- **Tests:** assisted recovery 14/14; security mail and verification 17/17; email suites 65/65; browser suites 29/29 + 45/45; real-UI end-to-end on a disposable synthetic replica with file-only mail 24/24. Unit 243/244 (existing appointment-code inventory failure). Lint errors only in 2 untouched files.
+
 ### 24 November 2026 — Email delivery reliability, email verification, diagnostics
 
 - **Root causes found:**

@@ -6,16 +6,21 @@ import ApiErrorNotice from '../../components/common/ApiErrorNotice';
 import { ApiError, initializeCSRF } from '../../api/client';
 import { codeGuidance, normalizeCode } from './registrationFeedback';
 import {
-  confirmPasswordReset, describeRecoveryFailure, RECOVERY_ASSISTED_HINT, RECOVERY_CODE_SENT,
-  RECOVERY_PASSWORD_HINT, requestPasswordReset, verifyPasswordResetCode,
+  confirmPasswordReset, describeRecoveryFailure, RECOVERY_ASSISTED_HINT, RECOVERY_ASSISTED_INTRO, RECOVERY_CODE_SENT,
+  RECOVERY_PASSWORD_HINT, requestPasswordReset, verifyAssistedRecoveryCode, verifyPasswordResetCode,
 } from './passwordReset';
 import type { RecoveryFailureKind, RecoveryStep } from './passwordReset';
 
-type Stage = 'email' | 'code' | 'password' | 'done';
+type Stage = 'email' | 'code' | 'assisted' | 'password' | 'done';
 
-/** WF-01.05 CR-01: Forgot Password → email → 6-digit code → new password → sign in. */
+const startsAssisted = () => {
+  try { return new URLSearchParams(window.location.search).get('recovery') === 'code'; } catch { return false; }
+};
+
+/** WF-01.05 CR-01: Forgot Password → email → 6-digit code → new password → sign in.
+ *  25 Nov 2026: "I have an account recovery code" (administrator-assisted) → email + code → new password. */
 export default function ForgotPasswordPage() {
-  const [stage, setStage] = useState<Stage>('email');
+  const [stage, setStage] = useState<Stage>(() => (startsAssisted() ? 'assisted' : 'email'));
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +34,7 @@ export default function ForgotPasswordPage() {
   const [kind, setKind] = useState<RecoveryFailureKind | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const inFlight = useRef(false);
+  const assistedFlow = useRef(startsAssisted());
   const codeInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -50,7 +56,7 @@ export default function ForgotPasswordPage() {
     if (result.kind === 'fields') {
       setFieldErrors(Object.fromEntries(Object.entries(result.error.fields).map(([key, values]) => [key, values.join(' ')])));
     }
-    if (result.kind === 'session_invalid') { setCode(''); setStage('email'); }
+    if (result.kind === 'session_invalid') { setCode(''); setStage(stage === 'password' && assistedFlow.current ? 'assisted' : 'email'); }
   };
 
   const run = async (action: () => Promise<void>) => {
@@ -91,6 +97,30 @@ export default function ForgotPasswordPage() {
       } catch (problem) { fail(problem, 'verify'); }
       finally { setCode(''); }
     });
+  };
+
+  const submitAssisted = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (retryWait > 0) return;
+    const problems: Record<string, string> = {};
+    if (!email.trim()) problems.email = 'Enter your registered email.';
+    if (!/^[0-9]{6}$/.test(code)) problems.code = 'Enter the 6-digit code from your email.';
+    if (Object.keys(problems).length) { clearFeedback(); setFieldErrors(problems); return; }
+    void run(async () => {
+      clearFeedback();
+      try {
+        assistedFlow.current = true;
+        await verifyAssistedRecoveryCode(email, code);
+        setStage('password');
+      } catch (problem) { fail(problem, 'verify'); }
+      finally { setCode(''); }
+    });
+  };
+
+  const switchAssisted = (on: boolean) => {
+    clearFeedback();
+    setCode(''); setResendWait(0);
+    setStage(on ? 'assisted' : 'email');
   };
 
   const submitPassword = (event: FormEvent<HTMLFormElement>) => {
@@ -144,7 +174,30 @@ export default function ForgotPasswordPage() {
             <Button type="submit" fullWidth loading={pending} disabled={retryWait > 0}
               aria-describedby={retryWait > 0 ? 'recover-retry-wait' : undefined}>{pending ? 'Sending…' : 'Send code'}</Button>
             {waitNote}
+            <button type="button" className="link-accent text-sm" disabled={pending} onClick={() => switchAssisted(true)}>
+              I have an account recovery code
+            </button>
           </form>
+        )}
+
+        {stage === 'assisted' && (
+          <>
+            <p className="fg-muted mt-2 text-sm">{RECOVERY_ASSISTED_INTRO}</p>
+            <form onSubmit={submitAssisted} noValidate className="mt-5 space-y-4" aria-busy={pending}>
+              <Input id="assisted-email" label="Registered email" type="email" value={email} maxLength={150} autoComplete="email" required
+                error={fieldErrors.email} announceError={false} onChange={(e) => setEmail(e.target.value)} />
+              <Input id="assisted-code" name="code" label="Account recovery code" type="text" inputMode="numeric"
+                autoComplete="one-time-code" pattern="[0-9]{6}" required value={code} error={fieldErrors.code} announceError={false}
+                onChange={(e) => { setCode(normalizeCode(e.target.value)); setFieldErrors((current) => ({ ...current, code: '' })); }} />
+              <Button type="submit" fullWidth loading={pending} disabled={retryWait > 0}
+                aria-describedby={retryWait > 0 ? 'recover-retry-wait' : undefined}>{pending ? 'Checking…' : 'Verify recovery code'}</Button>
+              {waitNote}
+            </form>
+            <p className="fg-muted mt-3 text-xs">The code expires 10 minutes after it was sent. For a new one, ask the campus administrator again.</p>
+            <button type="button" className="link-accent mt-3 text-sm" disabled={pending} onClick={() => switchAssisted(false)}>
+              Use Forgot Password with a code sent to my email instead
+            </button>
+          </>
         )}
 
         {stage === 'code' && (

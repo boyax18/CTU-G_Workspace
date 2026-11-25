@@ -31,6 +31,12 @@ export const API_MESSAGES: Record<string, string> = {
   recovery_unavailable: 'Password recovery is temporarily unavailable. Please try again later.',
   recovery_code_invalid: 'The code is incorrect or has expired.',
   reset_session_invalid: 'Your verification has expired. Request a new code.',
+  // Signed-in email verification (My profile). 409 states arrive as "conflict" and are re-read from Django.
+  verification_code_invalid: 'That code is incorrect. Check the latest email and try again.',
+  verification_code_expired: 'This code has expired. Send a new code.',
+  verification_locked: 'Too many incorrect codes. Send a new code when the resend button is available.',
+  verification_wait: 'Please wait before requesting another code.',
+  verification_unavailable: 'Email verification is temporarily unavailable. Please try again later.',
 };
 const STAFF_ID_ERROR = 'CTU-G ID must contain 1 to 7 digits only.';
 const INSTRUCTOR_FIELDS_ERROR = 'Student-only school information is not accepted for Instructor registration.';

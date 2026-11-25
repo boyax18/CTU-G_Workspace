@@ -1,5 +1,6 @@
 
 from django.urls import path
+from .assisted_recovery import AssistedRecoveryVerifyView
 
 from .email_verification import (
     EmailVerificationConfirmView, EmailVerificationRequestView, EmailVerificationStatusView,
@@ -34,4 +35,6 @@ urlpatterns = [
   path("email-verification/", EmailVerificationStatusView.as_view(), name="workspace-email-verification"),
   path("email-verification/request/", EmailVerificationRequestView.as_view(), name="workspace-email-verification-request"),
   path("email-verification/confirm/", EmailVerificationConfirmView.as_view(), name="workspace-email-verification-confirm"),
+  # 25 Nov 2026: public step of operator-assisted recovery (inert unless WORKSPACE_ASSISTED_RECOVERY_ENABLED).
+  path("account-recovery/verify/", AssistedRecoveryVerifyView.as_view(), name="workspace-assisted-recovery-verify"),
 ]

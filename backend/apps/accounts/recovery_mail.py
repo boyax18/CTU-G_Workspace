@@ -186,7 +186,10 @@ def _otp_state(row):
         state, expires_at = reset_challenge_state(row.account, row.challenge_issued_at, code)
     else:
         from .email_verification import verification_challenge_state
-        state, expires_at = verification_challenge_state(row.account, row.challenge_issued_at, code)
+        from .security_mail_models import AccountEmailVerification
+        purpose = (AccountEmailVerification.PURPOSE_ASSISTED if row.kind == SecurityMailOutbox.KIND_ASSISTED_RECOVERY
+                   else AccountEmailVerification.PURPOSE_SELF)
+        state, expires_at = verification_challenge_state(row.account, row.challenge_issued_at, code, purpose)
     if state != "current":
         return state, None, None, None
     return "current", code, max(1, math.ceil((expires_at - _now().timestamp()) / 60)), expires_at
@@ -199,6 +202,8 @@ def _message(row, code=None, minutes=None):
         return email_design.password_reset_otp(code=code, minutes=minutes, first_name=first)
     if row.kind == SecurityMailOutbox.KIND_EMAIL_VERIFICATION:
         return email_design.email_verification_otp(code=code, minutes=minutes, first_name=first)
+    if row.kind == SecurityMailOutbox.KIND_ASSISTED_RECOVERY:
+        return email_design.assisted_recovery_otp(code=code, minutes=minutes, first_name=first)
     return email_design.password_changed(first_name=first)
 
 

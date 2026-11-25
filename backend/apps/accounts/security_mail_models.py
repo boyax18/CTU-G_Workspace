@@ -16,8 +16,10 @@ class SecurityMailOutbox(models.Model):
     KIND_RESET_CODE = "reset_code"
     KIND_PASSWORD_CHANGED = "password_changed"
     KIND_EMAIL_VERIFICATION = "email_verification_code"
+    KIND_ASSISTED_RECOVERY = "assisted_recovery_code"
     KINDS = [(KIND_RESET_CODE, KIND_RESET_CODE), (KIND_PASSWORD_CHANGED, KIND_PASSWORD_CHANGED),
-             (KIND_EMAIL_VERIFICATION, KIND_EMAIL_VERIFICATION)]
+             (KIND_EMAIL_VERIFICATION, KIND_EMAIL_VERIFICATION),
+             (KIND_ASSISTED_RECOVERY, KIND_ASSISTED_RECOVERY)]
     STATUSES = [(s, s) for s in ("Pending", "Leased", "Retry", "Accepted", "Dead", "Expired", "Superseded")]
 
     outbox_id = models.BigAutoField(primary_key=True)
@@ -49,7 +51,16 @@ class SecurityMailOutbox(models.Model):
 
 
 class AccountEmailVerification(models.Model):
-    """At most one live challenge per account for confirming its CURRENT email address."""
+    """At most one live challenge per account for confirming its CURRENT email address.
+
+    purpose "self": requested by the signed-in owner (My profile). purpose "assisted" (25 Nov 2026):
+    started by an authorized operator for an account that cannot sign in; the code is mailed to the
+    account's current address and redeemed only on the public recovery step. A challenge of one
+    purpose is never accepted by the other step.
+    """
+
+    PURPOSE_SELF = "self"
+    PURPOSE_ASSISTED = "assisted"
 
     account = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, primary_key=True,
                                    related_name="email_verification_challenge", db_column="account_id")
@@ -60,6 +71,11 @@ class AccountEmailVerification(models.Model):
     attempts = models.PositiveSmallIntegerField(default=0)
     sends = models.PositiveSmallIntegerField(default=0)
     locked = models.BooleanField(default=False)
+    purpose = models.CharField(max_length=16, default=PURPOSE_SELF,
+                               choices=[(PURPOSE_SELF, PURPOSE_SELF), (PURPOSE_ASSISTED, PURPOSE_ASSISTED)])
+    # The operator who authorized an assisted challenge (audited separately); null for "self".
+    authorized_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name="+", db_column="authorized_by_id")
 
     class Meta:
         db_table = "account_email_verification"

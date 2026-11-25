@@ -48,6 +48,20 @@
 - Django and Vite are now running on `127.0.0.1:8000` and `127.0.0.1:5173`. Applicant-list, account-directory and bulk frontend switches are enabled in these local processes; bulk OPTIONS returns 200. The browser renders the sign-in page; session is unauthenticated, CSRF is 200, and applicant/directory APIs return 401 without a session. No authenticated School Admin/Technical Super Admin browser result is claimed.
 - Account-status writes are disabled and absent from the decision-local URLconf. The profile uses locmem mail and SMTP off; the outbox worker and SMTP-delivery approval remain disabled. No SMTP authentication or delivery was attempted. No real account decisions, migrations, permission changes, secrets or SMTP messages were made; production readiness is not claimed.
 
+### 0.12 Email verification and assisted recovery for existing accounts — 25 November 2026
+
+- **Implemented in source:**
+  - A complete signed-in verification card: pending-code state, countdown, distinct incorrect, expired and locked messages, honest copy.
+  - Operator-assisted recovery for non-privileged accounts that cannot sign in: identity attestation, code to the current email, public redemption, proof recorded, existing reset ticket.
+- **Boundaries:** D-21 unchanged; privileged accounts stop at the authorization boundary; no session creation or impersonation; the operator never sees the code.
+- **Pending owner authorization:**
+  - Migration `accounts 0008` on `ctug_workspace`. Until it is applied, the running `-Local` server's email verification fails closed (503 or the card hidden).
+  - Provisioning `accounts.school_accounts.assist_recovery` and deciding which role holds it.
+  - A privileged-account recovery policy.
+- **Tests:** backend 14/14 + 17/17 + 65/65; browser 29/29 + 45/45; real-UI end-to-end 24/24 on a disposable synthetic replica with file-only mail.
+- **Real data:** `ctug_workspace` unchanged by this step; applicant #11's notification is still `Pending`.
+- **Not verified:** live Gmail delivery and inbox receipt.
+
 ### 0.11 Email delivery reliability and email verification — 24 November 2026
 
 - **Implemented in source:**

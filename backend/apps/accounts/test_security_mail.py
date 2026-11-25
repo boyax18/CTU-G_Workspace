@@ -195,7 +195,8 @@ class LegacyEmailVerificationTests(_Base):
         self.assertEqual(self.post(anonymous, self.ROOT + "request/").status_code, 401)
 
     def test_verification_records_proof_only_after_the_correct_code(self):
-        self.assertEqual(self.client.get(self.ROOT).json(), {"email": "legacy@example.edu", "email_verified": False})
+        self.assertEqual(self.client.get(self.ROOT).json(), {"email": "legacy@example.edu", "email_verified": False,
+                                                             "code_pending": False, "resend_after": 0, "code_expires_in": 0})
         self.assertEqual(self.post(self.client, self.ROOT + "request/").status_code, 202)
         self.assertEqual(mail.outbox[0].to, ["legacy@example.edu"])
         code = verification_codes()[0]
@@ -249,6 +250,27 @@ class LegacyEmailVerificationTests(_Base):
         Account.objects.filter(pk=self.legacy.pk).update(email="changed@example.edu")
         self.assertEqual(self.post(self.client, self.ROOT + "confirm/", {"code": code}).status_code, 400)
         self.assertIsNone(Account.objects.get(pk=self.legacy.pk).email_verified_at)
+
+    def test_status_reports_a_pending_code_then_expired_and_locked_states(self):
+        from . import email_verification
+        clock = int(timezone.now().timestamp())
+        with mock.patch.object(email_verification, "_now", side_effect=lambda: clock):
+            self.assertEqual(self.client.get(self.ROOT).json()["code_pending"], False)
+            self.post(self.client, self.ROOT + "request/")
+            status = self.client.get(self.ROOT).json()
+            self.assertEqual((status["code_pending"], status["resend_after"], status["code_expires_in"]), (True, 60, 600))
+            self.assertNotIn(verification_codes()[0], str(status))
+            code = verification_codes()[0]
+            clock += 601
+            expired = self.post(self.client, self.ROOT + "confirm/", {"code": code})
+            self.assertEqual((expired.status_code, expired.json()["error"]["code"]), (400, "verification_code_expired"))
+            self.assertFalse(self.client.get(self.ROOT).json()["code_pending"])
+            self.post(self.client, self.ROOT + "request/")
+            fresh = verification_codes()[-1]
+            wrong = "000000" if fresh != "000000" else "111111"
+            codes = [self.post(self.client, self.ROOT + "confirm/", {"code": wrong}).json()["error"]["code"] for _ in range(5)]
+            self.assertEqual(codes, ["verification_code_invalid"] * 4 + ["verification_locked"])
+            self.assertIsNone(Account.objects.get(pk=self.legacy.pk).email_verified_at)
 
     def test_queued_verification_code_is_superseded_after_verification(self):
         with mock.patch.object(recovery_mail, "kick"):

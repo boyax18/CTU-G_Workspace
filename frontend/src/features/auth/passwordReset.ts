@@ -28,6 +28,15 @@ export async function verifyPasswordResetCode(email: string, code: string): Prom
   }
 }
 
+/** Assisted recovery (25 Nov 2026): an administrator-started code replaces steps 1-2. Success sets
+ *  the same HttpOnly reset-ticket cookie; every failure looks the same (no enumeration). */
+export async function verifyAssistedRecoveryCode(email: string, code: string): Promise<void> {
+  const body = record(await postJSON('/api/v1/auth/account-recovery/verify/', { email: email.trim(), code }));
+  if (body.status !== 'verified') {
+    throw new ApiError(RECOVERY_VERIFY_UNCERTAIN, 0, 'invalid_response', {}, { outcomeUnknown: true });
+  }
+}
+
 /** Step 3. The browser sends the ticket cookie automatically. */
 export async function confirmPasswordReset(email: string, password: string, confirmation: string): Promise<void> {
   await postJSON('/api/v1/auth/reset-password/', { email: email.trim(), password, password_confirmation: confirmation });
@@ -36,8 +45,10 @@ export async function confirmPasswordReset(email: string, password: string, conf
 export const RECOVERY_REQUEST_UNCERTAIN = 'We could not confirm that your code was sent. You can send it again.';
 export const RECOVERY_VERIFY_UNCERTAIN = 'We could not confirm the code check. Enter the code again.';
 export const RECOVERY_RESET_UNCERTAIN = 'We could not confirm whether your password was changed. Try signing in with your new password. If that does not work, start again.';
-export const RECOVERY_CODE_SENT = 'If an eligible account uses this email, we sent a 6-digit code.';
-export const RECOVERY_ASSISTED_HINT = 'If no email arrives, your account may need assisted recovery. Contact support.';
+// 25 Nov 2026: an accepted request (HTTP 202) is not a delivered email, so the copy never says "sent".
+export const RECOVERY_CODE_SENT = 'If an eligible account uses this email, a 6-digit code is on its way. It can take a few minutes; check Spam too.';
+export const RECOVERY_ASSISTED_HINT = 'No email? If you never verified your email, sign in and verify it on My profile, or ask the campus administrator for an account recovery code.';
+export const RECOVERY_ASSISTED_INTRO = 'Enter your registered email and the account recovery code the campus administrator arranged for you.';
 export const RECOVERY_PASSWORD_HINT = 'Use at least 8 characters. Avoid common passwords, only numbers, and details similar to your CTU-G ID or email.';
 
 // recovery_disabled and recovery_unavailable are definite refusals with nothing changed.

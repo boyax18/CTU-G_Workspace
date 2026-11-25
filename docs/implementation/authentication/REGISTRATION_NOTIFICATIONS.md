@@ -6,6 +6,27 @@
 **Last reviewed:** 2026-11-23
 **Scope:** Mandatory durable email notification for individual and bulk Student/Instructor registration decisions.
 
+## Assisted email recovery for existing accounts (25 November 2026)
+
+Legacy accounts approved before OTP registration have no email proof, so password recovery refuses them (D-21, unchanged).
+
+| Situation | Path |
+| --- | --- |
+| Can sign in | My profile → Email verification → Send verification code → enter code. Proof is recorded only after the correct code. |
+| Cannot sign in | Operator: Account directory → account → **Assisted email recovery** → attest identity → Send recovery code. Holder: Forgot Password → **I have an account recovery code** → email + code → new password. |
+
+- **Operator API:** `POST /api/v1/admin/school-accounts/<id>/assisted-recovery/` with `{"identity_confirmed": true}`, mounted only in the loopback `-Local` URLconf.
+  - Requires the exact permission `accounts.school_accounts.assist_recovery`, re-checked under the WF-02.05 lock order, plus an active Admin assignment.
+  - Refuses the operator's own account (`own_account`) and Admin, Technical Super Admin or framework targets (`privileged_account`): mailbox control alone must never restore privileged access, and no privileged policy exists yet.
+  - Also refuses `inactive_account`, `no_operational_role`, `email_missing` and `already_verified`, and enforces the resend wait (`recovery_wait`).
+  - Audits `account.assisted_recovery.authorize`. The response never contains the code.
+- **Public API:** `POST /api/v1/auth/account-recovery/verify/` with `{"email", "code"}`.
+  - Every failure returns the same `recovery_code_invalid` 400, using the password-reset throttles and identity budget.
+  - Success records `email_verified_at`/`email_verified_address` and audits `account.assisted_recovery.verified`.
+  - It then issues the existing single-use reset ticket (HttpOnly cookie), so the password is set by the normal `reset-password` call under D-21.
+- **Binding:** the code lives in `account_email_verification` with purpose `assisted`, digest-separated from self codes. It is bound to the current address, so an email change invalidates it. Same 10-minute expiry, 60 s resend, 5-attempt lockout and 30-minute window as the signed-in flow.
+- **Gates:** `WORKSPACE_ASSISTED_RECOVERY_ENABLED` (on only in the `-Local` decision profile) and `WORKSPACE_PASSWORD_RESET_ENABLED`. Inert until migration `accounts 0008` is applied and the permission is provisioned and granted through governance.
+
 ## Security mail outbox, email verification and delivery diagnostics (24 November 2026)
 
 **Durable security mail.** Password-reset codes, the password-changed notice and email-verification codes now go through a durable table, `security_mail_outbox` (migration `accounts 0007`). It replaces the in-memory daemon queue, which lost mail on restart and never retried.

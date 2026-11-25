@@ -3,6 +3,19 @@
 **As of:** November 24, 2026
 **Evidence source:** Current runtime inspection and isolated WF-02 verification below; earlier sections retain their dated historical evidence. Results must be revalidated whenever relevant code, schema, or configuration changes.
 
+## 25 November 2026 — email verification and assisted recovery for existing accounts
+
+| Check | Result |
+| --- | --- |
+| `test_assisted_recovery` (disposable MySQL, locmem) | 14/14. Covers: full path (operator start → code to the current address, audit with no snapshot, operator never sees the code → wrong code refused → correct code records proof only → D-21 eligible → password set with the existing ticket → replay refused → password-changed notice queued); Admin and Technical Super Admin refused at the boundary with nothing sent; own account; permission, attestation, unauthenticated and gate checks; unprovisioned permission fails closed; already verified and inactive; byte-identical public failures; throttle; codes never cross between signed-in and assisted steps; email change invalidates; expired code refused and never mailed; lockout and resend wait; a second operator's resend replaces the code; a target that becomes privileged before redemption is refused |
+| `test_security_mail` | 17/17 (adds: pending-code status, expired and locked states) |
+| Email suites (security mail, reset, assisted, design) | 65/65 |
+| Browser (mocked API) | `password-reset-errors` + `instructor-registration-errors` 29/29, including 2 new assisted-recovery tests; account directory, account management, dashboard shell, registration 45/45 |
+| Real-UI end-to-end | 24/24 against real Django + worker + Vite on a disposable synthetic replica with file-only mail. Covers: phone-width My profile verification; honest copy; focus and countdown; refresh keeps the pending state; a simulated first SMTP failure is retried and delivered by the separate worker process; wrong and correct codes; Forgot Password passes D-21; ticket replay refused; old password fails and new password works; operator assisted recovery with attestation, queued notice and resend wait; privileged account hidden from the directory and refused by the API (409 `privileged_account`); holder redeems the code on Forgot Password, sets a password, signs in Verified |
+| Frontend | type-check and build pass; eslint clean on changed files (3 errors remain in 2 untouched files); unit 243/244 (existing `access_control.appointments.record` inventory failure) |
+| Live SMTP | Not run (no approval for live email in this step) |
+| Real data | `ctug_workspace` untouched; migration 0008 not applied; applicant #11 notification `Pending` |
+
 ## 24 November 2026 — durable security mail, email verification, diagnostics
 
 | Check | Result |

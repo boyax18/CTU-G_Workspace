@@ -8,3 +8,6 @@ ROOT_URLCONF = "config.review_decision_local_urls"
 WORKSPACE_REGISTRATION_REVIEW_LIST_ENABLED = True
 WORKSPACE_ACCOUNT_DIRECTORY_ENABLED = True
 WORKSPACE_ACCOUNT_STATUS_ENABLED = False
+# 25 Nov 2026: assisted email recovery (operator + public step). Still needs password recovery on
+# and the accounts.school_accounts.assist_recovery permission provisioned and granted to act.
+WORKSPACE_ASSISTED_RECOVERY_ENABLED = True

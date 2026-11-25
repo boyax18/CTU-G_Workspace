@@ -16,6 +16,8 @@ import type { ReactNode } from 'react';
 import Modal from '../../components/common/Modal';
 import { useDashboardContext } from '../../hooks/useDashboardContext';
 import AccountStatusBadge from './AccountStatusBadge';
+import AssistedRecoverySection from './AssistedRecoverySection';
+import { ASSIST_RECOVERY_PERMISSION } from './assistedRecoveryApi.ts';
 import { ACCOUNT_STATUS_ENABLED } from './accountStatusConfig.ts';
 import { changeAccountStatus, getSchoolAccount, getSchoolAccountHistory } from './accountStatusApi.ts';
 import { parseAccountParam } from './accountStatusContract.ts';
@@ -337,6 +339,10 @@ export default function AccountDetailPanel({ raw, onBack, onChanged }: Props) {
           )}
           {locked && <p className="dashboard-muted mt-2 text-xs">Changes are paused until you reload the account.</p>}
         </section>
+      )}
+
+      {data.is_active && session.permissions.includes(ASSIST_RECOVERY_PERMISSION) && (
+        <AssistedRecoverySection accountId={data.account_id} name={name} idLabel={data.id_label} schoolId={data.school_id} />
       )}
 
       <StatusHistory accountId={data.account_id} version={historyVersion} headingId={`${ids}-history`} />

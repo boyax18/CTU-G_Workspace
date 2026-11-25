@@ -11,6 +11,7 @@ function server(overrides = {}) {
   return ({ path, respond, route }) => {
     for (const [suffix, reply] of Object.entries(overrides)) if (path.endsWith(suffix)) return reply({ respond, route });
     if (path.endsWith('/forgot-password/verify/')) return respond({ status: 'verified' }, 200, { 'Set-Cookie': 'ctug_password_reset_ticket=t; Path=/api/v1/auth/reset-password/; HttpOnly; SameSite=Strict' });
+    if (path.endsWith('/account-recovery/verify/')) return respond({ status: 'verified' }, 200, { 'Set-Cookie': 'ctug_password_reset_ticket=t; Path=/api/v1/auth/reset-password/; HttpOnly; SameSite=Strict' });
     if (path.endsWith('/forgot-password/')) return respond(sent, 202);
     if (path.endsWith('/reset-password/')) return respond({ message: 'Password changed. You can now sign in.' });
     return route.abort('failed');
@@ -36,9 +37,9 @@ test('full flow: email, code, new password, with neutral copy and no ticket in t
   await scene(server(), async (page, seen) => {
     assert.equal(await page.getByLabel('CTU-G ID', { exact: true }).count(), 0);
     await sendEmail(page);
-    await page.getByText('If an eligible account uses this email, we sent a 6-digit code.').waitFor();
+    await page.getByText('If an eligible account uses this email, a 6-digit code is on its way. It can take a few minutes; check Spam too.').waitFor();
     await page.getByText(/The code is valid for 10 minutes/).waitFor();
-    await page.getByText('If no email arrives, your account may need assisted recovery. Contact support.').waitFor();
+    await page.getByText('No email? If you never verified your email, sign in and verify it on My profile, or ask the campus administrator for an account recovery code.').waitFor();
     await enterCode(page, '123 456');
     await enterPassword(page);
     await page.getByText('Password changed. You can now sign in.').waitFor();
@@ -131,4 +132,38 @@ test('old reset links land on a pointer to Forgot Password and lose their fragme
     await page.waitForFunction(() => window.location.hash === '');
     assert.equal(seen.mutations.length, 0);
   }, '/reset-password#uid=MQ&token=abc-123');
+});
+
+test('assisted recovery: recovery code link, email + code, then the normal new-password step', async () => {
+  await scene(server(), async (page, seen) => {
+    await page.getByRole('button', { name: 'I have an account recovery code' }).click();
+    await page.getByText(/account recovery code the campus administrator arranged/).waitFor();
+    await page.getByLabel('Registered email', { exact: true }).fill('legacy@example.edu');
+    await page.getByLabel('Account recovery code', { exact: true }).fill('654-321');
+    await page.getByRole('button', { name: 'Verify recovery code' }).press('Enter');
+    await enterPassword(page);
+    await page.getByText('Password changed. You can now sign in.').waitFor();
+    assert.deepEqual(seen.mutations.map((m) => [m.path, Object.keys(m.body).sort()]), [
+      ['/api/v1/auth/account-recovery/verify/', ['code', 'email']],
+      ['/api/v1/auth/reset-password/', ['email', 'password', 'password_confirmation']],
+    ]);
+    assert.equal(seen.mutations[0].body.code, '654321');
+    assert.equal(await page.evaluate(() => document.cookie.includes('ctug_password_reset_ticket')), false);
+  }, '/forgot-password');
+});
+
+test('assisted recovery deep link: a wrong code shows the shared neutral message and keeps the step', async () => {
+  await scene(server({ '/account-recovery/verify/': ({ respond }) => respond(fail('recovery_code_invalid'), 400) }), async (page, seen) => {
+    await page.getByLabel('Account recovery code', { exact: true }).waitFor();
+    await page.getByLabel('Registered email', { exact: true }).fill('legacy@example.edu');
+    await page.getByLabel('Account recovery code', { exact: true }).fill('111111');
+    await page.getByRole('button', { name: 'Verify recovery code' }).press('Enter');
+    const alert = page.getByRole('alert').first();
+    await alert.waitFor();
+    assert.match(await alert.innerText(), /The code is incorrect or has expired\./);
+    assert.equal(await page.getByLabel('Account recovery code', { exact: true }).inputValue(), '');
+    assert.equal(seen.mutations.length, 1);
+    await page.getByRole('button', { name: 'Use Forgot Password with a code sent to my email instead' }).click();
+    await page.getByRole('button', { name: 'Send code' }).waitFor();
+  }, '/forgot-password?recovery=code');
 });

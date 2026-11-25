@@ -32,11 +32,18 @@ export interface SchoolYear {
   updated_at: string | null;
 }
 
+/** Server-reported switch state (presentation only; Django re-checks every request). */
+export interface AcademicFeatures {
+  transitions: boolean;
+  corrections: boolean;
+}
+
 export interface SchoolYearPage {
   results: SchoolYear[];
   page: number;
   page_size: number;
   has_next: boolean;
+  features: AcademicFeatures;
 }
 
 export interface DatesRequest {
@@ -114,7 +121,10 @@ export function parseSchoolYearPage(value: unknown, page: number): SchoolYearPag
     || typeof value.has_next !== 'boolean' || value.results.length > 20) {
     throw invalid();
   }
-  return { results: value.results.map(parseSchoolYear), page, page_size: 20, has_next: value.has_next };
+  const features = isRecord(value.features) ? value.features : {};
+  return { results: value.results.map(parseSchoolYear), page, page_size: 20, has_next: value.has_next,
+    // Fail closed: anything but an exact true means the capability is shown as unavailable.
+    features: { transitions: features.transitions === true, corrections: features.corrections === true } };
 }
 
 export function parseDeletion(value: unknown, schoolYearId: number): void {
@@ -148,25 +158,37 @@ export function buildDeleteRequest(root: string, schoolYearId: number, expectedS
 // ---- Errors -------------------------------------------------------------------------------
 
 export type ConflictReason = 'school_year_exists' | 'stale_version' | 'period_not_draft' | 'semesters_overlap'
-  | 'cross_year_overlap' | 'period_in_use' | 'confirmation_mismatch';
+  | 'cross_year_overlap' | 'period_in_use' | 'confirmation_mismatch' | 'period_is_draft' | 'impact_unavailable'
+  | 'impact_review_required' | 'no_change' | 'not_draft' | 'not_active' | 'not_closed' | 'prerequisites_missing'
+  | 'active_changed' | 'confirmation_required' | 'warnings_changed' | 'transition_conflict';
 const CONFLICTS: readonly string[] = ['school_year_exists', 'stale_version', 'period_not_draft', 'semesters_overlap',
-  'cross_year_overlap', 'period_in_use', 'confirmation_mismatch'];
+  'cross_year_overlap', 'period_in_use', 'confirmation_mismatch', 'period_is_draft', 'impact_unavailable',
+  'impact_review_required', 'no_change', 'not_draft', 'not_active', 'not_closed', 'prerequisites_missing',
+  'active_changed', 'confirmation_required', 'warnings_changed', 'transition_conflict'];
+/** Dependency keys the server may name in a refusal's `details`. */
+export const DETAIL_KEYS: readonly string[] = ['valid_dates', 'approved_fee', 'academic_offerings',
+  'outstanding_clearance_signatures', 'unpaid_fee_obligations', 'incomplete_onboarding',
+  'student_participation', 'fee_obligations', 'clearance_records'];
 const CODES: Record<number, string> = {
   400: 'invalid_request', 401: 'authentication_required', 403: 'access_denied', 404: 'period_unavailable',
   405: 'method_not_allowed', 409: 'period_conflict', 415: 'unsupported_media_type', 429: 'rate_limited',
   503: 'academic_periods_unavailable',
 };
-export const FIELD_NAMES = ['start_year', 'start_date', 'end_date', 'expected_version', 'expected_start_year'] as const;
+export const FIELD_NAMES = ['start_year', 'start_date', 'end_date', 'expected_version', 'expected_start_year',
+  'reason_code', 'reason_note'] as const;
 export type FieldName = typeof FIELD_NAMES[number];
 const SAFE_FIELD_MESSAGES = new Set([
   'Enter a starting year from 2000 to 2100.', 'Enter a valid start date.', 'Enter a valid end date.',
   'Reload the semester and try again.', 'Confirm the school year you are deleting.',
   'Dates must fall within the two calendar years of this school year.', 'The end date must be after the start date.',
+  'Enter the start date.', 'Enter the end date.', 'Choose the reason for this change.',
+  'Explain the change in 10 to 500 characters.',
 ]);
 const DEFAULT_FIELD_MESSAGES: Record<FieldName, string> = {
   start_year: 'Enter a starting year from 2000 to 2100.', start_date: 'Enter a valid start date.',
   end_date: 'Enter a valid end date.', expected_version: 'Reload the semester and try again.',
   expected_start_year: 'Confirm the school year you are deleting.',
+  reason_code: 'Choose the reason for this change.', reason_note: 'Explain the change in 10 to 500 characters.',
 };
 
 export interface AcademicError {
@@ -174,6 +196,8 @@ export interface AcademicError {
   code: string;
   reason: string;
   fields: Partial<Record<FieldName, string>>;
+  /** Allowlisted dependency keys (missing prerequisites, unavailable or affected records). */
+  details?: string[];
 }
 
 /** Never renders server-provided text: codes and reasons are allowlisted; field text is matched. */
@@ -182,7 +206,8 @@ export function parseAcademicError(status: number, body: unknown): AcademicError
   const fallback = CODES[status] ?? 'request_failed';
   let code = typeof error.code === 'string' ? error.code : fallback;
   if (status === 403 && code !== 'csrf_failed') code = 'access_denied';
-  if (status !== 403 && code !== fallback) code = fallback;
+  if (status === 503 && code === 'feature_disabled') { /* a separately gated action is switched off */ }
+  else if (status !== 403 && code !== fallback) code = fallback;
   let reason = '';
   if (status === 409 && typeof error.reason === 'string' && CONFLICTS.includes(error.reason)) reason = error.reason;
   if (status === 403 && error.reason === 'admin_context_required') reason = 'admin_context_required';
@@ -195,7 +220,10 @@ export function parseAcademicError(status: number, body: unknown): AcademicError
       }
     }
   }
-  return { status, code, reason, fields };
+  const details = status === 409 && Array.isArray(error.details)
+    ? error.details.filter((item): item is string => typeof item === 'string' && DETAIL_KEYS.includes(item)).slice(0, 10)
+    : [];
+  return { status, code, reason, fields, details };
 }
 
 // ---- Client-side mirror of the server's rules (early feedback only) -----------------------

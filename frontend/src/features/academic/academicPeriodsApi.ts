@@ -41,13 +41,16 @@ async function read(response: Response, mutation: boolean): Promise<unknown> {
   if (!response.ok) {
     const detail = parseAcademicError(response.status, body);
     if (response.status === 401) notifyAuthenticationRequired();
-    if (mutation && response.status >= 500 && detail.code !== 'academic_periods_unavailable') throw unknown();
+    // Both 503 codes are definite refusals raised before any change; anything else may have applied.
+    if (mutation && response.status >= 500 && detail.code !== 'academic_periods_unavailable'
+      && detail.code !== 'feature_disabled') throw unknown();
     throw new AcademicApiError('The request could not be completed.', detail);
   }
   return body;
 }
 
-async function get(path: string): Promise<unknown> {
+/** Shared GET: never retried automatically. */
+export async function getAcademic(path: string): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(path, { method: 'GET', credentials: 'same-origin', cache: 'no-store',
@@ -59,7 +62,8 @@ async function get(path: string): Promise<unknown> {
   return read(response, false);
 }
 
-async function send(path: string, body: unknown): Promise<unknown> {
+/** Shared single POST with a fresh CSRF token: never retried; ambiguous failures are outcome_unknown. */
+export async function sendAcademic(path: string, body: unknown): Promise<unknown> {
   const csrfToken = await initializeCSRF(); // fails before anything is sent
   let response: Response;
   try {
@@ -76,25 +80,25 @@ async function send(path: string, body: unknown): Promise<unknown> {
 
 export async function listSchoolYears(page = 1, enabled = ACADEMIC_PERIODS_ENABLED): Promise<SchoolYearPage> {
   if (!enabled) throw off(); // MUST stay first: no request while switched off
-  return parseSchoolYearPage(await get(buildListRequest(ACADEMIC_PERIODS_ROUTE_ROOT, page)), page);
+  return parseSchoolYearPage(await getAcademic(buildListRequest(ACADEMIC_PERIODS_ROUTE_ROOT, page)), page);
 }
 
 export async function createSchoolYear(startYear: number, enabled = ACADEMIC_PERIODS_ENABLED): Promise<SchoolYear> {
   if (!enabled) throw off();
   const plan = buildCreateRequest(ACADEMIC_PERIODS_ROUTE_ROOT, startYear);
-  return parseSchoolYear(await send(plan.path, plan.body));
+  return parseSchoolYear(await sendAcademic(plan.path, plan.body));
 }
 
 export async function updateSemesterDates(semesterId: number, request: DatesRequest,
   enabled = ACADEMIC_PERIODS_ENABLED): Promise<SchoolYear> {
   if (!enabled) throw off();
   const plan = buildDatesRequest(ACADEMIC_PERIODS_ROUTE_ROOT, semesterId, request);
-  return parseSchoolYear(await send(plan.path, plan.body));
+  return parseSchoolYear(await sendAcademic(plan.path, plan.body));
 }
 
 export async function deleteSchoolYear(schoolYearId: number, expectedStartYear: number,
   enabled = ACADEMIC_PERIODS_ENABLED): Promise<void> {
   if (!enabled) throw off();
   const plan = buildDeleteRequest(ACADEMIC_PERIODS_ROUTE_ROOT, schoolYearId, expectedStartYear);
-  parseDeletion(await send(plan.path, plan.body), schoolYearId);
+  parseDeletion(await sendAcademic(plan.path, plan.body), schoolYearId);
 }

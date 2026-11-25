@@ -5,11 +5,19 @@
  * gate, the exact effective academic.periods.manage permission, the Admin assignment and role
  * context, and every business rule are enforced by the server on each request.
  *
- * There is no activation, closure, archiving or fee-setting client: those operations are not
- * available in this release, and the backend exposes no route for them.
+ * There is no fee-setting client. Lifecycle confirmations and corrections have their own
+ * switches (below); enabling Draft management never enables them.
  */
 export const ACADEMIC_PERIODS_ENABLED: boolean =
   import.meta.env?.VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED === '1';
+
+/** Activation, closure and archiving confirmations (server: WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED). */
+export const ACADEMIC_PERIOD_TRANSITIONS_ENABLED: boolean = ACADEMIC_PERIODS_ENABLED &&
+  import.meta.env?.VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED === '1';
+
+/** Active-semester edits and historical corrections (server: WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED). */
+export const ACADEMIC_PERIOD_CORRECTIONS_ENABLED: boolean = ACADEMIC_PERIODS_ENABLED &&
+  import.meta.env?.VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED === '1';
 
 /** Mounted in config/urls.py; every view answers 503 while the server gate is off. */
 export const ACADEMIC_PERIODS_ROUTE_ROOT = '/api/v1/academic/';

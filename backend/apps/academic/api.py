@@ -10,7 +10,10 @@ This is deliberately NOT a RegistrationReviewAPI subclass: the existing WF-02 re
 (init_registration_review_metadata_local_dev.unexpected_review_routes) keeps covering exactly the
 review routes it was approved for, and these routes neither match nor weaken it.
 
-No activation, closure, archiving, fee or curriculum route exists here.
+Lifecycle (activation/closure/archive) and correction confirmations are additionally gated by
+WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED / WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED
+(default off, refused in production); their GET previews need only the base gate and report
+``feature_enabled``. No fee-setting or curriculum route exists here.
 """
 
 from django.contrib.auth import get_user
@@ -23,7 +26,8 @@ from rest_framework.throttling import SimpleRateThrottle
 from apps.accounts.models import Account
 from apps.accounts.session_auth import WorkspaceSessionAPI, _workspace_account
 
-from . import services
+from . import corrections, history, lifecycle, services
+from .dependencies import CLOSURE_OBLIGATIONS, IMPACT_RECORDS, REQUIRED_PREREQUISITES
 
 CREATE_FIELDS = frozenset({"start_year"})
 DATES_FIELDS = frozenset({"start_date", "end_date", "expected_version", "acknowledge_cross_year_overlap"})
@@ -39,11 +43,16 @@ FIELD_MESSAGES = {
     "expected_start_year": "Confirm the school year you are deleting.",
     "acknowledge_cross_year_overlap": "Confirm the overlap warning.",
     "page": "Invalid page.",
+    "reason_code": "Choose the reason for this change.",
+    "reason_note": "Explain the change in 10 to 500 characters.",
+    "acknowledged_warnings": "Review the warnings again.",
+    "acknowledged_impacts": "Review the impact summary again.",
 }
 CODE_MESSAGES = {
     "outside_school_year": "Dates must fall within the two calendar years of this school year.",
     "start_not_before_end": "The end date must be after the start date.",
 }
+REQUIRED_MESSAGES = {"start_date": "Enter the start date.", "end_date": "Enter the end date."}
 CONFLICT_MESSAGES = {
     "school_year_exists": "This school year already exists.",
     "stale_version": "This semester was changed by someone else. Reload and try again.",
@@ -52,7 +61,25 @@ CONFLICT_MESSAGES = {
     "cross_year_overlap": "These dates overlap a semester of another school year. Review and confirm to save.",
     "period_in_use": "This school year is in use and cannot be deleted.",
     "confirmation_mismatch": "The confirmed school year does not match. Reload and try again.",
+    "period_is_draft": "Draft semesters are edited with their Draft dates instead.",
+    "impact_unavailable": ("The effect on student, fee or clearance records cannot be checked yet, "
+                           "so this change is not allowed."),
+    "impact_review_required": "This change affects existing records. Review the impact summary and confirm.",
+    "no_change": "The dates are unchanged.",
 }
+TRANSITION_MESSAGES = {
+    "not_draft": "Only a Draft semester can be activated.",
+    "not_active": "Only the Active semester can be closed.",
+    "not_closed": "Only a Closed semester can be archived.",
+    "prerequisites_missing": "Activation prerequisites are not met.",
+    "active_changed": "The Active semester changed. Review the summary again.",
+    "confirmation_required": "Confirm the change to continue.",
+    "warnings_changed": "The warnings changed. Review the summary again.",
+    "stale_version": "This semester was changed by someone else. Reload and try again.",
+    "transition_conflict": "The change could not be applied. Reload and try again.",
+}
+_DETAIL_KEYS = (frozenset(REQUIRED_PREREQUISITES) | frozenset(CLOSURE_OBLIGATIONS) | frozenset(IMPACT_RECORDS)
+                | {"valid_dates"})
 
 
 class AcademicPeriodsUnavailable(exceptions.APIException):
@@ -115,11 +142,18 @@ class AcademicPeriodAPI(WorkspaceSessionAPI):
 
     def handle_exception(self, exc):
         if isinstance(exc, services.AcademicPeriodInvalid):
-            fields = {name: [CODE_MESSAGES.get(code, FIELD_MESSAGES.get(name, "Check this value."))]
+            fields = {name: [REQUIRED_MESSAGES.get(name) if code == "required" and name in REQUIRED_MESSAGES
+                             else CODE_MESSAGES.get(code, FIELD_MESSAGES.get(name, "Check this value."))]
                       for name, code in exc.fields.items() if name in FIELD_MESSAGES}
             return _error("invalid_request", "Check the submitted academic-period details.", 400, fields=fields)
         if isinstance(exc, services.AcademicPeriodConflict):
-            return _error("period_conflict", CONFLICT_MESSAGES[exc.reason], 409, reason=exc.reason)
+            return _error("period_conflict", CONFLICT_MESSAGES[exc.reason], 409, reason=exc.reason,
+                          details=[k for k in exc.details if k in _DETAIL_KEYS])
+        if isinstance(exc, lifecycle.TransitionRefused):
+            return _error("period_conflict", TRANSITION_MESSAGES[exc.reason], 409, reason=exc.reason,
+                          details=[k for k in exc.missing if k in _DETAIL_KEYS])
+        if isinstance(exc, services.AcademicPeriodFeatureDisabled):
+            return _error("feature_disabled", "This academic-period action is not enabled.", 503)
         if isinstance(exc, services.AcademicPeriodDenied):
             return _error("access_denied", "You cannot manage academic periods.", 403, reason=exc.reason)
         if isinstance(exc, services.AcademicPeriodNotFound):
@@ -192,3 +226,84 @@ class SchoolYearDeleteView(AcademicPeriodAPI):
         data = self.body(request, DELETE_FIELDS)
         return Response(services.delete_school_year(
             actor=actor, school_year_id=school_year_id, expected_start_year=data["expected_start_year"]))
+
+
+class _SemesterPreviewConfirmView(AcademicPeriodAPI):
+    """GET = read-only preview (base gate); POST = explicit confirmation (separately gated)."""
+
+    http_method_names = ["get", "post", "head", "options"]
+    preview = None
+    confirm_fields = frozenset()
+    optional_fields = frozenset()
+
+    def get(self, request, semester_id):
+        actor = self.actor(request)
+        if request.query_params:
+            raise exceptions.ValidationError("Unsupported query fields.")
+        return Response(type(self).preview(actor=actor, semester_id=semester_id))
+
+    def post(self, request, semester_id):
+        actor = self.actor(request)
+        data = self.body(request, self.confirm_fields | self.optional_fields, self.confirm_fields)
+        return Response(self.confirm(actor, semester_id, data))
+
+
+TRANSITION_FIELDS = frozenset({"confirmed", "expected_version", "acknowledged_warnings"})
+
+
+class SemesterActivationView(_SemesterPreviewConfirmView):
+    preview = staticmethod(lifecycle.activation_preview)
+    confirm_fields = TRANSITION_FIELDS | {"expected_active_semester_id"}
+
+    def confirm(self, actor, semester_id, data):
+        return lifecycle.activate_semester(
+            actor=actor, semester_id=semester_id, expected_version=data["expected_version"],
+            expected_active_semester_id=data["expected_active_semester_id"],
+            acknowledged_warnings=data["acknowledged_warnings"], confirmed=data["confirmed"])
+
+
+class SemesterClosureView(_SemesterPreviewConfirmView):
+    preview = staticmethod(lifecycle.closure_preview)
+    confirm_fields = TRANSITION_FIELDS
+
+    def confirm(self, actor, semester_id, data):
+        return lifecycle.close_semester(
+            actor=actor, semester_id=semester_id, expected_version=data["expected_version"],
+            acknowledged_warnings=data["acknowledged_warnings"], confirmed=data["confirmed"])
+
+
+class SemesterArchiveView(_SemesterPreviewConfirmView):
+    preview = staticmethod(lifecycle.archive_preview)
+    confirm_fields = TRANSITION_FIELDS
+
+    def confirm(self, actor, semester_id, data):
+        return lifecycle.archive_semester(
+            actor=actor, semester_id=semester_id, expected_version=data["expected_version"],
+            acknowledged_warnings=data["acknowledged_warnings"], confirmed=data["confirmed"])
+
+
+class SemesterCorrectionView(_SemesterPreviewConfirmView):
+    preview = staticmethod(corrections.correction_preview)
+    confirm_fields = frozenset({"start_date", "end_date", "expected_version", "reason_code", "reason_note"})
+    optional_fields = frozenset({"acknowledged_impacts", "acknowledge_cross_year_overlap"})
+
+    def confirm(self, actor, semester_id, data):
+        return corrections.correct_semester_dates(
+            actor=actor, semester_id=semester_id, start_date=data["start_date"], end_date=data["end_date"],
+            expected_version=data["expected_version"], reason_code=data["reason_code"],
+            reason_note=data["reason_note"], acknowledged_impacts=data.get("acknowledged_impacts", []),
+            acknowledge_cross_year_overlap=data.get("acknowledge_cross_year_overlap", False))
+
+
+class SchoolYearHistoryView(AcademicPeriodAPI):
+    http_method_names = ["get", "head", "options"]
+
+    def get(self, request, school_year_id):
+        actor = self.actor(request)
+        params = request.query_params
+        if set(params) - LIST_QUERY_FIELDS or len(params.getlist("page")) > 1:
+            raise exceptions.ValidationError("Unsupported query fields.")
+        raw = params.get("page", "1")
+        if not raw.isascii() or not raw.isdecimal() or len(raw) > 4:
+            raise services.AcademicPeriodInvalid({"page": "invalid"})
+        return Response(history.school_year_history(actor=actor, school_year_id=school_year_id, page=int(raw)))

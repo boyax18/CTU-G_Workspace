@@ -120,6 +120,7 @@ Hover is never the only affordance. Clickable cards are `<button>` or `<a>` elem
 - Enter: opacity 0 → 1 and `translateY(8px) scale(.97)` → none, 200ms `--ease-out`. Exit: 150ms `ease-in`. Reduced motion: opacity only.
 - Structure: H3 title phrased as a question ("Confirm rejection?"), a consequence sentence ("This is a real account action and will be audited."), any required inputs, then actions right-aligned with `gap-3`: **Cancel (secondary, first in DOM)**, then confirm. The confirm button uses the destructive style for destructive actions and primary otherwise.
 - Focus goes to the first field, or to Cancel for destructive actions. Escape and Cancel close it. Focus returns to the trigger.
+- A dialog may be rendered already open (`<Modal open …>` mounted only while needed, as in WF-11.01 `LifecycleDialog`/`CorrectionDialog`). **Current since 25 Nov 2026:** a stale browser `close` event that arrives after the dialog was shown again (React StrictMode remount) is ignored, so it never dismisses the dialog.
 
 ## 7. Navigation
 

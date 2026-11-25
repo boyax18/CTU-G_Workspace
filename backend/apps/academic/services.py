@@ -59,6 +59,10 @@ class AcademicPeriodUnavailable(Exception):
     """Gate off, executor enabled, service/permission rows missing or database unsuitable (503)."""
 
 
+class AcademicPeriodFeatureDisabled(AcademicPeriodUnavailable):
+    """A separately gated capability (transitions, corrections) is switched off (503 feature_disabled)."""
+
+
 class AcademicPeriodDenied(Exception):
     """Not an eligible, authorized School Admin in a permitted role context (403)."""
 
@@ -77,10 +81,13 @@ class AcademicPeriodConflict(Exception):
     REASONS = frozenset({
         "school_year_exists", "stale_version", "period_not_draft", "semesters_overlap",
         "cross_year_overlap", "period_in_use", "confirmation_mismatch",
+        # WF11-D05/D06 controlled edits and historical corrections.
+        "period_is_draft", "impact_unavailable", "impact_review_required", "no_change",
     })
 
-    def __init__(self, reason):
+    def __init__(self, reason, details=()):
         self.reason = reason if reason in self.REASONS else "stale_version"
+        self.details = tuple(details)
         super().__init__("The academic period could not be changed.")
 
 
@@ -167,14 +174,15 @@ def lock_and_authorize(actor):
     return authorize(actor)
 
 
-def write_audit(auth, *, action, school_year_id, semester_id=None, old_value=None, new_value=None, reason):
+def write_audit(auth, *, action, school_year_id, semester_id=None, old_value=None, new_value=None, reason,
+                reason_note=None):
     """Append-only audit inside the caller's transaction; a failure rolls the change back."""
     if not transaction.get_connection(DEFAULT_DB_ALIAS).in_atomic_block:
         raise AcademicPeriodUnavailable("Audit requires the change's transaction.")
     AcademicPeriodAuditLog.objects.using(DEFAULT_DB_ALIAS).create(
         actor_account=auth.account, acting_role_id=auth.acting_role_id, action=action,
         school_year_id=school_year_id, semester_id=semester_id,
-        old_value=old_value, new_value=new_value, reason=reason,
+        old_value=old_value, new_value=new_value, reason=reason, reason_note=reason_note,
     )
 
 
@@ -185,8 +193,15 @@ def _iso(value):
 
 
 def activation_missing(semester):
-    from .lifecycle import DEFAULT_PREREQUISITES
-    return list(DEFAULT_PREREQUISITES.missing(semester))
+    from .dependencies import missing_prerequisites
+    return missing_prerequisites(semester)
+
+
+def feature_flags():
+    """Server-side switch state for the UI ("Feature unavailable"); never authorization."""
+    from .corrections import corrections_enabled
+    from .lifecycle import transitions_enabled
+    return {"transitions": transitions_enabled(), "corrections": corrections_enabled()}
 
 
 def semester_snapshot(semester):
@@ -200,6 +215,7 @@ def semester_payload(semester):
         label=semester.label,
         can_edit_dates=semester.status == SemesterStatus.DRAFT,
         # Read-only readiness from the real, fail-closed prerequisites. Never an available action.
+        # Read-only readiness from the real dependency contract; "available" never authorizes.
         activation={"available": False, "missing": activation_missing(semester)},
         updated_at=_iso(semester.updated_at),
     )
@@ -251,7 +267,8 @@ def list_school_years(*, actor, page=1):
     rows = list(SchoolYear.objects.using(DEFAULT_DB_ALIAS).prefetch_related("semesters")
                 .order_by("-start_year", "-school_year_id")[start:start + PAGE_SIZE + 1])
     return {"results": [school_year_payload(row) for row in rows[:PAGE_SIZE]],
-            "page": page, "page_size": PAGE_SIZE, "has_next": len(rows) > PAGE_SIZE}
+            "page": page, "page_size": PAGE_SIZE, "has_next": len(rows) > PAGE_SIZE,
+            "features": feature_flags()}
 
 
 # ---- Writes ------------------------------------------------------------------------------------

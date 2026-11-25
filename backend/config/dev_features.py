@@ -98,8 +98,17 @@ FEATURES = (
     Feature("wf11.academic_periods", "WF-11.01", "School years & semesters (Draft management only)",
             backend_env={"WORKSPACE_ACADEMIC_PERIODS_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED",),
-            note="Needs the academic 0001 migration on ctug_workspace (separately approved) and a mode approval. "
-                 "Activation, closure, archiving and fee setting are not available."),
+            note="Needs the academic migrations on ctug_workspace (separately approved) and a mode approval. "
+                 "Fee setting is not available."),
+    # Registered, NOT approved for any mode. Even when enabled, activation stays refused until real fee
+    # and offering sources exist, and edits stay refused while downstream impact cannot be evaluated.
+    Feature("wf11.academic_period_lifecycle", "WF-11.01", "Semester activation, closure, archiving and corrections",
+            backend_env={"WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED": "1",
+                         "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED": "1"},
+            frontend_flags=("VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
+                            "VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"),
+            requires=("wf11.academic_periods",),
+            note="Depends on the finance fee schedule, curriculum offerings, clearance and WF-05.05 onboarding."),
 )
 
 # One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).

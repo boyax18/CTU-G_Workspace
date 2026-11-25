@@ -1,9 +1,10 @@
-/** WF-11.01 School years & semesters: Draft management only (dashboard surface).
+/** WF-11.01 School years & semesters (dashboard surface).
  *
- * Create a School Year (Django creates its First and Second semesters as Draft), set Draft
- * semester dates, and delete a genuinely unused Draft year. Statuses are shown exactly as the
- * server derives them. Activation, closure, archiving and semester fees are NOT available in this
- * release: the page shows the server's read-only activation prerequisites and no action for them.
+ * Draft management: create a School Year (Django creates its First and Second semesters as Draft),
+ * set Draft dates and delete a genuinely unused Draft year. Lifecycle: review then explicitly confirm
+ * activation, closure and archiving (LifecycleDialog); reasoned Active edits and historical
+ * corrections (CorrectionDialog); read-only history (PeriodHistory). Confirmations are enabled only
+ * when both the server and this build report the action available. Semester fees are not set here.
  * Every request is re-authorized by Django (academic.periods.manage, Admin role context, Deny).
  */
 import { useEffect, useId, useRef, useState } from 'react';
@@ -11,28 +12,25 @@ import type { FormEvent, ReactNode } from 'react';
 import Modal from '../../components/common/Modal.tsx';
 import { DashboardState } from '../../components/dashboard/DashboardStates';
 import { AcademicApiError, createSchoolYear, deleteSchoolYear, listSchoolYears, updateSemesterDates } from './academicPeriodsApi.ts';
+import { ACADEMIC_PERIOD_CORRECTIONS_ENABLED, ACADEMIC_PERIOD_TRANSITIONS_ENABLED } from './academicPeriodsConfig.ts';
+import type { Transition } from './academicLifecycleApi.ts';
+import CorrectionDialog from './CorrectionDialog.tsx';
+import LifecycleDialog from './LifecycleDialog.tsx';
+import PeriodHistory from './PeriodHistory.tsx';
+import {
+  badgeClass, compactButton, destructiveButton, fieldClass, formatDate, primaryButton, secondaryButton,
+} from './academicStyles.ts';
 import {
   parseStartYear, schoolYearBounds, semestersOverlap, validateSemesterRange,
 } from './academicPeriodsContract.ts';
 import type { ActivationRequirement, FieldName, SchoolYear, SchoolYearPage, SchoolYearStatus, Semester, SemesterStatus } from './academicPeriodsContract.ts';
-
-const ring = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
-const primaryButton = `dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${ring} disabled:cursor-not-allowed disabled:opacity-50`;
-const secondaryButton = `dashboard-outline-button inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${ring} disabled:cursor-not-allowed disabled:opacity-50`;
-const compactButton = `dashboard-outline-button inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${ring} disabled:cursor-not-allowed disabled:opacity-50`;
-const destructiveButton = `inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#b91c1c] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#991b1b] ${ring} disabled:cursor-not-allowed disabled:opacity-50`;
-const fieldClass = `dashboard-panel min-h-11 w-full rounded-lg border px-3 py-2 text-sm ${ring}`;
-const badgeClass = 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap';
 
 type Listing = { status: 'loading' } | { status: 'failed'; error: AcademicApiError | null } | { status: 'ready'; data: SchoolYearPage };
 type Notice = { kind: 'success' | 'error'; text: string } | null;
 
 const asAcademic = (error: unknown) => (error instanceof AcademicApiError ? error : null);
 
-const DATE_FORMAT = new Intl.DateTimeFormat('en-PH', { dateStyle: 'medium', timeZone: 'UTC' });
-function formatDate(value: string | null): string {
-  return value ? DATE_FORMAT.format(new Date(`${value}T00:00:00Z`)) : 'Not set';
-}
+type Dialog = { kind: Transition | 'correction'; year: SchoolYear; semester: Semester } | null;
 
 const STATUS_MARKS: Record<SemesterStatus | SchoolYearStatus, string> = {
   Draft: '○', Active: '●', Closed: '■', Archived: '▣', 'Between semesters': '◐', Completed: '✓',
@@ -48,7 +46,6 @@ const REQUIREMENT_LABELS: Record<ActivationRequirement, string> = {
   approved_fee: 'Approved semester organization fee',
   academic_offerings: 'Curriculum and subject offerings',
 };
-const NOT_BUILT: ReadonlySet<ActivationRequirement> = new Set(['approved_fee', 'academic_offerings']);
 
 function failureCopy(error: AcademicApiError | null): { title: string; detail: string; retry: boolean } {
   switch (error?.detail.code) {
@@ -95,7 +92,7 @@ function Prerequisites({ semester }: { semester: Semester }) {
       <ul className="mt-2 space-y-1 text-xs">
         {items.map((item) => {
           const missing = semester.activation.missing.includes(item);
-          const note = !missing ? 'Ready' : NOT_BUILT.has(item) ? 'Not available yet' : 'Missing';
+          const note = missing ? 'Not ready' : 'Ready';
           return (
             <li key={item} className="flex items-start justify-between gap-3">
               <span className="dashboard-heading">{REQUIREMENT_LABELS[item]}</span>
@@ -106,7 +103,7 @@ function Prerequisites({ semester }: { semester: Semester }) {
           );
         })}
       </ul>
-      <p className="dashboard-muted mt-2 text-xs">Activation is not available in this release. Semesters stay in Draft.</p>
+      <p className="dashboard-muted mt-2 text-xs">Activation needs every prerequisite. Review activation for the current details.</p>
     </div>
   );
 }
@@ -216,9 +213,15 @@ function DatesEditor({ year, semester, onSaved, onCancel, onFailed }: EditorProp
   );
 }
 
-function SemesterCard({ year, semester, editing, onEdit, children }: {
-  year: SchoolYear; semester: Semester; editing: boolean; onEdit: () => void; children?: ReactNode;
+function SemesterCard({ year, semester, editing, onEdit, onAction, children }: {
+  year: SchoolYear; semester: Semester; editing: boolean; onEdit: () => void;
+  onAction: (kind: Transition | 'correction') => void; children?: ReactNode;
 }) {
+  const where = <span className="sr-only"> for {semester.label}, S.Y. {year.label}</span>;
+  const actions: [Transition | 'correction', string][] = semester.status === 'Draft' ? [['activation', 'Review activation']]
+    : semester.status === 'Active' ? [['closure', 'Review closure'], ['correction', 'Edit active semester']]
+      : semester.status === 'Closed' ? [['archive', 'Review archiving'], ['correction', 'Correct dates']]
+        : [['correction', 'Correct dates']];
   return (
     <article className="dashboard-panel rounded-xl border p-4" aria-label={`${semester.label}, S.Y. ${year.label}`}>
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -229,12 +232,15 @@ function SemesterCard({ year, semester, editing, onEdit, children }: {
         <div><dt className="dashboard-muted text-xs">Start date</dt><dd className="dashboard-heading mt-1 font-medium">{formatDate(semester.start_date)}</dd></div>
         <div><dt className="dashboard-muted text-xs">End date</dt><dd className="dashboard-heading mt-1 font-medium">{formatDate(semester.end_date)}</dd></div>
       </dl>
-      {editing ? children : semester.can_edit_dates && (
-        <button type="button" className={`${compactButton} mt-3`} onClick={onEdit}>
-          Edit dates<span className="sr-only"> for {semester.label}, S.Y. {year.label}</span>
-        </button>
+      {editing ? children : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {semester.can_edit_dates && <button type="button" className={compactButton} onClick={onEdit}>Edit dates{where}</button>}
+          {actions.map(([kind, label]) => (
+            <button key={kind} type="button" className={compactButton} onClick={() => onAction(kind)}>{label}{where}</button>
+          ))}
+        </div>
       )}
-      <Prerequisites semester={semester} />
+      {semester.status === 'Draft' && <Prerequisites semester={semester} />}
     </article>
   );
 }
@@ -253,6 +259,23 @@ export default function SchoolPeriodsPanel() {
   const [notice, setNotice] = useState<Notice>(null);
   const [pendingDelete, setPendingDelete] = useState<SchoolYear | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [historyOpen, setHistoryOpen] = useState<ReadonlySet<number>>(new Set());
+
+  function toggleHistory(id: number) {
+    setHistoryOpen((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function lifecycleDone(message: string) {
+    setDialog(null);
+    setHistoryOpen(new Set());
+    setNotice({ kind: 'success', text: message });
+    reload();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -330,6 +353,7 @@ export default function SchoolPeriodsPanel() {
   }
 
   const rows = listing.status === 'ready' ? listing.data.results : [];
+  const features = listing.status === 'ready' ? listing.data.features : { transitions: false, corrections: false };
 
   return (
     <div className="space-y-5">
@@ -368,7 +392,7 @@ export default function SchoolPeriodsPanel() {
           <div className="min-w-0">
             <h2 id={`${ids}-list`} className="dashboard-heading text-lg font-semibold">School years</h2>
             <p className="dashboard-muted mt-1 text-xs">
-              Newest first. A school year’s status comes from its semesters. Activation, closure, archiving and semester fees are not available in this release.
+              Newest first. A school year’s status comes from its semesters. Semester fees are not set here.
             </p>
           </div>
           <button type="button" className={secondaryButton} disabled={loading} onClick={() => reload()}>Refresh list</button>
@@ -405,22 +429,30 @@ export default function SchoolPeriodsPanel() {
                     <h3 id={`${ids}-sy-${year.school_year_id}`} className="dashboard-heading text-base font-semibold">S.Y. {year.label}</h3>
                     <StatusBadge status={year.status} />
                   </div>
-                  {year.can_delete && (
-                    <button type="button" className={compactButton} onClick={() => setPendingDelete(year)}>
-                      Delete<span className="sr-only"> S.Y. {year.label}</span>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" className={compactButton} aria-expanded={historyOpen.has(year.school_year_id)}
+                      onClick={() => toggleHistory(year.school_year_id)}>
+                      {historyOpen.has(year.school_year_id) ? 'Hide history' : 'View history'}<span className="sr-only"> of S.Y. {year.label}</span>
                     </button>
-                  )}
+                    {year.can_delete && (
+                      <button type="button" className={compactButton} onClick={() => setPendingDelete(year)}>
+                        Delete<span className="sr-only"> S.Y. {year.label}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                   {year.semesters.map((semester) => (
                     <SemesterCard key={semester.semester_id} year={year} semester={semester}
-                      editing={editing === semester.semester_id} onEdit={() => { setNotice(null); setEditing(semester.semester_id); }}>
+                      editing={editing === semester.semester_id} onEdit={() => { setNotice(null); setEditing(semester.semester_id); }}
+                      onAction={(kind) => { setNotice(null); setDialog({ kind, year, semester }); }}>
                       <DatesEditor year={year} semester={semester} onCancel={() => setEditing(null)}
                         onSaved={(updated, text) => { replaceYear(updated); setEditing(null); setNotice({ kind: 'success', text }); }}
                         onFailed={(text, shouldReload) => { setNotice({ kind: 'error', text }); if (shouldReload) reload(); }} />
                     </SemesterCard>
                   ))}
                 </div>
+                {historyOpen.has(year.school_year_id) && <PeriodHistory schoolYearId={year.school_year_id} label={year.label} />}
               </li>
             ))}
           </ul>
@@ -434,6 +466,17 @@ export default function SchoolPeriodsPanel() {
           </nav>
         )}
       </section>
+
+      {dialog && dialog.kind !== 'correction' && (
+        <LifecycleDialog key={`${dialog.kind}-${dialog.semester.semester_id}`} transition={dialog.kind} semester={dialog.semester}
+          yearLabel={dialog.year.label} buildEnabled={ACADEMIC_PERIOD_TRANSITIONS_ENABLED && features.transitions}
+          onClose={() => setDialog(null)} onDone={(_result, message) => lifecycleDone(message)} />
+      )}
+      {dialog && dialog.kind === 'correction' && (
+        <CorrectionDialog key={`correction-${dialog.semester.semester_id}`} semester={dialog.semester} year={dialog.year}
+          buildEnabled={ACADEMIC_PERIOD_CORRECTIONS_ENABLED && features.corrections}
+          onClose={() => setDialog(null)} onSaved={(_updated, message) => lifecycleDone(message)} />
+      )}
 
       <Modal open={pendingDelete !== null} title="Delete this school year?" busy={deleting} onClose={() => setPendingDelete(null)}
         actions={<>

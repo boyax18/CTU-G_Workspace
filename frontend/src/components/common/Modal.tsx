@@ -70,7 +70,10 @@ export default function Modal({ open, title, onClose, busy = false, initialFocus
   }
 
   function closedByBrowser() {
-    // Some browsers close anyway after a repeated Escape; keep the state in step.
+    // Some browsers close anyway after a repeated Escape; keep the state in step. A queued close event
+    // from an unmount/remount (React StrictMode on a dialog mounted already open) arrives after the
+    // dialog was shown again: it is stale and must not dismiss the dialog.
+    if (dialog.current?.open) return;
     if (open && !busy) onClose();
   }
 

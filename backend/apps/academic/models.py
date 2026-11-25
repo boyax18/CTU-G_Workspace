@@ -155,6 +155,8 @@ class AcademicPeriodAuditLog(models.Model):
     old_value = models.JSONField(null=True, blank=True)
     new_value = models.JSONField(null=True, blank=True)
     reason = models.CharField(max_length=40)
+    # WF11-D05/D06: the School Admin's explanation for an Active edit or historical correction.
+    reason_note = models.CharField(max_length=500, null=True, blank=True)
     created_at = MySQLTimestampField(db_default=CurrentTimestamp(), editable=False)
 
     class Meta:

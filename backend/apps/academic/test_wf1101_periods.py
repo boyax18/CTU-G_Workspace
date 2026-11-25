@@ -2,8 +2,8 @@
 
 Run: python manage.py test apps.academic --settings=config.test_settings --noinput
 Disposable MySQL only (config.test_settings + IsolatedMySQLRunner); synthetic accounts. The
-lifecycle tests use a test-only prerequisites substitute that the module itself refuses outside
-the verified isolated database; it never creates fee or offering records.
+lifecycle helpers use a test-only dependency bundle (dependencies.isolated_bundle) that the module
+itself refuses outside the verified isolated database; it never creates fee or offering records.
 """
 
 import threading
@@ -21,7 +21,7 @@ from apps.access_control.models import AccountPermission, AccountRole, Permissio
 from apps.accounts.active_role_context import bind_role_scope
 from apps.accounts.models import Account
 
-from . import lifecycle, periods, services
+from . import dependencies, lifecycle, periods, services
 from .models import AcademicPeriodAuditLog, SchoolYear, Semester, SemesterStatus, SemesterTerm
 from .periods import SchoolYearStatus
 
@@ -69,17 +69,51 @@ class World:
         return AccountPermission.objects.create(account=account, permission=self.perm, effect="Deny", is_active=active)
 
 
-class IsolatedPrerequisites(lifecycle.ActivationPrerequisites):
-    """TEST ONLY: keeps the real date rule and drops the two checks whose sources do not exist yet.
+class Fixed:
+    """TEST ONLY read-side source with a fixed result. dependencies.isolated_bundle refuses to install
+    it outside the verified disposable database, and it never creates fee or offering records."""
 
-    lifecycle._entry accepts a substitute only on the verified disposable database.
-    """
+    def __init__(self, key, status, count=None):
+        self.key, self.status, self.count = key, status, count
 
-    def missing(self, semester):
-        return tuple(item for item in super().missing(semester) if item == "valid_dates")
+    def evaluate(self, semester):
+        if self.status in (dependencies.READY, dependencies.MISSING):
+            return dependencies.CheckResult(self.key, self.status, "test_fixture")
+        return dependencies.CountResult(self.key, self.status, self.count, "test_fixture")
 
 
-ISOLATED = IsolatedPrerequisites()
+def bundle(fee=dependencies.READY, offerings=dependencies.READY, obligations=0, impact=0):
+    """Evaluated sources for isolated tests; ``None`` makes a category unavailable."""
+    def counts(keys, value):
+        return tuple(Fixed(k, dependencies.UNAVAILABLE if value is None else dependencies.EVALUATED, value)
+                     for k in keys)
+    prerequisites = tuple(
+        Fixed(key, status) if status != dependencies.UNAVAILABLE else dependencies.UnavailablePrerequisite(key, "test")
+        for key, status in (("approved_fee", fee), ("academic_offerings", offerings)))
+    return dependencies.DependencyBundle(prerequisites, counts(dependencies.CLOSURE_OBLIGATIONS, obligations),
+                                         counts(dependencies.IMPACT_RECORDS, impact))
+
+
+READY_BUNDLE = bundle()
+
+
+def activate(actor, semester_id, source=READY_BUNDLE):
+    """Activate through the real preview + confirmation, acknowledging exactly what the preview showed."""
+    with dependencies.isolated_bundle(source):
+        preview = lifecycle.activation_preview(actor=actor, semester_id=semester_id)
+        current = preview["current_active"]
+        return lifecycle.activate_semester(
+            actor=actor, semester_id=semester_id, expected_version=preview["semester"]["version"],
+            expected_active_semester_id=current["semester_id"] if current else None,
+            acknowledged_warnings=preview["warnings"], confirmed=True)
+
+
+def close(actor, semester_id, source=READY_BUNDLE, archive=False):
+    with dependencies.isolated_bundle(source):
+        preview = (lifecycle.archive_preview if archive else lifecycle.closure_preview)(actor=actor, semester_id=semester_id)
+        return (lifecycle.archive_semester if archive else lifecycle.close_semester)(
+            actor=actor, semester_id=semester_id, expected_version=preview["semester"]["version"],
+            acknowledged_warnings=preview["warnings"], confirmed=True)
 
 
 def other_table_counts():
@@ -325,8 +359,7 @@ class DraftServiceTests(TestCase):
     def test_activated_periods_cannot_be_deleted_or_edited_and_future_drafts_coexist(self):
         first, second = self.ids(self.create(2026))
         self.dates(first, "2026-08-10", "2026-12-18")
-        lifecycle.activate_semester(actor=self.w.admin, semester_id=first, expected_active_semester_id=None,
-                                    confirmed=True, prerequisites=ISOLATED)
+        activate(self.w.admin, first)
         year = SchoolYear.objects.get(start_year=2026)
         self.conflict("period_not_draft", services.delete_school_year, actor=self.w.admin,
                       school_year_id=year.pk, expected_start_year=2026)
@@ -339,7 +372,7 @@ class DraftServiceTests(TestCase):
         self.assertEqual([(r["start_year"], r["status"]) for r in listing["results"]],
                          [(2027, SchoolYearStatus.DRAFT), (2026, SchoolYearStatus.ACTIVE)])
         self.assertEqual([r["can_delete"] for r in listing["results"]], [True, False])
-        lifecycle.close_semester(actor=self.w.admin, semester_id=first, confirmed=True, prerequisites=ISOLATED)
+        close(self.w.admin, first)
         self.assertEqual(services.list_school_years(actor=self.w.admin)["results"][1]["status"],
                          SchoolYearStatus.BETWEEN_SEMESTERS)
         self.conflict("period_not_draft", services.delete_school_year, actor=self.w.admin,
@@ -514,122 +547,6 @@ class RoleContextTests(TestCase):
         self.assertEqual(AcademicPeriodAuditLog.objects.get().acting_role_id, self.w.roles["Technical Super Admin"].pk)
 
 
-@override_settings(**TRANSITIONS)
-class LifecycleTests(TestCase):
-    @classmethod
-    def setUpTestData(cls):
-        cls.w = World()
-
-    def setUp(self):
-        self.year = services.create_school_year(actor=self.w.admin, start_year=2026)
-        self.first, self.second = (s["semester_id"] for s in self.year["semesters"])
-        services.update_semester_dates(actor=self.w.admin, semester_id=self.first, start_date="2026-08-10",
-                                       end_date="2026-12-18", expected_version=1)
-        services.update_semester_dates(actor=self.w.admin, semester_id=self.second, start_date="2027-01-11",
-                                       end_date="2027-05-28", expected_version=1)
-
-    def activate(self, semester_id, expected=None, prerequisites=ISOLATED, confirmed=True):
-        return lifecycle.activate_semester(actor=self.w.admin, semester_id=semester_id,
-                                           expected_active_semester_id=expected, confirmed=confirmed,
-                                           prerequisites=prerequisites)
-
-    def refused(self, reason, fn, *args, **kwargs):
-        before = list(Semester.objects.values().order_by("pk"))
-        with self.assertRaises(lifecycle.TransitionRefused) as caught:
-            fn(*args, **kwargs)
-        self.assertEqual(caught.exception.reason, reason)
-        self.assertEqual(before, list(Semester.objects.values().order_by("pk")))
-        return caught.exception
-
-    def statuses(self):
-        return dict(Semester.objects.values_list("pk", "status"))
-
-    def test_transitions_are_unavailable_unless_the_undefined_gate_is_overridden(self):
-        import config.settings as base_settings
-        import config.test_settings as isolated_settings
-        for module in (base_settings, isolated_settings):
-            self.assertFalse(hasattr(module, lifecycle.TRANSITIONS_SETTING))
-        with override_settings(WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED=False):
-            for fn in (lambda: self.activate(self.first), lambda: lifecycle.close_semester(
-                    actor=self.w.admin, semester_id=self.first, confirmed=True),
-                    lambda: lifecycle.archive_semester(actor=self.w.admin, semester_id=self.first, confirmed=True)):
-                with self.assertRaises(services.AcademicPeriodUnavailable):
-                    fn()
-
-    def test_real_preflight_fails_closed_and_never_fabricates_fee_or_offerings(self):
-        error = self.refused("prerequisites_missing", self.activate, self.first, prerequisites=None)
-        self.assertEqual(error.missing, ("approved_fee", "academic_offerings"))
-        self.assertEqual(lifecycle.preflight(Semester.objects.get(pk=self.first)), ["approved_fee", "academic_offerings"])
-        Semester.objects.filter(pk=self.first).update(end_date=None)
-        self.assertEqual(lifecycle.preflight(Semester.objects.get(pk=self.first)),
-                         ["valid_dates", "approved_fee", "academic_offerings"])
-
-    def test_substitute_prerequisites_are_refused_outside_the_isolated_database(self):
-        with patch.object(lifecycle, "_isolated_test_database", return_value=False):
-            with self.assertRaises(services.AcademicPeriodUnavailable):
-                self.activate(self.first)
-        self.assertEqual(set(self.statuses().values()), {"Draft"})
-
-    def test_activation_requires_dates_confirmation_and_permission(self):
-        Semester.objects.filter(pk=self.first).update(end_date=None)
-        error = self.refused("prerequisites_missing", self.activate, self.first)
-        self.assertEqual(error.missing, ("valid_dates",))
-        self.refused("confirmation_required", self.activate, self.second, confirmed="yes")
-        self.w.deny(self.w.admin)
-        with self.assertRaises(services.AcademicPeriodDenied):
-            self.activate(self.second)
-        self.assertEqual(set(self.statuses().values()), {"Draft"})
-
-    def test_atomic_one_active_transition_closes_the_previous_semester(self):
-        others = other_table_counts()
-        self.activate(self.first)
-        self.assertEqual(self.statuses(), {self.first: "Active", self.second: "Draft"})
-        self.refused("active_changed", self.activate, self.second, expected=None)
-        self.activate(self.second, expected=self.first)
-        self.assertEqual(self.statuses(), {self.first: "Closed", self.second: "Active"})
-        self.assertEqual(Semester.objects.filter(status="Active").count(), 1)
-        actions = list(AcademicPeriodAuditLog.objects.filter(action__startswith="academic.semester.")
-                       .exclude(action=services.DATES_ACTION).order_by("pk").values_list("action", "semester_id"))
-        self.assertEqual(actions, [(lifecycle.ACTIVATE_ACTION, self.first), (lifecycle.CLOSE_ACTION, self.first),
-                                   (lifecycle.ACTIVATE_ACTION, self.second)])
-        self.assertEqual(other_table_counts(), others)  # activation never creates participation/clearance/fees
-
-    def test_failed_transition_rolls_back_completely(self):
-        self.activate(self.first)
-        real = services.write_audit
-
-        def fail_on_activate(auth, **kwargs):
-            if kwargs["action"] == lifecycle.ACTIVATE_ACTION:
-                raise RuntimeError("audit down")
-            return real(auth, **kwargs)
-
-        before = list(Semester.objects.values().order_by("pk"))
-        with patch.object(services, "write_audit", side_effect=fail_on_activate), self.assertRaises(RuntimeError):
-            self.activate(self.second, expected=self.first)
-        self.assertEqual(before, list(Semester.objects.values().order_by("pk")))  # no half-closed semester
-
-    def test_database_backstop_forbids_two_active_semesters(self):
-        self.activate(self.first)
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Semester.objects.filter(pk=self.second).update(status="Active", active_slot=1, activated_at=timezone.now())
-        with self.assertRaises(IntegrityError), transaction.atomic():  # Active without its slot
-            Semester.objects.filter(pk=self.second).update(status="Active", activated_at=timezone.now())
-
-    def test_closed_and_archived_periods_are_never_reopened(self):
-        self.activate(self.first)
-        lifecycle.close_semester(actor=self.w.admin, semester_id=self.first, confirmed=True)
-        self.refused("not_draft", self.activate, self.first)
-        self.refused("not_active", lifecycle.close_semester, actor=self.w.admin, semester_id=self.first, confirmed=True)
-        self.refused("not_closed", lifecycle.archive_semester, actor=self.w.admin, semester_id=self.second, confirmed=True)
-        lifecycle.archive_semester(actor=self.w.admin, semester_id=self.first, confirmed=True)
-        self.refused("not_draft", self.activate, self.first)
-        row = Semester.objects.get(pk=self.first)
-        self.assertEqual((row.status, row.active_slot), ("Archived", None))
-        self.assertTrue(row.activated_at and row.closed_at and row.archived_at)
-        with self.assertRaises(IntegrityError), transaction.atomic():  # the database refuses a reopen too
-            Semester.objects.filter(pk=self.first).update(status="Draft")
-
-
 class ConcurrencyTests(TransactionTestCase):
     def tearDown(self):
         connections.close_all()
@@ -665,25 +582,6 @@ class ConcurrencyTests(TransactionTestCase):
                             for e in errors), errors)
         self.assertEqual((SchoolYear.objects.count(), Semester.objects.count(),
                           AcademicPeriodAuditLog.objects.count()), (1, 2, 1))
-
-    @override_settings(**TRANSITIONS)
-    def test_concurrent_activations_never_produce_two_active_semesters(self):
-        w = World()
-        ids = []
-        for year in (2026, 2027):
-            payload = services.create_school_year(actor=w.admin, start_year=year)
-            first = payload["semesters"][0]["semester_id"]
-            services.update_semester_dates(actor=w.admin, semester_id=first, start_date=f"{year}-08-10",
-                                           end_date=f"{year}-12-18", expected_version=1)
-            ids.append(first)
-        results = self.race(*[
-            (lambda sid=sid: lifecycle.activate_semester(actor=w.admin, semester_id=sid, expected_active_semester_id=None,
-                                                         confirmed=True, prerequisites=ISOLATED)) for sid in ids])
-        self.assertEqual(sum(r[0] == "ok" for r in results), 1, results)
-        refused = [r[1] for r in results if r[0] == "error"]
-        self.assertTrue(all(isinstance(e, lifecycle.TransitionRefused) and e.reason == "active_changed" for e in refused))
-        self.assertEqual(Semester.objects.filter(status="Active").count(), 1)
-        self.assertEqual(AcademicPeriodAuditLog.objects.filter(action=lifecycle.ACTIVATE_ACTION).count(), 1)
 
     @override_settings(**GATE)
     def test_concurrent_date_edits_with_the_same_version_apply_once(self):

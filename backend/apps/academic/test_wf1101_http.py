@@ -14,7 +14,10 @@ from apps.access_control.management.commands import init_registration_review_met
 from apps.accounts.active_role_context import SESSION_ROLE_KEY
 from config import dev_features
 
-from .api import SchoolYearCollectionView, SchoolYearDeleteView, SemesterDatesView
+from .api import (
+    SchoolYearCollectionView, SchoolYearDeleteView, SchoolYearHistoryView, SemesterActivationView,
+    SemesterArchiveView, SemesterClosureView, SemesterCorrectionView, SemesterDatesView,
+)
 from .models import AcademicPeriodAuditLog, SchoolYear, Semester
 from .test_wf1101_periods import GATE, World
 
@@ -59,16 +62,22 @@ class RouteSurfaceTests(SimpleTestCase):
         walk(get_resolver("config.urls").url_patterns)
         return found
 
-    def test_exactly_three_draft_routes_and_no_lifecycle_or_fee_route(self):
+    def test_exact_academic_routes_and_no_fee_curriculum_or_participation_route(self):
         self.assertEqual(self.academic_routes(), {
             "api/v1/academic/school-years/": SchoolYearCollectionView,
             "api/v1/academic/school-years/<int:school_year_id>/delete/": SchoolYearDeleteView,
+            "api/v1/academic/school-years/<int:school_year_id>/history/": SchoolYearHistoryView,
             "api/v1/academic/semesters/<int:semester_id>/dates/": SemesterDatesView,
+            "api/v1/academic/semesters/<int:semester_id>/activation/": SemesterActivationView,
+            "api/v1/academic/semesters/<int:semester_id>/closure/": SemesterClosureView,
+            "api/v1/academic/semesters/<int:semester_id>/archive/": SemesterArchiveView,
+            "api/v1/academic/semesters/<int:semester_id>/corrections/": SemesterCorrectionView,
         })
         self.assertEqual(SemesterDatesView.http_method_names, ["post", "options"])
         self.assertEqual(SchoolYearDeleteView.http_method_names, ["post", "options"])
+        self.assertEqual(SchoolYearHistoryView.http_method_names, ["get", "head", "options"])
         for route in self.academic_routes():
-            for word in ("activate", "close", "archive", "fee", "curriculum", "offering"):
+            for word in ("fee", "curriculum", "offering", "participation", "enrol", "clearance"):
                 self.assertNotIn(word, route)
         self.assertEqual(resolve(YEARS).url_name, "academic-school-years")
 
@@ -80,17 +89,24 @@ class RouteSurfaceTests(SimpleTestCase):
     def test_gates_default_off_and_no_unrestricted_admin_write_path(self):
         import config.settings as base
         self.assertIs(base.WORKSPACE_ACADEMIC_PERIODS_ENABLED, False)
-        self.assertFalse(hasattr(base, "WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED"))
+        self.assertIs(base.WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED, False)
+        self.assertIs(base.WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED, False)
         for model in (SchoolYear, Semester, AcademicPeriodAuditLog):
             self.assertFalse(admin.site.is_registered(model))
 
     def test_launcher_registers_the_feature_without_approving_any_mode(self):
-        feature = next(f for f in dev_features.FEATURES if f.key == "wf11.academic_periods")
-        self.assertEqual(feature.modes, frozenset())
+        for key in ("wf11.academic_periods", "wf11.academic_period_lifecycle"):
+            feature = next(f for f in dev_features.FEATURES if f.key == key)
+            self.assertEqual(feature.modes, frozenset())
         for mode, extra in (("local", {}), ("lan", {"lan_ip": "192.168.1.20"})):
             result = dev_features.mode_environment(mode, env={}, **extra)
             self.assertEqual(result["frontend_env"]["VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED"], "0")
-            self.assertNotIn("WORKSPACE_ACADEMIC_PERIODS_ENABLED", result["backend_env"])
+            for flag in ("VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
+                         "VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"):
+                self.assertEqual(result["frontend_env"][flag], "0")
+            for flag in ("WORKSPACE_ACADEMIC_PERIODS_ENABLED", "WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
+                         "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"):
+                self.assertNotIn(flag, result["backend_env"])
 
 
 class GateOffTests(TestCase):
@@ -106,7 +122,10 @@ class GateOffTests(TestCase):
         before = state()
         replies = [client.get(YEARS), post(client, YEARS, {"start_year": 2026}),
                    post(client, ROOT + "semesters/1/dates/", {"start_date": None, "end_date": None, "expected_version": 1}),
-                   post(client, YEARS + "1/delete/", {"expected_start_year": 2026}), Client().get(YEARS)]
+                   post(client, YEARS + "1/delete/", {"expected_start_year": 2026}), Client().get(YEARS),
+                   client.get(YEARS + "1/history/")]
+        for action in ("activation", "closure", "archive", "corrections"):
+            replies += [client.get(f"{ROOT}semesters/1/{action}/"), post(client, f"{ROOT}semesters/1/{action}/", {})]
         for reply in replies:
             self.assertEqual(reply.status_code, 503, reply.content)
             self.assertEqual(reply.json()["error"]["code"], "academic_periods_unavailable")

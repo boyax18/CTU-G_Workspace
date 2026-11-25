@@ -19,6 +19,8 @@ const hooks = registerHooks({
 const contract = await import('../src/features/academic/academicPeriodsContract.ts');
 const api = await import('../src/features/academic/academicPeriodsApi.ts');
 const config = await import('../src/features/academic/academicPeriodsConfig.ts');
+const lifecycleContract = await import('../src/features/academic/academicLifecycleContract.ts');
+const lifecycleApi = await import('../src/features/academic/academicLifecycleApi.ts');
 const navigation = await import('../src/features/dashboard/navigation.ts');
 hooks.deregister();
 
@@ -63,14 +65,17 @@ test('the switch is off by default and the navigation item stays "Soon"', () => 
   assert.equal(navigation.canOpenDashboardView('school-periods', ['academic.periods.manage']), true);
 });
 
-test('no activation, closure, archiving or fee client exists', () => {
-  const source = readFileSync(new URL('../src/features/academic/academicPeriodsApi.ts', import.meta.url), 'utf8')
-    + readFileSync(new URL('../src/features/academic/academicPeriodsContract.ts', import.meta.url), 'utf8');
-  for (const word of ['activate', 'archive', 'close_semester', 'fee_schedule', '/close', '/activate']) {
-    assert.equal(source.includes(word), false, word);
-  }
+test('no fee-setting client exists and lifecycle switches are independent and off', () => {
+  const source = ['academicPeriodsApi.ts', 'academicPeriodsContract.ts', 'academicLifecycleApi.ts', 'academicLifecycleContract.ts']
+    .map((f) => readFileSync(new URL(`../src/features/academic/${f}`, import.meta.url), 'utf8')).join('\n');
+  for (const word of ['fee_schedule', 'fee_amount', '/fees', 'participation_correction']) assert.equal(source.includes(word), false, word);
   assert.deepEqual(Object.keys(api).filter((k) => typeof api[k] === 'function').sort(),
-    ['AcademicApiError', 'createSchoolYear', 'deleteSchoolYear', 'listSchoolYears', 'updateSemesterDates']);
+    ['AcademicApiError', 'createSchoolYear', 'deleteSchoolYear', 'getAcademic', 'listSchoolYears', 'sendAcademic', 'updateSemesterDates']);
+  assert.equal(config.ACADEMIC_PERIOD_TRANSITIONS_ENABLED, false);
+  assert.equal(config.ACADEMIC_PERIOD_CORRECTIONS_ENABLED, false);
+  const text = readFileSync(new URL('../src/features/academic/academicPeriodsConfig.ts', import.meta.url), 'utf8');
+  assert.match(text, /ACADEMIC_PERIODS_ENABLED &&\s+import\.meta\.env\?\.VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED === '1'/);
+  assert.match(text, /ACADEMIC_PERIODS_ENABLED &&\s+import\.meta\.env\?\.VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED === '1'/);
 });
 
 test('while switched off, no request is ever sent', async () => {
@@ -173,4 +178,116 @@ test('an ambiguous mutation failure is outcome_unknown and is never retried', as
   await withFetch(() => reply(503, { error: { code: 'academic_periods_unavailable' } }), async () => {
     await assert.rejects(api.createSchoolYear(2026, true), (e) => e.code === 'academic_periods_unavailable' && !e.outcomeUnknown);
   });
+});
+
+// ---- Lifecycle, corrections and history (WF11-D02 to D14) ----------------------------------------
+const ref = (overrides = {}) => ({ semester_id: 7, term: 'first', label: 'First semester', status: 'Draft',
+  start_date: '2026-08-10', end_date: '2026-12-18', version: 2, school_year_id: 4, school_year_label: '2026–2027', ...overrides });
+const activation = (overrides = {}) => ({ semester: ref(), current_active: null, prerequisites: [
+  { key: 'valid_dates', status: 'ready', reason: '' },
+  { key: 'approved_fee', status: 'unavailable', reason: 'fee_schedule_not_implemented' },
+  { key: 'academic_offerings', status: 'unavailable', reason: 'curriculum_offerings_not_implemented' }],
+warnings: [], blockers: ['prerequisites_missing'], feature_enabled: false, can_confirm: false, ...overrides });
+const counts = (keys, status = 'unavailable', count = null) =>
+  keys.map((key) => ({ key, status, count, reason: status === 'unavailable' ? 'x_not_implemented' : '' }));
+const OBLIGATIONS = ['outstanding_clearance_signatures', 'unpaid_fee_obligations', 'incomplete_onboarding'];
+const IMPACTS = ['student_participation', 'fee_obligations', 'clearance_records'];
+const correction = (overrides = {}) => ({ start_date: '2026-08-11', end_date: '2026-12-18', expected_version: 3,
+  reason_code: 'calendar_change', reason_note: 'Calendar was revised.', acknowledged_impacts: [],
+  acknowledge_cross_year_overlap: false, ...overrides });
+
+test('page features fail closed when absent or not exactly true', () => {
+  assert.deepEqual(contract.parseSchoolYearPage(page([]), 1).features, { transitions: false, corrections: false });
+  assert.deepEqual(contract.parseSchoolYearPage(page([], { features: { transitions: 'yes', corrections: true } }), 1).features,
+    { transitions: false, corrections: true });
+});
+
+test('previews parse strictly and never turn unavailable into zero', () => {
+  assert.equal(lifecycleContract.parseActivationPreview(activation()).prerequisites[1].status, 'unavailable');
+  const base = { warnings: [], blockers: [], feature_enabled: true, can_confirm: true };
+  const closure = lifecycleContract.parseObligationPreview({ ...base, semester: ref({ status: 'Active' }), obligations: counts(OBLIGATIONS),
+    warnings: ['unpaid_fee_obligations_unavailable'] });
+  assert.equal(closure.obligations[0].count, null);
+  assert.equal(lifecycleContract.dependencyNote('unavailable', null), 'Cannot be checked yet');
+  assert.equal(lifecycleContract.dependencyNote('evaluated', 0), 'None');
+  for (const bad of [activation({ prerequisites: activation().prerequisites.slice(1) }), activation({ warnings: ['<script>'] }),
+    activation({ semester: ref({ status: 'Reopened' }) })]) {
+    assert.throws(() => lifecycleContract.parseActivationPreview(bad));
+  }
+  // "unavailable" with a count, or "evaluated" without one, is rejected.
+  assert.throws(() => lifecycleContract.parseObligationPreview({ ...base, semester: ref(), obligations: counts(OBLIGATIONS, 'unavailable', 0) }));
+  assert.throws(() => lifecycleContract.parseObligationPreview({ ...base, semester: ref(), obligations: counts(OBLIGATIONS, 'evaluated', null) }));
+  assert.match(lifecycleContract.warningLabel('unpaid_fee_obligations_unavailable'), /cannot be checked yet/);
+  assert.equal(lifecycleContract.warningLabel('surprise'), 'Another condition needs your review.');
+});
+
+test('confirmations are never sent while their own switch is off', async () => {
+  await withFetch(() => { throw new Error('must not fetch'); }, async (calls) => {
+    await assert.rejects(lifecycleApi.confirmTransition(7, 'activation', { expected_version: 2, acknowledged_warnings: [] }),
+      (e) => e.code === 'feature_disabled');
+    await assert.rejects(lifecycleApi.correctSemester(7, correction()), (e) => e.code === 'feature_disabled');
+    await assert.rejects(lifecycleApi.getActivationPreview(7), (e) => e.code === 'academic_periods_unavailable');
+    assert.equal(calls.length, 0);
+  });
+});
+
+test('activation sends the reviewed version, Active semester and warnings exactly once', async () => {
+  await withFetch(() => reply(200, ref({ status: 'Active', version: 3 })), async (calls) => {
+    const result = await lifecycleApi.confirmTransition(7, 'activation', { expected_version: 2,
+      acknowledged_warnings: ['previous_active_will_close'], expected_active_semester_id: 5 }, true);
+    assert.equal(result.status, 'Active');
+    assert.deepEqual(posts(calls).map((c) => [c.path, JSON.parse(c.body)]), [[`${ROOT}semesters/7/activation/`,
+      { confirmed: true, expected_version: 2, acknowledged_warnings: ['previous_active_will_close'], expected_active_semester_id: 5 }]]);
+  });
+  await withFetch(() => reply(200, ref({ status: 'Closed', version: 4 })), async (calls) => {
+    await lifecycleApi.confirmTransition(7, 'closure', { expected_version: 3, acknowledged_warnings: [] }, true);
+    assert.deepEqual(JSON.parse(posts(calls)[0].body), { confirmed: true, expected_version: 3, acknowledged_warnings: [] });
+  });
+});
+
+test('refusals expose only allowlisted reasons and dependency details', async () => {
+  await withFetch(() => reply(409, { error: { code: 'period_conflict', reason: 'prerequisites_missing',
+    details: ['approved_fee', 'academic_offerings', 'root_password'] } }), async () => {
+    await assert.rejects(lifecycleApi.confirmTransition(7, 'activation', { expected_version: 2, acknowledged_warnings: [] }, true),
+      (e) => e.detail.reason === 'prerequisites_missing' && JSON.stringify(e.detail.details) === '["approved_fee","academic_offerings"]');
+  });
+  await withFetch(() => reply(503, { error: { code: 'feature_disabled' } }), async () => {
+    await assert.rejects(lifecycleApi.confirmTransition(7, 'archive', { expected_version: 2, acknowledged_warnings: [] }, true),
+      (e) => e.detail.code === 'feature_disabled' && !e.outcomeUnknown);
+  });
+  await withFetch(() => reply(400, { error: { code: 'invalid_request',
+    fields: { reason_note: ['Explain the change in 10 to 500 characters.'] } } }), async () => {
+    await assert.rejects(lifecycleApi.correctSemester(7, correction({ reason_note: 'short' }), true),
+      (e) => e.detail.fields.reason_note === 'Explain the change in 10 to 500 characters.');
+  });
+});
+
+test('corrections send the reason, note and only explicit acknowledgments', async () => {
+  await withFetch(() => reply(200, year()), async (calls) => {
+    await lifecycleApi.correctSemester(7, correction(), true);
+    await lifecycleApi.correctSemester(7, correction({ acknowledged_impacts: ['fee_obligations'], acknowledge_cross_year_overlap: true }), true);
+    const [plain, acknowledged] = posts(calls).map((c) => JSON.parse(c.body));
+    assert.deepEqual(plain, { start_date: '2026-08-11', end_date: '2026-12-18', expected_version: 3, reason_code: 'calendar_change',
+      reason_note: 'Calendar was revised.' });
+    assert.deepEqual(acknowledged.acknowledged_impacts, ['fee_obligations']);
+    assert.equal(acknowledged.acknowledge_cross_year_overlap, true);
+  });
+  const preview = lifecycleContract.parseCorrectionPreview({ semester: ref({ status: 'Active' }), kind: 'active_edit',
+    impact: counts(IMPACTS), affected: [], reason_codes: ['calendar_change', 'data_entry_correction', 'institutional_directive'],
+    blockers: ['impact_unavailable'], feature_enabled: true, can_confirm: false });
+  assert.equal(preview.can_confirm, false);
+});
+
+test('history parses minimized entries and rejects unexpected fields', async () => {
+  const entry = { event: 'academic.semester.historical_correction', description: 'Historical correction',
+    occurred_at: '2026-11-25T05:00:00+00:00', actor: 'You', semester: 'first',
+    changes: { start_date: { before: '2026-08-10', after: '2026-08-17' } }, reason: 'calendar_change', note: 'Registrar memorandum.' };
+  await withFetch(() => reply(200, { results: [entry], page: 1, page_size: 20, has_next: false }), async (calls) => {
+    const first = await lifecycleApi.getSchoolYearHistory(4, 1, true);
+    assert.equal(first.results[0].changes.start_date.after, '2026-08-17');
+    assert.equal(calls[0].path, `${ROOT}school-years/4/history/`);
+  });
+  const wrap = (item) => ({ results: [item], page: 1, page_size: 20, has_next: false });
+  assert.throws(() => lifecycleContract.parseHistoryPage(wrap({ ...entry, actor: 'ADMIN-001' }), 1));
+  assert.throws(() => lifecycleContract.parseHistoryPage(wrap({ ...entry, changes: { password: { before: null, after: 'x' } } }), 1));
 });

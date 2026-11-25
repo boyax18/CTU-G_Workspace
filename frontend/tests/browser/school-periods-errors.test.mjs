@@ -77,10 +77,38 @@ test('empty state, create with validation, then both Draft semesters appear with
     assert.ok(fake.state.posts[0].csrf);
     await page.getByRole('heading', { name: 'S.Y. 2026–2027', level: 3 }).waitFor();
     const main = await page.locator('main').innerText();
-    for (const text of ['First semester', 'Second semester', 'Activation prerequisites', 'Not available yet',
-      'Activation is not available in this release.']) assert.ok(main.includes(text), text);
-    // No nonfunctional lifecycle or fee control is offered.
-    assert.equal(await page.getByRole('button', { name: /activate|close|archive|fee/i }).count(), 0);
+    for (const text of ['First semester', 'Second semester', 'Activation prerequisites', 'Not ready',
+      'Review activation for the current details.']) assert.ok(main.includes(text), text);
+    // No fee control is ever offered; lifecycle actions are reviews, not direct operations.
+    assert.equal(await page.getByRole('button', { name: /fee/i }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: /^(activate|close|archive)/i }).count(), 0);
+  }, VIEW);
+});
+
+test('with the lifecycle switches off, the activation review is read-only and nothing can be confirmed', async () => {
+  const fake = server({ years: [year(1, 2026)] });
+  const handle = async (args) => {
+    if (args.path === `${API}semesters/11/activation/` && args.request.method() === 'GET') {
+      return args.respond({ semester: { semester_id: 11, term: 'first', label: 'First semester', status: 'Draft',
+        start_date: '2026-08-10', end_date: '2026-12-18', version: 2, school_year_id: 1, school_year_label: '2026–2027' },
+      current_active: null, prerequisites: [{ key: 'valid_dates', status: 'ready', reason: '' },
+        { key: 'approved_fee', status: 'unavailable', reason: 'fee_schedule_not_implemented' },
+        { key: 'academic_offerings', status: 'unavailable', reason: 'curriculum_offerings_not_implemented' }],
+      warnings: [], blockers: ['prerequisites_missing', 'feature_disabled'], feature_enabled: false, can_confirm: false });
+    }
+    return fake.handle(args);
+  };
+  await scene(handle, async (page) => {
+    await open(page);
+    await page.getByRole('button', { name: 'Review activation for First semester, S.Y. 2026–2027' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Activate this semester?' });
+    await dialog.getByText('Feature unavailable').waitFor();
+    const text = await dialog.innerText();
+    for (const expected of ['Ready', 'Not available yet', 'Current Active semester: None']) assert.ok(text.includes(expected), expected);
+    assert.equal(await dialog.getByRole('button', { name: 'Activate semester' }).isDisabled(), true);
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'hidden' });
+    assert.equal(fake.state.posts.length, 0);
   }, VIEW);
 });
 

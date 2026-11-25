@@ -47,6 +47,13 @@ Legacy accounts approved before OTP registration have no email proof, so passwor
 
 **`smtp_accepted` means Gmail accepted the message for relay. It is not proof that the message reached the inbox; arrival is always `recipient_unconfirmed` until the recipient confirms.**
 
+**Delivery evidence (25 November 2026).**
+- **Provider reply:** real SMTP now goes through `email_design.TracedSMTPBackend` (Django's backend plus the `DATA` reply). `smtp_accepted` lines carry `reply=250_2.0.0_OK_<time>_<queue id>_-_gsmtp`, so each message has Gmail's own acceptance, not just Django's count. `EMAIL_BACKEND` keeps its approved value, so the delivery gates are unchanged.
+- **Receipt proof:** `recipient_confirmed` is logged when the code from that exact message is entered correctly: My profile verification, Forgot Password verify, and Student/Instructor registration verify. It shares the original correlation ID. A registration code's ID is derived from the stage's keyed code digest. Notices without a code (password changed, decisions) stay `recipient_unconfirmed`.
+- **Durable trace:** with `WORKSPACE_LOCAL_EMAIL_DELIVERY=1`, the `-Local` profile also appends the trace to `.local/ctug-dev/logs/email-trace.log` (git-ignored). The server and the worker share it, and it survives launcher restarts. `backend.log` is still overwritten on every start.
+- **One message, end to end:** `manage.py email_delivery_report --trace <corr>` prints the outbox row, its final known state (`queued`, `processing`, `retry scheduled`, `permanently failed`, `expired`, `superseded`, `SMTP accepted; receipt unconfirmed` or `receipt CONFIRMED (code redeemed)`) and every trace line for that ID. Decision rows use `dec-<outbox id>`.
+- **Finding a message in Gmail:** search the recipient mailbox with `in:anywhere rfc822msgid:<Message-ID without angle brackets>`. That covers Inbox, every tab, Spam and Trash.
+
 ## Branded email design (24 November 2026)
 
 All CTU-G Workspace emails share one design in `backend/apps/accounts/email_design.py`. That covers the registration OTP (Student and Instructor), the password-recovery OTP, the password-changed notice, and approval and rejection, including each applicant's separate email from a bulk decision.

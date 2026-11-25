@@ -9,6 +9,22 @@ One line per delivery event on the ``ctug.email`` logger, e.g.::
   unchanged: eligibility and account existence stay invisible to callers.
 * ``smtp_accepted`` means the SMTP server took the message. It is never "delivered":
   inbox placement can only be confirmed by the recipient (status ``recipient_unconfirmed``).
+
+Delivery states, in order (25 Nov 2026)::
+
+    account_ineligible    not eligible (public flows: server log only, response unchanged)
+    otp_created           challenge created (only the keyed digest is stored)
+    email_queued          durable outbox row written (security mail)
+    smtp_attempt          processing (row leased, SMTP conversation started)
+    smtp_accepted         the provider accepted THIS message: reply=<provider queue reply>, msgid=<Message-ID>
+    retry_scheduled       temporary failure, bounded exponential backoff
+    permanent_failure     dead-lettered (recipient refused, 5xx, attempts exhausted)
+    expired / superseded  never sent: code expired, or replaced by a newer code / changed address
+    recipient_unconfirmed accepted, receipt not yet proven
+    recipient_confirmed   receipt PROVEN: the code from this exact message was entered correctly
+
+``recipient_confirmed`` is the only receipt claim the system makes, and only for OTP messages.
+Notices (password changed, decisions) carry no code, so their receipt stays unconfirmed.
 """
 
 import logging
@@ -19,9 +35,9 @@ logger = logging.getLogger("ctug.email")
 EVENTS = frozenset({
     "request_accepted", "account_ineligible", "otp_created", "email_queued", "smtp_attempt",
     "smtp_accepted", "temporary_failure", "permanent_failure", "retry_scheduled", "expired",
-    "superseded", "recipient_unconfirmed", "worker_unavailable",
+    "superseded", "recipient_unconfirmed", "recipient_confirmed", "worker_unavailable",
 })
-_FIELDS = ("flow", "outbox", "attempt", "msgid", "to", "code", "next_in", "status")
+_FIELDS = ("flow", "outbox", "attempt", "msgid", "reply", "to", "code", "next_in", "status")
 
 
 def new_correlation_id():

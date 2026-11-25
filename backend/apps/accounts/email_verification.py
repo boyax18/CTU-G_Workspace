@@ -243,6 +243,8 @@ class EmailVerificationConfirmView(_EmailVerificationAPI):
                     challenge.locked = challenge.attempts >= p["attempts"]
                     challenge.save(update_fields=["attempts", "locked"])
                     return locked if challenge.locked else invalid
+                # Receipt proven: the code from the newest message was entered (server log only).
+                recovery_mail.confirm_receipt(account, SecurityMailOutbox.KIND_EMAIL_VERIFICATION, challenge.issued_at)
                 Account.objects.filter(pk=account.pk).update(
                     email_verified_at=timezone.now(), email_verified_address=account.email)
                 challenge.delete()

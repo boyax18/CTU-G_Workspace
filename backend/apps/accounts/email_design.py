@@ -13,12 +13,17 @@
   so existing retry/dead-letter handling keeps working. Nothing here logs content or recipients.
 """
 
+import re
+import smtplib
+import threading
 from functools import lru_cache
 from html import escape
 from pathlib import Path
 
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
+from django.core.mail import get_connection as _django_get_connection
+from django.core.mail.backends.smtp import EmailBackend as _DjangoSMTPBackend
 
 LOGO_CID = "ctug-logo"
 LOGO_PATH = Path(__file__).resolve().parent / "email_assets" / "ctug-logo.png"
@@ -203,6 +208,69 @@ class BrandedEmail(EmailMultiAlternatives):
         return msg
 
 
+# ----------------------------------------------------------------------------- SMTP receipt
+# 25 Nov 2026: "accepted" used to mean only that Django's backend returned 1. The server's own
+# reply to DATA (Gmail: "250 2.0.0 OK <timestamp> <queue id> - gsmtp") is the evidence that THIS
+# message was queued by the provider, so it is recorded per message and written to the trace.
+# The reply never contains the recipient, subject, body or credentials; it is still reduced to
+# a short allow-listed character set before anyone sees it.
+_SMTP_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+_receipt = threading.local()
+
+
+class _RecordingSMTP(smtplib.SMTP):
+    last_data_reply = None
+
+    def data(self, msg):
+        code, reply = super().data(msg)
+        self.last_data_reply = (code, reply)
+        return code, reply
+
+
+class _RecordingSMTPSSL(smtplib.SMTP_SSL):
+    last_data_reply = None
+
+    def data(self, msg):
+        code, reply = super().data(msg)
+        self.last_data_reply = (code, reply)
+        return code, reply
+
+
+class TracedSMTPBackend(_DjangoSMTPBackend):
+    """Django's SMTP backend, unchanged, plus the server's DATA reply for the message just sent."""
+
+    @property
+    def connection_class(self):
+        return _RecordingSMTPSSL if self.use_ssl else _RecordingSMTP
+
+    def _send(self, email_message):
+        if self.connection is not None:
+            self.connection.last_data_reply = None
+        sent = super()._send(email_message)
+        reply = getattr(self.connection, "last_data_reply", None)
+        _receipt.reply = _safe_reply(*reply) if sent and reply else None
+        return sent
+
+
+def _safe_reply(code, text):
+    if isinstance(text, bytes):
+        text = text.decode("ascii", "replace")
+    text = re.sub(r"[^A-Za-z0-9._:\- ]", "", str(text))
+    return f"{int(code)} {' '.join(text.split())}"[:120]
+
+
+def get_connection(**kwargs):
+    """The configured backend; for real SMTP, the same backend that also records the reply."""
+    if getattr(settings, "EMAIL_BACKEND", "") == _SMTP_BACKEND:
+        return TracedSMTPBackend(**kwargs)
+    return _django_get_connection(**kwargs)
+
+
+def last_smtp_reply():
+    """The provider's reply for the last message this thread sent through SMTP, else None."""
+    return getattr(_receipt, "reply", None)
+
+
 def new_message_id(from_email=None):
     """RFC 5322 Message-ID on the sender's domain, used to trace a message in the Sent folder."""
     from email.utils import make_msgid, parseaddr
@@ -213,6 +281,7 @@ def new_message_id(from_email=None):
 
 def build_message(subject, text, html, recipients, *, from_email=None, connection=None, headers=None):
     """Multipart message: plain text first, HTML alternative, inline logo when the HTML uses it."""
+    _receipt.reply = None  # never report a previous message's reply for this one
     message = BrandedEmail(subject, text, from_email or settings.DEFAULT_FROM_EMAIL,
                            list(recipients), connection=connection, headers=dict(headers or {}))
     if html:
@@ -228,14 +297,19 @@ def send_mail(subject, message, from_email, recipient_list, fail_silently=False,
     """Drop-in for django.core.mail.send_mail: same signature and return value, but the HTML
     alternative is sent as the branded multipart message with the inline logo. Senders keep a
     module-level ``send_mail`` name, so existing failure-path tests still patch the same seam."""
+    if connection is not None:  # unchanged behaviour for callers that bring their own connection
+        return build_message(subject, message, html_message, recipient_list, from_email=from_email,
+                             connection=connection, headers=headers).send(fail_silently=fail_silently)
+    # What Django's send() would do without a connection, except that real SMTP goes through
+    # TracedSMTPBackend (records the provider reply); fail_silently lives on the connection.
     return build_message(subject, message, html_message, recipient_list, from_email=from_email,
-                         connection=connection, headers=headers).send(fail_silently=fail_silently)
+                         connection=get_connection(fail_silently=fail_silently), headers=headers).send()
 
 
 def send(subject, text, html, recipients, *, from_email=None, connection=None):
     """Send one branded message; returns the accepted count (SMTP errors propagate unchanged)."""
-    return build_message(subject, text, html, recipients, from_email=from_email, connection=connection).send(
-        fail_silently=False)
+    return build_message(subject, text, html, recipients, from_email=from_email,
+                         connection=connection or get_connection()).send()
 
 
 # ----------------------------------------------------------------------------- notifications

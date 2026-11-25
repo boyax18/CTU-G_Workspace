@@ -181,6 +181,23 @@ def _prepare_code(stage, now):
                             first_name=payload.get("first_name") or None), None
 
 
+def _trace_id(token_hash, otp_digest):
+    """Correlation ID shared by a registration code's send and its later redemption.
+
+    Registration codes have no outbox row, so the ID is derived from the stage's keyed code
+    digest (itself an HMAC): it identifies one message, reveals nothing about the code, and
+    lets the correct-code step prove receipt of exactly that message (25 Nov 2026).
+    """
+    try:
+        return _digest("email-trace", f"{token_hash}:{otp_digest}")[:16]
+    except RegistrationUnavailable:
+        return new_correlation_id()
+
+
+def _flow(role):
+    return f"registration_otp_{role.lower()}"
+
+
 def _deliver_code(delivery):
     """After commit: send the code; on failure invalidate only this same code.
 
@@ -189,7 +206,7 @@ def _deliver_code(delivery):
     back (WF-01 R-02, owner-approved 16 Nov 2026).
     """
     stage, now = delivery.stage, delivery.now
-    corr, flow = new_correlation_id(), f"registration_otp_{delivery.role.lower()}"
+    corr, flow = _trace_id(stage.token_hash, delivery.digest), _flow(delivery.role)
     message_id = email_design.new_message_id()
     trace("otp_created", corr, flow=flow)
     try:
@@ -202,7 +219,8 @@ def _deliver_code(delivery):
                               fail_silently=False, html_message=html, headers={"Message-ID": message_id})
         if delivered != 1:
             raise RuntimeError("Mail backend did not accept the message.")
-        trace("smtp_accepted", corr, flow=flow, msgid=message_id, to=mask(delivery.recipient))
+        trace("smtp_accepted", corr, flow=flow, msgid=message_id, reply=email_design.last_smtp_reply(),
+              to=mask(delivery.recipient))
         trace("recipient_unconfirmed", corr, flow=flow, status="awaiting_recipient")
     except Exception as exc:
         # Registration OTPs are not retried automatically: the code is invalidated and the
@@ -371,6 +389,9 @@ def student_verification_action(token, action, code=""):
                     return _summary(stage, now, status="attempts_exhausted" if not stage.otp_digest else "otp_invalid")
                 # The stage lock serializes verification/resend/cancel and code replay.
                 # Verification proof and permanent creation share the SAME transaction.
+                # Receipt proven: this code exists only in the newest email (server log only).
+                trace("recipient_confirmed", _trace_id(stage.token_hash, stage.otp_digest),
+                      flow=_flow(role_name), status="code_redeemed")
                 payload = _decrypt(stage)
                 stage.email_verified_at = now
                 stage.save(update_fields=["email_verified_at"])

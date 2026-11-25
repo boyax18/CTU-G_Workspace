@@ -245,9 +245,29 @@ def process_one(*, outbox_id=None):
     if accepted != 1:
         return _temporary(row, "not_accepted", expires_at)
     trace("smtp_accepted", corr, flow=row.kind, outbox=row.pk, attempt=row.attempt_count, msgid=message_id,
-          to=mask(recipient))
+          reply=email_design.last_smtp_reply(), to=mask(recipient))
     trace("recipient_unconfirmed", corr, flow=row.kind, outbox=row.pk, status="awaiting_recipient")
     return _finish(row, status="Accepted", message_id=message_id)
+
+
+def confirm_receipt(account, kind, challenge_issued_at):
+    """A correct code was just entered: the message that carried it demonstrably arrived.
+
+    Links the redemption to the original request through the row's correlation ID (server log
+    only). Never raises: a diagnostics problem must not affect verification or recovery.
+    """
+    try:
+        with transaction.atomic(using=DEFAULT_DB_ALIAS):  # savepoint: a failure never poisons the caller
+            row = (SecurityMailOutbox.objects.using(DEFAULT_DB_ALIAS)
+                   .filter(account_id=account.pk, kind=kind, challenge_issued_at=challenge_issued_at)
+                   .order_by("-outbox_id").only("outbox_id", "correlation_id", "status").first())
+        if row is None:
+            trace("recipient_confirmed", None, flow=kind, status="code_redeemed_no_outbox_row")
+            return
+        trace("recipient_confirmed", row.correlation_id, flow=kind, outbox=row.pk,
+              status=f"code_redeemed_after_{row.status.lower()}")
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Receipt confirmation trace failed (%s).", type(exc).__name__)
 
 
 def _permanent(row, code):

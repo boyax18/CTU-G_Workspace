@@ -14,7 +14,6 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.mail import get_connection
 from django.core.validators import validate_email
 from django.db import DEFAULT_DB_ALIAS, connections, transaction
 from django.db.models import Q
@@ -305,7 +304,7 @@ def process_one(*, after_id=None):
         trace("smtp_attempt", corr, flow=flow, outbox=row.pk, attempt=claim.attempt, to=mask(address))
         try:
             # No raw exception/recipient/details are surfaced to the CLI.
-            connection = get_connection(timeout=15)
+            connection = email_design.get_connection(timeout=15)  # SMTP: also records the reply
             accepted = send_mail(
                 subject=message[0], message=message[1],
                 from_email=branded_sender_address(),
@@ -327,7 +326,7 @@ def process_one(*, after_id=None):
         if accepted != 1:
             return _traced(claim, corr, flow, "mail_not_accepted")
         trace("smtp_accepted", corr, flow=flow, outbox=row.pk, attempt=claim.attempt, msgid=message_id,
-              to=mask(address))
+              reply=email_design.last_smtp_reply(), to=mask(address))
         trace("recipient_unconfirmed", corr, flow=flow, outbox=row.pk, status="awaiting_recipient")
         return _finish(claim)
     except Exception:

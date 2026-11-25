@@ -411,6 +411,8 @@ class PasswordResetVerifyView(WorkspaceSessionAPI):
                     _save(account, record, record.window_start + p["window"] if record.state == "locked"
                           else min(record.issued_at + p["code"], record.window_start + p["window"]))
                     return _code_invalid()
+                # Receipt proven for THIS challenge's message (server log only; response unchanged).
+                recovery_mail.confirm_receipt(account, "reset_code", record.issued_at)
                 ticket = issue_ticket(account, now, record)
         except DatabaseError:
             logger.warning("Workspace password recovery verification database error.")

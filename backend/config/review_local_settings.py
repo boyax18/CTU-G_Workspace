@@ -78,6 +78,20 @@ if WORKSPACE_LOCAL_EMAIL_DELIVERY:
     EMAIL_BACKEND = _base_settings.EMAIL_BACKEND
     WORKSPACE_PASSWORD_RESET_ENABLED = _base_settings.WORKSPACE_PASSWORD_RESET_ENABLED
     WORKSPACE_EMAIL_DEV_LINKS_ALLOWED = True
+    # 25 Nov 2026: the launcher overwrites backend.log / worker-*.log on every start, and registration
+    # codes have no outbox row, so delivery evidence used to vanish on restart. The ctug.email trace
+    # (masked recipients, correlation IDs, Message-IDs, provider replies; never codes or bodies) is
+    # ALSO appended to this git-ignored file, shared by the server and the worker. Read it with
+    # `manage.py email_delivery_report --trace <corr>`.
+    import copy as _copy
+    WORKSPACE_EMAIL_TRACE_LOG = str(BASE_DIR.parent / ".local" / "ctug-dev" / "logs" / "email-trace.log")  # noqa: F405
+    os.makedirs(os.path.dirname(WORKSPACE_EMAIL_TRACE_LOG), exist_ok=True)
+    LOGGING = _copy.deepcopy(LOGGING)  # noqa: F405
+    LOGGING["handlers"]["ctug_trace_file"] = {
+        "class": "logging.FileHandler", "filename": WORKSPACE_EMAIL_TRACE_LOG, "mode": "a",
+        "encoding": "utf-8", "delay": True, "formatter": "ctug",
+    }
+    LOGGING["loggers"]["ctug.email"]["handlers"] = ["ctug_console", "ctug_trace_file"]
 
 # WF-03.01 D-100: separate opt-in; ordinary evidence adapter is default-deny.
 # Leave this OFF until D-101/D-102 permission adoption, evidence integration, and deferred tests.

@@ -57,12 +57,44 @@ class CandidateTests(unittest.TestCase):
         from proposal import ROOT
         self.assertIn('WRITE_CODE = "clearance.requests.self.submit"',
                       (ROOT / "backend/apps/academic/onboarding.py").read_text())
-        self.assertFalse((ROOT / "backend/apps/access_control/permission_transitions.py").exists())
+        for absent in ("backend/apps/access_control/permission_transitions.py",
+                       "backend/apps/access_control/catalogue/validation_v2_3.py",
+                       "backend/apps/access_control/management/commands/provision_academic_settings_v2_3_local_dev.py",
+                       "backend/apps/access_control/test_academic_v2_3_provisioning.py"):
+            self.assertFalse((ROOT / absent).exists(), absent)  # nothing of v2.3 is active
         files = proposed_files()
         self.assertIn('WRITE_CODE = "academic.semester_onboarding.self.submit"', files["backend/apps/academic/onboarding.py"])
         self.assertIn("preserve_transition_denies(permissions, account_id)", files["backend/apps/access_control/services.py"])
         self.assertNotIn("has_permission(account, predecessor", files["backend/apps/access_control/permission_transitions.py"])
         self.assertEqual(set(DENY_PREDECESSORS), set(inventory.TRANSITIONS))
+        self.assertIn("\nINDEPENDENT_APPROVAL = None\n", files["backend/apps/access_control/catalogue/validation_v2_3.py"])
+        self.assertIn("definitions = _restated(permissions, definitions)",
+                      files["backend/apps/access_control/management/commands/provision_academic_settings_phase1_local_dev.py"])
+
+    def test_installable_v2_3_validator_matches_the_review_validator_and_refuses_without_approval(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("apps.access_control.catalogue.validation_v2_3",
+                                                      HERE / "proposed" / "validation_v2_3.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        installed, review = module.validate_catalogue(), validate_candidate()
+        thaw = __import__("apps.access_control.catalogue.validation_v2_2", fromlist=["_thaw"])._thaw
+        data = thaw(installed.data)
+        for key in review.keys() - {"revision"}:
+            self.assertEqual(data[key], review[key], key)
+        self.assertEqual(data["revision"]["operations"], review["revision"]["operations"])
+        from hashlib import sha256
+        self.assertEqual(module.DELTA_SHA256, sha256((HERE / "v2_3_delta.json").read_bytes()).hexdigest())
+        self.assertEqual(module.ADDENDUM_SHA256, sha256((HERE / "ADDENDUM_PROPOSED.md").read_bytes()).hexdigest())
+        self.assertIsNone(module.INDEPENDENT_APPROVAL)
+        with self.assertRaises(module.CatalogueV23ValidationError):
+            module.require_independent_approval()
+        for mutated in (b"{}", (HERE / "v2_3_delta.json").read_bytes().replace(b'"Admin"', b'"Treasurer"', 1)):
+            with self.subTest(mutated=mutated[:20]), self.assertRaises(module.CatalogueV23ValidationError):
+                module.validate_catalogue(delta_bytes=mutated)
+        historical = next(p for p in data["permissions"] if p["permission_code"] == NEW[2][0])
+        self.assertEqual((historical["grant_protection"], historical["scope"]), ("ORD", "SCHOOL"))
+        self.assertIn("never by the evidence recorder", historical["description"])
 
 
 class InventoryTests(unittest.TestCase):

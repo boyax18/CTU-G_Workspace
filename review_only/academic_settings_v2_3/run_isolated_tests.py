@@ -31,7 +31,7 @@ if __name__ == "__main__":
         scratch = Path(tempfile.mkdtemp(prefix="wf11-v23-source-", dir=ROOT / ".local")).resolve()
         if not scratch.is_relative_to((ROOT / ".local").resolve()):
             raise RuntimeError("Invalid isolated source destination.")
-        for folder in ("backend/apps", "backend/config", "backend/scripts", "docs"):
+        for folder in ("backend/apps", "backend/config", "backend/scripts", "docs", "review_only/academic_settings_v2_3"):
             shutil.copytree(ROOT / folder, scratch / folder,
                             ignore=shutil.ignore_patterns("__pycache__", "*.docx", "*.pdf"))
         for relative, content in proposed_files().items():

@@ -14,7 +14,7 @@ HERE = Path(__file__).resolve().parent
 BASE_DIGEST = "192ba955d1dae06bfbdf574e52ef454390b9fd41b803f63778d1d220b6cd8c6d"
 ADDENDUM = "review_only/academic_settings_v2_3/ADDENDUM_PROPOSED.md"
 # Implementer-authored integrity check only; NOT an independently approved/protected pin.
-CANDIDATE_ADDENDUM_SHA256 = "f37d4a8cc1a51c50923f9c241800f8e48027598dc7b368cafceea5937a1442d4"
+CANDIDATE_ADDENDUM_SHA256 = "e9c3d4f094a465cf946c7ab89167b84a367a9d122957c71a7f130914a315e552"
 VERSIONS = {"schema_version": "static-catalogue-v2.3", "manifest_version": "catalogue-v2.3",
             "source_revision": "v2.3-candidate-1"}
 NEW = (
@@ -26,7 +26,7 @@ NEW = (
      "Save and confirm own Active-semester onboarding; internal atomic participation, clearance and fee snapshots only; no signing or fee management."),
     ("academic.historical_participation.correct", "Correct missing historical participation", "historical_participation",
      "correct", "SCHOOL", "Admin",
-     "Create one missing evidenced Closed/Archived-semester participation with original fee and pending clearance; no rewriting existing records or reopening periods."),
+     "Create one missing evidenced Closed/Archived-semester participation with original fee and pending clearance; never by the evidence recorder; no rewriting existing records or reopening periods."),
 )
 DEFINITIONS = (
     ("academic.courses.manage", "Maintain approved course definitions; preserve referenced historical records.",

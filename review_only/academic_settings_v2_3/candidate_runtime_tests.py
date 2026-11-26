@@ -23,15 +23,15 @@ HISTORY = "academic.historical_participation.correct"
 def candidate_fixture(w):
     if onboarding.WRITE_CODE != WRITE or verification.VERIFY_CODE != VERIFY or getattr(hp, "CORRECTION_CODE", None) != HISTORY:
         raise RuntimeError("Run candidate tests only against the proposed source copy.")
-    w.write.service = w.service
-    w.write.save(update_fields=["service"])
+    if w.write.service_id != w.service.pk:
+        raise RuntimeError("The candidate fixture binds the onboarding code in the academic service.")
     legacy = {}
     for code, service in (("academic.profiles.manage", w.service),
                           ("clearance.requests.self.submit", w.clearance),
                           ("academic.periods.manage", w.service)):
         legacy[code], _ = Permission.objects.get_or_create(permission_code=code, defaults={
             "service": service, "permission_name": code, "module_name": "m", "action_name": "manage"})
-    return legacy, w._perm(w.service, HISTORY, "Admin")
+    return legacy, w.history  # the candidate OnboardingWorld binds the v2.3 Admin default
 
 
 @override_settings(**ONBOARD)
@@ -39,8 +39,7 @@ class CandidateRuntimeTests(OnboardingBase):
     @classmethod
     def setUpTestData(cls):
         super().setUpTestData()
-        # The unchanged legacy helper associates WRITE with clearance; the new permission belongs
-        # to academic. These explicit fixture updates occur ONLY in disposable MySQL.
+        # Legacy broad codes exist beside the v2.3 codes, ONLY in disposable MySQL.
         cls.legacy, cls.history = candidate_fixture(cls.w)
 
     def deny(self, actor, code, active=True):

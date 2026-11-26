@@ -11,7 +11,7 @@ from datetime import date
 from unittest.mock import patch
 
 from django.core.cache import cache
-from django.db import IntegrityError, connections, transaction
+from django.db import DatabaseError, IntegrityError, connections, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
@@ -219,13 +219,19 @@ class ClosureAndArchiveTests(TestCase):
         self.year, self.first, self.second = year_with_dates(self.w.admin)
         activate(self.w.admin, self.first)
 
-    def test_closure_preview_reports_unavailable_obligations_never_zero(self):
+    def test_closure_preview_reports_real_counts_and_an_unknown_is_never_zero(self):
+        # Since academic.0004 / clearance.0001 / finance.0002 the default sources are real counts.
         preview = lifecycle.closure_preview(actor=self.w.admin, semester_id=self.first)
         self.assertEqual([(o["key"], o["status"], o["count"]) for o in preview["obligations"]], [
-            ("outstanding_clearance_signatures", "unavailable", None), ("unpaid_fee_obligations", "unavailable", None),
-            ("incomplete_onboarding", "unavailable", None)])
-        self.assertTrue({"outstanding_clearance_signatures_unavailable", "unpaid_fee_obligations_unavailable",
-                         "incomplete_onboarding_unavailable"} <= set(preview["warnings"]))
+            ("outstanding_clearance_signatures", "evaluated", 0), ("unpaid_fee_obligations", "evaluated", 0),
+            ("incomplete_onboarding", "evaluated", 0)])
+        self.assertFalse([w for w in preview["warnings"] if w.endswith(("_unavailable", "_outstanding"))])
+        # A source that cannot be read is still reported unavailable (and warned), never as zero.
+        with patch("apps.clearance.services.pending_requirement_count", side_effect=DatabaseError("unreadable")):
+            preview = lifecycle.closure_preview(actor=self.w.admin, semester_id=self.first)
+        self.assertEqual(preview["obligations"][0], {"key": "outstanding_clearance_signatures", "status": "unavailable",
+                                                     "count": None, "reason": "source_unavailable"})
+        self.assertIn("outstanding_clearance_signatures_unavailable", preview["warnings"])
         self.assertTrue(preview["can_confirm"])  # warned closure is allowed (WF11-D11)
 
     def test_closure_requires_explicit_confirmation_of_the_reviewed_warnings(self):
@@ -255,8 +261,11 @@ class ClosureAndArchiveTests(TestCase):
                          {"outstanding_clearance_signatures": 3, "unpaid_fee_obligations": 3, "incomplete_onboarding": 3})
         self.assertEqual(other_table_counts(), others)  # nothing settled, cleared or deleted
         self.assertFalse(dependencies.accepts_new_onboarding(Semester.objects.get(pk=self.first)))
-        with self.assertRaises(dependencies.DependencyUnavailable):
-            dependencies.request_historical_participation_correction(semester_id=self.first)
+        # WF11-D14 now delegates to apps.academic.historical_participation, whose own switch is off here.
+        with self.assertRaises(services.AcademicPeriodUnavailable):
+            dependencies.request_historical_participation_correction(
+                actor=self.w.admin, student_account_id=self.w.admin.pk, semester_id=self.first, expected_evidence_id=1,
+                student_type="Regular", offering_ids=[1], reason_note="Evidenced late entry.", confirmed=True)
 
     def test_archive_only_from_closed_and_archived_periods_stay_immutable(self):
         with self.assertRaises(lifecycle.TransitionRefused) as caught:
@@ -331,18 +340,27 @@ class CorrectionTests(TestCase):
                           audit.actor_account_id), ("2026-08-10", "2026-08-17", "calendar_change", NOTE, self.w.admin.pk))
         self.assertEqual(Semester.objects.get(pk=self.first).active_slot, 1)
 
-    def test_default_runtime_refuses_because_impact_cannot_be_evaluated(self):
-        preview = corrections.correction_preview(actor=self.w.admin, semester_id=self.first)
-        self.assertEqual((preview["kind"], preview["can_confirm"]), ("active_edit", False))
-        self.assertIn("impact_unavailable", preview["blockers"])
+    def test_default_runtime_evaluates_real_impact_and_still_refuses_an_unknown(self):
+        def edit():
+            return corrections.correct_semester_dates(
+                actor=self.w.admin, semester_id=self.first, start_date="2026-08-17", end_date="2026-12-18",
+                expected_version=self.version(self.first), reason_code="calendar_change", reason_note=NOTE)
         before = rows()
-        with self.assertRaises(services.AcademicPeriodConflict) as caught:
-            corrections.correct_semester_dates(actor=self.w.admin, semester_id=self.first, start_date="2026-08-17",
-                                               end_date="2026-12-18", expected_version=self.version(self.first),
-                                               reason_code="calendar_change", reason_note=NOTE)
-        self.assertEqual((caught.exception.reason, caught.exception.details),
-                         ("impact_unavailable", ("student_participation", "fee_obligations", "clearance_records")))
+        with patch("apps.finance.obligations.obligation_count", side_effect=DatabaseError("unreadable")):
+            preview = corrections.correction_preview(actor=self.w.admin, semester_id=self.first)
+            self.assertEqual((preview["kind"], preview["can_confirm"]), ("active_edit", False))
+            self.assertIn("impact_unavailable", preview["blockers"])
+            with self.assertRaises(services.AcademicPeriodConflict) as caught:
+                edit()
+        self.assertEqual((caught.exception.reason, caught.exception.details), ("impact_unavailable", ("fee_obligations",)))
         self.assertEqual(before, rows())
+        preview = corrections.correction_preview(actor=self.w.admin, semester_id=self.first)
+        self.assertEqual([(i["key"], i["status"], i["count"]) for i in preview["impact"]], [
+            ("student_participation", "evaluated", 0), ("fee_obligations", "evaluated", 0),
+            ("clearance_records", "evaluated", 0)])
+        self.assertEqual((preview["affected"], preview["can_confirm"]), ([], True))
+        edit()  # nothing is affected: the controlled Active edit proceeds with its audit
+        self.assertEqual(AcademicPeriodAuditLog.objects.filter(action=corrections.ACTIVE_EDIT_ACTION).count(), 1)
 
     def test_affected_records_require_acknowledgment_and_are_never_rewritten(self):
         others = other_table_counts()
@@ -507,13 +525,13 @@ class LifecycleHTTPTests(TestCase):
                       "acknowledged_warnings": preview["warnings"]})
         self.assertEqual(reply.json()["status"], "Archived")
         impact = self.client.get(f"{ROOT}semesters/{self.first}/corrections/").json()
-        self.assertEqual((impact["kind"], impact["can_confirm"]), ("historical_correction", False))
+        self.assertEqual((impact["kind"], impact["can_confirm"]), ("historical_correction", True))  # real counts: 0
         body = {"start_date": "2026-08-17", "end_date": "2026-12-18", "expected_version": reply.json()["version"],
                 "reason_code": "data_entry_correction", "reason_note": NOTE}
-        refused = post(self.client, f"{ROOT}semesters/{self.first}/corrections/", body)
+        with patch("apps.clearance.services.clearance_count", side_effect=DatabaseError("unreadable")):
+            refused = post(self.client, f"{ROOT}semesters/{self.first}/corrections/", body)
         self.assertEqual((refused.status_code, refused.json()["error"]["reason"]), (409, "impact_unavailable"))
-        with dependencies.isolated_bundle(bundle()):
-            reply = post(self.client, f"{ROOT}semesters/{self.first}/corrections/", body)
+        reply = post(self.client, f"{ROOT}semesters/{self.first}/corrections/", body)
         self.assertEqual(reply.status_code, 200, reply.content)
         bad = post(self.client, f"{ROOT}semesters/{self.first}/corrections/", {**body, "reason_note": "no"})
         self.assertEqual(bad.json()["error"]["fields"], {"reason_note": ["Explain the change in 10 to 500 characters."]})

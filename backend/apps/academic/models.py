@@ -412,3 +412,210 @@ class AcademicConfigurationAuditLog(models.Model):
 
     def delete(self, *args, **kwargs):
         raise RuntimeError("Academic-configuration audit entries are append-only.")
+
+
+# ---- Student Semester Onboarding (WF-05.05) and official verification (WF-05.04 minimum) -------
+# CTU's official enrollment system stays authoritative: EnrollmentEvidence records WHAT was verified
+# (a controlled reference only, never a document), WHO verified it and WHEN. Participation exists only
+# after the atomic finalization in apps.academic.onboarding (or the evidenced WF11-D14 correction).
+
+
+class StudentType(models.TextChoices):
+    REGULAR = "Regular", "Regular"
+    IRREGULAR = "Irregular", "Irregular"
+
+
+class EntryClassification(models.TextChoices):
+    """WF-07.08 scenario recorded from official CTU records (no other student categories)."""
+
+    CONTINUING = "continuing", "Continuing"
+    RETURNING = "returning", "Returning"
+    NEWCOMER = "newcomer", "Newcomer"
+    TRANSFEREE = "transferee", "Transferee"
+
+
+class EvidenceSource(models.TextChoices):
+    IN_PERSON = "in_person", "In-person School Admin verification"     # R-02 lane 2
+    CTU_INTEGRATION = "ctu_integration", "Approved CTU integration"     # R-02 lane 1: no runtime writer exists
+
+
+class VerificationStatus(models.TextChoices):
+    VERIFIED = "Verified", "Verified"
+    REVOKED = "Revoked", "Revoked"
+
+
+class EnrollmentEvidence(models.Model):
+    evidence_id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="student_account_id", on_delete=models.PROTECT,
+                                related_name="enrollment_evidence")
+    semester = models.ForeignKey(Semester, db_column="semester_id", on_delete=models.PROTECT, related_name="enrollment_evidence")
+    source_type = MySQLEnumField(max_length=15, choices=EvidenceSource.choices)
+    source_reference = models.CharField(max_length=80)  # controlled document/control number only
+    source_as_of = models.DateField(null=True, blank=True)
+    entry_classification = MySQLEnumField(max_length=10, choices=EntryClassification.choices)
+    course = models.ForeignKey(Course, db_column="course_id", on_delete=models.PROTECT, related_name="enrollment_evidence")
+    year_level = models.PositiveSmallIntegerField()
+    status = MySQLEnumField(max_length=8, choices=VerificationStatus.choices, default=VerificationStatus.VERIFIED,
+                            db_default=VerificationStatus.VERIFIED)
+    active_slot = models.PositiveSmallIntegerField(null=True, blank=True, editable=False)
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="verified_by", on_delete=models.PROTECT,
+                                    related_name="enrollment_evidence_verified", null=True, blank=True)
+    verified_at = MySQLTimestampField(db_default=CurrentTimestamp(), editable=False)
+    revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="revoked_by", on_delete=models.PROTECT,
+                                   related_name="enrollment_evidence_revoked", null=True, blank=True)
+    revoked_at = MySQLTimestampField(null=True, blank=True, editable=False)
+    revoke_reason = models.CharField(max_length=40, null=True, blank=True)
+    version = models.PositiveIntegerField(default=1, db_default=1)
+
+    class Meta:
+        db_table = "academic_enrollment_evidence"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "semester", "active_slot"], name="academic_evidence_one_verified"),
+            models.CheckConstraint(condition=Q(year_level__gte=MIN_YEAR_LEVEL, year_level__lte=MAX_YEAR_LEVEL),
+                                   name="academic_evidence_year_level_range"),
+            models.CheckConstraint(
+                condition=(Q(status=VerificationStatus.VERIFIED, active_slot__isnull=False, active_slot=1,
+                             revoked_at__isnull=True)
+                           | Q(status=VerificationStatus.REVOKED, active_slot__isnull=True, revoked_at__isnull=False)),
+                name="academic_evidence_lifecycle_consistent"),
+            # In-person evidence is always attributable to the verifying School Admin.
+            models.CheckConstraint(condition=~Q(source_type=EvidenceSource.IN_PERSON) | Q(verified_by__isnull=False),
+                                   name="academic_evidence_in_person_attributed"),
+        ]
+
+
+class EnrollmentEvidenceSubject(models.Model):
+    evidence = models.ForeignKey(EnrollmentEvidence, db_column="evidence_id", on_delete=models.PROTECT, related_name="subjects")
+    subject = models.ForeignKey(Subject, db_column="subject_id", on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        db_table = "academic_enrollment_evidence_subjects"
+        constraints = [models.UniqueConstraint(fields=["evidence", "subject"], name="academic_evidence_subject_unique")]
+
+
+class EnrollmentGapException(models.Model):
+    """School Admin-verified, CTU-evidenced NON-enrollment of a Student in one past semester (WF11-D15/16).
+    Lets a returning Student onboard despite an older Uncleared clearance; never clears or waives anything."""
+
+    gap_id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="student_account_id", on_delete=models.PROTECT,
+                                related_name="enrollment_gaps")
+    semester = models.ForeignKey(Semester, db_column="semester_id", on_delete=models.PROTECT, related_name="enrollment_gaps")
+    source_reference = models.CharField(max_length=80)
+    status = MySQLEnumField(max_length=8, choices=VerificationStatus.choices, default=VerificationStatus.VERIFIED,
+                            db_default=VerificationStatus.VERIFIED)
+    active_slot = models.PositiveSmallIntegerField(null=True, blank=True, editable=False)
+    verified_by = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="verified_by", on_delete=models.PROTECT,
+                                    related_name="enrollment_gaps_verified")
+    verified_at = MySQLTimestampField(db_default=CurrentTimestamp(), editable=False)
+    revoked_by = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="revoked_by", on_delete=models.PROTECT,
+                                   related_name="enrollment_gaps_revoked", null=True, blank=True)
+    revoked_at = MySQLTimestampField(null=True, blank=True, editable=False)
+    version = models.PositiveIntegerField(default=1, db_default=1)
+
+    class Meta:
+        db_table = "academic_enrollment_gap_exceptions"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "semester", "active_slot"], name="academic_gap_one_verified"),
+            models.CheckConstraint(
+                condition=(Q(status=VerificationStatus.VERIFIED, active_slot__isnull=False, active_slot=1,
+                             revoked_at__isnull=True)
+                           | Q(status=VerificationStatus.REVOKED, active_slot__isnull=True, revoked_at__isnull=False)),
+                name="academic_gap_lifecycle_consistent"),
+        ]
+
+
+class OnboardingStatus(models.TextChoices):
+    DRAFT = "Draft", "Draft"
+    PENDING_VERIFICATION = "PendingVerification", "Pending verification"
+    COMPLETED = "Completed", "Completed"
+
+
+class SemesterOnboarding(models.Model):
+    """The Student's recoverable Draft for one semester. A Draft is never participation."""
+
+    onboarding_id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="student_account_id", on_delete=models.PROTECT,
+                                related_name="semester_onboardings")
+    semester = models.ForeignKey(Semester, db_column="semester_id", on_delete=models.PROTECT, related_name="onboardings")
+    status = MySQLEnumField(max_length=19, choices=OnboardingStatus.choices, default=OnboardingStatus.DRAFT,
+                            db_default=OnboardingStatus.DRAFT)
+    student_type = MySQLEnumField(max_length=9, choices=StudentType.choices, null=True, blank=True)
+    course = models.ForeignKey(Course, db_column="course_id", on_delete=models.PROTECT, null=True, blank=True,
+                               related_name="onboardings")
+    year_level = models.PositiveSmallIntegerField(null=True, blank=True)
+    subjects_confirmed = models.BooleanField(default=False, db_default=False)
+    course_confirmed = models.BooleanField(default=False, db_default=False)
+    version = models.PositiveIntegerField(default=1, db_default=1)
+    created_at = MySQLTimestampField(db_default=CurrentTimestamp(), editable=False)
+    updated_at = MySQLTimestampField(db_default=CurrentTimestamp())
+    completed_at = MySQLTimestampField(null=True, blank=True, editable=False)
+
+    class Meta:
+        db_table = "academic_semester_onboardings"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "semester"], name="academic_onboarding_unique"),
+            models.CheckConstraint(condition=Q(year_level__isnull=True)
+                                   | Q(year_level__gte=MIN_YEAR_LEVEL, year_level__lte=MAX_YEAR_LEVEL),
+                                   name="academic_onboarding_year_level_range"),
+            models.CheckConstraint(
+                condition=~Q(status=OnboardingStatus.COMPLETED)
+                | Q(completed_at__isnull=False, student_type__isnull=False, course__isnull=False, year_level__isnull=False,
+                    subjects_confirmed=True, course_confirmed=True),
+                name="academic_onboarding_completed_consistent"),
+        ]
+
+
+class SemesterOnboardingSubject(models.Model):
+    onboarding = models.ForeignKey(SemesterOnboarding, db_column="onboarding_id", on_delete=models.PROTECT, related_name="subjects")
+    offering = models.ForeignKey(SubjectOffering, db_column="offering_id", on_delete=models.PROTECT, related_name="+")
+    subject = models.ForeignKey(Subject, db_column="subject_id", on_delete=models.PROTECT, related_name="+")
+
+    class Meta:
+        db_table = "academic_semester_onboarding_subjects"
+        constraints = [models.UniqueConstraint(fields=["onboarding", "subject"], name="academic_onboarding_subject_unique")]
+
+
+class ParticipationSource(models.TextChoices):
+    ONBOARDING = "onboarding", "Student Semester Onboarding"
+    HISTORICAL_CORRECTION = "historical_correction", "Evidenced historical correction"
+
+
+class SemesterParticipation(models.Model):
+    participation_id = models.AutoField(primary_key=True)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="student_account_id", on_delete=models.PROTECT,
+                                related_name="semester_participations")
+    semester = models.ForeignKey(Semester, db_column="semester_id", on_delete=models.PROTECT, related_name="participations")
+    onboarding = models.OneToOneField(SemesterOnboarding, db_column="onboarding_id", on_delete=models.PROTECT, null=True,
+                                      blank=True, related_name="participation")
+    evidence = models.ForeignKey(EnrollmentEvidence, db_column="evidence_id", on_delete=models.PROTECT, related_name="participations")
+    source = MySQLEnumField(max_length=21, choices=ParticipationSource.choices)
+    student_type = MySQLEnumField(max_length=9, choices=StudentType.choices)
+    course = models.ForeignKey(Course, db_column="course_id", on_delete=models.PROTECT, related_name="participations")
+    year_level = models.PositiveSmallIntegerField()
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="created_by", on_delete=models.PROTECT,
+                                   related_name="participations_created")
+    created_at = MySQLTimestampField(db_default=CurrentTimestamp(), editable=False)
+
+    class Meta:
+        db_table = "academic_semester_participations"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "semester"], name="academic_participation_unique"),
+            models.CheckConstraint(condition=Q(year_level__gte=MIN_YEAR_LEVEL, year_level__lte=MAX_YEAR_LEVEL),
+                                   name="academic_participation_year_level_range"),
+            models.CheckConstraint(condition=~Q(source=ParticipationSource.ONBOARDING) | Q(onboarding__isnull=False),
+                                   name="academic_participation_onboarding_link"),
+        ]
+
+
+class ParticipationSubject(models.Model):
+    participation = models.ForeignKey(SemesterParticipation, db_column="participation_id", on_delete=models.PROTECT,
+                                      related_name="subjects")
+    subject = models.ForeignKey(Subject, db_column="subject_id", on_delete=models.PROTECT, related_name="+")
+    offering = models.ForeignKey(SubjectOffering, db_column="offering_id", on_delete=models.PROTECT, related_name="+")
+    instructor = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="instructor_account_id", on_delete=models.PROTECT,
+                                   related_name="+")
+
+    class Meta:
+        db_table = "academic_participation_subjects"
+        constraints = [models.UniqueConstraint(fields=["participation", "subject"], name="academic_participation_subject_unique")]

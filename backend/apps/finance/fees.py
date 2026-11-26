@@ -182,10 +182,12 @@ def fee_readiness(semester):
 class ObligationImpact:
     """Would approving a new rate affect already assessed Student fee obligations?
 
-    WF-07.02 obligations do not exist yet. Obligations can only be created by onboarding into the
-    Active semester (dependencies.accepts_new_onboarding), so for a semester that was never
-    activated there is nothing to affect ("not_applicable"), and with no previous approved rate
-    there is nothing to replace. Otherwise the impact cannot be determined: "unavailable" (never 0).
+    Real since finance.0002 (WF-07.02): obligations are created only by onboarding finalization into
+    the Active semester (or the evidenced WF11-D14 correction). With no previous approved rate there
+    is nothing to replace, and a semester that was never activated cannot have obligations
+    ("not_applicable"). Otherwise the obligations snapshotted from the current rate are counted
+    ("evaluated"); a count above zero blocks the approval (``obligations_assessed``) because changing
+    an assessed rate needs a controlled financial adjustment workflow that does not exist yet.
     """
 
     def evaluate(self, semester, current_approved):
@@ -193,7 +195,8 @@ class ObligationImpact:
             return {"status": "not_applicable", "count": None, "reason": "no_previous_rate"}
         if semester.activated_at is None:
             return {"status": "not_applicable", "count": None, "reason": "semester_never_active"}
-        return {"status": "unavailable", "count": None, "reason": "fee_obligations_not_implemented"}
+        from .obligations import obligation_count
+        return {"status": "evaluated", "count": obligation_count(semester), "reason": ""}
 
 
 DEFAULT_IMPACT = ObligationImpact()

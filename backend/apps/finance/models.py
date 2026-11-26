@@ -131,3 +131,39 @@ class FinanceAuditLog(models.Model):
 
     def delete(self, *args, **kwargs):
         raise RuntimeError("Finance audit entries are append-only.")
+
+
+class ObligationStatus(models.TextChoices):
+    UNPAID = "Unpaid", "Unpaid"  # payments, receipts and settlement belong to later WF-07 slices
+
+
+class FeeObligation(models.Model):
+    """WF-07.02: exactly one full organizational fee obligation per Student semester participation.
+
+    Created only inside successful onboarding finalization (or the evidenced WF11-D14 correction).
+    ``amount`` is a snapshot of the approved revision at creation; later fee revisions never change it.
+    Nothing here records a payment, receipt or paid status.
+    """
+
+    obligation_id = models.AutoField(primary_key=True)
+    participation = models.OneToOneField("academic.SemesterParticipation", db_column="participation_id",
+                                         on_delete=models.PROTECT, related_name="fee_obligation")
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, db_column="student_account_id", on_delete=models.PROTECT,
+                                related_name="fee_obligations")
+    semester = models.ForeignKey("academic.Semester", db_column="semester_id", on_delete=models.PROTECT,
+                                 related_name="fee_obligations")
+    fee_revision = models.ForeignKey(SemesterFeeRevision, db_column="fee_revision_id", on_delete=models.PROTECT,
+                                     related_name="obligations")
+    currency = models.CharField(max_length=3, default=CURRENCY, db_default=CURRENCY)
+    amount = models.DecimalField(max_digits=9, decimal_places=2)
+    status = MySQLEnumField(max_length=6, choices=ObligationStatus.choices, default=ObligationStatus.UNPAID,
+                            db_default=ObligationStatus.UNPAID)
+    created_at = MySQLTimestampField(db_default=CurrentTimestamp(), editable=False)
+
+    class Meta:
+        db_table = "finance_fee_obligations"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "semester"], name="finance_obligation_one_per_student_semester"),
+            models.CheckConstraint(condition=Q(currency=CURRENCY), name="finance_obligation_currency_php"),
+            models.CheckConstraint(condition=Q(amount__gte=0, amount__lte=MAX_FEE_AMOUNT), name="finance_obligation_amount_range"),
+        ]

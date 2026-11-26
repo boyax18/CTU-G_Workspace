@@ -67,7 +67,7 @@ class AcademicPeriodDenied(Exception):
     """Not an eligible, authorized School Admin in a permitted role context (403)."""
 
     def __init__(self, reason="access_denied"):
-        self.reason = reason if reason in {"access_denied", "admin_context_required"} else "access_denied"
+        self.reason = reason if reason in {"access_denied", "admin_context_required", "student_context_required"} else "access_denied"
         super().__init__("Academic-period management is not permitted.")
 
 

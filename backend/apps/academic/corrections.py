@@ -16,8 +16,10 @@ downstream impact evaluation (dependencies.evaluate_impact) re-run under lock:
 
 The audit row keeps the original and new values, the actor, the acting role, the reason code and
 note, and the impact summary. Gate: WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED (default off,
-refused in production) in addition to the base gate. With today's dependency bundle every impact
-source is unavailable, so these edits are refused at runtime until the dependent modules exist.
+refused in production) in addition to the base gate. Since academic.0004 / clearance.0001 /
+finance.0002 every impact source is a real count (dependencies.RecordCount): an edit with no affected
+records proceeds, one with participations, obligations or clearances needs those categories
+acknowledged, and a failing source is still ``impact_unavailable``.
 """
 
 import unicodedata

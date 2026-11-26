@@ -3,6 +3,7 @@
 from django.urls import include, path
 
 from . import configuration_api as c
+from . import student_api as st
 from .api import (
     CurrentAcademicPeriodView, SchoolYearCollectionView, SchoolYearDeleteView, SchoolYearHistoryView, SemesterActivationView,
     SemesterArchiveView, SemesterClosureView, SemesterCorrectionView, SemesterDatesView,
@@ -40,6 +41,32 @@ configuration_urls = [
     path("history/<str:kind>/<int:entity_id>/", c.RecordHistory.as_view(), name="academic-config-history"),
 ]
 
+onboarding_urls = [
+    path("status/", st.OnboardingStatusView.as_view(), name="academic-onboarding-status"),
+    path("context/", st.OnboardingContextView.as_view(), name="academic-onboarding-context"),
+    path("subject-options/", st.OnboardingSubjectOptionsView.as_view(), name="academic-onboarding-subject-options"),
+    path("type/", st.OnboardingTypeView.as_view(), name="academic-onboarding-type"),
+    path("subjects/", st.OnboardingSubjectsView.as_view(), name="academic-onboarding-subjects"),
+    path("course/", st.OnboardingCourseView.as_view(), name="academic-onboarding-course"),
+    path("review/", st.OnboardingReviewView.as_view(), name="academic-onboarding-review"),
+    path("finalize/", st.OnboardingFinalizeView.as_view(), name="academic-onboarding-finalize"),
+    path("my-semester/", st.MySemesterView.as_view(), name="academic-onboarding-my-semester"),
+    path("my-history/", st.MyHistoryView.as_view(), name="academic-onboarding-my-history"),
+]
+
+verification_urls = [
+    path("students/", st.StudentSearchView.as_view(), name="academic-verification-students"),
+    path("students/<int:student_account_id>/", st.StudentRecordView.as_view(), name="academic-verification-student"),
+    path("evidence/", st.EvidenceRecordView.as_view(), name="academic-verification-evidence"),
+    path("evidence/<int:evidence_id>/revoke/", st.EvidenceRevokeView.as_view(),
+         name="academic-verification-evidence-revoke"),
+    path("gaps/", st.GapRecordView.as_view(), name="academic-verification-gaps"),
+    path("gaps/<int:gap_id>/revoke/", st.GapRevokeView.as_view(), name="academic-verification-gap-revoke"),
+    # WF11-D14 (WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED).
+    path("historical-participation/", st.HistoricalPreviewView.as_view(), name="academic-historical-preview"),
+    path("historical-participation/confirm/", st.HistoricalCorrectView.as_view(), name="academic-historical-confirm"),
+]
+
 urlpatterns = [
     path("school-years/", SchoolYearCollectionView.as_view(), name="academic-school-years"),
     path("school-years/<int:school_year_id>/delete/", SchoolYearDeleteView.as_view(),
@@ -59,4 +86,8 @@ urlpatterns = [
     path("catalogue/current-period/", CurrentAcademicPeriodView.as_view(), name="academic-catalogue-current-period"),
     # Academic configuration (WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED; area write switches).
     path("config/", include(configuration_urls)),
+    # Student Semester Onboarding (WORKSPACE_STUDENT_ONBOARDING_ENABLED; finalization switch separate).
+    path("onboarding/", include(onboarding_urls)),
+    # School Admin official verification (WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED).
+    path("verification/", include(verification_urls)),
 ]

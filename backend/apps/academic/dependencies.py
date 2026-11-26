@@ -7,14 +7,15 @@ Each check is a small read-side *source* that reports what it can actually estab
   WF11-D05/D06): ``evaluated`` with a real count, or ``unavailable``. An unimplemented module is
   NEVER reported as zero.
 
-Inspected 25 Nov 2026: apps.clearance and apps.group_rating define no models; no Student semester
-participation (WF-05.05), fee obligation, clearance or signature record exists. The default bundle
-therefore reports those sources as ``unavailable``, which keeps every edit whose impact cannot be
-evaluated refused at runtime. Academic offerings are real since academic.0003
-(``OfferingPrerequisite``) and the approved semester fee since finance.0001
-(``ApprovedFeePrerequisite``); activation still also needs its own switch and HDAC. When
-a dependent module is implemented, replace its ``Unavailable*`` entry in ``DEFAULT_BUNDLE`` with a
-real read-only adapter; nothing else changes.
+Every default source is now real (26 Nov 2026): academic offerings (academic.0003,
+``OfferingPrerequisite``), the approved semester fee (finance.0001, ``ApprovedFeePrerequisite``), and
+the WF-05.05 / WF-06.01 / WF-07.02 records created by onboarding finalization (academic.0004,
+clearance.0001, finance.0002): Pending clearance requirements, Unpaid fee obligations, unfinished
+onboarding Drafts, participations, obligations and clearances (``RecordCount``). A source whose query
+fails is reported ``unavailable`` by ``_by_key``, never zero. Activation still needs its own switch
+and HDAC; a closure with outstanding records needs the School Admin's explicit acknowledgement, and
+an Active edit or historical date correction that affects records needs the affected categories
+acknowledged (the records themselves are never rewritten).
 
 A substitute bundle is honoured ONLY on the verified disposable test database (``isolated``). It
 never writes records and the real date prerequisite is always applied in addition to it.
@@ -125,6 +126,47 @@ class DependencyBundle:
     impact: tuple
 
 
+class RecordCount:
+    """Real read-only count of one record category for a semester (``evaluated``)."""
+
+    def __init__(self, key, counter):
+        self.key, self._counter = key, counter
+
+    def evaluate(self, semester):
+        return CountResult(self.key, EVALUATED, int(self._counter(semester)))
+
+
+def _pending_requirements(semester):
+    from apps.clearance.services import pending_requirement_count
+    return pending_requirement_count(semester)
+
+
+def _unpaid_obligations(semester):
+    from apps.finance.obligations import unpaid_obligation_count
+    return unpaid_obligation_count(semester)
+
+
+def _incomplete_onboarding(semester):
+    from .models import OnboardingStatus, SemesterOnboarding
+    return (SemesterOnboarding.objects.using(DEFAULT_DB_ALIAS).filter(semester_id=semester.pk)
+            .exclude(status=OnboardingStatus.COMPLETED).count())
+
+
+def _participations(semester):
+    from .models import SemesterParticipation
+    return SemesterParticipation.objects.using(DEFAULT_DB_ALIAS).filter(semester_id=semester.pk).count()
+
+
+def _obligations(semester):
+    from apps.finance.obligations import obligation_count
+    return obligation_count(semester)
+
+
+def _clearances(semester):
+    from apps.clearance.services import clearance_count
+    return clearance_count(semester)
+
+
 DEFAULT_BUNDLE = DependencyBundle(
     prerequisites=(
         # Real since finance.0001. Fee approval itself needs finance.fee_schedule.manage through a
@@ -135,14 +177,14 @@ DEFAULT_BUNDLE = DependencyBundle(
         OfferingPrerequisite(),
     ),
     obligations=(
-        UnavailableCount("outstanding_clearance_signatures", "clearance_not_implemented"),
-        UnavailableCount("unpaid_fee_obligations", "fee_obligations_not_implemented"),
-        UnavailableCount("incomplete_onboarding", "semester_onboarding_not_implemented"),
+        RecordCount("outstanding_clearance_signatures", _pending_requirements),
+        RecordCount("unpaid_fee_obligations", _unpaid_obligations),
+        RecordCount("incomplete_onboarding", _incomplete_onboarding),
     ),
     impact=(
-        UnavailableCount("student_participation", "semester_onboarding_not_implemented"),
-        UnavailableCount("fee_obligations", "fee_obligations_not_implemented"),
-        UnavailableCount("clearance_records", "clearance_not_implemented"),
+        RecordCount("student_participation", _participations),
+        RecordCount("fee_obligations", _obligations),
+        RecordCount("clearance_records", _clearances),
     ),
 )
 _DATES = DatesPrerequisite()
@@ -221,12 +263,13 @@ def accepts_new_onboarding(semester):
     return getattr(semester, "status", None) == SemesterStatus.ACTIVE
 
 
-def request_historical_participation_correction(**_unused):
-    """WF11-D14 contract (NOT AVAILABLE): create a missing historical Student participation.
+def request_historical_participation_correction(**kwargs):
+    """WF11-D14 contract: create a missing historical Student participation from Verified evidence.
 
-    Requires official CTU verification evidence (security review section 2), atomic participation
-    + subjects + clearance + fee creation (WF11-D24) and idempotent reuse of existing obligations.
-    None of those modules exist, so this always refuses; no route or command calls it.
+    Delegates to apps.academic.historical_participation.correct (School Admin, both
+    academic.periods.manage and academic.profiles.manage, its own default-off switch). It creates the
+    participation, subjects, one clearance and one obligation snapshot of the ORIGINAL approved fee
+    atomically, never reopens the period, and refuses ``historical_fee_unavailable`` without that fee.
     """
-    raise DependencyUnavailable("Historical participation corrections require WF-05.05, WF-06, WF-07 and "
-                                "an approved CTU verification source.")
+    from .historical_participation import correct
+    return correct(**kwargs)

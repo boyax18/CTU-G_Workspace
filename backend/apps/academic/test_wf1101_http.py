@@ -64,10 +64,16 @@ class RouteSurfaceTests(SimpleTestCase):
 
     def test_exact_academic_routes_and_no_fee_curriculum_or_participation_route(self):
         routes = self.academic_routes()
+        # Student onboarding and School Admin verification are separate, separately gated surfaces
+        # (asserted exactly in test_exact_onboarding_and_verification_routes).
+        student_prefixes = ("api/v1/academic/onboarding/", "api/v1/academic/verification/")
         for route in routes:
+            if route.startswith(student_prefixes):
+                continue
             for word in ("fee", "participation", "enrol", "clearance", "signature"):
                 self.assertNotIn(word, route)
-        period_routes = {r: v for r, v in routes.items() if not r.startswith("api/v1/academic/config/")}
+        period_routes = {r: v for r, v in routes.items()
+                         if not r.startswith(("api/v1/academic/config/", *student_prefixes))}
         self.assertEqual(period_routes, {
             "api/v1/academic/school-years/": SchoolYearCollectionView,
             "api/v1/academic/school-years/<int:school_year_id>/delete/": SchoolYearDeleteView,
@@ -86,6 +92,30 @@ class RouteSurfaceTests(SimpleTestCase):
             for word in ("curriculum", "offering"):
                 self.assertNotIn(word, route)
         self.assertEqual(resolve(YEARS).url_name, "academic-school-years")
+
+    def test_exact_onboarding_and_verification_routes(self):
+        from . import student_api as st
+        routes = {r: v for r, v in self.academic_routes().items()
+                  if r.startswith(("api/v1/academic/onboarding/", "api/v1/academic/verification/"))}
+        on, ver = "api/v1/academic/onboarding/", "api/v1/academic/verification/"
+        self.assertEqual(routes, {
+            on + "status/": st.OnboardingStatusView, on + "context/": st.OnboardingContextView,
+            on + "subject-options/": st.OnboardingSubjectOptionsView, on + "type/": st.OnboardingTypeView,
+            on + "subjects/": st.OnboardingSubjectsView, on + "course/": st.OnboardingCourseView,
+            on + "review/": st.OnboardingReviewView, on + "finalize/": st.OnboardingFinalizeView,
+            on + "my-semester/": st.MySemesterView, on + "my-history/": st.MyHistoryView,
+            ver + "students/": st.StudentSearchView, ver + "students/<int:student_account_id>/": st.StudentRecordView,
+            ver + "evidence/": st.EvidenceRecordView, ver + "evidence/<int:evidence_id>/revoke/": st.EvidenceRevokeView,
+            ver + "gaps/": st.GapRecordView, ver + "gaps/<int:gap_id>/revoke/": st.GapRevokeView,
+            ver + "historical-participation/": st.HistoricalPreviewView,
+            ver + "historical-participation/confirm/": st.HistoricalCorrectView,
+        })
+        for route, view in routes.items():
+            if route.startswith(on):
+                self.assertNotIn("<int:", route)  # Student routes take no identifier: own records only
+            self.assertIn(view.http_method_names, (["get", "head", "options"], ["post", "options"]), route)
+            for word in ("payment", "receipt", "sign", "approve", "pay"):
+                self.assertNotIn(word, route)  # nothing signs, approves, clears or records a payment
 
     def test_existing_review_release_safeguard_still_holds(self):
         self.assertEqual(p1.unexpected_review_routes("config.urls"), [])

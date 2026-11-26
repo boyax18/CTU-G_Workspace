@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 from django.apps import apps as django_apps
 from django.core.cache import cache
-from django.db import IntegrityError, connections, transaction
+from django.db import DatabaseError, IntegrityError, connections, transaction
 from django.test import TestCase, TransactionTestCase, override_settings
 from django.utils import timezone
 
@@ -378,21 +378,26 @@ class ActivationIntegrationTests(TestCase):
         _preview, checks = self.prerequisites()
         self.assertEqual((checks["approved_fee"][0], checks["academic_offerings"][0]), ("ready", "missing"))
 
-    def test_consequential_revision_of_an_active_semester_fails_closed(self):
+    def test_revision_of_an_active_semester_uses_the_real_obligation_impact(self):
         self.approve_fee("1500")
         preview, _checks = self.prerequisites()
         self.activate(preview)
         state = fees.save_draft(actor=self.w.admin, semester_id=self.first, amount="1800", expected_draft_version=None,
                                 change_reason=REASON)  # a Draft is still safe to save
         self.assertEqual(state["state"], "approved_with_draft")
-        fee_preview = fees.approval_preview(actor=self.w.admin, semester_id=self.first)
-        self.assertIn("impact_unavailable", fee_preview["blockers"])
-        self.assertEqual(fee_preview["impact"]["status"], "unavailable")  # never reported as zero
-        with self.assertRaises(fees.FeeConflict) as caught:
-            fees.approve(actor=self.w.admin, semester_id=self.first, revision_id=fee_preview["proposed"]["revision_id"],
-                         expected_version=fee_preview["proposed"]["version"],
-                         expected_current_approved_revision_id=fee_preview["current_approved"]["revision_id"],
-                         acknowledged_warnings=fee_preview["warnings"], confirmed=True)
+
+        def approve(fee_preview):
+            return fees.approve(actor=self.w.admin, semester_id=self.first, revision_id=fee_preview["proposed"]["revision_id"],
+                                expected_version=fee_preview["proposed"]["version"],
+                                expected_current_approved_revision_id=fee_preview["current_approved"]["revision_id"],
+                                acknowledged_warnings=fee_preview["warnings"], confirmed=True)
+        # An unreadable obligation source is "unavailable" and refuses the approval: never reported as zero.
+        with patch("apps.finance.obligations.obligation_count", side_effect=DatabaseError("unreadable")):
+            fee_preview = fees.approval_preview(actor=self.w.admin, semester_id=self.first)
+            self.assertIn("impact_unavailable", fee_preview["blockers"])
+            self.assertEqual(fee_preview["impact"]["status"], "unavailable")
+            with self.assertRaises(fees.FeeConflict) as caught:
+                approve(fee_preview)
         self.assertEqual(caught.exception.reason, "impact_unavailable")
 
         class Assessed:
@@ -402,6 +407,11 @@ class ActivationIntegrationTests(TestCase):
         with fees.isolated_impact(Assessed()):
             self.assertIn("obligations_assessed", fees.approval_preview(actor=self.w.admin, semester_id=self.first)["blockers"])
         self.assertEqual(SemesterFeeRevision.objects.get(status="Approved").amount, Decimal("1500.00"))
+        # The real source (finance.0002): no Student has been assessed yet, so the revision may be approved.
+        fee_preview = fees.approval_preview(actor=self.w.admin, semester_id=self.first)
+        self.assertEqual(fee_preview["impact"], {"status": "evaluated", "count": 0, "reason": ""})
+        approve(fee_preview)
+        self.assertEqual(SemesterFeeRevision.objects.get(status="Approved").amount, Decimal("1800.00"))
 
 
 class FeeConcurrencyTests(TransactionTestCase):

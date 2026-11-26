@@ -24,6 +24,9 @@ const {
 
 const catalogue = JSON.parse(readFileSync(new URL('../../backend/apps/access_control/catalogue/v2_0.json', import.meta.url), 'utf8'));
 const catalogueCodes = new Set(catalogue.permissions.map((permission) => permission.permission_code));
+// Catalogue v2.3 adds three exact codes (owner-authorized local development; independent review OPEN).
+const v23 = JSON.parse(readFileSync(new URL('../../review_only/academic_settings_v2_3/v2_3_delta.json', import.meta.url), 'utf8'));
+for (const op of v23.operations) if (op.op === 'add_permission') catalogueCodes.add(op.permission.permission_code);
 const bindings = (role) => catalogue.default_bindings.filter((binding) => binding.role_name === role).map((binding) => binding.permission_code);
 
 const ids = (permissions) => getVisibleDashboardItems(permissions).map((item) => item.id);

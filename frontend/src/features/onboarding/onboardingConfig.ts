@@ -20,5 +20,6 @@ export const VERIFICATION_ROUTE_ROOT = '/api/v1/academic/verification/';
 
 /** Exact catalogue codes (presentation hints only; the server decides). */
 export const ONBOARDING_READ_CODE = 'academic.profile.self.read';
-export const ONBOARDING_WRITE_CODE = 'clearance.requests.self.submit';
-export const VERIFICATION_CODE = 'academic.profiles.manage';
+export const ONBOARDING_WRITE_CODE = 'academic.semester_onboarding.self.submit';
+export const HISTORICAL_CORRECTION_CODE = 'academic.historical_participation.correct';
+export const VERIFICATION_CODE = 'academic.enrollment_verifications.record';

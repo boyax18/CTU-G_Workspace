@@ -24,26 +24,11 @@ if __name__ == "__main__":
     test_environment()
     labels = sys.argv[1:]
     if "--candidate" in labels:
-        import shutil
-        import tempfile
-        from prepare_runtime_patch import proposed_files
-        labels.remove("--candidate")
-        scratch = Path(tempfile.mkdtemp(prefix="wf11-v23-source-", dir=ROOT / ".local")).resolve()
-        if not scratch.is_relative_to((ROOT / ".local").resolve()):
-            raise RuntimeError("Invalid isolated source destination.")
-        for folder in ("backend/apps", "backend/config", "backend/scripts", "docs", "review_only/academic_settings_v2_3"):
-            shutil.copytree(ROOT / folder, scratch / folder,
-                            ignore=shutil.ignore_patterns("__pycache__", "*.docx", "*.pdf"))
-        for relative, content in proposed_files().items():
-            target = scratch / relative
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(content, encoding="utf-8", newline="\n")
-        sys.path.remove(str(BACKEND))
-        sys.path.insert(0, str(scratch / "backend"))
-        os.chdir(scratch / "backend")
-        if not labels:
-            labels = ["candidate_runtime_tests"]
-        print("Proposed patch in isolated source copy only:", scratch, flush=True)
+        raise SystemExit("The v2.3 patch is applied (owner local-development authorization, 27 Nov 2026); "
+                         "run the suites directly without --candidate.")
+    os.chdir(BACKEND)  # path labels (apps/...) resolve against the real backend; disposable MySQL only
+    if not labels:
+        labels = ["candidate_runtime_tests"]
     from django.core.management import execute_from_command_line
     execute_from_command_line([str(BACKEND / "manage.py"), "test", *labels,
                                "--settings=config.test_settings", "--noinput"])

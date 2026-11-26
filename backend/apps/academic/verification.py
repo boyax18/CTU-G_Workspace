@@ -4,9 +4,7 @@ Lane 1 - previously verified evidence: an existing Verified ``EnrollmentEvidence
 semester. Source ``ctu_integration`` has NO runtime writer: no CTU API or accepted integration exists,
 so only isolated tests create such rows. Lane 2 - in-person School Admin verification, recorded here.
 
-School Admin operations: services.authorize with the PROPOSED ``academic.profiles.manage`` mapping
-(the readiness review: do not assume it authorizes CTU verification until the object policy is
-accepted) behind WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED (default off). Every write locks the shared
+School Admin operations: services.authorize with the exact ``academic.enrollment_verifications.record`` code behind WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED (default off). Every write locks the shared
 order (services -> permission -> account -> semester -> evidence) and commits with an audit row.
 
 Privacy: only a controlled reference (e.g. a document control number, at most 80 characters) is
@@ -31,7 +29,7 @@ from .models import (
 from .student_access import genuine_student
 
 DB = DEFAULT_DB_ALIAS
-VERIFY_CODE = "academic.profiles.manage"  # PROPOSED mapping (governance pending)
+VERIFY_CODE = "academic.enrollment_verifications.record"
 VERIFY_SETTING = "WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED"
 REVOKE_REASONS = frozenset({"recorded_in_error", "superseded_by_ctu_record", "identity_mismatch"})
 OPEN_PERIODS = (SemesterStatus.ACTIVE, SemesterStatus.CLOSED, SemesterStatus.ARCHIVED)

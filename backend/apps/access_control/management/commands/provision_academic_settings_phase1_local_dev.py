@@ -19,7 +19,8 @@ Phases (each needs --apply and its exact confirmation; --phase verify is read-on
   activate  activate exactly those two services and five bindings          (7 receipts)
 
 Never creates roles, role assignments, account overrides or role scopes; never changes another
-service, permission or binding; never installs v2.3; never runs in production settings.
+service, permission or binding; never installs v2.3 (its own reviewed command does; phase 1 accepts a restated v2.3 definition only
+with its exact receipt); never runs in production settings.
 ``academic.catalogue.read`` is pinned for Student, Instructor, Treasurer and Admin; phase one binds
 it to Admin only, as reviewed.
 """
@@ -140,9 +141,21 @@ def _plain(log, actor):
     return (log.actor_account_id == actor.pk and log.target_account_id is None and log.reason == "permission_change")
 
 
+def _restated(permissions, definitions):
+    """Catalogue v2.3 restates two of these definitions; its text is accepted only with the exact receipt."""
+    if not AccessAuditLog.objects.filter(action="workspace.academic_settings.v23.permission.restate").exists():
+        return definitions
+    from apps.access_control.management.commands import provision_academic_settings_v2_3_local_dev as v23
+    try:
+        return v23.effective_definitions(permissions, definitions)
+    except Exception as exc:
+        raise AcademicPhase1Refused("Restated v2.3 definitions are not exactly receipted.") from exc
+
+
 def _verify_metadata(services, permissions, service_defs, definitions, actor, active):
     if set(services) != set(SERVICE_CODES) or set(permissions) != set(CODES):
         raise AcademicPhase1Refused("Services or definitions are partial.")
+    definitions = _restated(permissions, definitions)
     if not all(_matches_service(services[c], service_defs[c], active) for c in SERVICE_CODES):
         raise AcademicPhase1Refused("Service rows differ from catalogue v2.2 or are in the wrong state.")
     if not all(_matches_permission(permissions[c], definitions[c], services[definitions[c]["service_code"]]) for c in CODES):

@@ -220,7 +220,7 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
 
   // WF-05.04 minimum (R-02 lane 2): School Admin in-person CTU verification; proposed academic.profiles.manage mapping.
   { id: 'student-verification', label: 'Enrollment verification', icon: 'users', group: 'academic-configuration',
-    requiredAny: ['academic.profiles.manage'], integration: ENROLLMENT_VERIFICATION_ENABLED ? 'shell' : planned,
+    requiredAny: ['academic.enrollment_verifications.record'], integration: ENROLLMENT_VERIFICATION_ENABLED ? 'shell' : planned,
     description: 'Record in-person CTU enrollment verification and verified non-enrollment for a student.' },
 
   { id: 'clearance-monitoring', label: 'Clearance monitoring', icon: 'activity', group: 'clearance-oversight',

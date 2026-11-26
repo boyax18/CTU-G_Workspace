@@ -51,6 +51,12 @@ The original planner marked the following concerns blocked; see the source manif
 9. Framework flags/admin-site restrictions and recovery boundaries (schema changes handled separately).
 10. Business-specific finance, signatures, ratings, messaging, reports, privacy, settings readiness, and service activation.
 
+**Owner amendment (27 Nov 2026, project governance):** local development activation of the prepared
+catalogue v2.1, v2.2 and v2.3 changes may proceed under explicit project-owner authorization
+([record](WF11_Owner_Local_Development_Authorization_2026-11-27.md)). Independent approval (item 5) remains
+mandatory for production release, its records stay OPEN, and owner-authorized local activation is never
+represented as independent security approval.
+
 **Additionally blocked by planner:** initialization, grants, service activation, live mutations, administrator provisioning (for the catalogue workflow), first-operator attribution, independent review evidence, effective-last-operator, object authorization, session revocation, authentication events, and Django superuser changes.
 
 ## Minimum registration-review capability (PROPOSED, NOT ACTIVE)

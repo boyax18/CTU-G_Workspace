@@ -1,6 +1,8 @@
 # Academic Settings v2.3 review package
 
-**PROPOSED, NOT ACTIVE. Independent review OPEN. No provisioning or operational acceptance.**
+**APPLIED for LOCAL DEVELOPMENT ONLY under the owner's [local-development authorization](../../docs/security/WF11_Owner_Local_Development_Authorization_2026-11-27.md)
+(27 Nov 2026). Independent review OPEN and mandatory for production release.** The patch bytes are
+unchanged; `--candidate` source copies are no longer used.
 Revision of 27 November 2026: historical dual control, completed patch (fixtures, inverted guard,
 installable validator, provisioning command, Phase 1 compatibility) and regenerated pins. Reviewers
 start from the [sequential v2.1 → v2.2 → v2.3 handoff](../../docs/security/WF11_Catalogue_Sequential_Independent_Review_Handoff_2026-11-27.md).

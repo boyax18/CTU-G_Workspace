@@ -1,9 +1,8 @@
 """WF11-D14: evidenced historical Student participation correction (late entry for a past semester).
 
 For a Student who was officially enrolled in a Closed or Archived semester but has no Workspace
-participation there. School Admin only (Admin path of services.authorize) with BOTH
-``academic.periods.manage`` (WF-11.01 authority) and the proposed ``academic.profiles.manage``
-(verification records), behind WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED (default off,
+participation there. School Admin only (Admin path of services.authorize) with
+``academic.historical_participation.correct``,  behind WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED (default off,
 refused in production) on top of the base gate.
 
 Required, re-checked under the shared locks (services -> permissions -> account -> semester -> fee
@@ -35,8 +34,7 @@ from .student_access import genuine_student, lock_shared_services
 
 DB = DEFAULT_DB_ALIAS
 SETTING = "WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED"
-PERIOD_CODE = "academic.periods.manage"
-PROFILE_CODE = "academic.profiles.manage"
+CORRECTION_CODE = "academic.historical_participation.correct"
 ACTION = "academic.participation.historical_correction"
 NOTE_MIN, NOTE_MAX = 10, 500
 
@@ -57,8 +55,7 @@ def correction_enabled():
 
 
 def _authorize(actor):
-    services.authorize(actor, PROFILE_CODE, gate=correction_enabled)
-    return services.authorize(actor, PERIOD_CODE, gate=correction_enabled)
+    return services.authorize(actor, CORRECTION_CODE, gate=correction_enabled)
 
 
 def _invalid(field):
@@ -144,8 +141,7 @@ def correct(*, actor, student_account_id, semester_id, expected_evidence_id, stu
     try:
         with transaction.atomic(using=DB, durable=True):
             lock_shared_services()  # the same service order as onboarding finalization
-            services.lock_and_authorize(actor, PROFILE_CODE, gate=correction_enabled)
-            auth = services.lock_and_authorize(actor, PERIOD_CODE, gate=correction_enabled)
+            auth = services.lock_and_authorize(actor, CORRECTION_CODE, gate=correction_enabled)
             semester = Semester.objects.using(DB).select_for_update().filter(pk=semester_id).first()
             student = genuine_student(student_id)
             if semester is None or student is None:

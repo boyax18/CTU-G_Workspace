@@ -4,8 +4,8 @@ injection, HDAC and multi-role isolation.
 
 Run: python manage.py test apps.academic.test_student_onboarding --settings=config.test_settings --noinput
 Disposable MySQL only (IsolatedMySQLRunner); synthetic accounts and records. Permissions mirror the pinned
-catalogue defaults (Student -> academic.profile.self.read and clearance.requests.self.submit; Admin ->
-academic.profiles.manage). The fee success path uses the throwaway-database-only Admin fee binding of
+catalogue v2.3 defaults (Student -> academic.profile.self.read and academic.semester_onboarding.self.submit;
+Admin -> academic.enrollment_verifications.record and academic.historical_participation.correct). The fee success path uses the throwaway-database-only Admin fee binding of
 apps.finance.test_semester_fees.FeeWorld.grant_admin_fee (never an application grant). "CTU integration"
 evidence rows are created directly in the throwaway database: no runtime writer for that lane exists.
 """
@@ -25,6 +25,7 @@ from apps.finance.test_semester_fees import FEES, FeeWorld
 
 from . import configuration as cfg
 from . import dependencies, eligibility, onboarding, services, teaching, verification
+from .historical_participation import CORRECTION_CODE as HISTORY
 from .models import (
     AcademicPeriodAuditLog, EnrollmentEvidence, EnrollmentEvidenceSubject, EnrollmentGapException, OnboardingStatus,
     ParticipationSubject, Semester, SemesterOnboarding, SemesterOnboardingSubject, SemesterParticipation, SemesterStatus,
@@ -45,8 +46,9 @@ class OnboardingWorld(FeeWorld):
         super().__init__()
         self.grant_admin_fee()
         self.read = self._perm(self.service, READ, "Student")
-        self.write = self._perm(self.clearance, WRITE, "Student")
+        self.write = self._perm(self.service, WRITE, "Student")  # v2.3: an academic-service code
         self.verify = self._perm(self.service, VERIFY, "Admin")
+        self.history = self._perm(self.service, HISTORY, "Admin")  # v2.3: dual-controlled correction
         self.student = self.account("WF0505-STU1", "Student")
         self.student2 = self.account("WF0505-STU2", "Student")
 
@@ -814,9 +816,9 @@ class StudentAuthorizationTests(OnboardingBase):
         record(self.w, self.w.student, self.sem, self.cat, ["MATH 101", "IT 101"])
         version = regular_steps(self.w.student, self.cat)
         revision = onboarding.review(actor=self.w.student)["fee"]["revision_id"]
-        # An inactive clearance service makes clearance.requests.self.submit ineffective (HDAC: Denied);
-        # an inactive academic or finance service makes the shared locks unavailable.
-        for code, expected in (("clearance", services.AcademicPeriodDenied), ("finance", services.AcademicPeriodUnavailable),
+        # v2.3: the onboarding code belongs to the academic service, so an inactive clearance or finance
+        # service makes the shared locks unavailable; an inactive academic service refuses first.
+        for code, expected in (("clearance", services.AcademicPeriodUnavailable), ("finance", services.AcademicPeriodUnavailable),
                                ("academic", services.AcademicPeriodUnavailable)):
             with self.subTest(service=code):
                 Service.objects.filter(service_code=code).update(is_active=False)

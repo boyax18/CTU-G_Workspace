@@ -266,8 +266,8 @@ def accepts_new_onboarding(semester):
 def request_historical_participation_correction(**kwargs):
     """WF11-D14 contract: create a missing historical Student participation from Verified evidence.
 
-    Delegates to apps.academic.historical_participation.correct (School Admin, both
-    academic.periods.manage and academic.profiles.manage, its own default-off switch). It creates the
+    Delegates to apps.academic.historical_participation.correct (School Admin with
+    academic.historical_participation.correct under dual control, its own default-off switch). It creates the
     participation, subjects, one clearance and one obligation snapshot of the ORIGINAL approved fee
     atomically, never reopens the period, and refuses ``historical_fee_unavailable`` without that fee.
     """

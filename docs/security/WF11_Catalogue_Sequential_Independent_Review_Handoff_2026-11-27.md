@@ -7,6 +7,11 @@ Nothing here is a review decision.
 **Status:** v2.1, v2.2 and v2.3 independent review are all **OPEN**. Nothing from v2.3 is installed or
 provisioned, and every v2.3-dependent switch is off.
 
+**Owner amendment, 27 Nov 2026:** local development activation proceeds under the owner's
+[local-development authorization](WF11_Owner_Local_Development_Authorization_2026-11-27.md). That is not
+independent approval; all three reviews stay OPEN and remain mandatory for production release. Review the
+applied commit, including the owner-authorization path in `validation_v2_3.py` and the v2.3 command.
+
 This handoff reuses the existing review evidence; it does not restart any review. Approve strictly in
 order. A rejection stops the later steps.
 

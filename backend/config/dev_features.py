@@ -104,9 +104,10 @@ FEATURES = (
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED",),
             note="Phase 1 (local only): Draft school years and semesters. Activation, closure, corrections and "
                  "fee setting are not available."),
-    # Registered, NOT approved for any mode. Even when enabled, activation stays refused until real fee
-    # and offering sources exist, and edits stay refused while downstream impact cannot be evaluated.
+    # Owner-authorized local activation (27 Nov 2026, catalogue v2.3 under the owner's local-development
+    # authorization; independent review OPEN). Activation still needs an approved fee and offerings.
     Feature("wf11.academic_period_lifecycle", "WF-11.01", "Semester activation, closure, archiving and corrections",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED": "1",
                          "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
@@ -136,13 +137,15 @@ FEATURES = (
                             "VITE_WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED"),
             requires=("wf11.academic_configuration",),
             note="Phase 2 (local only). The v2.3 definition clarifications of the two reused codes stay under independent review."),
-    # Semester organizational fee (25 Nov 2026): registered, NOT approved for any mode. Needs finance
-    # migration 0001 on ctug_workspace and a reviewed overlay giving Admin finance.fee_schedule.manage.
+    # Semester organizational fee: School Admin through a genuine Admin grant of finance.fee_schedule.manage
+    # (catalogue v2.3, owner-authorized local activation 27 Nov 2026). No revision once any obligation exists.
     Feature("wf11.semester_fee_configuration", "WF-11.01 / WF-07.02 dependency", "Semester fee configuration (Draft)",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED",),
-            note="Pinned v2.2 binds finance.fee_schedule.manage to Treasurer only; School Admin is refused until governance."),
+            note="Catalogue v2.3 binds finance.fee_schedule.manage to Admin only; Treasurer cannot configure the fee."),
     Feature("wf11.semester_fee_approval", "WF-11.01 / WF-07.02 dependency", "Semester fee approval",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED",),
             requires=("wf11.semester_fee_configuration",),
@@ -154,30 +157,33 @@ FEATURES = (
             backend_env={"WORKSPACE_ACADEMIC_CATALOGUE_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_CATALOGUE_ENABLED",),
             note="Read-only; no management or student data."),
-    # WF-05.05 / WF-05.04 / WF-06.01 / WF-07.02 / WF11-D14 (26 Nov 2026): registered, NOT approved for
-    # any mode. Needs academic 0004, clearance 0001 and finance 0002 on ctug_workspace (not applied) and
-    # an owner decision; real Student access stays off.
+    # WF-05.05 / WF-05.04 / WF-06.01 / WF-07.02 / WF11-D14: owner-authorized local activation (27 Nov 2026,
+    # catalogue v2.3 narrow codes). Official evidence, two-Admin correction and fee rules stay enforced.
     Feature("wf05.student_onboarding", "WF-05.05", "Student Semester Onboarding (Steps 1-4, own records)",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_STUDENT_ONBOARDING_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_STUDENT_ONBOARDING_ENABLED",),
             requires=("wf11.academic_periods",),
             note="Draft steps only; finalization has its own switch."),
     Feature("wf05.student_onboarding_finalization", "WF-05.05 / WF-06.01 / WF-07.02",
             "Onboarding finalization (participation, clearance, fee obligation)",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED",),
             requires=("wf05.student_onboarding", "wf11.semester_fee_configuration"),
             note="Creates real clearance and fee-obligation records; needs Verified CTU evidence per Student."),
     Feature("wf05.enrollment_verification", "WF-05.04 (minimum)", "In-person CTU enrollment verification and gaps",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED",),
             requires=("wf11.academic_periods",),
-            note="Uses the proposed academic.profiles.manage mapping; no CTU integration exists."),
+            note="Exact academic.enrollment_verifications.record; in-person lane only (no CTU integration exists)."),
     Feature("wf11.historical_participation", "WF-11.01 (WF11-D14)", "Evidenced historical participation correction",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED",),
             requires=("wf05.enrollment_verification", "wf11.semester_fee_configuration"),
-            note="Needs the original-period approved fee; never reopens the semester."),
+            note="Two different School Admins; needs the original-period approved fee; never reopens the semester."),
 )
 
 # One-time, explicit opt-in for real email in -Local mode (all three, in backend/.env).

@@ -59,7 +59,7 @@ test('every switch is off by default and dependent switches need their parent', 
 
 test('navigation is driven by exact permission codes and stays planned while switched off', () => {
   for (const [view, code, group] of [['semester-onboarding', 'academic.profile.self.read', 'academic'],
-    ['my-subjects', 'academic.profile.self.read', 'academic'], ['student-verification', 'academic.profiles.manage', 'academic-configuration']]) {
+    ['my-subjects', 'academic.profile.self.read', 'academic'], ['student-verification', 'academic.enrollment_verifications.record', 'academic-configuration']]) {
     const item = navigation.getDashboardItem(view);
     assert.deepEqual([item.integration, item.group, item.requiredAny], ['planned', group, [code]], view);
     assert.equal(navigation.canOpenDashboardView(view, [code]), true);

@@ -7,8 +7,8 @@ academic-period switch, both refused in production.
 
 Authorization (apps.academic.student_access): genuine Student assignment, selected Student context
 when enforced, exact effective permission (account-specific Deny wins). Reads use the pinned Student
-default ``academic.profile.self.read``; Draft writes and finalization use the pinned Student default
-``clearance.requests.self.submit`` (WF-06.01 "Request clearance" now happens at finalization). The
+default ``academic.profile.self.read``; Draft writes and finalization use the reviewed Student permission
+``academic.semester_onboarding.self.submit`` (clearance creation is an internal consequence). The
 Student is always the actor's own account: no student identifier is accepted from the client.
 
 Steps (School Year, Semester and CTU-G ID are read-only from the Active semester and the account):
@@ -47,7 +47,7 @@ from .student_access import authorize_student, lock_and_authorize_student
 
 DB = DEFAULT_DB_ALIAS
 READ_CODE = "academic.profile.self.read"
-WRITE_CODE = "clearance.requests.self.submit"
+WRITE_CODE = "academic.semester_onboarding.self.submit"
 ONBOARDING_SETTING = "WORKSPACE_STUDENT_ONBOARDING_ENABLED"
 FINALIZATION_SETTING = "WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED"
 MAX_SUBJECTS = 20

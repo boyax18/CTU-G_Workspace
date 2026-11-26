@@ -5,7 +5,7 @@ Disposable MySQL only. Covers the server side of the dashboard boundary (every A
 semester-dependent operations refused with the structured ``onboarding_required`` answer until the
 CURRENT Active semester is finalized; account, period, onboarding and historical operations never
 gated), Student self-signatory refusal, authorization revalidation during finalization, that the
-PROPOSED governance codes stay inactive, and the fee-revision safeguard.
+legacy broad codes no longer authorize the narrow catalogue v2.3 operations, and the fee-revision safeguard.
 """
 
 from decimal import Decimal
@@ -205,27 +205,27 @@ class SignatoryAndSecurityTests(OnboardingBase):
         with self.assertRaises(services.AcademicPeriodDenied):
             onboarding.status(actor=inactive)
 
-    def test_proposed_governance_codes_stay_inactive(self):
-        """The PROPOSED narrow codes authorize nothing: the runtime still requires the current codes."""
-        for key, code in PROPOSED.items():
-            role = "Student" if key == "student_onboarding" else "Admin"
-            perm = Permission.objects.create(service=self.w.service, permission_code=code, permission_name=code,
-                                             module_name="m", action_name="a")
-            RolePermission.objects.create(role=self.w.roles[role], permission=perm)
-        RolePermission.objects.filter(permission__permission_code__in=[onboarding.WRITE_CODE, verification.VERIFY_CODE]).delete()
+    def test_legacy_broad_codes_no_longer_authorize_the_narrow_operations(self):
+        """Catalogue v2.3: only the exact narrow codes authorize; the old broad codes never substitute."""
+        for code, role in (("clearance.requests.self.submit", "Student"), ("academic.profiles.manage", "Admin"),
+                           ("academic.periods.manage", "Admin")):
+            perm = Permission.objects.get_or_create(permission_code=code, defaults=dict(
+                service=self.w.service, permission_name=code, module_name="m", action_name="a"))[0]
+            RolePermission.objects.get_or_create(role=self.w.roles[role], permission=perm)
+        self.assertEqual((onboarding.WRITE_CODE, verification.VERIFY_CODE, hp.CORRECTION_CODE), tuple(PROPOSED.values()))
+        RolePermission.objects.filter(permission__permission_code__in=list(PROPOSED.values())).delete()
         with self.assertRaises(services.AcademicPeriodDenied):
             onboarding.save_student_type(actor=self.w.student, student_type="Regular")
         with self.assertRaises(services.AcademicPeriodDenied):
             record(self.w, self.w.student, self.sem, self.cat, ["MATH 101"])
         with self.assertRaises(services.AcademicPeriodDenied):
             hp.preview(actor=self.w.admin, student_account_id=self.w.student.pk, semester_id=self.sem)
-        import json
         from pathlib import Path
         catalogue = Path(__file__).resolve().parents[1] / "access_control" / "catalogue"
-        pinned = "".join(p.read_text(encoding="utf-8") for p in sorted(catalogue.glob("*.json")))
+        pinned = "".join((catalogue / name).read_text(encoding="utf-8")
+                         for name in ("v2_0.json", "v2_1_delta.json", "v2_2_delta.json"))
         for code in PROPOSED.values():
-            self.assertNotIn(code, pinned)  # no pinned catalogue was edited
-        self.assertTrue(json.loads((catalogue / "v2_2_delta.json").read_text(encoding="utf-8")))
+            self.assertNotIn(code, pinned)  # the pinned v2.0-v2.2 files were never edited
 
 
 @override_settings(**ONBOARD)

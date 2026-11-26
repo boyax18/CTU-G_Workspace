@@ -179,7 +179,7 @@ test('a School Admin records an in-person verification with validated, minimized
   const row = { semester, evidence: null, gap: null, participation: null, clearance_status: null, fee: null, onboarding_status: 'PendingVerification' };
   const handle = async ({ path, request, respond }) => {
     if (path.endsWith('/session/')) return respond({ authenticated: true, account: { school_id: 'ADMIN-001', roles: ['Admin'] },
-      permissions: ['academic.profiles.manage', 'academic.courses.manage', 'clearance.subjects.manage'] });
+      permissions: ['academic.enrollment_verifications.record', 'academic.courses.manage', 'clearance.subjects.manage'] });
     if (request.method() === 'POST') {
       posts.push({ path, body: request.postDataJSON(), csrf: request.headers()['x-csrftoken'] });
       return respond({ evidence_id: 4, semester_id: 9, source_type: 'in_person', entry_classification: 'continuing', course: { course_id: 1, code: 'BSIT' },

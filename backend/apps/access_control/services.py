@@ -15,6 +15,7 @@ from apps.accounts.models import Account
 from apps.accounts.active_role_context import context_enabled, selected_scope, allowed_role_ids
 
 from .models import AccountPermission, AccountPermissionRoleScope, AccountRole, Permission, Role, RolePermission
+from .permission_transitions import preserve_transition_denies
 from .ordinary_role_runtime import (
     ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
 )
@@ -117,13 +118,14 @@ def _authorized_permissions(account_id):
         legacy_unscoped = overrides.filter(effect="Grant").filter(~Exists(scoped_any))
         grant_source = Q(Exists(role_grants)) | Q(Exists(legacy_unscoped))
 
-    return (
+    permissions = (
         Permission.objects.using(DEFAULT_DB_ALIAS)
         .filter(service__is_active=True)
         .filter(Exists(eligible_assignments))
         .filter(~Exists(overrides.filter(effect="Deny")))
         .filter(grant_source)
     )
+    return preserve_transition_denies(permissions, account_id)
 
 
 def _effective_codes(account, permission_code=None):

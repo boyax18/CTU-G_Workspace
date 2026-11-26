@@ -11,7 +11,6 @@ from unittest.mock import patch
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import permission_inventory as inventory
-from prepare_runtime_patch import patch_text, proposed_files
 from proposal import DENY_PREDECESSORS, NEW, expected_delta, validate_candidate
 
 
@@ -52,24 +51,25 @@ class CandidateTests(unittest.TestCase):
             validate_candidate(addendum_bytes=b"Changed review scope")
         self.assertEqual(expected_delta()["independent_review"]["status"], "OPEN")
 
-    def test_patch_is_reproducible_and_stays_unapplied(self):
-        self.assertEqual((HERE / "runtime_changes_PROPOSED.patch").read_text(encoding="utf-8"), patch_text())
+    def test_reviewed_patch_is_unchanged_and_applied_under_the_owner_local_authorization(self):
+        """Applied 27 Nov 2026 under the owner's local-development authorization (independent review OPEN)."""
+        from hashlib import sha256
+        self.assertEqual(sha256((HERE / "runtime_changes_PROPOSED.patch").read_bytes()).hexdigest(),
+                         "13782a2588187f703d9e080f2cd29e52b0c249d860623b8b660eb644e26b54f2")  # the reviewed bytes
         from proposal import ROOT
-        self.assertIn('WRITE_CODE = "clearance.requests.self.submit"',
-                      (ROOT / "backend/apps/academic/onboarding.py").read_text())
-        for absent in ("backend/apps/access_control/permission_transitions.py",
-                       "backend/apps/access_control/catalogue/validation_v2_3.py",
-                       "backend/apps/access_control/management/commands/provision_academic_settings_v2_3_local_dev.py",
-                       "backend/apps/access_control/test_academic_v2_3_provisioning.py"):
-            self.assertFalse((ROOT / absent).exists(), absent)  # nothing of v2.3 is active
-        files = proposed_files()
-        self.assertIn('WRITE_CODE = "academic.semester_onboarding.self.submit"', files["backend/apps/academic/onboarding.py"])
-        self.assertIn("preserve_transition_denies(permissions, account_id)", files["backend/apps/access_control/services.py"])
-        self.assertNotIn("has_permission(account, predecessor", files["backend/apps/access_control/permission_transitions.py"])
-        self.assertEqual(set(DENY_PREDECESSORS), set(inventory.TRANSITIONS))
-        self.assertIn("\nINDEPENDENT_APPROVAL = None\n", files["backend/apps/access_control/catalogue/validation_v2_3.py"])
+        self.assertIn('WRITE_CODE = "academic.semester_onboarding.self.submit"',
+                      (ROOT / "backend/apps/academic/onboarding.py").read_text(encoding="utf-8"))
+        self.assertIn("return preserve_transition_denies(permissions, account_id)",
+                      (ROOT / "backend/apps/access_control/services.py").read_text(encoding="utf-8"))
         self.assertIn("definitions = _restated(permissions, definitions)",
-                      files["backend/apps/access_control/management/commands/provision_academic_settings_phase1_local_dev.py"])
+                      (ROOT / "backend/apps/access_control/management/commands/provision_academic_settings_phase1_local_dev.py")
+                      .read_text(encoding="utf-8"))
+        validator = (ROOT / "backend/apps/access_control/catalogue/validation_v2_3.py").read_text(encoding="utf-8")
+        self.assertIn("\nINDEPENDENT_APPROVAL = None\n", validator)  # never pre-filled
+        self.assertIn("def require_local_development_authorization():", validator)
+        self.assertEqual(set(DENY_PREDECESSORS), set(inventory.TRANSITIONS))
+        self.assertEqual((ROOT / "backend/apps/access_control/permission_transitions.py").read_text(encoding="utf-8"),
+                         (HERE / "proposed" / "permission_transitions.py").read_text(encoding="utf-8"))
 
     def test_installable_v2_3_validator_matches_the_review_validator_and_refuses_without_approval(self):
         import importlib.util

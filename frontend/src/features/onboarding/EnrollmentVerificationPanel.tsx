@@ -3,19 +3,20 @@
  *
  * Only a controlled CTU record reference is entered (never a scan or document contents). Recording a
  * verification never onboards the Student: the Student confirms their own onboarding afterwards. No
- * one can verify their own records. Django decides access on every request (proposed
- * academic.profiles.manage mapping, School Admin role context, Deny precedence).
+ * one can verify their own records. Django decides access on every request (exact
+ * academic.enrollment_verifications.record code, School Admin role context, Deny precedence).
  */
 import { useEffect, useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import Modal from '../../components/common/Modal.tsx';
+import { useDashboardContext } from '../../hooks/useDashboardContext';
 import { NoticeBlock } from '../academic/config/configUi.tsx';
 import type { Notice } from '../academic/config/configUi.tsx';
 import { compactButton, destructiveButton, fieldClass, primaryButton, secondaryButton } from '../academic/academicStyles.ts';
 import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfigurationConfig.ts';
 import { listCourses, listSubjects } from '../academic/academicConfigurationApi.ts';
 import type { Course, Subject } from '../academic/academicConfigurationApi.ts';
-import { HISTORICAL_PARTICIPATION_CORRECTION_ENABLED } from './onboardingConfig.ts';
+import { HISTORICAL_PARTICIPATION_CORRECTION_ENABLED, HISTORICAL_CORRECTION_CODE } from './onboardingConfig.ts';
 import {
   correctHistoricalParticipation, getHistoricalPreview, getStudentRecord, onboardingErrorText, peso, recordEvidence, recordGap,
   revokeEvidence, revokeGap, searchStudents,
@@ -267,6 +268,8 @@ function HistoricalDialog({ student, row, onClose, onDone }: { student: StudentR
 }
 
 function StudentRecord({ student }: { student: StudentRef }) {
+  const { session } = useDashboardContext();
+  const canCorrect = session.permissions.includes(HISTORICAL_CORRECTION_CODE);
   const [rows, setRows] = useState<PeriodRecord[] | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -311,7 +314,7 @@ function StudentRecord({ student }: { student: StudentRef }) {
                     {!row.participation && row.evidence && <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'revoke', row })}>Revoke verification</button>}
                     {historical && !row.participation && !row.evidence && !row.gap && <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'gap', row })}>Record non-enrollment</button>}
                     {row.gap && <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'revoke-gap', row })}>Revoke non-enrollment</button>}
-                    {HISTORICAL_PARTICIPATION_CORRECTION_ENABLED && historical && row.evidence && !row.participation && (
+                    {HISTORICAL_PARTICIPATION_CORRECTION_ENABLED && canCorrect && historical && row.evidence && !row.participation && (
                       <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'historical', row })}>Record historical participation</button>)}
                   </div></td>
                 </tr>);

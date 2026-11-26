@@ -497,6 +497,50 @@ actor account 3.
   participation, clearance and obligation creation, and duplicate and rollback prevention. Fees,
   activation and onboarding cannot run live until v2.3 is independently approved and provisioned.
 
+#### Catalogue v2.3 provisioning and local activation, 27 November 2026
+
+This was authorized under the owner's project-governance amendment
+([local-development authorization](../security/WF11_Owner_Local_Development_Authorization_2026-11-27.md)).
+**It is not independent approval.** The v2.1, v2.2 and v2.3 independent reviews stay OPEN and remain mandatory
+for production release. Code commit: `3d10933` (reviewed patch `13782a25…` applied unchanged, plus the separate
+owner-authorization path). Audit actor: account 3.
+
+- **Backup safeguard:** `.local/wf11-v23-safeguard.py` (ignored; it reuses the established helpers).
+  - The server was quiet: the owner stopped the launcher first.
+  - Encrypted full dump `wf11-v23-20261127-015824-8e44fa15`, SHA-256
+    `f5994f6bd312776a999d8efce6b756640f8688ea25058e68b49aca1663df9076`.
+  - Restored to an isolated pipe-only instance: all 46 tables and 38 ledger rows matched, with every row hash
+    and all metadata (35 normalised charset spellings). The live database was unchanged by the check.
+- **Provisioning:** `provision_academic_settings_v2_3_local_dev` ran `verify` (NOT_STARTED) → `metadata` →
+  `restate` → `bindings` → `activate` → `verify` (VERIFIED), with basis
+  `owner_local_development_authorization`. Phase 1 and phase 2 `verify` passed afterwards.
+  - Service `finance`.
+  - Five definitions: `finance.fee_schedule.manage`, `academic.profile.self.read`,
+    `academic.enrollment_verifications.record`, `academic.semester_onboarding.self.submit` and
+    `academic.historical_participation.correct`.
+  - The receipted restatements of `academic.courses.manage` and `academic.periods.manage`.
+  - Five bindings: Admin → fee, verification and historical correction; Student → onboarding and profile read.
+  - No Treasurer fee binding, account Grant or Deny was created.
+- **Post-check:** only `services` +1, `permissions` +5, `role_permissions` +5 and `access_audit_logs` +19
+  changed. The other 42 tables are byte-for-byte unchanged, including accounts, role assignments, account
+  Grants/Denies and role scopes. It was re-confirmed after the live check.
+- **Launcher:** every Academic Settings feature is approved for `local` only; `lan` and production are
+  unchanged. `-Local -CheckOnly` passed with 16 of 16 mode features available.
+- **Live check:** launcher-identical local environment, Django and Vite only, read-only, role context enforced.
+  - **Anonymous requests:** all 12 Academic Settings routes, including fees, onboarding, verification and
+    historical correction, returned 401. The dashboard served the app shell.
+  - **Admin contexts** (accounts 3 and 9, and account 9's Technical Super Admin context through its stored
+    Admin assignment): allowed configuration, fee configuration and approval, semester lifecycle, period
+    corrections, verification and historical correction. Onboarding was refused.
+  - **Students 6 and 15:** allowed onboarding read, write and finalization, and the current period; every
+    management operation was refused.
+  - **Instructor 13, and account 9 in its Instructor context:** current period only (`access_denied` or
+    `admin_context_required`).
+  - No business record was written.
+- **Not performed:** the interactive acceptance cases, which need the owner's credentials and approved test
+  data. Human Approval is unchanged. Rollback: remove the `local` mode approvals, then deactivate exactly these
+  five bindings and the finance service with compensating receipts.
+
 Rollback activation by turning **both** backend and frontend approved phase flags off, stopping
 the corresponding servers/workers, reloading/rebuilding the frontend and checking refusal behavior.
 This disables access; it must not reverse schema migrations, delete onboarding/fee records, erase

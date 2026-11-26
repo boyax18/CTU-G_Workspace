@@ -10,6 +10,10 @@ later explicitly owner-authorized maintenance is recorded separately below. Orig
 test results come from disposable MySQL databases named `test_ctug_registration_<16 hex>`
 (created and destroyed by `config.test_runner.IsolatedMySQLRunner`).
 
+The implementation table preserves its original observations. The [live Academic Settings
+application record](#authorized-academic-settings-migrations-26-november-2026) gives the current
+status for all seven targets.
+
 | App / migration | Slice | Tables and columns | Depends on | Isolated test result | Applied to `ctug_workspace` | Commit |
 | --- | --- | --- | --- | --- | --- | --- |
 | `academic.0001_initial` | WF-11.01 Draft School Year and semester foundation | New `school_years`, `semesters` (status, `active_slot`, dates, version, lifecycle timestamps; UNIQUE and CHECK constraints), `academic_period_audit_logs` | `accounts` (AUTH_USER_MODEL) | Applied on every isolated run; `test_wf1101_periods`, `test_wf1101_http` passed (see WF-11.01 evidence) | **No**: not applied by this work; not checked (no connection made) | `49e600c` |
@@ -59,3 +63,46 @@ restore: **24 tables / 224 columns verified, 90 prepared integrity queries passe
 application data changed. They remain **unapplied to the actual database**, with all seven ledger
 entries and all 24 tables absent. All feature switches remain OFF; v2.3 is inactive and independent
 governance review stays OPEN. [Backup, recovery and execution evidence](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-local-maintenance-execution-26-november-2026).
+
+## Authorized Academic Settings migrations, 26 November 2026
+
+Ronald applied all seven targets to local MySQL 8.4.13 `ctug_workspace`, starting from `b1cda20`
+on `ronald`. In the owner-confirmed maintenance window, live application began at **20:29:52**
+and verification finished at **20:30:04 Asia/Manila**. Application, worker and administration
+writers were stopped throughout.
+
+The fresh full backup captured at **20:29:32** restored successfully to a separate MySQL instance
+with TCP, MySQL X and events disabled. Schema metadata, row hashes and all 31 ledger entries
+matched across the 22 baseline tables. The instance was stopped and its disposable data removed.
+The encrypted backup is in the owner-protected `.local/wf11-inventory-private/` vault as
+`wf11-academic-20261126-202931-0cf7a799.sql.dpapi`. Its ciphertext SHA-256 is
+`3ea438e8c10eb463b7f06645446cdd9c77936520a1d49807aed4b8df82f7a772`.
+[Runbook recovery procedure](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#5-partial-failure-recovery).
+
+Each target's forward plan contained only that target, and its SQL matched the completed
+rehearsal. The live ledger records each of the following exactly once, in execution order.
+
+1. `academic.0001_initial`
+2. `academic.0002_audit_reason_note`
+3. `academic.0003_academic_configuration`
+4. `finance.0001_semester_fee_configuration`
+5. `academic.0004_student_semester_onboarding`
+6. `clearance.0001_semester_clearance`
+7. `finance.0002_fee_obligation`
+
+The live database now has **46 tables and 38 migration entries**. All **24 new tables and 224
+columns** match the rehearsed schema, including native types, defaults, indexes and constraints.
+The new tables are empty. All 90 prepared integrity queries, 101 foreign-key checks and 94
+unique-key checks passed, and all 72 CHECK constraints are enforced. Django database checks
+passed and the Academic Settings leaf plans are empty.
+
+All **19 existing application tables** retain their schema, row counts and row hashes. The only
+additions outside the new tables were the seven ledger entries, 24 Django content types and 96
+Django framework permissions. The protected vault also holds the encrypted schema and integrity
+evidence. Six default-off read endpoints returned HTTP 503.
+
+All Academic Settings switches are **OFF** and v2.3 is **inactive**. Independent governance
+review remains **OPEN**. Phase one still requires separate approval and provisioning for two
+services, five existing v2.2 permission definitions and five Admin bindings, followed by the
+launcher and operational acceptance gates. Existing phase-specific policy decisions still apply.
+[School Admin phase-one minimum](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#reviewed-minimum-for-phase-1).

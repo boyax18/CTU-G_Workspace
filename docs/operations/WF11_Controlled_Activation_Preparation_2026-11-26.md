@@ -168,9 +168,10 @@ Use the exact [migration and activation runbook](WF11_Migration_and_Activation_R
 and [operational acceptance checklist](WF11_Operational_Acceptance_2026-11-26.md).
 The generated [offline evidence](../../review_only/academic_settings_v2_3/offline_repository_evidence.json)
 contains the complete dependency closure, expected columns/constraints and the actual launcher
-registry. All 11 relevant registry features have **no approved launcher modes**; 14 backend flags
-and their 14 corresponding frontend flags are inventoried. Actual database migration state is
-**unknown**, because it has not been queried in this task.
+registry. All 11 relevant registry features have empty approved mode lists. The runbook inventories
+14 backend switches and their 14 frontend counterparts. Live read-only verification found the
+seven Academic Settings migrations and their 24 tables pending.
+[Live ledger and schema evidence](WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-ledger-check-and-isolated-restore-rehearsal).
 
 The first proposed access phase is School Admin Draft periods and Academic settings, followed by
 curricula/offerings/instructors, fee configuration/approval and explicit semester activation.
@@ -183,9 +184,15 @@ Do not change `modes` or export a flag as a workaround during this preparation.
 > `ctug_workspace`, using an existing SELECT-only account and owner-held pseudonym key.
 > No records, credentials, permissions, migrations, feature switches or launcher approvals may change.
 
-The owner separately approved the reduced procedure after the scope-table preflight. The resulting
-baseline calls for migration ledger and schema reconciliation for `access_control.0005` and its
-ancestors, and a narrow service and role-binding proposal for School Admin phase one. The next
-authorization should name the read-only ledger/schema checks and isolated restore rehearsal.
-Independent governance review, migration approval and feature activation remain pending.
-[Pending role-scope dependency](WF11_Migration_and_Activation_Runbook_2026-11-26.md#pending-role-scope-inventory-dependency).
+The owner approved the reduced inventory and later approved read-only ledger and schema
+verification, restore rehearsal and a review of the first School Admin phase. The live
+`access_control.0004` and `0005` entries and tables are pending. The protected restore passed
+the reviewed forward sequence in that order. The phase-one proposal uses two active services and
+five exact existing v2.2 permissions bound to the stored Admin role. [Role-scope rehearsal evidence](WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-ledger-check-and-isolated-restore-rehearsal) ·
+[School Admin phase-one minimum](WF11_Migration_and_Activation_Runbook_2026-11-26.md#reviewed-minimum-for-phase-1).
+
+Completing the scope-aware inventory requires a decision on the named live migration window,
+operator, backup and recovery plan for `access_control.0004` and `0005`. A separate approval
+still governs expanding the reader to the new table after schema verification. The Academic
+Settings schema, minimum provisioning and launcher decisions remain under the existing phase-one
+gates. Independent governance review remains OPEN and Human Approval is pending.

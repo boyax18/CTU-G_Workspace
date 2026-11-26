@@ -1,10 +1,10 @@
-# Academic Settings migration and activation runbook — prepared, not executed
+# Academic Settings migration and activation runbook
 
-26 November 2026. Every database command and activation below is a **future operator procedure**,
-subject to the separate authorizations in the [handoff](WF11_Controlled_Activation_Preparation_2026-11-26.md).
-The role-scope section records the later authorized live schema observation. The live migration
-ledger remains unverified. Launcher `-CheckOnly` performs real database reads, so it belongs to the
-separately authorized preflight.
+26 November 2026. The role-scope section records the authorized live read-only preflight and
+isolated migration rehearsal at `f3046b5`. Live schema changes, permission provisioning and
+launcher activation require their own authorizations in the
+[handoff](WF11_Controlled_Activation_Preparation_2026-11-26.md). Launcher `-CheckOnly` performs
+actual database reads and belongs to its separately authorized preflight.
 
 ## 1. Exact migration dependency closure
 
@@ -35,9 +35,9 @@ bare `migrate` to apply all unrelated pending workflows.
 `access_control.0005_account_permission_role_scopes` creates `account_permission_role_scopes`.
 The migration creates the `AccountPermissionRoleScope` model with a one-to-one reference to
 `account_permissions` and a foreign key to `roles`. It contains no data migration or backfill.
-The 26 November 2026 preflight confirmed that the target table is absent from local
-`ctug_workspace`. The migration ledger was outside the seven-table reader scope. The next
-preflight must distinguish a pending migration from a ledger/schema mismatch.
+The seven-table inventory first confirmed that the target table was absent from local
+`ctug_workspace`. The migration ledger was outside that reader's scope. The separately
+authorized check below reconciles the ledger and schema.
 [Migration source](../../backend/apps/access_control/migrations/0005_account_permission_role_scopes.py) ·
 [Live inventory evidence](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
@@ -54,13 +54,47 @@ scope-enabled evaluation. It is separate from the seven Academic Settings schema
 | `access_control.0004_ordinary_appointments` | `access_control.0003_remaining_access_control`, `accounts.0001_initial` |
 | `access_control.0005_account_permission_role_scopes` | `access_control.0004_ordinary_appointments` |
 
-After authorization, verify ledger rows and schema for this closure using a separately bounded
-read-only preflight. Review and rehearse `manage.py migrate access_control
-0005_account_permission_role_scopes --plan` against an isolated restore. If the ledger already
-records `0005` but the table is still absent, stop for schema drift investigation. If any ancestor
-is pending, include it explicitly in the plan for review. Apply the migration only after separate
-approval of the exact backup, recovery and migration plan. Then verify the table, ledger and
-existing overrides before a separately authorized scope-table SELECT grant and full inventory.
+Before any live migration, verify the ledger and schema again in the approved window. If the
+ledger records `0005` while the table is absent, stop for schema drift investigation. If an
+ancestor is pending, include it explicitly in the forward plan. Apply the targets only after
+separate approval of the exact backup, recovery and migration plan. Then verify the table,
+ledger and existing overrides before a separately authorized scope-table SELECT grant and full
+inventory.
+
+### Authorized ledger check and isolated restore rehearsal
+
+- Verified MySQL 8.4.13 at `127.0.0.1:3306/ctug_workspace` with TLS and the server identity
+  pinned by the reduced inventory. The read-only ledger had 29 entries and the schema had
+  20 InnoDB tables. Access-control `0001`–`0003` and the account baseline were present once each.
+  Both `0004_ordinary_appointments` and `0005_account_permission_role_scopes` had zero entries,
+  and both target tables were absent. There were zero entries for the seven Academic Settings
+  migrations, and all 24 of their expected tables were absent.
+- Captured a single-transaction schema and data export with the ledger and programmable-object
+  metadata. The source had zero routines, triggers, events, views and cross-schema foreign
+  keys. No Workspace writer process or other open transaction was observed. The two idle
+  Workbench sessions' statement counts, server write counters, schema, ledger and all table
+  data hashes remained stable across export. The existing credential reached only the export
+  client's process environment. The owner-only CurrentUser DPAPI archive
+  `wf11-rehearsal-20261126-143306-dfbfb974.sql.dpapi` and its encrypted baseline are stored in
+  the ignored local inventory vault. Archive SHA-256
+  `5218cdb259057ae7f101e26926f5a281bd9f8390f5ff39c7a632cf7b1721f12e`.
+- Restored to a separate MySQL 8.4.13 instance with a unique Windows named pipe, a disposable
+  data directory, TCP and MySQL X disabled, and the event scheduler disabled. The restored
+  ledger, row counts and row digests matched for all 20 tables. Column and table collation
+  metadata matched the source. The restore check paused on 17 `SHOW CREATE TABLE` text differences.
+  Each disappeared after normalizing the redundant `CHARACTER SET utf8mb4` spelling immediately
+  before the same `COLLATE utf8mb4_unicode_ci`. The original dump definitions matched the live
+  definitions exactly.
+- Reviewed each forward plan and its DDL, then ran `access_control.0004_ordinary_appointments`
+  followed by `access_control.0005_account_permission_role_scopes` on that copy with all 14 Academic
+  Settings switches off. Both new tables had zero rows and the corresponding plans were empty
+  afterwards. Verified the appointment primary and unique keys, lookup and expiry indexes and
+  seven foreign keys. The scope table has primary key `account_permission_id` and two foreign
+  keys to `account_permissions` and `roles`. Django database checks passed.
+- All 17 existing application tables retained their schema and row data. Django appended two
+  migration records, two content types and eight framework permissions. The rehearsal instance
+  was shut down and its disposable data directory was removed. Post-rehearsal live verification
+  still showed 29 ledger rows and 20 tables, with both scope dependency entries and tables absent.
 
 ## 2. Required backup and pre-migration validation
 
@@ -106,8 +140,9 @@ backend\.venv\Scripts\python.exe review_only\academic_settings_v2_3\inspect_offl
 
    Rehearse the **same** dependency-aware migration sequence on the restored isolated copy, not
    just an empty test schema. Review each target's `sqlmigrate` output for native enums, timestamps,
-   CHECKs, uniqueness, foreign keys and operation order. The real live precheck and rehearsal are
-   still outstanding; this task's isolated test database migrations do not replace that evidence.
+   CHECKs, uniqueness, foreign keys and operation order. Rehearsal of the seven Academic Settings
+   targets on an isolated restore remains outstanding. The completed rehearsal above covers the
+   separate role-scope migration plan.
 
 `--single-transaction` is consistent for InnoDB data; concurrent DDL can invalidate a dump, and
 nontransactional tables need a separately reviewed backup/lock method. Keep writers and DDL
@@ -278,11 +313,35 @@ context, browser requests reach the matching default-off server gates and UI has
 VITE flags are build/dev-server inputs, so a backend-only restart cannot update the frontend.
 Do not paste the entire feature matrix as environment assignments or approve every feature at once.
 
-Phase 1 uses only existing exact permissions. It can be reviewed and authorized separately while
-v2.3 remains pending, after the actual inventory, schema/backup gates and existing-boundary review.
-Installing the candidate is not a prerequisite for merely opening Draft periods/courses/subjects/
-sections. New grants, governed curriculum/offering writes, fee configuration and narrow Student
-permission transitions retain their own independent governance and operational gates.
+### Reviewed minimum for phase 1
+
+The validated v2.2 catalogue and the live reduced inventory support this minimum proposal.
+The inventory found zero definitions or bindings for the five codes and neither service was
+present. The existing cohort includes two eligible accounts with genuine `Admin` assignments.
+
+| Phase-one capability | Active owning service | Exact permission | Proposed binding |
+| --- | --- | --- | --- |
+| School years and Draft semesters | `academic` | `academic.periods.manage` | `Admin` |
+| Courses | `academic` | `academic.courses.manage` | `Admin` |
+| Sections | `academic` | `academic.sections.manage` | `Admin` |
+| Subjects and lecture/lab units | `clearance` | `clearance.subjects.manage` | `Admin` |
+| Current-period dashboard header | `academic` | `academic.catalogue.read` | `Admin` |
+
+All management calls also require the active `academic` service and a genuine active Admin
+assignment on an eligible, approved account. Where role context is enforced, a selected Technical
+Super Admin context can inherit that account's stored Admin assignment. Exact account Denies
+retain precedence, and the protected writer boundary still applies. The catalogue endpoint
+authorizes any eligible holder of its exact read permission. Its pinned defaults include Instructor,
+Student and Treasurer, so the School Admin-only proposal scopes the initial database binding to
+`Admin`. [Management authorization source](../../backend/apps/academic/services.py) ·
+[Catalogue authorization source](../../backend/apps/academic/catalogue.py).
+
+Provisioning would require separate authorization for two services, five existing v2.2 definitions
+and five active Admin bindings. The schema and launcher gates above still apply. The three phase-one
+features currently have empty launcher mode lists. The phase-one decision can use the existing
+v2.2 definitions while v2.3 is pending. The full scope-aware inventory remains gated by live
+`0004` and `0005` and the separate scope-table reader grant. Independent governance review
+and Human Approval remain open.
 
 Rollback activation by turning **both** backend and frontend approved phase flags off, stopping
 the corresponding servers/workers, reloading/rebuilding the frontend and checking refusal behavior.

@@ -29,8 +29,10 @@ this table with the date, the operator and how it was verified (for example
 
 | App / migration | Schema effect | Direct dependency | Local evidence |
 | --- | --- | --- | --- |
-| `access_control.0005_account_permission_role_scopes` | Creates `account_permission_role_scopes` with a one-to-one link to an account override and a foreign key to a role | `access_control.0004_ordinary_appointments` | Table absent on the verified local server. Ledger status awaits a separate read-only check. No migration ran during the reduced inventory. |
+| `access_control.0004_ordinary_appointments` | Creates `ordinary_appointments` with account and audit-receipt foreign keys, document uniqueness and status indexes | `access_control.0003_remaining_access_control`, `accounts.0001_initial` | Ledger entry and table both absent on local MySQL. Applied on the isolated restore with zero new business rows. |
+| `access_control.0005_account_permission_role_scopes` | Creates `account_permission_role_scopes` with a one-to-one link to an account override and a foreign key to a role | `access_control.0004_ordinary_appointments` | Ledger entry and table both absent on local MySQL. Applied after `0004` on the isolated restore with zero new scope rows. |
 
-Django's offline loader confirmed the full graph. Review that dependency separately from the
-Academic Settings schema targets and reconcile the migration ledger before deciding whether to
-apply it. [Dependency and preflight details](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#pending-role-scope-inventory-dependency).
+The recorded prerequisites were present on the verified live database. The isolated forward plan
+added exactly the two entries above and ended with 31 ledger rows. The live ledger remained at 29.
+All seven Academic Settings targets listed earlier were absent from the live ledger, along with
+their 24 expected tables. [Read-only verification and isolated rehearsal](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-ledger-check-and-isolated-restore-rehearsal).

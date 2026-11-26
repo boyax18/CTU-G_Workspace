@@ -2,9 +2,44 @@
 
 26 November 2026 (Asia/Manila) · branch `ronald`.
 
-**The authorized seven-table inventory completed at 14:15 Manila time.** All 13 reviewed codes
-have zero stored definitions, bindings, Allows, Denies and holders. Role-scope evidence is
-unavailable. Independent governance review remains OPEN.
+**The full eight-table inventory completed at 20:19:41 Manila time**, following the authorized
+live `access_control.0004`/`0005` migrations and scope-table SELECT grant. Persisted role-scope
+evidence is now available; both scoped-Grant evaluation states are modeled. Independent
+governance review remains OPEN. Earlier checkpoint records below retain their historical limits.
+
+## Full inventory after authorized maintenance from `7d9624f`
+
+Named operator Ronald used the owner-confirmed current-session maintenance window. The existing
+reader authenticated to the verified local MySQL 8.4.13 target over TLS. Positive preflight
+verified USAGE plus SELECT on exactly the eight approved tables, no other privilege or grant
+option, `CURRENT_ROLE() = NONE`, and no mandatory roles. The existing reader credential and
+owner-held pseudonym key were unchanged. The existing full-mode command ran its fixed queries
+in a read-only consistent snapshot and rolled back; it did not use application credentials.
+
+| Measure | Verified full-inventory result |
+| --- | --- |
+| Exact codes reviewed / stored definitions | 13 / 0 |
+| Required services (`academic`, `clearance`, `finance`) | 0 of 3 |
+| Role bindings, active / inactive | 0 / 0 |
+| Account Allows (`Grant`), active / inactive | 0 / 0 |
+| Account Denies, active / inactive | 0 / 0 |
+| Source holders / accounts with modeled access changes | 0 / 0 |
+| Potential expansions / losses | 0 / 0 |
+| Legacy Deny pairs / new-Grant conflicts | 0 / 0 |
+| Persisted role scope | **Available**; the new table is empty; both scoped-Grant scenarios modeled |
+
+The reviewed codes/default comparison and conditional cohorts in the reduced snapshot below
+remain unchanged: all 17 original application tables match their pre-migration schema and row
+hashes. The missing base services, definitions and role bindings remain provisioning blockers;
+zero modeled change is not authorization or evidence that catalogue defaults are live.
+The inventory does not attest an authenticated selected-role request or appointment eligibility.
+
+The detailed report is encrypted with CurrentUser DPAPI in the existing owner-protected vault:
+`.local/wf11-inventory-private/wf11-activation-20261126-200645-ec7ff448.inventory.dpapi`.
+Ciphertext SHA-256 `6296ac94c9df5cea7d95a9f0b5200fad4bacbb3269522a7a533a06aa9d2372fa`.
+The seven Academic Settings migrations remain pending on the actual database; v2.3 is inactive,
+all switches are OFF, and no HDAC provisioning or independent approval occurred.
+[Migration, backup and rehearsal evidence](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-local-maintenance-execution-26-november-2026).
 
 ## Reduced inventory from `f63f8ac`
 

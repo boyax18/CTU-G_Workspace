@@ -1,10 +1,14 @@
 # Academic Settings controlled local activation preparation
 
 26 November 2026 · branch `ronald` · starting commit `2a1bca1`.
-**Preparation and isolated verification only. Actual operational acceptance NOT PERFORMED.**
-All seven existing implementation milestones are preserved. No connection to `ctug_workspace`,
-live permission inventory, migration, provisioning, launcher-mode approval, feature activation,
-Human Approval, WF-11.02–11.04 work, push or merge is part of this delivery.
+**Current follow-up from `7d9624f`: authorized access-control maintenance and full inventory
+complete; seven Academic Settings migrations rehearsed only. Operational acceptance NOT PERFORMED.**
+Ronald completed the two authorized live access-control migrations, exact scope-table reader
+grant and full read-only inventory in the owner-confirmed current-session window. All seven
+Academic Settings migrations remain unapplied to `ctug_workspace`. v2.3 stays inactive, switches
+OFF and independent governance review OPEN. The original preparation and existing implementation
+milestones are preserved; no HDAC provisioning, launcher approval, feature activation, workflow
+Human Approval, WF-11.02–11.04 work, push or merge occurred.
 The existing untracked `docs/workflows/WF11_Reconciliation_2026-11-25/` is preserved and is not
 included in this commit. It is supporting evidence already present in the owner's workspace;
 the committed workflow catalogue and governance proposals also contain the relevant boundaries.
@@ -48,8 +52,10 @@ holder-by-holder impact review; equality of intended role names is not proof of 
 The eight-table preflight found `account_permission_role_scopes` absent. After the owner authorized
 the reduced scope, the seven-table reader was created, verified and used. The reduced snapshot
 found zero of 13 definitions, zero in-scope bindings and overrides, and none of the three service
-rows. The full scope-specific inventory remains pending.
-[Reduced inventory results](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
+rows. After the separately authorized access-control maintenance and exact scope-table SELECT
+grant, the full inventory completed at 20:19:41 Asia/Manila with the same zero counts. Persisted
+scope evidence is available and both scoped-Grant scenarios are modeled.
+[Full and earlier inventory results](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
 [permission_inventory.py](../../review_only/academic_settings_v2_3/permission_inventory.py) is a
 standalone DB-API reader. Its default invocation prints the query plan **without importing a
@@ -184,15 +190,24 @@ Do not change `modes` or export a flag as a workaround during this preparation.
 > `ctug_workspace`, using an existing SELECT-only account and owner-held pseudonym key.
 > No records, credentials, permissions, migrations, feature switches or launcher approvals may change.
 
-The owner approved the reduced inventory and later approved read-only ledger and schema
-verification, restore rehearsal and a review of the first School Admin phase. The live
-`access_control.0004` and `0005` entries and tables are pending. The protected restore passed
-the reviewed forward sequence in that order. The phase-one proposal uses two active services and
-five exact existing v2.2 permissions bound to the stored Admin role. [Role-scope rehearsal evidence](WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-ledger-check-and-isolated-restore-rehearsal) ·
-[School Admin phase-one minimum](WF11_Migration_and_Activation_Runbook_2026-11-26.md#reviewed-minimum-for-phase-1).
+The owner subsequently authorized both live access-control migrations, their verification, the
+existing reader's scope-table SELECT grant, the full inventory and the isolated seven-migration
+Academic Settings rehearsal. The owner confirmed **Ronald** as operator and the current session
+as the maintenance window, with writers stopped through verification. A fresh encrypted backup
+passed restored-data verification before live execution. `0004` and `0005` are now present once
+each; their two new tables are empty and all 17 original application tables are unchanged.
+The full inventory completed and the seven-target isolated rehearsal passed all 24 expected
+tables, 224 columns and 90 prepared integrity queries. Final live checks at 20:20:55 Asia/Manila
+confirmed all seven Academic Settings migrations and their 24 tables still absent.
+[Maintenance and recovery evidence](WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-local-maintenance-execution-26-november-2026).
 
-Completing the scope-aware inventory requires a decision on the named live migration window,
-operator, backup and recovery plan for `access_control.0004` and `0005`. A separate approval
-still governs expanding the reader to the new table after schema verification. The Academic
-Settings schema, minimum provisioning and launcher decisions remain under the existing phase-one
-gates. Independent governance review remains OPEN and Human Approval is pending.
+The genuine remaining phase-one gates are separately authorized **actual Academic Settings
+migrations**, the existing minimum **two services, five v2.2 definitions and five active Admin
+bindings**, and the runbook's governance/provisioning, launcher and operational acceptance
+approvals. The full inventory still finds those services/definitions/bindings absent.
+[School Admin phase-one minimum](WF11_Migration_and_Activation_Runbook_2026-11-26.md#reviewed-minimum-for-phase-1).
+The existing fee, proof/retention, signatory and historical-protection decisions in §5 continue
+to gate their respective later phases. v2.3 remains proposed/inactive; its independent governance
+review is OPEN. All 14 switch pairs stay OFF, launcher modes are unchanged, and workflow Human
+Approval remains pending. The live scope dependency, reader grant, full inventory and isolated
+seven-migration rehearsal are complete and are no longer activation blockers.

@@ -1,9 +1,9 @@
 # Dedicated permission inventory reader
 
-26 November 2026 · **Seven-table reader created, verified and used.** The original eight-table
-setup stopped because `account_permission_role_scopes` was absent. The owner then approved the
-seven-table setup and reduced inventory from `f63f8ac`. Sections 1–4 describe the original full
-procedure. Section 5 records the setup that ran on the current schema.
+26 November 2026 · **Existing reader expanded to the exact eight-table SELECT set and verified.**
+After the authorized `access_control.0004`/`0005` migrations, the owner-authorized scope-table
+SELECT grant and full inventory completed. Sections 1–4 describe the original full procedure;
+§5 preserves the earlier reduced setup and §6 records the completed expansion.
 [Inventory and preflight evidence](WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
 ## 1. Operator and target preconditions
@@ -158,3 +158,22 @@ scoped-Grant-evaluation-off scenario only. A full rerun needs the existing scope
 and a separately authorized scope-table SELECT grant. The current reader has the seven-table
 grant set. Independent review and Human Approval remain open.
 [Observed findings and limits](WF11_Permission_Inventory_Preflight_2026-11-26.md#reduced-inventory-from-f63f8ac).
+
+## 6. Authorized scope-table expansion and full inventory
+
+Continued from `7d9624f`, 26 November 2026, named operator **Ronald** in the owner-confirmed
+current-session maintenance window. After the live schema, ledger and unchanged existing data
+were verified, the operator issued only the §2 SELECT grant on
+`ctug_workspace.account_permission_role_scopes` to the existing
+`'ctug_wf11_inventory_ro'@'127.0.0.1'`. No account or credential was created or changed.
+
+At **20:19:40 Asia/Manila**, a fresh reader connection positively verified the exact intended
+server/account, TLS, USAGE plus exactly eight table SELECTs, no other privileges or grant option,
+no assigned/inherited/effective role, and no mandatory roles. A SELECT of the new table matched
+the verified zero-row state. The full §4 inventory completed at **20:19:41** without the reduced
+mode flag; both scoped-Grant scenarios were modeled. Final reader verification passed again at
+maintenance closeout. The credential/key and detailed report remain encrypted in the existing
+owner-protected vault. [Full findings](WF11_Permission_Inventory_Preflight_2026-11-26.md#full-inventory-after-authorized-maintenance-from-7d9624f).
+
+No HDAC provisioning or activation occurred. v2.3 remains inactive, all feature switches are OFF,
+and independent governance review remains OPEN.

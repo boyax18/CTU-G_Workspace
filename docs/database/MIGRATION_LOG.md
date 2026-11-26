@@ -5,9 +5,10 @@ Centralized record of Django migrations added from 25 November 2026 onward. Earl
 the workflow evidence that introduced them. Append new entries; never rewrite earlier ones.
 
 **Applied to `ctug_workspace`** means independently confirmed on the development database. The
-implementing sessions never connect to `ctug_workspace` for migrations or tests; isolated results
-come from disposable MySQL databases named `test_ctug_registration_<16 hex>` (created and destroyed
-by `config.test_runner.IsolatedMySQLRunner`).
+original implementation sessions did not connect to `ctug_workspace` for migrations or tests;
+later explicitly owner-authorized maintenance is recorded separately below. Original isolated
+test results come from disposable MySQL databases named `test_ctug_registration_<16 hex>`
+(created and destroyed by `config.test_runner.IsolatedMySQLRunner`).
 
 | App / migration | Slice | Tables and columns | Depends on | Isolated test result | Applied to `ctug_workspace` | Commit |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -36,3 +37,25 @@ The recorded prerequisites were present on the verified live database. The isola
 added exactly the two entries above and ended with 31 ledger rows. The live ledger remained at 29.
 All seven Academic Settings targets listed earlier were absent from the live ledger, along with
 their 24 expected tables. [Read-only verification and isolated rehearsal](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-ledger-check-and-isolated-restore-rehearsal).
+
+## Authorized access-control maintenance, 26 November 2026
+
+Continued from `7d9624f` on `ronald`. Named operator **Ronald**, owner-confirmed current-session
+maintenance window; writers stopped through final verification at **20:20:55 Asia/Manila**.
+The fresh encrypted full backup passed restoration and data/schema comparison before live work.
+
+| Migration | Applied to actual `ctug_workspace` | Verification |
+| --- | --- | --- |
+| `access_control.0004_ordinary_appointments` | **Yes**, 26 November 2026, Ronald | Exact single-target forward plan and rehearsed DDL; ledger present once; empty table; PK, document uniqueness, lookup/expiry indexes and seven FKs match rehearsal. |
+| `access_control.0005_account_permission_role_scopes` | **Yes**, immediately after `0004`, Ronald | Exact single-target forward plan and rehearsed DDL; ledger present once; empty table; one-to-one PK and two FKs match rehearsal; current leaf plan empty. |
+
+Actual database: **22 tables / 31 migration rows**. All 17 existing application tables retain
+their schema and row hashes; Django added only two ledger rows, two content types and eight
+framework permissions. All 35 FK and 42 unique-key checks passed; nine CHECK constraints are
+enforced. No HDAC permission, role binding, account override or business row was provisioned.
+
+The seven Academic Settings migrations were rehearsed in the runbook's exact order on an isolated
+restore: **24 tables / 224 columns verified, 90 prepared integrity queries passed**, no existing
+application data changed. They remain **unapplied to the actual database**, with all seven ledger
+entries and all 24 tables absent. All feature switches remain OFF; v2.3 is inactive and independent
+governance review stays OPEN. [Backup, recovery and execution evidence](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#authorized-local-maintenance-execution-26-november-2026).

@@ -1,10 +1,13 @@
 # Academic Settings migration and activation runbook
 
-26 November 2026. The role-scope section records the authorized live read-only preflight and
-isolated migration rehearsal at `f3046b5`. Live schema changes, permission provisioning and
-launcher activation require their own authorizations in the
+26 November 2026. Continued from `7d9624f` on `ronald`: the owner-authorized live
+`access_control.0004`/`0005` migrations, scope-table reader grant and full permission inventory
+are complete. The seven Academic Settings migrations passed an isolated restored-data rehearsal
+and remain **unapplied to the actual database**. v2.3 is inactive, all 14 backend/frontend switch
+pairs are OFF, all 11 relevant launcher mode lists are empty, and independent governance review
+is OPEN. The remaining activation gates are in the
 [handoff](WF11_Controlled_Activation_Preparation_2026-11-26.md). Launcher `-CheckOnly` performs
-actual database reads and belongs to its separately authorized preflight.
+actual database reads and still belongs to its separately authorized preflight.
 
 ## 1. Exact migration dependency closure
 
@@ -31,6 +34,9 @@ in the actual application; otherwise stop for a separate baseline migration revi
 bare `migrate` to apply all unrelated pending workflows.
 
 ### Pending role-scope inventory dependency
+
+**Completed in the authorized maintenance window below.** The earlier dependency and rehearsal
+records are retained as history.
 
 `access_control.0005_account_permission_role_scopes` creates `account_permission_role_scopes`.
 The migration creates the `AccountPermissionRoleScope` model with a one-to-one reference to
@@ -96,6 +102,60 @@ inventory.
   was shut down and its disposable data directory was removed. Post-rehearsal live verification
   still showed 29 ledger rows and 20 tables, with both scope dependency entries and tables absent.
 
+### Authorized local maintenance execution, 26 November 2026
+
+- Named operator: **Ronald**. The owner confirmed the current session as the local maintenance
+  window, with application, worker and administration writers stopped through verification.
+  Live migration began at **20:18:12 Asia/Manila**; final verification finished at **20:20:55**.
+  The verified target remained MySQL 8.4.13 at `127.0.0.1:3306/ctug_workspace`.
+- A fresh full schema/data export was captured at **20:06:46**. It included the 29-row migration
+  ledger and programmable-object metadata; routines, triggers, events, views and cross-schema
+  foreign keys were absent. No writer or open transaction was observed. Schema, row hashes,
+  ledger and server write counters stayed unchanged through export and isolated rehearsal.
+  CurrentUser DPAPI archives are in the existing owner-protected ignored vault
+  `.local/wf11-inventory-private/`, with prefix `wf11-activation-20261126-200645-ec7ff448`.
+  Backup `.sql.dpapi` SHA-256:
+  `8bc3c5341e4d0d15d837ae06b2f869f79f34d7b49c13fcf96de743982abeb988`.
+  Encrypted readback and the vault ACL were verified.
+- Restored to an isolated MySQL 8.4.13 instance using a unique Windows named pipe, with TCP,
+  MySQL X and events disabled. All 20 source tables, row hashes, ledger and schema metadata
+  matched. As in the earlier rehearsal, 17 redundant `CHARACTER SET utf8mb4` DDL spellings
+  normalized to the same collation. Rehearsed `access_control.0004`, `0005`, then the seven
+  targets in §3. All 24 Academic Settings tables and **224 columns** matched, including native
+  types/defaults, nullability, keys, named constraints and indexes. All **90 prepared integrity
+  queries** passed across 144 read-only statements; Django database checks and final leaf plans
+  passed. The combined nine-migration restore ended with 46 tables and 38 ledger entries,
+  adding 26 content types and 104 framework permissions; all 26 new business/audit tables were
+  empty. All 17 original application tables were unchanged. The instance was stopped and its
+  disposable data directory removed. Rehearsal `.rehearsal.dpapi` SHA-256:
+  `48af604a22d0e6d5d2e639723d7c433da3d9777ddaeae1bbed84d86011173bfc`.
+- Applied **only** `access_control.0004_ordinary_appointments`, then
+  `access_control.0005_account_permission_role_scopes`, using `config.settings`, existing
+  credentials and TLS required in the operator process. Each actual forward plan contained
+  exactly its target and its DDL matched the verified rehearsal. Both new tables are empty;
+  schema, indexes and all nine new foreign keys match the restored reference. The live database
+  has **22 tables / 31 ledger entries**. All 17 original application tables retain their schema
+  and row hashes; only two ledger rows, two content types and eight framework permissions were
+  added. **35 foreign-key checks, 42 unique-key checks and nine enforced CHECK constraints**
+  have zero violations. Django checks passed and six default-off read endpoints returned 503.
+  All seven Academic Settings ledger entries and all 24 target tables remain absent.
+- Verification stopped before migration until TLS was required. A later hash comparison stopped
+  because the baseline reader used `SYSTEM` time and Django used UTC. Matching-session checks
+  proved all existing application rows unchanged and reproduced the UTC snapshot exactly;
+  no data repair or live migration retry was needed. The isolated checker also accounted for
+  MySQL's equivalent timestamp, Boolean and decimal type/default spellings.
+- After schema/integrity verification, granted the existing reader SELECT on
+  `account_permission_role_scopes` and positively verified USAGE plus exactly eight table SELECTs,
+  no other privileges, no roles and unchanged credentials. The full inventory completed at
+  **20:19:41**, with persisted scopes available and both scoped-Grant scenarios modeled.
+  [Full inventory results](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
+  Inventory `.inventory.dpapi` SHA-256:
+  `6296ac94c9df5cea7d95a9f0b5200fad4bacbb3269522a7a533a06aa9d2372fa`.
+- Recovery remains the existing §5 plan: preserve this verified backup, restore to an empty
+  isolated replacement and compare schema/data/ledger before any separately owner-authorized
+  live replacement or cutover. No destructive restore, reversal, fake ledger entry, HDAC
+  provisioning, feature activation, launcher approval or independent review occurred.
+
 ## 2. Required backup and pre-migration validation
 
 1. Obtain explicit authorization naming the seven Academic Settings migrations, database/server, settings profile,
@@ -140,9 +200,9 @@ backend\.venv\Scripts\python.exe review_only\academic_settings_v2_3\inspect_offl
 
    Rehearse the **same** dependency-aware migration sequence on the restored isolated copy, not
    just an empty test schema. Review each target's `sqlmigrate` output for native enums, timestamps,
-   CHECKs, uniqueness, foreign keys and operation order. Rehearsal of the seven Academic Settings
-   targets on an isolated restore remains outstanding. The completed rehearsal above covers the
-   separate role-scope migration plan.
+   CHECKs, uniqueness, foreign keys and operation order. The authorized maintenance record above
+   completes the seven-target isolated restored-data rehearsal. Applying those seven migrations
+   to the actual database remains outside the current authorization.
 
 `--single-transaction` is consistent for InnoDB data; concurrent DDL can invalidate a dump, and
 nontransactional tables need a separately reviewed backup/lock method. Keep writers and DDL
@@ -339,9 +399,11 @@ Student and Treasurer, so the School Admin-only proposal scopes the initial data
 Provisioning would require separate authorization for two services, five existing v2.2 definitions
 and five active Admin bindings. The schema and launcher gates above still apply. The three phase-one
 features currently have empty launcher mode lists. The phase-one decision can use the existing
-v2.2 definitions while v2.3 is pending. The full scope-aware inventory remains gated by live
-`0004` and `0005` and the separate scope-table reader grant. Independent governance review
-and Human Approval remain open.
+v2.2 definitions while v2.3 is pending. The live `0004`/`0005` migrations, exact reader grant and
+full scope-aware inventory are now complete; the inventory still finds the proposed services,
+definitions and bindings absent. Actual Academic Settings migrations, provisioning, launcher
+approval and operational acceptance remain pending. Independent governance review and workflow
+Human Approval remain open.
 
 Rollback activation by turning **both** backend and frontend approved phase flags off, stopping
 the corresponding servers/workers, reloading/rebuilding the frontend and checking refusal behavior.

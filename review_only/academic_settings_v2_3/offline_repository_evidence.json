@@ -3741,7 +3741,9 @@
         "VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED"
       ],
       "registry_dependencies": [],
-      "approved_modes": []
+      "approved_modes": [
+        "local"
+      ]
     },
     {
       "key": "wf11.academic_period_lifecycle",
@@ -3767,7 +3769,9 @@
         "VITE_WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED"
       ],
       "registry_dependencies": [],
-      "approved_modes": []
+      "approved_modes": [
+        "local"
+      ]
     },
     {
       "key": "wf11.academic_configuration_governed_writes",
@@ -3819,7 +3823,9 @@
         "VITE_WORKSPACE_ACADEMIC_CATALOGUE_ENABLED"
       ],
       "registry_dependencies": [],
-      "approved_modes": []
+      "approved_modes": [
+        "local"
+      ]
     },
     {
       "key": "wf05.student_onboarding",

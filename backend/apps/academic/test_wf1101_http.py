@@ -130,19 +130,32 @@ class RouteSurfaceTests(SimpleTestCase):
         for model in (SchoolYear, Semester, AcademicPeriodAuditLog):
             self.assertFalse(admin.site.is_registered(model))
 
-    def test_launcher_registers_the_feature_without_approving_any_mode(self):
-        for key in ("wf11.academic_periods", "wf11.academic_period_lifecycle"):
-            feature = next(f for f in dev_features.FEATURES if f.key == key)
-            self.assertEqual(feature.modes, frozenset())
-        for mode, extra in (("local", {}), ("lan", {"lan_ip": "192.168.1.20"})):
-            result = dev_features.mode_environment(mode, env={}, **extra)
-            self.assertEqual(result["frontend_env"]["VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED"], "0")
-            for flag in ("VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
-                         "VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"):
-                self.assertEqual(result["frontend_env"][flag], "0")
-            for flag in ("WORKSPACE_ACADEMIC_PERIODS_ENABLED", "WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
-                         "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"):
+    def test_launcher_approves_only_phase_one_for_the_local_mode(self):
+        """Owner-approved phase 1 (26 Nov 2026): periods, configuration and catalogue in LOCAL only."""
+        phase_one = {"wf11.academic_periods", "wf11.academic_configuration", "wf11.academic_catalogue"}
+        for feature in dev_features.FEATURES:
+            if feature.key.startswith(("wf11.", "wf05.")):
+                self.assertEqual(feature.modes, frozenset({"local"}) if feature.key in phase_one else frozenset(),
+                                 feature.key)
+        on = ("WORKSPACE_ACADEMIC_PERIODS_ENABLED", "WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED",
+              "WORKSPACE_ACADEMIC_CATALOGUE_ENABLED")
+        off = ("WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED", "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED",
+               "WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED", "WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED",
+               "WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED", "WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED",
+               "WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED", "WORKSPACE_STUDENT_ONBOARDING_ENABLED",
+               "WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED", "WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED",
+               "WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED")
+        local = dev_features.mode_environment("local", env={})
+        lan = dev_features.mode_environment("lan", env={}, lan_ip="192.168.1.20")
+        for flag in on:
+            self.assertEqual(local["backend_env"][flag], "1")
+            self.assertEqual(local["frontend_env"]["VITE_" + flag], "1")
+            self.assertNotIn(flag, lan["backend_env"])
+            self.assertEqual(lan["frontend_env"]["VITE_" + flag], "0")
+        for result in (local, lan):
+            for flag in off:
                 self.assertNotIn(flag, result["backend_env"])
+                self.assertEqual(result["frontend_env"]["VITE_" + flag], "0")
 
 
 class GateOffTests(TestCase):

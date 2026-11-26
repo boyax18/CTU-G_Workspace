@@ -92,14 +92,18 @@ FEATURES = (
                             "VITE_WORKSPACE_WF0303_ACCOUNT_GRANTS_ENABLED", "VITE_WORKSPACE_WF0304_ACCOUNT_RESTRICTIONS_ENABLED",
                             "VITE_WORKSPACE_WF0305_EFFECTIVE_ACCESS_INSPECT_ENABLED", "VITE_WORKSPACE_WF0306_AUDIT_HISTORY_ENABLED"),
             note="Protected Access Control Management keeps its own acknowledgments and executor boundary."),
-    # WF-11.01 restricted local development (25 Nov 2026): registered, NOT approved for any launcher
-    # mode. Both modes use ctug_workspace, which does not have the academic 0001 tables yet; applying
-    # that migration there and approving a mode are separate owner decisions.
+    # WF-11.01 Academic Settings PHASE 1 (owner-approved 26 Nov 2026): School Admin Draft periods,
+    # courses/subjects/sections and the read-only current period, approved for the loopback LOCAL mode
+    # only (LAN stays unapproved). The seven Academic Settings migrations are applied to ctug_workspace
+    # and phase one is provisioned by provision_academic_settings_phase1_local_dev. Every later phase
+    # (lifecycle, governed writes, fees, verification, onboarding, historical correction) stays
+    # registered without a mode until its own approval.
     Feature("wf11.academic_periods", "WF-11.01", "School years & semesters (Draft management only)",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_ACADEMIC_PERIODS_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED",),
-            note="Needs the academic migrations on ctug_workspace (separately approved) and a mode approval. "
-                 "Fee setting is not available."),
+            note="Phase 1 (local only): Draft school years and semesters. Activation, closure, corrections and "
+                 "fee setting are not available."),
     # Registered, NOT approved for any mode. Even when enabled, activation stays refused until real fee
     # and offering sources exist, and edits stay refused while downstream impact cannot be evaluated.
     Feature("wf11.academic_period_lifecycle", "WF-11.01", "Semester activation, closure, archiving and corrections",
@@ -113,9 +117,11 @@ FEATURES = (
     # academic migration 0003 on ctug_workspace. Curriculum and offering writes have no approved exact
     # permission yet (proposed academic.courses.manage / academic.periods.manage mappings).
     Feature("wf11.academic_configuration", "WF-11.01 dependency", "Courses, subjects, sections, curricula, offerings",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED",),
-            note="Curriculum, offering and teaching-assignment writes have their own switches."),
+            note="Phase 1 (local only): courses, subjects and sections. Curriculum, offering and "
+                 "teaching-assignment writes keep their own unapproved switches."),
     Feature("wf11.academic_configuration_governed_writes", "WF-11.01 dependency",
             "Curriculum, offering and instructor-assignment writes",
             backend_env={"WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED": "1",
@@ -137,9 +143,10 @@ FEATURES = (
             frontend_flags=("VITE_WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED",),
             requires=("wf11.semester_fee_configuration",),
             note="Does not enable academic-period transitions."),
-    # Read-only current academic period in the dashboard header (academic.catalogue.read): registered,
-    # NOT approved for any mode; needs the academic migrations on ctug_workspace.
+    # Read-only current academic period in the dashboard header (academic.catalogue.read): phase 1,
+    # local mode only; phase one binds the code to Admin only.
     Feature("wf11.academic_catalogue", "WF-11.01 (FR-ACA-03/07)", "Current academic period (read-only)",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_ACADEMIC_CATALOGUE_ENABLED": "1"},
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_CATALOGUE_ENABLED",),
             note="Read-only; no management or student data."),

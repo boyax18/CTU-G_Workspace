@@ -1,7 +1,43 @@
-# Authorized permission inventory — connection preflight blocked
+# Authorized permission inventory preflight
 
-26 November 2026 (Asia/Manila) · branch `ronald` · starting commit `10e3fe8`.
-**Owner-authorized read-only inventory; NOT EXECUTED. No database connection attempted.**
+26 November 2026 (Asia/Manila) · branch `ronald`.
+
+**The dedicated reader setup stopped at the schema check.** The local server has seven of the
+eight required tables. The reader account is absent and the permission inventory is pending.
+
+## Reader setup preflight from `f9cf56b`
+
+The owner approved the dedicated reader and the eight documented table-level SELECT grants.
+The administrative preflight authenticated over loopback TCP and confirmed MySQL 8.4.13 at
+`127.0.0.1:3306` with `ctug_workspace` selected. It read server and table metadata and checked
+the proposed username in `mysql.user`.
+
+| Check | Verified result |
+| --- | --- |
+| Existing InnoDB base tables | 7 of 8. `services`, `permissions`, `roles`, `role_permissions`, `account_permissions`, `account_roles`, `accounts` |
+| Missing table | `account_permission_role_scopes` |
+| Reader account | `ctug_wf11_inventory_ro` has no matching MySQL account at any host |
+| Server mandatory roles | None configured when checked |
+| Account creation and grants | No `CREATE USER` or `GRANT` statements issued |
+| Reader login and effective privileges | Pending account creation |
+| Permission inventory | No application records queried. Definition, binding, holder, Allow, Deny and potential access-change counts are unknown |
+
+The repository defines the absent table in `access_control.0005_account_permission_role_scopes`.
+The preflight checked table presence. The migration ledger was outside this check. MySQL requires
+`CREATE` in a grant on a table that does not exist, so the eighth SELECT grant cannot be issued
+under the approved procedure. The prepared inventory also requires the table.
+[Migration source](../../backend/apps/access_control/migrations/0005_account_permission_role_scopes.py) ·
+[MySQL GRANT documentation](https://dev.mysql.com/doc/refman/8.4/en/grant.html).
+
+The approved procedure still specifies all eight tables. The proposed decision for the current
+schema is to approve a reader with seven table-level SELECT grants and an inventory that reports
+per-Grant role scope as unavailable. The potential access comparison would be limited to the
+resolver configuration with scoped Grant evaluation off. Independent review remains open.
+[Reader setup procedure](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).
+
+## Initial configuration preflight from `10e3fe8`
+
+This earlier pass ended before a database connection. The findings below describe that pass.
 
 The owner authorized the prepared SELECT-only inventory and local documentation commits, while
 requiring an existing suitable SELECT-only account and positive target/privilege verification.
@@ -9,7 +45,7 @@ The owner subsequently confirmed `backend/.env` as the connection configuration 
 separate reader had intentionally been configured. Inspecting local configurations/login profiles
 and preparing account-creation instructions were authorized; creating an account was not.
 
-## Observed configuration findings
+### Observed configuration findings
 
 | Check | Actual observation |
 | --- | --- |
@@ -66,15 +102,9 @@ Keep every old Deny and its history; review new-code Deny additions/Grant confli
 inspection. Never infer replacement Allows from broad old Allows. The uninstalled candidate's
 Deny-only compatibility remains a proposal, not effective runtime behavior or an approved migration.
 
-## Blocker and next permitted step
+## Authorization history
 
-Inventory authorization is already granted and does not need to be requested again. Resume the
-same guarded inventory only after an existing authenticated SELECT-only connection is supplied
-and its target/privileges are positively verified. Supply a secure local configuration location,
-not a password in chat; keep the owner-held pseudonym key/report outside Git.
-
-If no existing suitable reader can be supplied, the exact [dedicated reader setup proposal](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md)
-is ready for **separate** owner/DBA authorization. It creates one new local database identity and
-grants SELECT on eight named existing tables only. No such SQL was executed. Existing credentials,
-HDAC rows, migrations, protected pins, feature switches, launcher modes and approval fields remain
-unchanged. Independent governance review and the pending policy decisions remain OPEN.
+The first pass required either an existing verified reader or separate authorization to create
+the documented reader. The owner supplied that authorization for the eight-table setup. The
+schema check above is now the blocker. The existing read-only inventory authorization remains
+on record.

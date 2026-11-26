@@ -45,12 +45,11 @@ holder-by-holder impact review; equality of intended role names is not proof of 
 
 ## 2. Guarded read-only impact inventory — NOT EXECUTED
 
-**Follow-up:** the owner subsequently granted the specific read-only authorization starting at
-`10e3fe8`. The [connection preflight](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md)
-stopped before connection because no usable verified SELECT-only account was available in the
-checked configurations/login profiles. Inventory counts remain unknown. The
-[dedicated-reader setup proposal](../security/WF11_Permission_Inventory_Reader_Setup_2026-11-26.md)
-was requested separately; no account creation or privilege change is authorized.
+The owner authorized the read-only inventory starting from `10e3fe8` and the dedicated reader
+starting from `f9cf56b`. The administrative preflight confirmed seven of the eight required
+tables on the local server. `account_permission_role_scopes` was absent, so the setup stopped
+before account creation. Live permission counts remain unknown.
+[Preflight findings](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
 [permission_inventory.py](../../review_only/academic_settings_v2_3/permission_inventory.py) is a
 standalone DB-API reader. Its default invocation prints the query plan **without importing a
@@ -176,15 +175,14 @@ curricula/offerings/instructors, fee configuration/approval and explicit semeste
 Student onboarding/finalization and historical correction remain separate later approvals.
 Do not change `modes` or export a flag as a workaround during this preparation.
 
-## 7. Read-only authorization received; current connection blocker
+## 7. Authorization received and current schema blocker
 
 > I authorize only the prepared read-only permission impact inventory against local
 > `ctug_workspace`, using an existing SELECT-only account and owner-held pseudonym key.
 > No records, credentials, permissions, migrations, feature switches or launcher approvals may change.
 
-The owner has now granted the quoted inventory authorization; it does not need to be requested
-again. The immediate blocker is an available verified reader. Supply an existing secure connection,
-or separately authorize the exact dedicated-reader setup linked above. The owner's restriction
-requires stopping the database operation when no suitable reader is available. Independent
-governance approval, accepted policy decisions, backup/restore evidence, the migration change
-window, reviewed v2.3 provisioning and named feature/mode activations remain separate and unapproved.
+The owner granted the quoted inventory authorization and the eight-table reader setup. The schema
+preflight found the role-scope table absent. To proceed on the current schema, the owner can approve
+the reduced seven-table procedure and accept that role-scope evidence will be unavailable.
+Independent governance review, policy decisions and operational authorizations remain pending.
+[Reader setup and decision](../security/WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).

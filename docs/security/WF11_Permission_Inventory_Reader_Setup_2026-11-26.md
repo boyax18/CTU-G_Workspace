@@ -1,9 +1,10 @@
-# Dedicated permission-inventory reader — proposed operator steps
+# Dedicated permission inventory reader
 
-26 November 2026 · **PROPOSED ONLY; account creation/privilege changes NOT AUTHORIZED or executed.**
-Prepared at the owner's request after the [connection preflight](WF11_Permission_Inventory_Preflight_2026-11-26.md)
-found no usable verified reader in the available local configurations/login profiles. The original
-read-only inventory approval remains valid; it does not authorize database account creation.
+26 November 2026 · **Eight-table reader setup authorized. Execution stopped at the schema check.**
+The owner approved the account and the eight grants after the initial configuration preflight.
+The live preflight at `f9cf56b` found seven InnoDB tables, an absent
+`account_permission_role_scopes` table, and no existing account for the proposed username.
+The DBA session ended before account creation. [Preflight evidence](WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
 ## 1. Operator and target preconditions
 
@@ -127,14 +128,24 @@ selected database/read-only state and expected InnoDB schema, performs fixed SEL
 back/closes. Missing scope tables or any refusal remains a blocker, not permission to migrate or
 fall back to root. No v2.3 provisioning, business write or feature activation is included.
 
-## 5. Exact separate authorization needed if no existing reader is supplied
+## 5. Authorization and decision for the current schema
 
-> I authorize creation of the new local MySQL account
-> `'ctug_wf11_inventory_ro'@'127.0.0.1'` with a new owner-held secret, granting only SELECT on
-> the eight tables named in this reviewed setup document, and read-only verification of its
-> target/grants/role inheritance. Do not alter existing accounts, credentials, application records,
-> migrations, HDAC grants, catalogue pins, feature switches or launcher modes.
+The eight-table procedure requires an existing role-scope table. A reduced inventory would use
+the same loopback account and the seven SELECT grants in §2 for the existing tables. Its reader
+preflight would verify exactly those seven grants and the absence of inherited roles. The report
+would include observed definitions, bindings, Allows, Denies, holders and Deny preservation from
+the seven tables. Per-Grant scope and the scope-enabled scenario would be marked unavailable.
+Potential access changes would be modeled only for the resolver with scoped Grant evaluation
+off. The comparison would be a conditional estimate. The full inventory prerequisite for v2.3
+provisioning would remain pending. [Resolver source](../../backend/apps/access_control/services.py).
 
-This authorization has **not** been granted. Supplying an existing verified reader is an alternative
-that does not require authorizing a new account. Independent security review and Human Approval
-remain OPEN.
+**Decision needed.** Approve the reduced procedure for the current schema, or defer the full
+inventory until the missing table is available through a separately reviewed change. Exact scope
+for the reduced procedure:
+
+> I authorize the seven-table SELECT-only reader and a revised read-only inventory for the
+> current `ctug_workspace` schema. Use `'ctug_wf11_inventory_ro'@'127.0.0.1'`, grant SELECT only
+> on the seven confirmed tables listed in the preflight, and report role scope as unavailable.
+> Keep migrations and application changes outside this authorization.
+
+Independent security review and Human Approval remain open.

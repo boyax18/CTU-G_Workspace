@@ -157,6 +157,13 @@ The owner authorized the prepared SELECT-only inventory starting from `10e3fe8`,
 reader in the available local configurations/login profiles. The application connection uses
 root and was not used. No database connection or SQL statement was executed; all live binding,
 Grant/Deny, holder and transition counts remain **unknown**, not zero. Independent review remains
-OPEN, and actual inventory validation of items A–E is outstanding. The separately requested
-[reader setup steps](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md) are a proposal only;
-account creation/privilege changes have not been authorized or performed.
+OPEN, and actual inventory validation of items A–E is outstanding. That pass ended with the
+[reader setup steps](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md) awaiting authorization.
+
+At `f9cf56b`, the owner approved the eight-table reader setup. The administrative preflight
+verified the local `ctug_workspace` target, found seven of the eight required InnoDB tables and
+confirmed the reader account was absent. The missing `account_permission_role_scopes` table
+blocked the grant set and inventory. No account was created and no application permission rows
+were queried. Live counts and validation of items A–E are still pending. The owner must decide
+whether to approve a reduced inventory for the current schema. Independent review remains open.
+[Live preflight findings](WF11_Permission_Inventory_Preflight_2026-11-26.md).

@@ -62,3 +62,15 @@ The candidate checksum validates integrity only and is not independent approval 
 
 Private execution logs are retained under ignored `.local/wf11-*`; no secrets or actual account
 records are included in this report. The existing untracked reconciliation folder remains untouched.
+
+## Follow-up: authorized inventory preflight, starting at `10e3fe8`
+
+The owner approved the prepared read-only inventory and later requested local connection/profile
+inspection plus unexecuted reader-creation steps if needed. Metadata inspection found the expected
+configured local target, root application credentials, no saved MySQL login paths and no usable
+verified reader. No database connection or SQL statement was executed. Live counts and comparison
+against the governance proposal remain unknown; the database operation is stopped under the
+owner's explicit condition. See [preflight findings](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md)
+and the [separate-approval reader setup](../security/WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).
+This follow-up changes documentation only; prior implementation tests were not rerun, and no
+independent review, Human Approval, credential change, migration or activation is claimed.

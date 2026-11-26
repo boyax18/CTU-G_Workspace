@@ -104,3 +104,12 @@ needs a one-line code change in `apps/finance/fees.py` (`PERMISSION_CODE`) plus 
 - **Super Admin:** fee authority reaches a Technical Super Admin only through a genuine Admin assignment
   (`test_technical_super_admin_only_through_a_genuine_admin_assignment`). This is unchanged by Option A or B.
 
+## 8. Authorized inventory connection preflight, 26 November 2026
+
+Starting at `10e3fe8`, the owner approved read-only inspection, but no usable verified SELECT-only
+connection was found in the available configurations/login profiles. Root was not used, no
+database connection was attempted, and actual fee-code binding, Allow/Deny, holder and access-loss
+counts remain **unknown**. See the [preflight evidence](WF11_Permission_Inventory_Preflight_2026-11-26.md)
+and [unexecuted dedicated-reader proposal](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).
+This records no fee overlay approval, provisioning, credential change or independent review.
+

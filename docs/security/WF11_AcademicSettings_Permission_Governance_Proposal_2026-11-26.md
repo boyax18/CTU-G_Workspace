@@ -149,3 +149,14 @@ queries and report **counts only, with no personal data**:
 
 Until then the runtime stays exactly as described in §1: fee setting is refused for everyone, and the
 other operations stay behind their default-off switches.
+
+## 5. Authorized inventory follow-up, 26 November 2026
+
+The owner authorized the prepared SELECT-only inventory starting from `10e3fe8`, but its
+[connection preflight](WF11_Permission_Inventory_Preflight_2026-11-26.md) found no usable verified
+reader in the available local configurations/login profiles. The application connection uses
+root and was not used. No database connection or SQL statement was executed; all live binding,
+Grant/Deny, holder and transition counts remain **unknown**, not zero. Independent review remains
+OPEN, and actual inventory validation of items A–E is outstanding. The separately requested
+[reader setup steps](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md) are a proposal only;
+account creation/privilege changes have not been authorized or performed.

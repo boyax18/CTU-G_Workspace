@@ -13,7 +13,8 @@ export interface DashboardSubpage {
 export interface DashboardContextValue {
   session: AuthenticatedWorkspaceSession;
   view: DashboardView;
-  navigate: (next: DashboardView) => void;
+  /** ``replace`` is for routing redirects (the Student onboarding boundary): Back never loops. */
+  navigate: (next: DashboardView, options?: { replace?: boolean }) => void;
   /** The current query string, for example "?view=registration-review&applicant=12". */
   search: string;
   /** Pushes the CURRENT view with extra query parameters (null returns to the view itself). */

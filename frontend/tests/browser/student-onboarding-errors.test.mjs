@@ -76,6 +76,7 @@ function studentServer({ verified = false, state = 'onboarding', previousClearan
         mismatched: [], eligibility: {}, blockers: [], can_confirm: true, correction_instructions: 'x' });
     }
     if (path === `${ON}my-semester/`) {
+      s.mySemesterReads = (s.mySemesterReads ?? 0) + 1;
       if (!s.completed) return respond({ error: { code: 'onboarding_required', message: 'x', state: 'onboarding' } }, 409);
       return respond({ semester, student: { ctug_id: 'STU-0001', full_name: null }, result: result() });
     }
@@ -110,11 +111,12 @@ async function walkSteps(page) {
   await confirm.click();
 }
 
-test('the overview shows the onboarding requirement and the four steps end in Pending Verification', async () => {
+test('the dashboard home routes to onboarding and the four steps end in Pending Verification', async () => {
   const fake = studentServer();
   await scene(fake.handle, async (page) => {
-    await page.getByRole('heading', { name: 'Complete your semester onboarding' }).waitFor();
-    await page.getByRole('button', { name: 'Start semester onboarding' }).click();
+    // WF11-D17: a Student-only session is routed to onboarding automatically (no notice to click).
+    await page.getByRole('heading', { name: 'Step 1: Student type' }).waitFor();
+    assert.equal(new URL(page.url()).search, '?view=semester-onboarding');
     await page.locator('main dd').filter({ hasText: 'STU-0001' }).waitFor();
     assert.ok((await page.locator('main').innerText()).includes('2026–2027'));
     await walkSteps(page);
@@ -134,8 +136,10 @@ test('with a verified record the confirmation completes and unlocks my semester'
   await scene(fake.handle, async (page) => {
     await page.getByRole('heading', { name: 'Student Semester Onboarding' }).waitFor();
     await walkSteps(page);
-    await page.getByRole('heading', { name: 'Onboarding completed' }).waitFor();
-    await page.getByRole('button', { name: 'Open my semester' }).click();
+    // Completion opens the normal dashboard, then My semester is available from the navigation.
+    await page.getByRole('status').filter({ hasText: 'Your semester onboarding is complete.' }).waitFor();
+    assert.equal(new URL(page.url()).search, '');
+    await page.getByRole('link', { name: 'My semester' }).first().click();
     await page.getByRole('table', { name: 'Confirmed subjects' }).waitFor();
     const text = await page.locator('main').innerText();
     for (const expected of ['SSG Treasurer · organizational fee', 'School Admin · final approval', '4 requirements still pending.', 'Unpaid']) {
@@ -144,14 +148,13 @@ test('with a verified record the confirmation completes and unlocks my semester'
   }, '/dashboard?view=semester-onboarding');
 });
 
-test('my semester is gated by the backend and offers onboarding without redirecting', async () => {
+test('a direct My semester URL is routed to onboarding before its data is requested', async () => {
   const fake = studentServer();
   await scene(fake.handle, async (page) => {
-    await page.getByRole('heading', { name: 'Complete Student Semester Onboarding first' }).waitFor();
-    await page.getByText('No semester participation is recorded yet.').waitFor();
-    assert.equal(new URL(page.url()).search, '?view=my-subjects');
-    await page.getByRole('button', { name: 'Open semester onboarding' }).click();
     await page.getByRole('heading', { name: 'Step 1: Student type' }).waitFor();
+    assert.equal(new URL(page.url()).search, '?view=semester-onboarding');
+    await page.getByText('No semester participation is recorded yet.').waitFor(); // own history stays available
+    assert.equal(fake.s.mySemesterReads ?? 0, 0);
   }, '/dashboard?view=my-subjects');
 });
 

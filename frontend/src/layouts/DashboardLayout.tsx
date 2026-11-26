@@ -18,6 +18,7 @@ import {
   getDashboardView,
 } from '../features/dashboard/navigation';
 import type { DashboardView } from '../features/dashboard/navigation';
+import { StudentDashboardGateProvider } from '../features/onboarding/StudentDashboardGate';
 
 type ScreenState =
   | { status: 'loading' }
@@ -59,10 +60,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('popstate', onHistory);
   }, []);
 
-  const navigate = useCallback((next: DashboardView) => {
+  const navigate = useCallback((next: DashboardView, options?: { replace?: boolean }) => {
     if (state.status !== 'ready' || !canOpenDashboardView(next, state.session.permissions)) return;
     const nextUrl = getDashboardHref(next);
-    window.history.pushState(null, '', nextUrl);
+    // A routing redirect replaces the entry, so Back never returns to a view that redirects again.
+    if (options?.replace) window.history.replaceState(null, '', nextUrl);
+    else window.history.pushState(null, '', nextUrl);
     setView(next);
     setSearch(window.location.search);
     setSubpage(null);
@@ -186,6 +189,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <DashboardContext.Provider value={value}>
+        <StudentDashboardGateProvider session={session}>
         <DashboardShell
           session={session}
           view={view}
@@ -202,6 +206,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         >
           {children}
         </DashboardShell>
+        </StudentDashboardGateProvider>
       </DashboardContext.Provider>
     </ThemeProvider>
   );

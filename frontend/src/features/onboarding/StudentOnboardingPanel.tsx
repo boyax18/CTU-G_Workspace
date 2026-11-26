@@ -6,22 +6,23 @@
  * claims enrollment: without a matching verified CTU record the confirmation is Pending Verification.
  * Every state comes from the server; Django re-checks the Student role context and permission.
  */
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { DashboardState } from '../../components/dashboard/DashboardStates';
 import { useDashboardContext } from '../../hooks/useDashboardContext';
 import { NoticeBlock } from '../academic/config/configUi.tsx';
 import type { Notice } from '../academic/config/configUi.tsx';
-import { badgeClass, fieldClass, formatDate, primaryButton, secondaryButton } from '../academic/academicStyles.ts';
+import { fieldClass, formatDate, primaryButton, secondaryButton } from '../academic/academicStyles.ts';
+import { ClearanceList, ResultSummary } from './RecordParts.tsx';
+import OwnHistory from './OwnHistory.tsx';
+import { useStudentGate } from './studentGateRules.ts';
 import {
   OnboardingApiError, confirmCourse, confirmSubjects, finalizeOnboarding, getContext, getReview, getStatus, getSubjectOptions,
   onboardingErrorText, peso, saveStudentType,
 } from './onboardingApi.ts';
-import type { Clearance, ContextCourse, Draft, Option, PeriodRef, Result, Review, Status, StudentType } from './onboardingApi.ts';
+import type { ContextCourse, Draft, Option, PeriodRef, Review, Status, StudentType } from './onboardingApi.ts';
 
 const STEPS = ['Student type', 'Subject confirmation', 'Course and year level', 'Final review'] as const;
-const REQUIREMENT_TEXT = { subject_instructor: 'Subject instructor', treasurer_fee: 'SSG Treasurer · organizational fee',
-  school_admin_final: 'School Admin · final approval' } as const;
 const MISMATCH_TEXT: Record<string, string> = { course: 'course', year_level: 'year level', subjects: 'subjects' };
 const periodLabel = (p: PeriodRef) => `${p.label}, S.Y. ${p.school_year_label}`;
 
@@ -30,63 +31,6 @@ function ErrorBlock({ error, onRetry }: { error: unknown; onRetry?: () => void }
     <div role="alert" className="dashboard-error-block rounded-xl border p-4 text-sm">
       <p><span aria-hidden="true" className="mr-2 font-bold">!</span>{onboardingErrorText(error)}</p>
       {onRetry && <button type="button" className={`${secondaryButton} mt-3`} onClick={onRetry}>Try again</button>}
-    </div>
-  );
-}
-
-export function ClearanceList({ clearance, title, level = 4 }: { clearance: Clearance | null; title: string; level?: 3 | 4 }) {
-  const ids = useId();
-  const Heading = level === 3 ? 'h3' : 'h4';
-  if (!clearance) return <p className="dashboard-muted text-sm">No clearance record exists for this semester.</p>;
-  return (
-    <section aria-labelledby={ids} className="space-y-2">
-      <Heading id={ids} className="dashboard-heading font-semibold">{title}{' '}
-        <span className={`${badgeClass} ${clearance.status === 'Cleared' ? 'dashboard-accent' : 'dashboard-heading'}`}>
-          <span aria-hidden="true">{clearance.status === 'Cleared' ? '●' : '○'}</span>{clearance.status}</span></Heading>
-      <p className="dashboard-muted text-sm">{clearance.pending_count === 0 ? 'Every requirement is signed.'
-        : `${clearance.pending_count} requirement${clearance.pending_count === 1 ? '' : 's'} still pending.`}</p>
-      <ul className="space-y-2">
-        {clearance.requirements.map((r, index) => (
-          <li key={`${r.kind}-${r.subject?.code ?? index}`} className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl border p-3 text-sm">
-            <span className="dashboard-heading min-w-0">
-              {r.subject ? `${r.subject.code} · ${r.subject.title}` : REQUIREMENT_TEXT[r.kind]}
-              {r.signatory && <span className="dashboard-muted block text-xs">Instructor: {r.signatory}</span>}
-            </span>
-            <span className={`${badgeClass} ${r.status === 'Signed' ? 'dashboard-accent' : 'dashboard-muted border-dashed'}`}>
-              <span aria-hidden="true">{r.status === 'Signed' ? '✓' : '○'}</span>{r.status}</span>
-          </li>))}
-      </ul>
-    </section>
-  );
-}
-
-export function ResultSummary({ result, level = 4 }: { result: Result; level?: 3 | 4 }) {
-  return (
-    <div className="space-y-5">
-      <dl className="grid gap-4 text-sm sm:grid-cols-2">
-        <div><dt className="dashboard-muted text-xs">Student type</dt><dd className="dashboard-heading font-semibold">{result.student_type}</dd></div>
-        <div><dt className="dashboard-muted text-xs">Course and year level</dt>
-          <dd className="dashboard-heading font-semibold">{result.course.code} · Year {result.year_level}</dd></div>
-        <div><dt className="dashboard-muted text-xs">Organizational fee</dt>
-          <dd className="dashboard-heading font-semibold tabular-nums">{result.fee ? `${peso(result.fee.amount)} · ${result.fee.status}` : 'Not assessed'}</dd></div>
-        <div><dt className="dashboard-muted text-xs">Clearance</dt><dd className="dashboard-heading font-semibold">{result.clearance?.status ?? 'None'}</dd></div>
-      </dl>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[580px] text-left text-sm">
-          <caption className="sr-only">Confirmed subjects</caption>
-          <thead><tr className="dashboard-muted border-b text-xs uppercase tracking-wide">
-            <th scope="col" className="px-2 py-3">Subject</th><th scope="col" className="px-2 py-3">Section</th>
-            <th scope="col" className="px-2 py-3">Instructor</th></tr></thead>
-          <tbody>{result.subjects.map((s) => (
-            <tr key={s.subject_id} className="border-b last:border-0">
-              <td className="dashboard-heading px-2 py-3 font-semibold">{s.code} · {s.title}</td>
-              <td className="dashboard-muted px-2 py-3">{s.section}</td>
-              <td className="dashboard-muted px-2 py-3">{s.instructor ?? 'Not recorded'}</td></tr>))}</tbody>
-        </table>
-      </div>
-      <ClearanceList clearance={result.clearance} title="Clearance requirements" level={level} />
-      <p className="dashboard-muted text-xs">Cleared means every required signature plus the School Admin final approval, not only a paid
-        fee. Payments are recorded separately by the SSG Treasurer.</p>
     </div>
   );
 }
@@ -428,21 +372,35 @@ function Wizard({ status, onStatus }: { status: Status; onStatus: (s: Status) =>
 
 export default function StudentOnboardingPanel() {
   const { navigate } = useDashboardContext();
+  const gate = useStudentGate();
+  const { apply } = gate;
   const [status, setStatus] = useState<Status | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
   const [reload, setReload] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    getStatus().then((s) => { if (!cancelled) { setStatus(s); setFailure(null); } })
+    getStatus().then((s) => { if (!cancelled) { setStatus(s); setFailure(null); apply(s); } })
       .catch((e: unknown) => { if (!cancelled) setFailure(e); });
     return () => { cancelled = true; };
-  }, [reload]);
+  }, [reload, apply]);
+
+  /** Every server answer (a step, Pending Verification or completion) also updates the shared boundary. */
+  const received = useCallback((next: Status) => {
+    setStatus(next);
+    apply(next);
+    // Successful finalization: open the normal Student dashboard (the boundary is already open).
+    if (next.outcome === 'completed' && next.dashboard_route === 'dashboard') navigate('overview');
+  }, [apply, navigate]);
 
   if (failure !== null && !status) return <ErrorBlock error={failure} onRetry={() => setReload((n) => n + 1)} />;
   if (!status) return <p role="status" className="dashboard-muted text-sm">Checking your semester onboarding…</p>;
   if (status.state === 'no_active_semester') {
-    return <DashboardState title="No active semester" icon="clipboard">There is no active semester right now, so there is nothing to
-      onboard. Your historical clearance and fee records stay available.</DashboardState>;
+    return (
+      <div className="space-y-5">
+        <DashboardState title="No active semester" icon="clipboard">There is no active semester right now, so there is nothing to
+          onboard and no semester records are created. Your profile and your historical clearance and fee records stay available.</DashboardState>
+        <OwnHistory />
+      </div>);
   }
   return (
     <div className="space-y-5">
@@ -463,7 +421,8 @@ export default function StudentOnboardingPanel() {
       {status.state === 'pending_verification' && (
         <InPerson text="Pending verification: no verified CTU enrollment record matches your confirmed details yet. Visit the School Admin in person with your official enrollment record, then return here and confirm your final review again. Nothing has been billed." />)}
       {(status.state === 'onboarding' || status.state === 'pending_verification') && status.onboarding && (
-        <Wizard key={`${status.semester?.semester_id ?? 0}-${status.state}`} status={status} onStatus={setStatus} />)}
+        <Wizard key={`${status.semester?.semester_id ?? 0}-${status.state}`} status={status} onStatus={received} />)}
+      <OwnHistory />
     </div>
   );
 }

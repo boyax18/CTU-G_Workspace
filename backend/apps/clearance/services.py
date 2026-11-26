@@ -25,7 +25,7 @@ ROLE_REQUIREMENTS = (RequirementKind.TREASURER_FEE, RequirementKind.SCHOOL_ADMIN
 
 class ClearanceCreationRefused(Exception):
     REASONS = frozenset({"instructor_unassigned", "subject_mismatch", "no_subjects", "clearance_exists",
-                         "transaction_required"})
+                         "transaction_required", "signatory_conflict"})
 
     def __init__(self, reason):
         self.reason = reason if reason in self.REASONS else "subject_mismatch"
@@ -49,6 +49,8 @@ def create_semester_clearance(participation, subject_rows):
         if (assignment is None or assignment.instructor_id != row.instructor_id
                 or not instructor_eligible(row.instructor_id)):
             raise ClearanceCreationRefused("instructor_unassigned")
+        if row.instructor_id == participation.student_id:
+            raise ClearanceCreationRefused("signatory_conflict")  # never a signatory of one's own clearance
     clearance = SemesterClearance.objects.using(DB).create(
         participation=participation, student_id=participation.student_id, semester_id=participation.semester_id,
         status=ClearanceStatus.UNCLEARED)

@@ -19,6 +19,7 @@ const hooks = registerHooks({
 const config = await import('../src/features/onboarding/onboardingConfig.ts');
 const api = await import('../src/features/onboarding/onboardingApi.ts');
 const navigation = await import('../src/features/dashboard/navigation.ts');
+const rules = await import('../src/features/onboarding/studentGateRules.ts');
 hooks.deregister();
 
 const ON = { root: '/api/v1/academic/onboarding/', enabled: true, unavailable: 'student_onboarding_unavailable' };
@@ -122,6 +123,38 @@ test('errors map to fixed copy and never echo server text', () => {
   assert.equal(api.parseOnboardingError(503, {}, 'verification_unavailable').code, 'verification_unavailable');
   const fields = api.parseOnboardingError(400, { error: { fields: { source_reference: ['RAW SERVER TEXT'], other: ['x'] } } }).fields;
   assert.deepEqual(fields, { source_reference: 'Enter the CTU record reference (3 to 80 letters, digits, spaces, . - / #).' });
+});
+
+test('the dashboard boundary routes only Student semester views and fails closed', () => {
+  const ready = (route, exclusive = true) => ({ status: 'ready', route, exclusive });
+  assert.equal(rules.guardFor('overview', ready('onboarding')), 'redirect');
+  assert.equal(rules.guardFor('my-subjects', ready('clearance_required')), 'redirect');
+  assert.equal(rules.guardFor('my-subjects', ready('period_unavailable')), 'redirect');
+  for (const view of ['semester-onboarding', 'account', 'account-settings', 'my-payments', 'my-clearance', 'notifications', 'announcements']) {
+    assert.equal(rules.guardFor(view, ready('onboarding')), 'allow', view); // onboarding, profile, history and campus stay open
+  }
+  assert.equal(rules.guardFor('overview', ready('dashboard')), 'allow');
+  assert.equal(rules.guardFor('overview', ready('onboarding', false)), 'allow'); // multi-role session keeps its home
+  assert.equal(rules.guardFor('my-subjects', ready('onboarding', false)), 'redirect');
+  assert.equal(rules.guardFor('overview', { status: 'checking', route: null, exclusive: true }), 'wait');
+  assert.equal(rules.guardFor('overview', { status: 'error', route: null, exclusive: true }), 'error');
+  assert.equal(rules.guardFor('my-subjects', { status: 'inactive', route: null, exclusive: true }), 'allow');
+  assert.equal(rules.GATE_TARGET, 'semester-onboarding');
+  const student = ['academic.profile.self.read', 'clearance.requests.self.submit', 'academic.catalogue.read'];
+  assert.equal(rules.exclusiveStudentSession(student, false), true);
+  assert.equal(rules.exclusiveStudentSession([...student, 'academic.periods.manage'], false), false);
+  assert.equal(rules.exclusiveStudentSession(student, true), true); // role context scopes permissions to the Student role
+  for (const [state, route] of [['completed', 'dashboard'], ['no_active_semester', 'period_unavailable'],
+    ['clearance_required', 'clearance_required'], ['onboarding', 'onboarding'], ['pending_verification', 'onboarding'],
+    ['gap_verification_required', 'verification_required'], ['history_unverified', 'verification_required'],
+    ['evidence_conflict', 'verification_required']]) assert.equal(api.routeForState(state), route, state);
+  assert.throws(() => api.parseStatus(status({ state: 'onboarding', dashboard_route: 'dashboard' })), (e) => e.code === 'invalid_response');
+  assert.equal(api.parseStatus(status({ dashboard_route: 'onboarding' })).dashboard_route, 'onboarding');
+  const required = api.parseOnboardingError(409, { error: { code: 'onboarding_required', state: 'onboarding', route: 'onboarding' } });
+  assert.equal(required.route, 'onboarding');
+  assert.equal(api.parseOnboardingError(409, { error: { code: 'onboarding_required', route: '/evil' } }).route, undefined);
+  const source = readFileSync(new URL('../src/features/onboarding/StudentDashboardGate.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /localStorage|sessionStorage|indexedDB|document\.cookie/); // never the authoritative record
 });
 
 test('a write is sent once with CSRF and an uncertain outcome is never retried', async () => {

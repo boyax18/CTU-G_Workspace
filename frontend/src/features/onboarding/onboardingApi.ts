@@ -11,6 +11,8 @@ import {
 export type OnboardingState = 'no_active_semester' | 'clearance_required' | 'gap_verification_required' | 'history_unverified'
   | 'evidence_conflict' | 'onboarding' | 'pending_verification' | 'completed';
 export type StudentType = 'Regular' | 'Irregular';
+/** Server-decided Student dashboard routing (WF11-D17). */
+export type DashboardRoute = 'dashboard' | 'onboarding' | 'clearance_required' | 'verification_required' | 'period_unavailable';
 export interface PeriodRef { semester_id: number; label: string; status: string; school_year_label: string;
   start_date: string | null; end_date: string | null }
 export interface CourseRef { course_id: number; code: string; name: string }
@@ -29,7 +31,7 @@ export interface Fee { amount: string; currency: 'PHP'; status: string }
 export interface Result { participation_id: number; student_type: StudentType; course: CourseRef; year_level: number;
   subjects: { subject_id: number; code: string; title: string; section: string; instructor: string | null }[];
   clearance: Clearance | null; fee: Fee | null }
-export interface Status { state: OnboardingState; semester: PeriodRef | null; dashboard_unlocked: boolean;
+export interface Status { state: OnboardingState; dashboard_route: DashboardRoute; semester: PeriodRef | null; dashboard_unlocked: boolean;
   student: { ctug_id: string; full_name: string | null } | null; finalization_enabled: boolean;
   eligibility: Eligibility | null; correction_instructions: string; previous_clearance: { semester: PeriodRef; clearance: Clearance | null;
     fee: Fee | null } | null; onboarding: Draft | null; prefill: { course_id: number; year_level: number; source: string } | null;
@@ -41,7 +43,8 @@ export interface Review { semester: PeriodRef; student: { ctug_id: string; full_
 
 // ---- Errors --------------------------------------------------------------------------------------
 
-export interface OnboardingErrorDetail { status: number; code: string; reason: string; state: string; fields: Record<string, string> }
+export interface OnboardingErrorDetail { status: number; code: string; reason: string; state: string; fields: Record<string, string>;
+  route?: DashboardRoute }
 export class OnboardingApiError extends ApiError {
   detail: OnboardingErrorDetail;
   constructor(message: string, detail: OnboardingErrorDetail, outcomeUnknown = false) {
@@ -61,6 +64,7 @@ export const REASON_TEXT: Record<string, string> = {
   subjects_changed: 'Your subjects no longer match your course or year level. Confirm your subjects again.',
   subject_unavailable: 'A selected subject is no longer offered this semester. Confirm your subjects again.',
   instructor_unassigned: 'A selected subject has no assigned instructor yet. Visit the School Admin in person.',
+  instructor_conflict: 'You are the assigned instructor of a selected subject. Visit the School Admin in person.',
   duplicate_subject: 'Choose each subject only once.',
   section_mismatch: 'The selected subjects do not belong to your course, year level or section.',
   incomplete_section: 'Regular students confirm every subject prepared for their section. Confirm the full list again.',
@@ -86,6 +90,13 @@ export const REASON_TEXT: Record<string, string> = {
   correction_conflict: 'The correction could not be applied. Reload and try again.',
 };
 const CONFLICT_CODES = new Set(['onboarding_conflict', 'verification_conflict', 'historical_correction_conflict']);
+export const ROUTES = ['dashboard', 'onboarding', 'clearance_required', 'verification_required', 'period_unavailable'] as const;
+/** Same mapping as the server (apps.academic.onboarding.dashboard_route), used only if a reply omits it. */
+export function routeForState(state: OnboardingState): DashboardRoute {
+  return state === 'completed' ? 'dashboard' : state === 'no_active_semester' ? 'period_unavailable'
+    : state === 'clearance_required' ? 'clearance_required' : state === 'onboarding' || state === 'pending_verification' ? 'onboarding'
+      : 'verification_required';
+}
 const UNAVAILABLE_CODES = new Set(['student_onboarding_unavailable', 'verification_unavailable', 'historical_correction_unavailable']);
 const FIELDS = ['student_type', 'course_id', 'year_level', 'section_id', 'offering_ids', 'expected_version', 'expected_fee_revision_id',
   'confirmed', 'student_account_id', 'semester_id', 'entry_classification', 'subject_ids', 'source_reference', 'source_as_of',
@@ -110,6 +121,8 @@ export function parseOnboardingError(status: number, body: unknown, unavailable 
   const reason = status === 409 && typeof error.reason === 'string' && error.reason in REASON_TEXT ? error.reason
     : status === 403 && (error.reason === 'student_context_required' || error.reason === 'admin_context_required') ? error.reason : '';
   const state = code === 'onboarding_required' && typeof error.state === 'string' && /^[a-z_]{1,40}$/.test(error.state) ? error.state : '';
+  const route = code === 'onboarding_required' && typeof error.route === 'string' && (ROUTES as readonly string[]).includes(error.route)
+    ? error.route as DashboardRoute : undefined;
   const fields: Record<string, string> = {};
   if (status === 400 && isRecord(error.fields)) {
     for (const name of FIELDS) {
@@ -117,7 +130,7 @@ export function parseOnboardingError(status: number, body: unknown, unavailable 
       if (Array.isArray(values) && values.length) fields[name] = FIELD_TEXT[name] ?? 'Check this value.';
     }
   }
-  return { status, code, reason, state, fields };
+  return { status, code, reason, state, fields, ...(route ? { route } : {}) };
 }
 
 export function onboardingErrorText(error: unknown): string {
@@ -292,7 +305,10 @@ export function parseStatus(value: unknown): Status {
   const features = isRecord(v.features) ? v.features : {};
   const previous = isRecord(v.previous_clearance) ? v.previous_clearance : null;
   const prefill = isRecord(v.prefill) ? v.prefill : null;
-  return { state: oneOf(v.state, STATES), semester: v.semester ? parsePeriod(v.semester) : null,
+  const state = oneOf(v.state, STATES);
+  const route = v.dashboard_route === undefined ? routeForState(state) : oneOf(v.dashboard_route, ROUTES);
+  if (route !== routeForState(state)) throw invalid(); // an inconsistent reply is never trusted
+  return { state, dashboard_route: route, semester: v.semester ? parsePeriod(v.semester) : null,
     dashboard_unlocked: bool(v.dashboard_unlocked), student: parseStudent(v.student),
     finalization_enabled: bool(features.finalization_enabled) && STUDENT_ONBOARDING_FINALIZATION_ENABLED,
     eligibility: v.eligibility ? parseEligibility(v.eligibility) : null,

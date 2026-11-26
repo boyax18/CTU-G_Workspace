@@ -41,6 +41,8 @@ import StudentOnboardingPanel from '../onboarding/StudentOnboardingPanel';
 import MySemesterPanel from '../onboarding/MySemesterPanel';
 import EnrollmentVerificationPanel from '../onboarding/EnrollmentVerificationPanel';
 import OnboardingNotice from '../onboarding/OnboardingNotice';
+import { GATE_TARGET, guardFor, useStudentGate } from '../onboarding/studentGateRules';
+import { useEffect } from 'react';
 import { ENROLLMENT_VERIFICATION_ENABLED, STUDENT_ONBOARDING_ENABLED } from '../onboarding/onboardingConfig';
 
 const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
@@ -117,7 +119,7 @@ function Overview() {
         <div aria-hidden="true" className="dashboard-hero-ring absolute -right-20 -top-32 h-96 w-96 rounded-full" />
       </section>
 
-      <OnboardingNotice permissions={permissions} onOpen={() => navigate('semester-onboarding')} />
+      <OnboardingNotice onOpen={() => navigate('semester-onboarding')} />
 
       {widgets.length > 0 && (
         <section aria-labelledby="dashboard-glance">
@@ -161,6 +163,17 @@ function Overview() {
   );
 }
 
+/** Fail closed: semester-dependent views stay closed while the onboarding state cannot be confirmed. */
+function DashboardStateNotice({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="dashboard-error-block rounded-xl border p-4 text-sm">
+      <p><span aria-hidden="true" className="mr-2 font-bold">!</span>We could not confirm your semester onboarding, so this page stays
+        closed. Your profile and semester onboarding are still available.</p>
+      <button type="button" className="dashboard-outline-button mt-3 inline-flex min-h-11 items-center rounded-lg border px-4 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]" onClick={onRetry}>Try again</button>
+    </div>
+  );
+}
+
 function Profile() {
   const { session } = useDashboardContext();
   const { account, permissions } = session;
@@ -190,8 +203,20 @@ export default function SessionDashboardPage() {
   const { session, view, navigate } = useDashboardContext();
   const { permissions } = session;
   const back = () => navigate('overview');
+  // WF11-D17: a Student context opens semester-dependent views only after finalized onboarding.
+  const gate = useStudentGate();
+  const guard = guardFor(view, gate);
+  useEffect(() => { if (guard === 'redirect') navigate(GATE_TARGET, { replace: true }); }, [guard, navigate]);
 
   if (!canOpenDashboardView(view, permissions)) return <AccessDenied onBack={back} />;
+  if (guard === 'wait' || guard === 'redirect') {
+    return <p role="status" className="dashboard-muted text-sm">Checking your semester onboarding…</p>;
+  }
+  if (guard === 'error') {
+    return (
+      <DashboardStateNotice onRetry={gate.refresh} />
+    );
+  }
   if (view === 'overview') return <Overview />;
   if (view === 'account') return <Profile />;
 

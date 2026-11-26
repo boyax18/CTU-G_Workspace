@@ -63,7 +63,7 @@ class OnboardingConflict(Exception):
         "no_active_semester", "semester_changed", "already_completed", "stale_version", "type_required",
         "subjects_required", "course_required", "subjects_changed", "subject_unavailable", "instructor_unassigned",
         "duplicate_subject", "section_mismatch", "incomplete_section", "course_unavailable", "fee_unavailable",
-        "fee_changed", "eligibility_blocked", "confirmation_required", "finalization_conflict",
+        "fee_changed", "eligibility_blocked", "confirmation_required", "finalization_conflict", "instructor_conflict",
     })
 
     def __init__(self, reason, details=()):
@@ -77,7 +77,15 @@ class OnboardingRequired(Exception):
 
     def __init__(self, state):
         self.state = state
+        self.route = dashboard_route(state)
         super().__init__("Complete Student Semester Onboarding first.")
+
+
+def dashboard_route(state):
+    """Server-decided Student dashboard routing (WF11-D17): where the dashboard must open."""
+    return {"completed": "dashboard", "no_active_semester": "period_unavailable",
+            "clearance_required": "clearance_required", "onboarding": "onboarding",
+            "pending_verification": "onboarding"}.get(state, "verification_required")
 
 
 def onboarding_enabled():
@@ -282,7 +290,17 @@ def _previous_clearance(student, eligible):
 
 
 def state_for(student, semester):
-    """The Student's onboarding state for the Active semester (read-only)."""
+    """The Student's onboarding state for the Active semester (read-only), with its dashboard route.
+
+    Always evaluated against the CURRENT Active semester: a participation in an earlier semester never
+    counts as completion for a newly activated one (WF11-D17).
+    """
+    body = _state_for(student, semester)
+    body["dashboard_route"] = dashboard_route(body["state"])
+    return body
+
+
+def _state_for(student, semester):
     if semester is None:
         return {"state": "no_active_semester", "semester": None, "dashboard_unlocked": False}
     participation = _participation(student, semester)
@@ -415,8 +433,12 @@ def _parse_offering_ids(raw):
     return raw
 
 
-def _validated_selection(semester, student_type, course_id, year_level, offering_ids):
-    """The offerings, revalidated for THIS semester, or OnboardingConflict. Returns (offerings, instructors)."""
+def _validated_selection(semester, student_type, course_id, year_level, offering_ids, student):
+    """The offerings, revalidated for THIS semester, or OnboardingConflict. Returns (offerings, instructors).
+
+    A Student who is also the assigned instructor of a selected offering is refused (``instructor_conflict``):
+    nobody signs their own clearance requirement, and no substitute signatory is chosen here.
+    """
     offerings = {o.pk: o for o in _valid(semester).filter(pk__in=offering_ids)}
     if len(offerings) != len(offering_ids):
         raise OnboardingConflict("subject_unavailable")
@@ -437,6 +459,8 @@ def _validated_selection(semester, student_type, course_id, year_level, offering
         instructor = _instructor(offering)
         if instructor is None:
             raise OnboardingConflict("instructor_unassigned", [offering.subject.code])
+        if instructor.pk == student.pk:
+            raise OnboardingConflict("instructor_conflict", [offering.subject.code])
         instructors[offering.pk] = instructor
     return rows, instructors
 
@@ -458,7 +482,8 @@ def confirm_subjects(*, actor, course_id, year_level, offering_ids, expected_ver
             raise OnboardingConflict("type_required")
         _check_version(onboarding, expected_version)
         _course(course_id)
-        rows, _instructors = _validated_selection(semester, onboarding.student_type, course_id, year_level, offering_ids)
+        rows, _instructors = _validated_selection(semester, onboarding.student_type, course_id, year_level, offering_ids,
+                                                  student)
         SemesterOnboardingSubject.objects.using(DB).filter(onboarding=onboarding).delete()
         for offering in rows:
             SemesterOnboardingSubject.objects.using(DB).create(onboarding=onboarding, offering=offering,
@@ -581,7 +606,7 @@ def _finalize_locked(auth, expected_version, expected_fee_revision_id):
     if not _subjects_consistent(onboarding, onboarding.course_id, onboarding.year_level, rows):
         raise OnboardingConflict("subjects_changed")
     offerings, instructors = _validated_selection(semester, onboarding.student_type, onboarding.course_id,
-                                                  onboarding.year_level, [r.offering_id for r in rows])
+                                                  onboarding.year_level, [r.offering_id for r in rows], student)
     _course(onboarding.course_id)
     if revision is None:
         raise OnboardingConflict("fee_unavailable")
@@ -607,6 +632,7 @@ def _finalize_locked(auth, expected_version, expected_fee_revision_id):
         obligation = create_fee_obligation(participation, revision)
     except (ClearanceCreationRefused, ObligationRefused) as exc:
         raise OnboardingConflict("instructor_unassigned" if exc.reason == "instructor_unassigned"
+                                 else "instructor_conflict" if exc.reason == "signatory_conflict"
                                  else "fee_unavailable" if exc.reason == "fee_unavailable" else "finalization_conflict") from exc
     _fail("audit")
     services.write_audit(auth, action=FINALIZE_ACTION, school_year_id=semester.school_year_id, semester_id=semester.pk,
@@ -660,7 +686,7 @@ def finalize(*, actor, expected_version, expected_fee_revision_id, confirmed):
         return body
     participation = _participation(participation.student, participation.semester)
     return {"outcome": "completed", "state": "completed", "semester": semester_ref(participation.semester),
-            "result": _participation_result(participation), "dashboard_unlocked": True}
+            "result": _participation_result(participation), "dashboard_unlocked": True, "dashboard_route": "dashboard"}
 
 
 # ---- Own records (backend dashboard gate) -------------------------------------------------------------

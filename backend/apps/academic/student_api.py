@@ -63,6 +63,7 @@ ONBOARDING_MESSAGES = {
     "eligibility_blocked": "Onboarding is not available until the previous requirement is resolved.",
     "confirmation_required": "Confirm your onboarding to continue.",
     "finalization_conflict": "Your onboarding could not be completed. Reload and try again.",
+    "instructor_conflict": "You are the assigned instructor of a selected subject. Visit the School Admin in person.",
 }
 VERIFICATION_MESSAGES = {
     "period_not_open": "Records can be verified only for an Active, Closed or Archived semester.",
@@ -89,6 +90,7 @@ HISTORICAL_MESSAGES = {
     "confirmation_required": "Confirm the correction to continue.",
     "correction_conflict": "The correction could not be applied. Reload and try again.",
     "self_verification": "You cannot correct your own enrollment records.",
+    "instructor_conflict": "The student is the assigned instructor of a selected subject; nobody signs their own clearance.",
 }
 
 
@@ -119,7 +121,8 @@ class _BaseAPI(ConfigurationAPI):
             return _error("onboarding_conflict", ONBOARDING_MESSAGES[exc.reason], 409, reason=exc.reason,
                           details=[d for d in exc.details if isinstance(d, str) and len(d) <= 40][:20])
         if isinstance(exc, onboarding.OnboardingRequired):
-            return _error("onboarding_required", "Complete Student Semester Onboarding first.", 409, state=exc.state)
+            return _error("onboarding_required", "Complete Student Semester Onboarding first.", 409, state=exc.state,
+                          route=exc.route)
         if isinstance(exc, verification.VerificationConflict):
             return _error("verification_conflict", VERIFICATION_MESSAGES[exc.reason], 409, reason=exc.reason)
         if isinstance(exc, hp.HistoricalCorrectionRefused):

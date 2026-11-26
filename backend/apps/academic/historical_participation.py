@@ -41,7 +41,7 @@ NOTE_MIN, NOTE_MAX = 10, 500
 class HistoricalCorrectionRefused(Exception):
     REASONS = frozenset({"period_not_historical", "evidence_required", "evidence_changed", "participation_exists",
                          "gap_conflict", "subjects_mismatch", "instructor_unassigned", "historical_fee_unavailable",
-                         "confirmation_required", "correction_conflict", "self_verification"})
+                         "confirmation_required", "correction_conflict", "self_verification", "instructor_conflict"})
 
     def __init__(self, reason):
         self.reason = reason if reason in self.REASONS else "correction_conflict"
@@ -167,6 +167,8 @@ def correct(*, actor, student_account_id, semester_id, expected_evidence_id, stu
             instructors = {o.pk: _instructor(o) for o in offerings}
             if any(i is None for i in instructors.values()):
                 raise HistoricalCorrectionRefused("instructor_unassigned")
+            if any(i.pk == student.pk for i in instructors.values()):
+                raise HistoricalCorrectionRefused("instructor_conflict")
             if revision is None:
                 raise HistoricalCorrectionRefused("historical_fee_unavailable")
             participation = SemesterParticipation.objects.using(DB).create(

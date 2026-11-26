@@ -21,6 +21,7 @@ import { ACCESS_AUDIT_ENABLED } from '../access-control/accessAuditConfig.ts';
 import { ACADEMIC_PERIODS_ENABLED } from '../academic/academicPeriodsConfig.ts';
 import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfigurationConfig.ts';
 import { SEMESTER_FEE_CONFIGURATION_ENABLED } from '../finance/semesterFeesConfig.ts';
+import { ENROLLMENT_VERIFICATION_ENABLED, STUDENT_ONBOARDING_ENABLED } from '../onboarding/onboardingConfig.ts';
 
 export type DashboardView =
   | 'overview'
@@ -31,6 +32,7 @@ export type DashboardView =
   | 'account-directory'
   | 'appointment-evidence'
   // Academic (own)
+  | 'semester-onboarding'
   | 'my-subjects'
   | 'my-clearance'
   // Finance (own)
@@ -50,6 +52,7 @@ export type DashboardView =
   | 'school-periods'
   | 'semester-fees'
   | 'academic-references'
+  | 'student-verification'
   | 'clearance-monitoring'
   // Campus
   | 'announcements'
@@ -150,9 +153,14 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
     integration: APPOINTMENT_MANAGEMENT_ENABLED ? 'shell' : planned,
     description: 'Record and independently review official appointments; never assign roles here.' },
 
-  { id: 'my-subjects', label: 'My subjects', icon: 'book', group: 'academic',
-    requiredAny: ['academic.profile.self.read'], integration: planned,
-    description: 'Your academic profile and the subjects you submitted for the current period.' },
+  // WF-05.05 Student Semester Onboarding: live only when its switch is on. Django still decides access
+  // (selected Student role context, exact code, Deny precedence) and gates the semester data itself.
+  { id: 'semester-onboarding', label: 'Semester onboarding', icon: 'clipboard', group: 'academic',
+    requiredAny: ['academic.profile.self.read'], integration: STUDENT_ONBOARDING_ENABLED ? 'shell' : planned,
+    description: 'Confirm your student type, subjects, course and year level for the active semester.' },
+  { id: 'my-subjects', label: 'My semester', icon: 'book', group: 'academic',
+    requiredAny: ['academic.profile.self.read'], integration: STUDENT_ONBOARDING_ENABLED ? 'shell' : planned,
+    description: 'Your confirmed subjects, clearance requirements and organizational fee for the active semester.' },
   { id: 'my-clearance', label: 'My clearance', icon: 'clipboard', group: 'academic',
     requiredAny: ['clearance.requests.self.read'], integration: planned,
     description: 'Your clearance requests and their progress.' },
@@ -209,6 +217,11 @@ export const DASHBOARD_NAV_ITEMS: readonly DashboardNavItem[] = [
       'clearance.teaching_assignments.manage'],
     integration: ACADEMIC_CONFIGURATION_ENABLED ? 'shell' : planned,
     description: 'Courses, subjects, sections, curriculum versions, offerings and instructor assignments.' },
+
+  // WF-05.04 minimum (R-02 lane 2): School Admin in-person CTU verification; proposed academic.profiles.manage mapping.
+  { id: 'student-verification', label: 'Enrollment verification', icon: 'users', group: 'academic-configuration',
+    requiredAny: ['academic.profiles.manage'], integration: ENROLLMENT_VERIFICATION_ENABLED ? 'shell' : planned,
+    description: 'Record in-person CTU enrollment verification and verified non-enrollment for a student.' },
 
   { id: 'clearance-monitoring', label: 'Clearance monitoring', icon: 'activity', group: 'clearance-oversight',
     requiredAny: ['clearance.progress.read'], integration: planned,

@@ -37,6 +37,11 @@ import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfiguratio
 import SemesterFeesPanel from '../finance/SemesterFeesPanel';
 import { SEMESTER_FEE_CONFIGURATION_ENABLED } from '../finance/semesterFeesConfig';
 import { REGISTRATION_REVIEW_UI_PREVIEW_ENABLED } from '../admin/registrationReviewPreviewGate';
+import StudentOnboardingPanel from '../onboarding/StudentOnboardingPanel';
+import MySemesterPanel from '../onboarding/MySemesterPanel';
+import EnrollmentVerificationPanel from '../onboarding/EnrollmentVerificationPanel';
+import OnboardingNotice from '../onboarding/OnboardingNotice';
+import { ENROLLMENT_VERIFICATION_ENABLED, STUDENT_ONBOARDING_ENABLED } from '../onboarding/onboardingConfig';
 
 const primaryLink = 'dashboard-primary-link inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--db-focus)]';
 
@@ -111,6 +116,8 @@ function Overview() {
         </div>
         <div aria-hidden="true" className="dashboard-hero-ring absolute -right-20 -top-32 h-96 w-96 rounded-full" />
       </section>
+
+      <OnboardingNotice permissions={permissions} onOpen={() => navigate('semester-onboarding')} />
 
       {widgets.length > 0 && (
         <section aria-labelledby="dashboard-glance">
@@ -220,6 +227,11 @@ export default function SessionDashboardPage() {
   if (view === 'academic-references' && ACADEMIC_CONFIGURATION_ENABLED) return <AcademicSettingsPanel />;
   // Semester organizational fee (School Admin): default-off; Django authorizes every request.
   if (view === 'semester-fees' && SEMESTER_FEE_CONFIGURATION_ENABLED) return <SemesterFeesPanel />;
+  // WF-05.05: the Student's own onboarding and semester data; Django gates the data on finalization.
+  if (view === 'semester-onboarding' && STUDENT_ONBOARDING_ENABLED) return <StudentOnboardingPanel />;
+  if (view === 'my-subjects' && STUDENT_ONBOARDING_ENABLED) return <MySemesterPanel />;
+  // WF-05.04 minimum: School Admin in-person CTU verification; Django authorizes every request.
+  if (view === 'student-verification' && ENROLLMENT_VERIFICATION_ENABLED) return <EnrollmentVerificationPanel />;
 
   return <ModuleUnavailable onBack={back} />;
 }

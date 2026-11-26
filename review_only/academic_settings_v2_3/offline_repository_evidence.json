@@ -1,0 +1,3879 @@
+{
+  "status": "OFFLINE_NO_DATABASE_CONNECTION",
+  "model_drift": false,
+  "valid_topological_order": [
+    "access_control.0001_initial",
+    "accounts.0001_initial",
+    "academic.0001_initial",
+    "academic.0002_audit_reason_note",
+    "academic.0003_academic_configuration",
+    "finance.0001_semester_fee_configuration",
+    "academic.0004_student_semester_onboarding",
+    "clearance.0001_semester_clearance",
+    "finance.0002_fee_obligation"
+  ],
+  "complete_dependency_graph": [
+    {
+      "migration": "access_control.0001_initial",
+      "parents": []
+    },
+    {
+      "migration": "accounts.0001_initial",
+      "parents": [
+        "access_control.0001_initial"
+      ]
+    },
+    {
+      "migration": "academic.0001_initial",
+      "parents": [
+        "accounts.0001_initial"
+      ]
+    },
+    {
+      "migration": "academic.0002_audit_reason_note",
+      "parents": [
+        "academic.0001_initial"
+      ]
+    },
+    {
+      "migration": "academic.0003_academic_configuration",
+      "parents": [
+        "academic.0002_audit_reason_note",
+        "accounts.0001_initial"
+      ]
+    },
+    {
+      "migration": "finance.0001_semester_fee_configuration",
+      "parents": [
+        "academic.0003_academic_configuration",
+        "accounts.0001_initial"
+      ]
+    },
+    {
+      "migration": "academic.0004_student_semester_onboarding",
+      "parents": [
+        "academic.0003_academic_configuration",
+        "accounts.0001_initial"
+      ]
+    },
+    {
+      "migration": "clearance.0001_semester_clearance",
+      "parents": [
+        "academic.0004_student_semester_onboarding",
+        "accounts.0001_initial"
+      ]
+    },
+    {
+      "migration": "finance.0002_fee_obligation",
+      "parents": [
+        "academic.0004_student_semester_onboarding",
+        "accounts.0001_initial",
+        "finance.0001_semester_fee_configuration"
+      ]
+    }
+  ],
+  "expected_schema": [
+    {
+      "table": "academic_configuration_audit_logs",
+      "columns": [
+        {
+          "field": "academic_configuration_audit_log_id",
+          "column": "academic_configuration_audit_log_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "acting_role_id",
+          "column": "acting_role_id",
+          "type": "PositiveIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "action",
+          "column": "action",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 60,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "entity_type",
+          "column": "entity_type",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 30,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "entity_id",
+          "column": "entity_id",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "old_value",
+          "column": "old_value",
+          "type": "JSONField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "new_value",
+          "column": "new_value",
+          "type": "JSONField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "reason",
+          "column": "reason",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "actor_account",
+          "column": "actor_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "table": "academic_courses",
+      "columns": [
+        {
+          "field": "course_id",
+          "column": "course_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "code",
+          "column": "code",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "max_length": 20,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "name",
+          "column": "name",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 150,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 8,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Active",
+              "Active"
+            ],
+            [
+              "Inactive",
+              "Inactive"
+            ],
+            [
+              "Retired",
+              "Retired"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "table": "academic_curriculum_subjects",
+      "columns": [
+        {
+          "field": "curriculum_subject_id",
+          "column": "curriculum_subject_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "year_level",
+          "column": "year_level",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "term",
+          "column": "term",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              1,
+              "First semester"
+            ],
+            [
+              2,
+              "Second semester"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "curriculum",
+          "column": "curriculum_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_curriculum_versions.curriculum_id"
+        },
+        {
+          "field": "subject",
+          "column": "subject_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subjects.subject_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_curriculum_subject_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "curriculum",
+            "subject"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_curriculum_year_level_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('year_level__gte', 1), ('year_level__lte', 6))"
+        },
+        {
+          "name": "academic_curriculum_term_valid",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('term__in', [1, 2]))"
+        }
+      ]
+    },
+    {
+      "table": "academic_curriculum_versions",
+      "columns": [
+        {
+          "field": "curriculum_id",
+          "column": "curriculum_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "label",
+          "column": "label",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "effective_start_year",
+          "column": "effective_start_year",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 10,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Draft",
+              "Draft"
+            ],
+            [
+              "Published",
+              "Published"
+            ],
+            [
+              "Superseded",
+              "Superseded"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "published_at",
+          "column": "published_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "superseded_at",
+          "column": "superseded_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "course",
+          "column": "course_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_courses.course_id"
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_curricula_course_label_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "course",
+            "label"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_curricula_start_year_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: ('effective_start_year__isnull', True), (AND: ('effective_start_year__gte', 2000), ('effective_start_year__lte', 2100)))"
+        },
+        {
+          "name": "academic_curricula_lifecycle_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('published_at__isnull', True), ('status', 'Draft'), ('superseded_at__isnull', True)), (AND: ('published_at__isnull', False), ('status', 'Published'), ('superseded_at__isnull', True)), (AND: ('published_at__isnull', False), ('status', 'Superseded'), ('superseded_at__isnull', False)))"
+        }
+      ]
+    },
+    {
+      "table": "academic_enrollment_evidence",
+      "columns": [
+        {
+          "field": "evidence_id",
+          "column": "evidence_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "source_type",
+          "column": "source_type",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 15,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "in_person",
+              "In-person School Admin verification"
+            ],
+            [
+              "ctu_integration",
+              "Approved CTU integration"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "source_reference",
+          "column": "source_reference",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 80,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "source_as_of",
+          "column": "source_as_of",
+          "type": "DateField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "entry_classification",
+          "column": "entry_classification",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 10,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "continuing",
+              "Continuing"
+            ],
+            [
+              "returning",
+              "Returning"
+            ],
+            [
+              "newcomer",
+              "Newcomer"
+            ],
+            [
+              "transferee",
+              "Transferee"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "year_level",
+          "column": "year_level",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 8,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Verified",
+              "Verified"
+            ],
+            [
+              "Revoked",
+              "Revoked"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "active_slot",
+          "column": "active_slot",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "verified_at",
+          "column": "verified_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "revoked_at",
+          "column": "revoked_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "revoke_reason",
+          "column": "revoke_reason",
+          "type": "CharField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "course",
+          "column": "course_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_courses.course_id"
+        },
+        {
+          "field": "revoked_by",
+          "column": "revoked_by",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "student",
+          "column": "student_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "verified_by",
+          "column": "verified_by",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_evidence_one_verified",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "student",
+            "semester",
+            "active_slot"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_evidence_year_level_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('year_level__gte', 1), ('year_level__lte', 6))"
+        },
+        {
+          "name": "academic_evidence_lifecycle_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('active_slot', 1), ('active_slot__isnull', False), ('revoked_at__isnull', True), ('status', 'Verified')), (AND: ('active_slot__isnull', True), ('revoked_at__isnull', False), ('status', 'Revoked')))"
+        },
+        {
+          "name": "academic_evidence_in_person_attributed",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (NOT (AND: ('source_type', 'in_person'))), ('verified_by__isnull', False))"
+        }
+      ]
+    },
+    {
+      "table": "academic_enrollment_evidence_subjects",
+      "columns": [
+        {
+          "field": "id",
+          "column": "id",
+          "type": "BigAutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "evidence",
+          "column": "evidence_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_enrollment_evidence.evidence_id"
+        },
+        {
+          "field": "subject",
+          "column": "subject_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subjects.subject_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_evidence_subject_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "evidence",
+            "subject"
+          ],
+          "condition": "None"
+        }
+      ]
+    },
+    {
+      "table": "academic_enrollment_gap_exceptions",
+      "columns": [
+        {
+          "field": "gap_id",
+          "column": "gap_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "source_reference",
+          "column": "source_reference",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 80,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 8,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Verified",
+              "Verified"
+            ],
+            [
+              "Revoked",
+              "Revoked"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "active_slot",
+          "column": "active_slot",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "verified_at",
+          "column": "verified_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "revoked_at",
+          "column": "revoked_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "revoked_by",
+          "column": "revoked_by",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "student",
+          "column": "student_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "verified_by",
+          "column": "verified_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_gap_one_verified",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "student",
+            "semester",
+            "active_slot"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_gap_lifecycle_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('active_slot', 1), ('active_slot__isnull', False), ('revoked_at__isnull', True), ('status', 'Verified')), (AND: ('active_slot__isnull', True), ('revoked_at__isnull', False), ('status', 'Revoked')))"
+        }
+      ]
+    },
+    {
+      "table": "academic_participation_subjects",
+      "columns": [
+        {
+          "field": "id",
+          "column": "id",
+          "type": "BigAutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "instructor",
+          "column": "instructor_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "offering",
+          "column": "offering_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subject_offerings.offering_id"
+        },
+        {
+          "field": "subject",
+          "column": "subject_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subjects.subject_id"
+        },
+        {
+          "field": "participation",
+          "column": "participation_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_semester_participations.participation_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_participation_subject_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "participation",
+            "subject"
+          ],
+          "condition": "None"
+        }
+      ]
+    },
+    {
+      "table": "academic_period_audit_logs",
+      "columns": [
+        {
+          "field": "academic_period_audit_log_id",
+          "column": "academic_period_audit_log_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "acting_role_id",
+          "column": "acting_role_id",
+          "type": "PositiveIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "action",
+          "column": "action",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 60,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "school_year_id",
+          "column": "school_year_id",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "semester_id",
+          "column": "semester_id",
+          "type": "PositiveIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "old_value",
+          "column": "old_value",
+          "type": "JSONField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "new_value",
+          "column": "new_value",
+          "type": "JSONField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "reason",
+          "column": "reason",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "actor_account",
+          "column": "actor_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "reason_note",
+          "column": "reason_note",
+          "type": "CharField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 500,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "table": "academic_sections",
+      "columns": [
+        {
+          "field": "section_id",
+          "column": "section_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "year_level",
+          "column": "year_level",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "name",
+          "column": "name",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 20,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 8,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Active",
+              "Active"
+            ],
+            [
+              "Inactive",
+              "Inactive"
+            ],
+            [
+              "Retired",
+              "Retired"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "course",
+          "column": "course_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_courses.course_id"
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_sections_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "course",
+            "year_level",
+            "name"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_sections_year_level_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('year_level__gte', 1), ('year_level__lte', 6))"
+        }
+      ]
+    },
+    {
+      "table": "academic_semester_onboarding_subjects",
+      "columns": [
+        {
+          "field": "id",
+          "column": "id",
+          "type": "BigAutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "offering",
+          "column": "offering_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subject_offerings.offering_id"
+        },
+        {
+          "field": "onboarding",
+          "column": "onboarding_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_semester_onboardings.onboarding_id"
+        },
+        {
+          "field": "subject",
+          "column": "subject_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subjects.subject_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_onboarding_subject_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "onboarding",
+            "subject"
+          ],
+          "condition": "None"
+        }
+      ]
+    },
+    {
+      "table": "academic_semester_onboardings",
+      "columns": [
+        {
+          "field": "onboarding_id",
+          "column": "onboarding_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 19,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Draft",
+              "Draft"
+            ],
+            [
+              "PendingVerification",
+              "Pending verification"
+            ],
+            [
+              "Completed",
+              "Completed"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "student_type",
+          "column": "student_type",
+          "type": "CharField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 9,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Regular",
+              "Regular"
+            ],
+            [
+              "Irregular",
+              "Irregular"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "year_level",
+          "column": "year_level",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "subjects_confirmed",
+          "column": "subjects_confirmed",
+          "type": "BooleanField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "course_confirmed",
+          "column": "course_confirmed",
+          "type": "BooleanField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "completed_at",
+          "column": "completed_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "course",
+          "column": "course_id",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_courses.course_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "student",
+          "column": "student_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_onboarding_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "student",
+            "semester"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_onboarding_year_level_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: ('year_level__isnull', True), (AND: ('year_level__gte', 1), ('year_level__lte', 6)))"
+        },
+        {
+          "name": "academic_onboarding_completed_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (NOT (AND: ('status', 'Completed'))), (AND: ('completed_at__isnull', False), ('course__isnull', False), ('course_confirmed', True), ('student_type__isnull', False), ('subjects_confirmed', True), ('year_level__isnull', False)))"
+        }
+      ]
+    },
+    {
+      "table": "academic_semester_participations",
+      "columns": [
+        {
+          "field": "participation_id",
+          "column": "participation_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "source",
+          "column": "source",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 21,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "onboarding",
+              "Student Semester Onboarding"
+            ],
+            [
+              "historical_correction",
+              "Evidenced historical correction"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "student_type",
+          "column": "student_type",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 9,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Regular",
+              "Regular"
+            ],
+            [
+              "Irregular",
+              "Irregular"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "year_level",
+          "column": "year_level",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "course",
+          "column": "course_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_courses.course_id"
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "evidence",
+          "column": "evidence_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_enrollment_evidence.evidence_id"
+        },
+        {
+          "field": "onboarding",
+          "column": "onboarding_id",
+          "type": "OneToOneField",
+          "null": true,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_semester_onboardings.onboarding_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "student",
+          "column": "student_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_participation_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "student",
+            "semester"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_participation_year_level_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('year_level__gte', 1), ('year_level__lte', 6))"
+        },
+        {
+          "name": "academic_participation_onboarding_link",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (NOT (AND: ('source', 'onboarding'))), ('onboarding__isnull', False))"
+        }
+      ]
+    },
+    {
+      "table": "academic_subject_offerings",
+      "columns": [
+        {
+          "field": "offering_id",
+          "column": "offering_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "curriculum_subject",
+          "column": "curriculum_subject_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_curriculum_subjects.curriculum_subject_id"
+        },
+        {
+          "field": "section",
+          "column": "section_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_sections.section_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "subject",
+          "column": "subject_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subjects.subject_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_offerings_natural_key",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "semester",
+            "section",
+            "subject"
+          ],
+          "condition": "None"
+        }
+      ]
+    },
+    {
+      "table": "academic_subjects",
+      "columns": [
+        {
+          "field": "subject_id",
+          "column": "subject_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "code",
+          "column": "code",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "max_length": 20,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "title",
+          "column": "title",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 200,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "classification",
+          "column": "classification",
+          "type": "CharField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 60,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "lecture_units",
+          "column": "lecture_units",
+          "type": "DecimalField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": 3,
+          "decimal_places": 1,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "lab_units",
+          "column": "lab_units",
+          "type": "DecimalField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": 3,
+          "decimal_places": 1,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 8,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Active",
+              "Active"
+            ],
+            [
+              "Inactive",
+              "Inactive"
+            ],
+            [
+              "Retired",
+              "Retired"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_subjects_units_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: (OR: ('lecture_units__isnull', True), (AND: ('lecture_units__gte', 0), ('lecture_units__lte', 30))), (OR: ('lab_units__isnull', True), (AND: ('lab_units__gte', 0), ('lab_units__lte', 30))))"
+        }
+      ]
+    },
+    {
+      "table": "academic_teaching_assignments",
+      "columns": [
+        {
+          "field": "assignment_id",
+          "column": "assignment_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 6,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Active",
+              "Active"
+            ],
+            [
+              "Ended",
+              "Ended"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "active_slot",
+          "column": "active_slot",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "assigned_at",
+          "column": "assigned_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "ended_at",
+          "column": "ended_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "end_reason",
+          "column": "end_reason",
+          "type": "CharField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "assigned_by",
+          "column": "assigned_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "ended_by",
+          "column": "ended_by",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "instructor",
+          "column": "instructor_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "offering",
+          "column": "offering_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subject_offerings.offering_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "academic_teaching_one_active",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "offering",
+            "active_slot"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "academic_teaching_lifecycle_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('active_slot', 1), ('active_slot__isnull', False), ('ended_at__isnull', True), ('status', 'Active')), (AND: ('active_slot__isnull', True), ('ended_at__isnull', False), ('ended_by__isnull', False), ('status', 'Ended')))"
+        }
+      ]
+    },
+    {
+      "table": "clearance_requirements",
+      "columns": [
+        {
+          "field": "requirement_id",
+          "column": "requirement_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "requirement_key",
+          "column": "requirement_key",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "kind",
+          "column": "kind",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 18,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "subject_instructor",
+              "Subject instructor"
+            ],
+            [
+              "treasurer_fee",
+              "Treasurer organizational-fee sign-off"
+            ],
+            [
+              "school_admin_final",
+              "School Admin final approval"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 7,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Pending",
+              "Pending"
+            ],
+            [
+              "Signed",
+              "Signed"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "signed_at",
+          "column": "signed_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "offering",
+          "column": "offering_id",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subject_offerings.offering_id"
+        },
+        {
+          "field": "signatory",
+          "column": "signatory_account_id",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "subject",
+          "column": "subject_id",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_subjects.subject_id"
+        },
+        {
+          "field": "clearance",
+          "column": "clearance_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "clearance_semester_clearances.clearance_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "clearance_requirement_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "clearance",
+            "requirement_key"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "clearance_requirement_shape",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('kind', 'subject_instructor'), ('offering__isnull', False), ('signatory__isnull', False), ('subject__isnull', False)), (AND: (NOT (AND: ('kind', 'subject_instructor'))), ('offering__isnull', True), ('signatory__isnull', True), ('subject__isnull', True)))"
+        },
+        {
+          "name": "clearance_requirement_status_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('signed_at__isnull', True), ('status', 'Pending')), (AND: ('signed_at__isnull', False), ('status', 'Signed')))"
+        }
+      ]
+    },
+    {
+      "table": "clearance_semester_clearances",
+      "columns": [
+        {
+          "field": "clearance_id",
+          "column": "clearance_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 9,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Uncleared",
+              "Uncleared"
+            ],
+            [
+              "Cleared",
+              "Cleared"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "cleared_at",
+          "column": "cleared_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "participation",
+          "column": "participation_id",
+          "type": "OneToOneField",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_semester_participations.participation_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "student",
+          "column": "student_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "clearance_one_per_student_semester",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "student",
+            "semester"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "clearance_status_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('cleared_at__isnull', True), ('status', 'Uncleared')), (AND: ('cleared_at__isnull', False), ('status', 'Cleared')))"
+        }
+      ]
+    },
+    {
+      "table": "finance_audit_logs",
+      "columns": [
+        {
+          "field": "finance_audit_log_id",
+          "column": "finance_audit_log_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "acting_role_id",
+          "column": "acting_role_id",
+          "type": "PositiveIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "action",
+          "column": "action",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 60,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "entity_type",
+          "column": "entity_type",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 30,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "entity_id",
+          "column": "entity_id",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "semester_id",
+          "column": "semester_id",
+          "type": "PositiveIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "old_value",
+          "column": "old_value",
+          "type": "JSONField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "new_value",
+          "column": "new_value",
+          "type": "JSONField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "reason",
+          "column": "reason",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 40,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "actor_account",
+          "column": "actor_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "table": "finance_fee_obligations",
+      "columns": [
+        {
+          "field": "obligation_id",
+          "column": "obligation_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "currency",
+          "column": "currency",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 3,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "amount",
+          "column": "amount",
+          "type": "DecimalField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": 9,
+          "decimal_places": 2,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 6,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Unpaid",
+              "Unpaid"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "fee_revision",
+          "column": "fee_revision_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "finance_semester_fee_revisions.revision_id"
+        },
+        {
+          "field": "participation",
+          "column": "participation_id",
+          "type": "OneToOneField",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "academic_semester_participations.participation_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        },
+        {
+          "field": "student",
+          "column": "student_account_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "finance_obligation_one_per_student_semester",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "student",
+            "semester"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "finance_obligation_currency_php",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('currency', 'PHP'))"
+        },
+        {
+          "name": "finance_obligation_amount_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('amount__gte', 0), ('amount__lte', Decimal('100000.00')))"
+        }
+      ]
+    },
+    {
+      "table": "finance_semester_fee_revisions",
+      "columns": [
+        {
+          "field": "revision_id",
+          "column": "revision_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "revision_number",
+          "column": "revision_number",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "currency",
+          "column": "currency",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 3,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "amount",
+          "column": "amount",
+          "type": "DecimalField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": 9,
+          "decimal_places": 2,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 10,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Draft",
+              "Draft"
+            ],
+            [
+              "Approved",
+              "Approved"
+            ],
+            [
+              "Superseded",
+              "Superseded"
+            ],
+            [
+              "Withdrawn",
+              "Withdrawn"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "approved_slot",
+          "column": "approved_slot",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "draft_slot",
+          "column": "draft_slot",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "change_reason",
+          "column": "change_reason",
+          "type": "CharField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 500,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "configured_at",
+          "column": "configured_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "approved_at",
+          "column": "approved_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "superseded_at",
+          "column": "superseded_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "withdrawn_at",
+          "column": "withdrawn_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "approved_by",
+          "column": "approved_by",
+          "type": "ForeignKey",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "configured_by",
+          "column": "configured_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "schedule",
+          "column": "schedule_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "finance_semester_fee_schedules.schedule_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "finance_fee_revision_number_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "schedule",
+            "revision_number"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "finance_fee_one_approved",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "schedule",
+            "approved_slot"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "finance_fee_one_open_draft",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "schedule",
+            "draft_slot"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "finance_fee_currency_php",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('currency', 'PHP'))"
+        },
+        {
+          "name": "finance_fee_amount_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('amount__gte', 0), ('amount__lte', Decimal('100000.00')))"
+        },
+        {
+          "name": "finance_fee_revision_number_positive",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('revision_number__gte', 1))"
+        },
+        {
+          "name": "finance_fee_revision_lifecycle_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('approved_at__isnull', True), ('approved_by__isnull', True), ('approved_slot__isnull', True), ('draft_slot', 1), ('draft_slot__isnull', False), ('status', 'Draft'), ('superseded_at__isnull', True), ('withdrawn_at__isnull', True)), (AND: ('approved_at__isnull', False), ('approved_by__isnull', False), ('approved_slot', 1), ('approved_slot__isnull', False), ('draft_slot__isnull', True), ('status', 'Approved'), ('superseded_at__isnull', True), ('withdrawn_at__isnull', True)), (AND: ('approved_at__isnull', False), ('approved_by__isnull', False), ('approved_slot__isnull', True), ('draft_slot__isnull', True), ('status', 'Superseded'), ('superseded_at__isnull', False), ('withdrawn_at__isnull', True)), (AND: ('approved_at__isnull', True), ('approved_by__isnull', True), ('approved_slot__isnull', True), ('draft_slot__isnull', True), ('status', 'Withdrawn'), ('superseded_at__isnull', True), ('withdrawn_at__isnull', False)))"
+        }
+      ]
+    },
+    {
+      "table": "finance_semester_fee_schedules",
+      "columns": [
+        {
+          "field": "schedule_id",
+          "column": "schedule_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        },
+        {
+          "field": "current_approved_revision",
+          "column": "current_approved_revision_id",
+          "type": "OneToOneField",
+          "null": true,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "finance_semester_fee_revisions.revision_id"
+        },
+        {
+          "field": "semester",
+          "column": "semester_id",
+          "type": "OneToOneField",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "semesters.semester_id"
+        }
+      ],
+      "constraints": []
+    },
+    {
+      "table": "school_years",
+      "columns": [
+        {
+          "field": "school_year_id",
+          "column": "school_year_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "start_year",
+          "column": "start_year",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_by",
+          "column": "created_by",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "accounts.account_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "school_years_start_year_range",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('start_year__gte', 2000), ('start_year__lte', 2100))"
+        }
+      ]
+    },
+    {
+      "table": "semesters",
+      "columns": [
+        {
+          "field": "semester_id",
+          "column": "semester_id",
+          "type": "AutoField",
+          "null": false,
+          "primary_key": true,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "term",
+          "column": "term",
+          "type": "PositiveSmallIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              1,
+              "First semester"
+            ],
+            [
+              2,
+              "Second semester"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "status",
+          "column": "status",
+          "type": "CharField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": 8,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [
+            [
+              "Draft",
+              "Draft"
+            ],
+            [
+              "Active",
+              "Active"
+            ],
+            [
+              "Closed",
+              "Closed"
+            ],
+            [
+              "Archived",
+              "Archived"
+            ]
+          ],
+          "foreign_key": null
+        },
+        {
+          "field": "active_slot",
+          "column": "active_slot",
+          "type": "PositiveSmallIntegerField",
+          "null": true,
+          "primary_key": false,
+          "unique": true,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "start_date",
+          "column": "start_date",
+          "type": "DateField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "end_date",
+          "column": "end_date",
+          "type": "DateField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "version",
+          "column": "version",
+          "type": "PositiveIntegerField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "activated_at",
+          "column": "activated_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "closed_at",
+          "column": "closed_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "archived_at",
+          "column": "archived_at",
+          "type": "DateTimeField",
+          "null": true,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "created_at",
+          "column": "created_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "updated_at",
+          "column": "updated_at",
+          "type": "DateTimeField",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": null
+        },
+        {
+          "field": "school_year",
+          "column": "school_year_id",
+          "type": "ForeignKey",
+          "null": false,
+          "primary_key": false,
+          "unique": false,
+          "max_length": null,
+          "max_digits": null,
+          "decimal_places": null,
+          "choices": [],
+          "foreign_key": "school_years.school_year_id"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "semesters_school_year_term_unique",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "school_year",
+            "term"
+          ],
+          "condition": "None"
+        },
+        {
+          "name": "semesters_term_valid",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(AND: ('term__in', [1, 2]))"
+        },
+        {
+          "name": "semesters_start_before_end",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: ('start_date__isnull', True), ('end_date__isnull', True), ('start_date__lt', F(end_date)))"
+        },
+        {
+          "name": "semesters_active_slot_matches_status",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('active_slot', 1), ('active_slot__isnull', False), ('status', 'Active')), (AND: (NOT (AND: ('status', 'Active'))), ('active_slot__isnull', True)))"
+        },
+        {
+          "name": "semesters_lifecycle_consistent",
+          "kind": "CheckConstraint",
+          "fields": [],
+          "condition": "(OR: (AND: ('activated_at__isnull', True), ('archived_at__isnull', True), ('closed_at__isnull', True), ('status', 'Draft')), (AND: ('activated_at__isnull', False), ('archived_at__isnull', True), ('closed_at__isnull', True), ('end_date__isnull', False), ('start_date__isnull', False), ('status', 'Active')), (AND: ('activated_at__isnull', False), ('archived_at__isnull', True), ('closed_at__isnull', False), ('end_date__isnull', False), ('start_date__isnull', False), ('status', 'Closed')), (AND: ('activated_at__isnull', False), ('archived_at__isnull', False), ('closed_at__isnull', False), ('end_date__isnull', False), ('start_date__isnull', False), ('status', 'Archived')))"
+        }
+      ]
+    }
+  ],
+  "feature_registry": [
+    {
+      "key": "wf11.academic_periods",
+      "backend_env": {
+        "WORKSPACE_ACADEMIC_PERIODS_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_ACADEMIC_PERIODS_ENABLED"
+      ],
+      "registry_dependencies": [],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.academic_period_lifecycle",
+      "backend_env": {
+        "WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED": "1",
+        "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED",
+        "VITE_WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf11.academic_periods"
+      ],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.academic_configuration",
+      "backend_env": {
+        "WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED"
+      ],
+      "registry_dependencies": [],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.academic_configuration_governed_writes",
+      "backend_env": {
+        "WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED": "1",
+        "WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED": "1",
+        "WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED",
+        "VITE_WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED",
+        "VITE_WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf11.academic_configuration"
+      ],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.semester_fee_configuration",
+      "backend_env": {
+        "WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED"
+      ],
+      "registry_dependencies": [],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.semester_fee_approval",
+      "backend_env": {
+        "WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf11.semester_fee_configuration"
+      ],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.academic_catalogue",
+      "backend_env": {
+        "WORKSPACE_ACADEMIC_CATALOGUE_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_ACADEMIC_CATALOGUE_ENABLED"
+      ],
+      "registry_dependencies": [],
+      "approved_modes": []
+    },
+    {
+      "key": "wf05.student_onboarding",
+      "backend_env": {
+        "WORKSPACE_STUDENT_ONBOARDING_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_STUDENT_ONBOARDING_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf11.academic_periods"
+      ],
+      "approved_modes": []
+    },
+    {
+      "key": "wf05.student_onboarding_finalization",
+      "backend_env": {
+        "WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf05.student_onboarding",
+        "wf11.semester_fee_configuration"
+      ],
+      "approved_modes": []
+    },
+    {
+      "key": "wf05.enrollment_verification",
+      "backend_env": {
+        "WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf11.academic_periods"
+      ],
+      "approved_modes": []
+    },
+    {
+      "key": "wf11.historical_participation",
+      "backend_env": {
+        "WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED": "1"
+      },
+      "frontend_flags": [
+        "VITE_WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED"
+      ],
+      "registry_dependencies": [
+        "wf05.enrollment_verification",
+        "wf11.semester_fee_configuration"
+      ],
+      "approved_modes": []
+    }
+  ]
+}

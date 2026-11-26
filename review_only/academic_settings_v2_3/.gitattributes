@@ -1,0 +1,7 @@
+# Candidate integrity evidence must survive Windows checkout byte-for-byte.
+# These are implementer-authored review artifacts, not approved catalogue pins.
+ADDENDUM_PROPOSED.md -text
+v2_3_delta.json -text
+runtime_changes_PROPOSED.patch -text
+offline_repository_evidence.json -text
+schema_and_integrity_checks.sql -text

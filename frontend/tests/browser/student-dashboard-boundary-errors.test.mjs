@@ -226,11 +226,20 @@ test('other role contexts and multi-role sessions keep their own modules', async
     await page.getByRole('heading', { name: 'Step 1: Student type' }).waitFor(); // the Student context is gated again
   }, '/dashboard');
 
-  const refused = server({ statusError: { status: 403, code: 'access_denied', reason: 'student_context_required' } });
+  const refused = server({ session: { ...instructorSession(), permissions: STUDENT_CODES },
+    statusError: { status: 403, code: 'access_denied', reason: 'student_context_required' } });
   await scene(refused.handle, async (page) => {
-    await page.getByRole('heading', { name: 'Student workspace' }).waitFor();
+    await page.getByRole('heading', { name: 'Instructor workspace' }).waitFor();
     await page.waitForTimeout(300);
     assert.equal(await search(page), '');
+    assert.equal(refused.s.counts.status, 0); // other selected role: no Student status dependency
+  }, '/dashboard');
+
+  const otherUnavailable = server({ session: { ...instructorSession(), permissions: STUDENT_CODES },
+    statusError: { status: 503, code: 'student_onboarding_unavailable' } });
+  await scene(otherUnavailable.handle, async (page) => {
+    await page.getByRole('heading', { name: 'Instructor workspace' }).waitFor();
+    assert.equal(otherUnavailable.s.counts.status, 0);
   }, '/dashboard');
 
   const multi = server({ session: { authenticated: true, account: { school_id: 'ADM-STU', roles: ['Student', 'Admin'] },
@@ -240,6 +249,72 @@ test('other role contexts and multi-role sessions keep their own modules', async
     assert.equal(await search(page), '');
     await pushView(page, 'my-subjects');
     await page.getByRole('heading', { name: 'Step 1: Student type' }).waitFor();
+  }, '/dashboard');
+});
+
+test('a selected Student stays gated with additional assignments and a refused or missing read permission', async () => {
+  const additional = server({ session: { ...studentSession(), permissions: [...STUDENT_CODES, 'academic.periods.manage'] } });
+  await scene(additional.handle, async (page) => {
+    await page.getByRole('heading', { name: 'Step 1: Student type' }).waitFor();
+    assert.equal(await search(page), '?view=semester-onboarding');
+    assert.equal(additional.s.counts.mySemester, 0);
+  }, '/dashboard');
+
+  for (const permissions of [STUDENT_CODES, ['academic.catalogue.read']]) {
+    const denied = server({ session: { ...studentSession(), permissions },
+      statusError: { status: 403, code: 'access_denied', reason: 'access_denied' } });
+    await scene(denied.handle, async (page) => {
+      await page.getByRole('alert').filter({ hasText: 'We could not confirm your semester onboarding' }).waitFor();
+      assert.equal(await page.getByRole('heading', { name: 'Student workspace' }).count(), 0);
+      assert.equal(denied.s.counts.mySemester, 0);
+      await pushView(page, 'account');
+      await page.getByRole('heading', { name: 'Account details' }).waitFor();
+    }, '/dashboard');
+  }
+});
+
+test('Student context refusals and unavailable sources never count as completed onboarding', async () => {
+  for (const statusError of [
+    { status: 403, code: 'access_denied', reason: 'student_context_required' },
+    { status: 503, code: 'student_onboarding_unavailable' },
+    { status: 503, code: 'feature_disabled' },
+  ]) {
+    const fake = server({ statusError });
+    await scene(fake.handle, async (page) => {
+      await page.getByRole('alert').filter({ hasText: 'We could not confirm your semester onboarding' }).waitFor();
+      assert.equal(await page.getByRole('heading', { name: 'Student workspace' }).count(), 0);
+      assert.equal(fake.s.counts.mySemester, 0);
+    }, '/dashboard');
+  }
+});
+
+test('a role context roundtrip never reuses an earlier completion while the fresh status is pending', async () => {
+  const fake = server({ state: 'completed' });
+  let hold = false;
+  let waiting = false;
+  let release = () => {};
+  const pending = new Promise((resolve) => { release = resolve; });
+  const handle = async (input) => {
+    if (input.path === `${ON}status/` && hold) { waiting = true; await pending; }
+    return fake.handle(input);
+  };
+  await scene(handle, async (page) => {
+    try {
+      await page.getByRole('heading', { name: 'Student workspace' }).waitFor();
+      await page.getByLabel('Active role').selectOption('2');
+      await page.getByRole('heading', { name: 'Instructor workspace' }).waitFor();
+      fake.s.state = 'onboarding'; // a different Active semester now requires its own onboarding
+      hold = true;
+      await page.getByLabel('Active role').selectOption('1');
+      const deadline = Date.now() + 5000;
+      while (!waiting && Date.now() < deadline) await page.waitForTimeout(25);
+      assert.equal(waiting, true, 'the newly selected Student context must re-read status');
+      assert.equal(await page.getByRole('heading', { name: 'Student workspace' }).count(), 0,
+        'the earlier context completion must not expose the Student home while the new read is pending');
+      await page.getByRole('status').filter({ hasText: 'Checking your semester onboarding' }).waitFor();
+      release();
+      await page.getByRole('heading', { name: 'Step 1: Student type' }).waitFor();
+    } finally { release(); }
   }, '/dashboard');
 });
 

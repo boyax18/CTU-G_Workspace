@@ -1,0 +1,218 @@
+diff --git a/backend/apps/access_control/services.py b/backend/apps/access_control/services.py
+--- a/backend/apps/access_control/services.py
++++ b/backend/apps/access_control/services.py
+@@ -15,6 +15,7 @@
+ from apps.accounts.active_role_context import context_enabled, selected_scope, allowed_role_ids
+
+ from .models import AccountPermission, AccountPermissionRoleScope, AccountRole, Permission, Role, RolePermission
++from .permission_transitions import preserve_transition_denies
+ from .ordinary_role_runtime import (
+     ORDINARY_ROLE_NAMES, runtime_enforcement_enabled, verified_ordinary_roles_for,
+ )
+@@ -117,13 +118,14 @@
+         legacy_unscoped = overrides.filter(effect="Grant").filter(~Exists(scoped_any))
+         grant_source = Q(Exists(role_grants)) | Q(Exists(legacy_unscoped))
+
+-    return (
++    permissions = (
+         Permission.objects.using(DEFAULT_DB_ALIAS)
+         .filter(service__is_active=True)
+         .filter(Exists(eligible_assignments))
+         .filter(~Exists(overrides.filter(effect="Deny")))
+         .filter(grant_source)
+     )
++    return preserve_transition_denies(permissions, account_id)
+
+
+ def _effective_codes(account, permission_code=None):
+diff --git a/backend/apps/access_control/permission_transitions.py b/backend/apps/access_control/permission_transitions.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/access_control/permission_transitions.py
+@@ -0,0 +1,26 @@
++"""v2.3 Deny-only transition guard. Old Grants never authorize replacement codes."""
++from django.db import DEFAULT_DB_ALIAS
++from django.db.models import Exists, Q
++
++from .models import AccountPermission
++
++DENY_PREDECESSORS = {
++    "academic.enrollment_verifications.record": ("academic.profiles.manage",),
++    "academic.semester_onboarding.self.submit": ("clearance.requests.self.submit",),
++    "academic.historical_participation.correct": ("academic.periods.manage", "academic.profiles.manage"),
++}
++
++
++def preserve_transition_denies(permissions, account_id):
++    """Narrow the normal resolver, including its session hints and locked re-evaluations.
++
++    Account Denies are global restrictions. Role scopes and old-service activation cannot
++    exempt them. Database errors propagate to the resolver's existing fail-closed boundary.
++    """
++    for replacement, predecessors in DENY_PREDECESSORS.items():
++        denied = AccountPermission.objects.using(DEFAULT_DB_ALIAS).filter(
++            account_id=account_id, is_active=True, effect="Deny",
++            permission__permission_code__in=predecessors,
++        )
++        permissions = permissions.exclude(Q(permission_code=replacement) & Q(Exists(denied)))
++    return permissions
+diff --git a/backend/apps/academic/onboarding.py b/backend/apps/academic/onboarding.py
+--- a/backend/apps/academic/onboarding.py
++++ b/backend/apps/academic/onboarding.py
+@@ -7,8 +7,8 @@
+
+ Authorization (apps.academic.student_access): genuine Student assignment, selected Student context
+ when enforced, exact effective permission (account-specific Deny wins). Reads use the pinned Student
+-default ``academic.profile.self.read``; Draft writes and finalization use the pinned Student default
+-``clearance.requests.self.submit`` (WF-06.01 "Request clearance" now happens at finalization). The
++default ``academic.profile.self.read``; Draft writes and finalization use the reviewed Student permission
++``academic.semester_onboarding.self.submit`` (clearance creation is an internal consequence). The
+ Student is always the actor's own account: no student identifier is accepted from the client.
+
+ Steps (School Year, Semester and CTU-G ID are read-only from the Active semester and the account):
+@@ -47,7 +47,7 @@
+
+ DB = DEFAULT_DB_ALIAS
+ READ_CODE = "academic.profile.self.read"
+-WRITE_CODE = "clearance.requests.self.submit"
++WRITE_CODE = "academic.semester_onboarding.self.submit"
+ ONBOARDING_SETTING = "WORKSPACE_STUDENT_ONBOARDING_ENABLED"
+ FINALIZATION_SETTING = "WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED"
+ MAX_SUBJECTS = 20
+diff --git a/backend/apps/academic/verification.py b/backend/apps/academic/verification.py
+--- a/backend/apps/academic/verification.py
++++ b/backend/apps/academic/verification.py
+@@ -4,9 +4,7 @@
+ semester. Source ``ctu_integration`` has NO runtime writer: no CTU API or accepted integration exists,
+ so only isolated tests create such rows. Lane 2 - in-person School Admin verification, recorded here.
+
+-School Admin operations: services.authorize with the PROPOSED ``academic.profiles.manage`` mapping
+-(the readiness review: do not assume it authorizes CTU verification until the object policy is
+-accepted) behind WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED (default off). Every write locks the shared
++School Admin operations: services.authorize with the exact ``academic.enrollment_verifications.record`` code behind WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED (default off). Every write locks the shared
+ order (services -> permission -> account -> semester -> evidence) and commits with an audit row.
+
+ Privacy: only a controlled reference (e.g. a document control number, at most 80 characters) is
+@@ -31,7 +29,7 @@
+ from .student_access import genuine_student
+
+ DB = DEFAULT_DB_ALIAS
+-VERIFY_CODE = "academic.profiles.manage"  # PROPOSED mapping (governance pending)
++VERIFY_CODE = "academic.enrollment_verifications.record"
+ VERIFY_SETTING = "WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED"
+ REVOKE_REASONS = frozenset({"recorded_in_error", "superseded_by_ctu_record", "identity_mismatch"})
+ OPEN_PERIODS = (SemesterStatus.ACTIVE, SemesterStatus.CLOSED, SemesterStatus.ARCHIVED)
+diff --git a/backend/apps/academic/historical_participation.py b/backend/apps/academic/historical_participation.py
+--- a/backend/apps/academic/historical_participation.py
++++ b/backend/apps/academic/historical_participation.py
+@@ -1,9 +1,8 @@
+ """WF11-D14: evidenced historical Student participation correction (late entry for a past semester).
+
+ For a Student who was officially enrolled in a Closed or Archived semester but has no Workspace
+-participation there. School Admin only (Admin path of services.authorize) with BOTH
+-``academic.periods.manage`` (WF-11.01 authority) and the proposed ``academic.profiles.manage``
+-(verification records), behind WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED (default off,
++participation there. School Admin only (Admin path of services.authorize) with
++``academic.historical_participation.correct``,  behind WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED (default off,
+ refused in production) on top of the base gate.
+
+ Required, re-checked under the shared locks (services -> permissions -> account -> semester -> fee
+@@ -32,8 +31,7 @@
+
+ DB = DEFAULT_DB_ALIAS
+ SETTING = "WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED"
+-PERIOD_CODE = "academic.periods.manage"
+-PROFILE_CODE = "academic.profiles.manage"
++CORRECTION_CODE = "academic.historical_participation.correct"
+ ACTION = "academic.participation.historical_correction"
+ NOTE_MIN, NOTE_MAX = 10, 500
+
+@@ -53,8 +51,7 @@
+
+
+ def _authorize(actor):
+-    services.authorize(actor, PROFILE_CODE, gate=correction_enabled)
+-    return services.authorize(actor, PERIOD_CODE, gate=correction_enabled)
++    return services.authorize(actor, CORRECTION_CODE, gate=correction_enabled)
+
+
+ def _invalid(field):
+@@ -138,8 +135,7 @@
+     try:
+         with transaction.atomic(using=DB, durable=True):
+             lock_shared_services()  # the same service order as onboarding finalization
+-            services.lock_and_authorize(actor, PROFILE_CODE, gate=correction_enabled)
+-            auth = services.lock_and_authorize(actor, PERIOD_CODE, gate=correction_enabled)
++            auth = services.lock_and_authorize(actor, CORRECTION_CODE, gate=correction_enabled)
+             semester = Semester.objects.using(DB).select_for_update().filter(pk=semester_id).first()
+             student = genuine_student(student_id)
+             if semester is None or student is None:
+diff --git a/frontend/src/features/onboarding/onboardingConfig.ts b/frontend/src/features/onboarding/onboardingConfig.ts
+--- a/frontend/src/features/onboarding/onboardingConfig.ts
++++ b/frontend/src/features/onboarding/onboardingConfig.ts
+@@ -20,5 +20,6 @@
+
+ /** Exact catalogue codes (presentation hints only; the server decides). */
+ export const ONBOARDING_READ_CODE = 'academic.profile.self.read';
+-export const ONBOARDING_WRITE_CODE = 'clearance.requests.self.submit';
+-export const VERIFICATION_CODE = 'academic.profiles.manage';
++export const ONBOARDING_WRITE_CODE = 'academic.semester_onboarding.self.submit';
++export const HISTORICAL_CORRECTION_CODE = 'academic.historical_participation.correct';
++export const VERIFICATION_CODE = 'academic.enrollment_verifications.record';
+diff --git a/frontend/src/features/dashboard/navigation.ts b/frontend/src/features/dashboard/navigation.ts
+--- a/frontend/src/features/dashboard/navigation.ts
++++ b/frontend/src/features/dashboard/navigation.ts
+@@ -220,7 +220,7 @@
+
+   // WF-05.04 minimum (R-02 lane 2): School Admin in-person CTU verification; proposed academic.profiles.manage mapping.
+   { id: 'student-verification', label: 'Enrollment verification', icon: 'users', group: 'academic-configuration',
+-    requiredAny: ['academic.profiles.manage'], integration: ENROLLMENT_VERIFICATION_ENABLED ? 'shell' : planned,
++    requiredAny: ['academic.enrollment_verifications.record'], integration: ENROLLMENT_VERIFICATION_ENABLED ? 'shell' : planned,
+     description: 'Record in-person CTU enrollment verification and verified non-enrollment for a student.' },
+
+   { id: 'clearance-monitoring', label: 'Clearance monitoring', icon: 'activity', group: 'clearance-oversight',
+diff --git a/frontend/src/features/onboarding/EnrollmentVerificationPanel.tsx b/frontend/src/features/onboarding/EnrollmentVerificationPanel.tsx
+--- a/frontend/src/features/onboarding/EnrollmentVerificationPanel.tsx
++++ b/frontend/src/features/onboarding/EnrollmentVerificationPanel.tsx
+@@ -3,19 +3,20 @@
+  *
+  * Only a controlled CTU record reference is entered (never a scan or document contents). Recording a
+  * verification never onboards the Student: the Student confirms their own onboarding afterwards. No
+- * one can verify their own records. Django decides access on every request (proposed
+- * academic.profiles.manage mapping, School Admin role context, Deny precedence).
++ * one can verify their own records. Django decides access on every request (exact
++ * academic.enrollment_verifications.record code, School Admin role context, Deny precedence).
+  */
+ import { useEffect, useId, useState } from 'react';
+ import type { FormEvent } from 'react';
+ import Modal from '../../components/common/Modal.tsx';
++import { useDashboardContext } from '../../hooks/useDashboardContext';
+ import { NoticeBlock } from '../academic/config/configUi.tsx';
+ import type { Notice } from '../academic/config/configUi.tsx';
+ import { compactButton, destructiveButton, fieldClass, primaryButton, secondaryButton } from '../academic/academicStyles.ts';
+ import { ACADEMIC_CONFIGURATION_ENABLED } from '../academic/academicConfigurationConfig.ts';
+ import { listCourses, listSubjects } from '../academic/academicConfigurationApi.ts';
+ import type { Course, Subject } from '../academic/academicConfigurationApi.ts';
+-import { HISTORICAL_PARTICIPATION_CORRECTION_ENABLED } from './onboardingConfig.ts';
++import { HISTORICAL_PARTICIPATION_CORRECTION_ENABLED, HISTORICAL_CORRECTION_CODE } from './onboardingConfig.ts';
+ import {
+   correctHistoricalParticipation, getHistoricalPreview, getStudentRecord, onboardingErrorText, peso, recordEvidence, recordGap,
+   revokeEvidence, revokeGap, searchStudents,
+@@ -266,6 +267,8 @@
+ }
+
+ function StudentRecord({ student }: { student: StudentRef }) {
++  const { session } = useDashboardContext();
++  const canCorrect = session.permissions.includes(HISTORICAL_CORRECTION_CODE);
+   const [rows, setRows] = useState<PeriodRecord[] | null>(null);
+   const [failure, setFailure] = useState<unknown>(null);
+   const [dialog, setDialog] = useState<Dialog>(null);
+@@ -310,7 +313,7 @@
+                     {!row.participation && row.evidence && <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'revoke', row })}>Revoke verification</button>}
+                     {historical && !row.participation && !row.evidence && !row.gap && <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'gap', row })}>Record non-enrollment</button>}
+                     {row.gap && <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'revoke-gap', row })}>Revoke non-enrollment</button>}
+-                    {HISTORICAL_PARTICIPATION_CORRECTION_ENABLED && historical && row.evidence && !row.participation && (
++                    {HISTORICAL_PARTICIPATION_CORRECTION_ENABLED && canCorrect && historical && row.evidence && !row.participation && (
+                       <button type="button" className={compactButton} onClick={() => setDialog({ kind: 'historical', row })}>Record historical participation</button>)}
+                   </div></td>
+                 </tr>);

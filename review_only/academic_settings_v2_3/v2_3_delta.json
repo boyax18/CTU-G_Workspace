@@ -1,0 +1,101 @@
+{
+  "schema_version": "catalogue-delta-v2.3",
+  "base": {
+    "manifest_version": "catalogue-v2.2",
+    "effective_digest": "192ba955d1dae06bfbdf574e52ef454390b9fd41b803f63778d1d220b6cd8c6d",
+    "addendum_sha256": "4285837e51f5331bb54fab50246c25d4efb0bbd65905a567368ba7e6681f8fdd"
+  },
+  "addendum": {
+    "path": "review_only/academic_settings_v2_3/ADDENDUM_PROPOSED.md",
+    "sha256": "f37d4a8cc1a51c50923f9c241800f8e48027598dc7b368cafceea5937a1442d4"
+  },
+  "result": {
+    "schema_version": "static-catalogue-v2.3",
+    "manifest_version": "catalogue-v2.3",
+    "source_revision": "v2.3-candidate-1"
+  },
+  "operations": [
+    {
+      "op": "move_default_binding",
+      "permission_code": "finance.fee_schedule.manage",
+      "from_role": "Treasurer",
+      "to_role": "Admin"
+    },
+    {
+      "op": "add_permission",
+      "permission": {
+        "service_code": "academic",
+        "permission_code": "academic.enrollment_verifications.record",
+        "permission_name": "Record official enrollment verification",
+        "module_name": "enrollment_verifications",
+        "action_name": "record",
+        "description": "Record or revoke official in-person enrollment evidence and verified historical gaps; no self-verification or Student onboarding confirmation.",
+        "readiness": "P",
+        "origin": "ADD",
+        "scope": "SCHOOL",
+        "grant_protection": "ORD"
+      }
+    },
+    {
+      "op": "add_default_binding",
+      "role_name": "Admin",
+      "permission_code": "academic.enrollment_verifications.record"
+    },
+    {
+      "op": "add_permission",
+      "permission": {
+        "service_code": "academic",
+        "permission_code": "academic.semester_onboarding.self.submit",
+        "permission_name": "Submit own semester onboarding",
+        "module_name": "semester_onboarding",
+        "action_name": "submit_self",
+        "description": "Save and confirm own Active-semester onboarding; internal atomic participation, clearance and fee snapshots only; no signing or fee management.",
+        "readiness": "P",
+        "origin": "ADD",
+        "scope": "OWN",
+        "grant_protection": "ORD"
+      }
+    },
+    {
+      "op": "add_default_binding",
+      "role_name": "Student",
+      "permission_code": "academic.semester_onboarding.self.submit"
+    },
+    {
+      "op": "add_permission",
+      "permission": {
+        "service_code": "academic",
+        "permission_code": "academic.historical_participation.correct",
+        "permission_name": "Correct missing historical participation",
+        "module_name": "historical_participation",
+        "action_name": "correct",
+        "description": "Create one missing evidenced Closed/Archived-semester participation with original fee and pending clearance; no rewriting existing records or reopening periods.",
+        "readiness": "P",
+        "origin": "ADD",
+        "scope": "SCHOOL",
+        "grant_protection": "ORD"
+      }
+    },
+    {
+      "op": "add_default_binding",
+      "role_name": "Admin",
+      "permission_code": "academic.historical_participation.correct"
+    },
+    {
+      "op": "restate_permission_definition",
+      "permission_code": "academic.courses.manage",
+      "old": "Maintain approved course definitions; preserve referenced historical records.",
+      "new": "Maintain approved course definitions and versioned curricula; published curriculum versions are immutable; preserve referenced historical records."
+    },
+    {
+      "op": "restate_permission_definition",
+      "permission_code": "academic.periods.manage",
+      "old": "Maintain school-year/semester dates and activation with consistency and historical-data checks.",
+      "new": "Maintain school-year/semester dates, activation and section subject offerings with consistency and historical-data checks; instructor assignments require their separate permission."
+    }
+  ],
+  "independent_review": {
+    "status": "OPEN",
+    "note": "Candidate only; independent governance and pin approval not performed. Provisioning NOT_AUTHORIZED."
+  }
+}

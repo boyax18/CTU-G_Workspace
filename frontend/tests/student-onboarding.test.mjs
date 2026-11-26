@@ -116,6 +116,8 @@ test('errors map to fixed copy and never echo server text', () => {
   const text = (detail) => api.onboardingErrorText(new api.OnboardingApiError('x', detail));
   assert.equal(text(context), 'Switch to your Student role, then try again.');
   assert.equal(text(conflict), 'A selected subject has no assigned instructor yet. Visit the School Admin in person.');
+  assert.equal(text(api.parseOnboardingError(409, { error: { code: 'historical_correction_conflict', reason: 'second_admin_required' } })),
+    'A different School Admin from the one who recorded the enrollment evidence must record the historical participation.');
   assert.equal(text(api.parseOnboardingError(409, { error: { code: 'onboarding_conflict', reason: '<script>' } })),
     'The change conflicts with the current records. Reload and try again.');
   assert.equal(api.parseOnboardingError(403, { error: { code: 'csrf_failed' } }).code, 'csrf_failed');

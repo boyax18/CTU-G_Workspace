@@ -15,7 +15,7 @@ from apps.clearance.models import ClearanceRequirement, SemesterClearance
 from apps.finance.models import FeeObligation, FinanceAuditLog
 
 from . import corrections, dependencies, historical_participation as hp, lifecycle, services, verification
-from .models import AcademicPeriodAuditLog, Semester, SemesterParticipation
+from .models import AcademicPeriodAuditLog, EnrollmentEvidence, EvidenceSource, Semester, SemesterParticipation
 from .test_student_onboarding import (
     ONBOARD, OnboardingBase, finalize, open_semester, prepare_semester, record, record_counts, regular_steps,
 )
@@ -94,13 +94,21 @@ class RealObligationTests(OnboardingBase):
 
 @override_settings(**ONBOARD)
 class HistoricalParticipationTests(OnboardingBase):
-    """WF11-D14: a Student officially enrolled in a past semester without a Workspace participation."""
+    """WF11-D14: a Student officially enrolled in a past semester without a Workspace participation.
+
+    Dual control: a SECOND School Admin (``recorder``) records the in-person evidence; ``w.admin`` executes.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        cls.recorder = cls.w.account("WF0505-HREC", "Admin")
 
     def setUp(self):
         self.past = open_semester(self.w, self.cat, 2025, 2, fee="1400.00")
         self.past_id = self.past["semester_id"]
         self.current = open_semester(self.w, self.cat, 2026, 1)["semester_id"]  # closes 2025-2
-        self.evidence = record(self.w, self.w.student, self.past_id, self.cat, ["IT 102"])
+        self.evidence = record(self.w, self.w.student, self.past_id, self.cat, ["IT 102"], actor=self.recorder)
         self.offering = self.past["offerings"][("1-A", "IT 102")]
 
     def correct(self, **overrides):
@@ -127,6 +135,8 @@ class HistoricalParticipationTests(OnboardingBase):
         participation = SemesterParticipation.objects.get()
         self.assertEqual((participation.source, participation.onboarding_id, participation.created_by_id),
                          ("historical_correction", None, self.w.admin.pk))
+        self.assertEqual(EnrollmentEvidence.objects.get(pk=self.evidence["evidence_id"]).verified_by_id,
+                         self.recorder.pk)  # two different School Admins
         self.assertEqual((SemesterClearance.objects.get().status, ClearanceRequirement.objects.count()), ("Uncleared", 3))
         obligation = FeeObligation.objects.get()
         self.assertEqual((obligation.amount, obligation.status), (Decimal("1400.00"), "Unpaid"))  # ORIGINAL rate
@@ -168,7 +178,7 @@ class HistoricalParticipationTests(OnboardingBase):
         from django.utils import timezone
         Semester.objects.filter(pk=past2).update(status="Closed", activated_at=timezone.now(),
                                                        closed_at=timezone.now(), active_slot=None)
-        evidence = record(self.w, self.w.student2, past2, self.cat, ["MATH 101", "IT 101"])
+        evidence = record(self.w, self.w.student2, past2, self.cat, ["MATH 101", "IT 101"], actor=self.recorder)
         preview = hp.preview(actor=self.w.admin, student_account_id=self.w.student2.pk, semester_id=past2)
         self.assertIn("historical_fee_unavailable", preview["blockers"])
         before = record_counts()
@@ -179,6 +189,27 @@ class HistoricalParticipationTests(OnboardingBase):
                        reason_note="Official CTU enrollment confirmed in person.", confirmed=True)
         self.assertEqual(caught.exception.reason, "historical_fee_unavailable")
         self.assertEqual(record_counts(), before)
+
+    def test_dual_control_the_recording_admin_never_executes_the_correction(self):
+        preview = hp.preview(actor=self.recorder, student_account_id=self.w.student.pk, semester_id=self.past_id)
+        self.assertEqual((preview["blockers"], preview["can_confirm"]), (["second_admin_required"], False))
+        self.refused("second_admin_required", actor=self.recorder)  # same authority, but it recorded the evidence
+        # Evidence the executing Admin recorded itself is refused for it, and allowed for the other Admin.
+        own = record(self.w, self.w.student2, self.past_id, self.cat, ["IT 102"])  # recorded by w.admin
+        self.refused("second_admin_required", student_account_id=self.w.student2.pk, expected_evidence_id=own["evidence_id"])
+        self.assertEqual(hp.preview(actor=self.w.admin, student_account_id=self.w.student2.pk,
+                                    semester_id=self.past_id)["blockers"], ["second_admin_required"])
+        self.assertTrue(self.correct(actor=self.recorder, student_account_id=self.w.student2.pk,
+                                     expected_evidence_id=own["evidence_id"])["created"])
+        participation = SemesterParticipation.objects.get(student=self.w.student2)
+        self.assertEqual(participation.created_by_id, self.recorder.pk)
+        # Evidence without an attributable recording School Admin never satisfies dual control (TEST ONLY row
+        # change: no CTU integration writer exists at runtime).
+        EnrollmentEvidence.objects.filter(pk=self.evidence["evidence_id"]).update(
+            source_type=EvidenceSource.CTU_INTEGRATION, verified_by=None)
+        for actor in (self.w.admin, self.recorder):
+            with self.subTest(actor=actor.school_id):
+                self.refused("second_admin_required", actor=actor)
 
     def test_a_verified_gap_or_unassigned_instructor_refuses(self):
         other = self.w.account("WF0505-GAP", "Student")

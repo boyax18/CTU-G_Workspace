@@ -10,6 +10,9 @@ Required, re-checked under the shared locks (services -> permissions -> account 
 schedule -> evidence):
 * the semester is Closed or Archived (it stays so: nothing is reopened or reactivated);
 * a Verified evidence record for the Student and semester exists and is the one reviewed;
+* dual control (owner decision, 27 Nov 2026): that evidence was recorded in person by a DIFFERENT
+  School Admin. The recording Admin never executes the correction, and evidence without an
+  attributable recording School Admin is refused (``second_admin_required``);
 * no participation and no Verified non-enrollment gap for that Student and semester;
 * the chosen offerings cover exactly the evidence subjects, are valid for that semester, belong to
   the evidence course, and each has its real eligible assigned instructor (never a substitute);
@@ -41,7 +44,8 @@ NOTE_MIN, NOTE_MAX = 10, 500
 class HistoricalCorrectionRefused(Exception):
     REASONS = frozenset({"period_not_historical", "evidence_required", "evidence_changed", "participation_exists",
                          "gap_conflict", "subjects_mismatch", "instructor_unassigned", "historical_fee_unavailable",
-                         "confirmation_required", "correction_conflict", "self_verification", "instructor_conflict"})
+                         "confirmation_required", "correction_conflict", "self_verification", "instructor_conflict",
+                         "second_admin_required"})
 
     def __init__(self, reason):
         self.reason = reason if reason in self.REASONS else "correction_conflict"
@@ -82,7 +86,7 @@ def preview(*, actor, student_account_id, semester_id):
     from apps.finance.models import SemesterFeeSchedule
     from .onboarding import _offering_option, _valid, semester_ref
     from .verification import current_evidence, evidence_payload
-    _authorize(actor)
+    auth = _authorize(actor)
     student = genuine_student(_id(student_account_id, "student_account_id"))
     semester = Semester.objects.using(DB).select_related("school_year").filter(pk=_id(semester_id, "semester_id")).first()
     if student is None or semester is None:
@@ -96,6 +100,8 @@ def preview(*, actor, student_account_id, semester_id):
         blockers.append("period_not_historical")
     if evidence is None:
         blockers.append("evidence_required")
+    elif evidence.verified_by_id in (None, auth.account.pk):
+        blockers.append("second_admin_required")  # dual control: the recording Admin cannot correct
     if SemesterParticipation.objects.using(DB).filter(student=student, semester=semester).exists():
         blockers.append("participation_exists")
     if EnrollmentGapException.objects.using(DB).filter(student=student, semester=semester,
@@ -154,6 +160,8 @@ def correct(*, actor, student_account_id, semester_id, expected_evidence_id, stu
                 raise HistoricalCorrectionRefused("evidence_required")
             if evidence.pk != expected_evidence_id:
                 raise HistoricalCorrectionRefused("evidence_changed")
+            if evidence.verified_by_id is None or evidence.verified_by_id == auth.account.pk:
+                raise HistoricalCorrectionRefused("second_admin_required")  # dual control, under the evidence lock
             if SemesterParticipation.objects.using(DB).filter(student=student, semester=semester).exists():
                 raise HistoricalCorrectionRefused("participation_exists")
             if EnrollmentGapException.objects.using(DB).filter(student=student, semester=semester,

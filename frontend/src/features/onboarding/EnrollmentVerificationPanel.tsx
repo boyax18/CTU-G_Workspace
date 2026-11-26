@@ -29,6 +29,7 @@ const REFERENCE = /^[A-Za-z0-9][A-Za-z0-9 .\-/#]{2,79}$/;
 const BLOCKER_TEXT: Record<string, string> = {
   period_not_historical: 'Only a Closed or Archived semester can receive a historical correction.',
   evidence_required: 'Record the verified CTU enrollment for this semester first.',
+  second_admin_required: 'You recorded this enrollment evidence. A different School Admin must record the historical participation.',
   participation_exists: 'The student already has a participation for this semester.',
   gap_conflict: 'A verified non-enrollment gap exists for this semester.',
   historical_fee_unavailable: 'The semester has no approved original fee, so no obligation can be created and the correction is not available.',

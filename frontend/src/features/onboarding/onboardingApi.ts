@@ -87,6 +87,7 @@ export const REASON_TEXT: Record<string, string> = {
   evidence_required: 'Record the verified CTU enrollment for this semester first.',
   subjects_mismatch: 'The offerings must match the verified subjects exactly.',
   historical_fee_unavailable: 'The semester has no approved original fee, so no obligation can be created.',
+  second_admin_required: 'A different School Admin from the one who recorded the enrollment evidence must record the historical participation.',
   correction_conflict: 'The correction could not be applied. Reload and try again.',
 };
 const CONFLICT_CODES = new Set(['onboarding_conflict', 'verification_conflict', 'historical_correction_conflict']);

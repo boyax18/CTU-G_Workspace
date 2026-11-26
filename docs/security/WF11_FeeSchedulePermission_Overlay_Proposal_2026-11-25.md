@@ -113,3 +113,11 @@ counts remain **unknown**. See the [preflight evidence](WF11_Permission_Inventor
 and [unexecuted dedicated-reader proposal](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).
 This records no fee overlay approval, provisioning, credential change or independent review.
 
+The subsequent authorized reduced inventory found no `finance` service row and no
+`finance.fee_schedule.manage` definition, stored role binding, Allow, Deny or holder. The
+Treasurer default in the pinned catalogue has no live holder in this snapshot. There are
+two potential Admin recipients after separate baseline and fee provisioning, including one
+with a genuine Admin assignment alongside Technical Super Admin. Fee authority would still
+require the Admin role grant and the workflow's runtime checks. Independent review remains open.
+[Reduced inventory results](WF11_Permission_Inventory_Preflight_2026-11-26.md#catalogue-comparison-and-potential-impact).
+

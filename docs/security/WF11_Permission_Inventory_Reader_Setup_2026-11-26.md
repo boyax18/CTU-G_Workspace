@@ -1,10 +1,10 @@
 # Dedicated permission inventory reader
 
-26 November 2026 · **Eight-table reader setup authorized. Execution stopped at the schema check.**
-The owner approved the account and the eight grants after the initial configuration preflight.
-The live preflight at `f9cf56b` found seven InnoDB tables, an absent
-`account_permission_role_scopes` table, and no existing account for the proposed username.
-The DBA session ended before account creation. [Preflight evidence](WF11_Permission_Inventory_Preflight_2026-11-26.md).
+26 November 2026 · **Seven-table reader created, verified and used.** The original eight-table
+setup stopped because `account_permission_role_scopes` was absent. The owner then approved the
+seven-table setup and reduced inventory from `f63f8ac`. Sections 1–4 describe the original full
+procedure. Section 5 records the setup that ran on the current schema.
+[Inventory and preflight evidence](WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
 ## 1. Operator and target preconditions
 
@@ -128,24 +128,33 @@ selected database/read-only state and expected InnoDB schema, performs fixed SEL
 back/closes. Missing scope tables or any refusal remains a blocker, not permission to migrate or
 fall back to root. No v2.3 provisioning, business write or feature activation is included.
 
-## 5. Authorization and decision for the current schema
+## 5. Approved reduced setup and verification
 
-The eight-table procedure requires an existing role-scope table. A reduced inventory would use
-the same loopback account and the seven SELECT grants in §2 for the existing tables. Its reader
-preflight would verify exactly those seven grants and the absence of inherited roles. The report
-would include observed definitions, bindings, Allows, Denies, holders and Deny preservation from
-the seven tables. Per-Grant scope and the scope-enabled scenario would be marked unavailable.
-Potential access changes would be modeled only for the resolver with scoped Grant evaluation
-off. The comparison would be a conditional estimate. The full inventory prerequisite for v2.3
-provisioning would remain pending. [Resolver source](../../backend/apps/access_control/services.py).
+The operator reverified the target and the account's absence, then created the named account
+with `IDENTIFIED BY RANDOM PASSWORD` and a 48-character password generated in the administrative
+session. The operator issued the seven grants in §2 on the existing tables. The account's grant
+set contains USAGE and SELECT on those seven tables. MySQL roles, inherited privileges and
+grant option were absent during verification. Both connections used TLS on loopback TCP.
+[MySQL random password generation](https://dev.mysql.com/doc/refman/8.4/en/password-management.html#random-password-generation).
 
-**Decision needed.** Approve the reduced procedure for the current schema, or defer the full
-inventory until the missing table is available through a separately reviewed change. Exact scope
-for the reduced procedure:
+The owner-held reader credential is encrypted with CurrentUser DPAPI in
+`.local/wf11-inventory-private/reader.dpapi`. The encrypted file stores a UTF-8 JSON credential
+under the owner's Windows profile protection. Its `password` and `pseudonym_key` fields supply
+`WF11_INVENTORY_DB_PASSWORD` and `WF11_INVENTORY_HMAC_KEY` in the inventory process. Use the
+same Windows profile to unprotect it in memory. Keep plaintext and detailed output out of
+terminal history, logs and Git. Store detailed inventory output encrypted for the owner.
 
-> I authorize the seven-table SELECT-only reader and a revised read-only inventory for the
-> current `ctug_workspace` schema. Use `'ctug_wf11_inventory_ro'@'127.0.0.1'`, grant SELECT only
-> on the seven confirmed tables listed in the preflight, and report role scope as unavailable.
-> Keep migrations and application changes outside this authorization.
+For a repeat of the reduced read, load the credential variables described in §4 and select the
+reduced mode explicitly. Run with private output capture. The checker verifies the account,
+target, lack of effective and mandatory roles, and the exact eight `SHOW GRANTS` lines (USAGE
+plus seven table SELECTs) before entering a read-only snapshot.
 
-Independent security review and Human Approval remain open.
+```powershell
+backend\.venv\Scripts\python.exe review_only\academic_settings_v2_3\permission_inventory.py --authorize-read-only OWNER_AUTHORIZED_CTUG_WORKSPACE_PERMISSION_SELECT_ONLY --without-role-scopes
+```
+
+The reduced report marks `account_permission_role_scopes` as unavailable and covers the
+scoped-Grant-evaluation-off scenario only. A full rerun needs the existing scope migration
+and a separately authorized scope-table SELECT grant. The current reader has the seven-table
+grant set. Independent review and Human Approval remain open.
+[Observed findings and limits](WF11_Permission_Inventory_Preflight_2026-11-26.md#reduced-inventory-from-f63f8ac).

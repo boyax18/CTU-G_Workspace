@@ -167,3 +167,13 @@ blocked the grant set and inventory. No account was created and no application p
 were queried. Live counts and validation of items A–E are still pending. The owner must decide
 whether to approve a reduced inventory for the current schema. Independent review remains open.
 [Live preflight findings](WF11_Permission_Inventory_Preflight_2026-11-26.md).
+
+The owner subsequently approved the seven-table reader and reduced inventory. The verified snapshot
+found zero live definitions, bindings, Allows, Denies and source holders for all 13 reviewed codes.
+It also found none of the three required service rows. The catalogue defaults therefore describe
+intended bindings, while the local baseline still requires separate provisioning. Two Admin
+accounts and two Student accounts are potential cohorts if the corresponding authorities are
+later provisioned. No existing Treasurer fee-holder loss or Deny migration was identified in
+scope. Role-scope evidence is unavailable and scope-enabled evaluation remains unverified.
+Independent governance review remains OPEN.
+[Reduced inventory results](WF11_Permission_Inventory_Preflight_2026-11-26.md#reduced-inventory-from-f63f8ac).

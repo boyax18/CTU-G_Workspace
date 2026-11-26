@@ -24,3 +24,13 @@ by `config.test_runner.IsolatedMySQLRunner`).
 Applying any of the rows above requires a separate owner decision. After applying, record it in
 this table with the date, the operator and how it was verified (for example
 `manage.py showmigrations academic` output). The academic switches stay off until their own approvals.
+
+## Pending permission inventory dependency, 26 November 2026
+
+| App / migration | Schema effect | Direct dependency | Local evidence |
+| --- | --- | --- | --- |
+| `access_control.0005_account_permission_role_scopes` | Creates `account_permission_role_scopes` with a one-to-one link to an account override and a foreign key to a role | `access_control.0004_ordinary_appointments` | Table absent on the verified local server. Ledger status awaits a separate read-only check. No migration ran during the reduced inventory. |
+
+Django's offline loader confirmed the full graph. Review that dependency separately from the
+Academic Settings schema targets and reconcile the migration ledger before deciding whether to
+apply it. [Dependency and preflight details](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#pending-role-scope-inventory-dependency).

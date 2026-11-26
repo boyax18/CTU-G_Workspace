@@ -126,6 +126,43 @@ class InventoryTests(unittest.TestCase):
         self.assertTrue(any(c.endswith("scoped-grants-on") for c in contexts))
         self.assertTrue(any(c.endswith("scoped-grants-off") for c in contexts))
 
+    def test_reduced_report_keeps_scope_unavailable_and_preserves_deny_findings(self):
+        data = self.sample()
+        original = inventory.summarize(data, b"x" * 32)
+        data["scopes"] = None
+        reduced = inventory.summarize(data, b"x" * 32)
+        self.assertEqual(reduced["role_scope_inventory"]["status"], "unavailable")
+        self.assertEqual(reduced["role_scope_inventory"]["scope_enabled_scenario"], "not_evaluated")
+        self.assertEqual(reduced["required_deny_review"], original["required_deny_review"])
+        self.assertTrue(reduced["account_overrides"])
+        for entry in reduced["account_overrides"]:
+            self.assertEqual(entry["role_scope_status"], "unavailable")
+            self.assertNotIn("role_scope_id", entry)
+        contexts = [i["context"] for a in reduced["accounts"] for i in a["potential_transitions"]]
+        self.assertTrue(contexts)
+        self.assertTrue(all(context.endswith("scoped-grants-off") for context in contexts))
+
+    def test_reduced_grants_reject_broader_access_roles_and_missing_tables(self):
+        grantee = "TO `ctug_wf11_inventory_ro`@`127.0.0.1`"
+        grants = [f"GRANT USAGE ON *.* {grantee}", *[
+            f"GRANT SELECT ON `ctug_workspace`.`{table}` {grantee}"
+            for table in ("permissions", "services", "roles", "role_permissions", "account_permissions",
+                          "account_roles", "accounts")]]
+        inventory.verify_reduced_grants(grants)
+        for invalid in (grants[:-1], grants + [f"GRANT SELECT ON `ctug_workspace`.* {grantee}"],
+                        grants + [f"GRANT `unexpected_role`@`%` {grantee}"],
+                        [*grants[:-1], grants[-1] + " WITH GRANT OPTION"]):
+            with self.subTest(grants=invalid), self.assertRaises(ValueError):
+                inventory.verify_reduced_grants(invalid)
+
+    def test_reduced_plan_requires_explicit_execution_and_omits_scope_data_query(self):
+        output = io.StringIO()
+        with patch.dict(sys.modules, {"MySQLdb": None}), redirect_stdout(output):
+            self.assertEqual(inventory.main(["--without-role-scopes"]), 0)
+        plan = json.loads(output.getvalue())
+        self.assertEqual(plan["status"], "NOT_EXECUTED")
+        self.assertNotIn("scopes", plan["queries"])
+
     def test_privileged_identity_and_wrong_database_are_refused_before_data_queries(self):
         class Cursor:
             def __init__(self, grant, database):

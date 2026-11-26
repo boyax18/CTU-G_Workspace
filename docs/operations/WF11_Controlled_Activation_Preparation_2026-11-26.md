@@ -43,13 +43,13 @@ authority. Student gains no verification, signing or fee-management authority. N
 is copied to a replacement code. New role defaults and missing/disabled live bindings still need
 holder-by-holder impact review; equality of intended role names is not proof of unchanged access.
 
-## 2. Guarded read-only impact inventory — NOT EXECUTED
+## 2. Guarded read-only impact inventory
 
-The owner authorized the read-only inventory starting from `10e3fe8` and the dedicated reader
-starting from `f9cf56b`. The administrative preflight confirmed seven of the eight required
-tables on the local server. `account_permission_role_scopes` was absent, so the setup stopped
-before account creation. Live permission counts remain unknown.
-[Preflight findings](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
+The eight-table preflight found `account_permission_role_scopes` absent. After the owner authorized
+the reduced scope, the seven-table reader was created, verified and used. The reduced snapshot
+found zero of 13 definitions, zero in-scope bindings and overrides, and none of the three service
+rows. The full scope-specific inventory remains pending.
+[Reduced inventory results](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
 
 [permission_inventory.py](../../review_only/academic_settings_v2_3/permission_inventory.py) is a
 standalone DB-API reader. Its default invocation prints the query plan **without importing a
@@ -83,8 +83,10 @@ expansion/loss and Denies requiring review. It distinguishes losing the Treasure
 from losing fee-setting operations (already refused without an Admin-role source).
 It models source-based **potential** impact, not a live permission attestation: feature switches,
 appointment verification, scoped-grant gate state, eligibility and the real selected request
-context must also be checked before provisioning. Missing scope tables or inconsistent storage
-stop the inventory. Counts and pseudonymous row evidence must be reviewed before any grant plan.
+context must also be checked before provisioning. The full mode requires the scope table and
+consistent storage. The separately authorized `--without-role-scopes` mode requires the exact
+seven reader grants and marks role scope as unavailable. Counts and pseudonymous row evidence
+must be reviewed before any grant plan.
 
 ## 3. Deny preservation and rollback of permission transitions
 
@@ -175,14 +177,15 @@ curricula/offerings/instructors, fee configuration/approval and explicit semeste
 Student onboarding/finalization and historical correction remain separate later approvals.
 Do not change `modes` or export a flag as a workaround during this preparation.
 
-## 7. Authorization received and current schema blocker
+## 7. Authorization and next controlled activation decision
 
 > I authorize only the prepared read-only permission impact inventory against local
 > `ctug_workspace`, using an existing SELECT-only account and owner-held pseudonym key.
 > No records, credentials, permissions, migrations, feature switches or launcher approvals may change.
 
-The owner granted the quoted inventory authorization and the eight-table reader setup. The schema
-preflight found the role-scope table absent. To proceed on the current schema, the owner can approve
-the reduced seven-table procedure and accept that role-scope evidence will be unavailable.
-Independent governance review, policy decisions and operational authorizations remain pending.
-[Reader setup and decision](../security/WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).
+The owner separately approved the reduced procedure after the scope-table preflight. The resulting
+baseline calls for migration ledger and schema reconciliation for `access_control.0005` and its
+ancestors, and a narrow service and role-binding proposal for School Admin phase one. The next
+authorization should name the read-only ledger/schema checks and isolated restore rehearsal.
+Independent governance review, migration approval and feature activation remain pending.
+[Pending role-scope dependency](WF11_Migration_and_Activation_Runbook_2026-11-26.md#pending-role-scope-inventory-dependency).

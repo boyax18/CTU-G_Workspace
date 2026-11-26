@@ -1,9 +1,102 @@
-# Authorized permission inventory preflight
+# Authorized permission inventory and preflight
 
 26 November 2026 (Asia/Manila) · branch `ronald`.
 
-**The dedicated reader setup stopped at the schema check.** The local server has seven of the
-eight required tables. The reader account is absent and the permission inventory is pending.
+**The authorized seven-table inventory completed at 14:15 Manila time.** All 13 reviewed codes
+have zero stored definitions, bindings, Allows, Denies and holders. Role-scope evidence is
+unavailable. Independent governance review remains OPEN.
+
+## Reduced inventory from `f63f8ac`
+
+On 26 November 2026 at `14:15:38+08:00`, the operator verified the same `ctug_workspace` instance
+at `127.0.0.1:3306` on MySQL 8.4.13. The reader username had no matching MySQL account. The operator
+created `'ctug_wf11_inventory_ro'@'127.0.0.1'` with a server-generated 48-character password and
+granted table-level SELECT on `accounts`, `account_roles`, `roles`, `permissions`,
+`role_permissions`, `account_permissions` and `services`.
+
+The reader authenticated over TLS. `CURRENT_USER()` matched the approved identity.
+`SHOW GRANTS` returned USAGE plus the seven expected SELECT grants, with no grant option.
+`CURRENT_ROLE()` returned `NONE` and the mandatory-role configuration was empty. The reader
+then ran the fixed SELECTs in a repeatable-read, read-only snapshot and rolled it back.
+Privileged access was used for metadata verification and the approved MySQL account setup.
+The application permission query ran entirely as the reader.
+
+The reader secret, pseudonym key and detailed report were encrypted with Windows DPAPI under
+the owner's Windows profile in `.local/wf11-inventory-private/`. The directory's access rules
+were verified for the owner and the encrypted files were decrypted in memory to check readback.
+Git evidence contains aggregate counts. [Reader setup and verification](WF11_Permission_Inventory_Reader_Setup_2026-11-26.md).
+
+The encrypted report is `permission-inventory-20261126T141538706050.dpapi` in that directory.
+Ciphertext SHA-256 `d07bf2d82dd53cb310fd1778bc105f1e4be54e7203812ee4afa8ea86d5e3b24b`.
+
+### Observed snapshot
+
+| Measure | Count or status |
+| --- | --- |
+| Exact permission codes reviewed / stored definitions found | 13 / 0 |
+| Required services found (`academic`, `clearance`, `finance`) | 0 of 3 |
+| Role-to-permission bindings, active / inactive | 0 / 0 |
+| Account Allows (`Grant`), active / inactive | 0 / 0 |
+| Account Denies, active / inactive | 0 / 0 |
+| Distinct source holders in scope | 0 |
+| Distinct accounts with a potential modeled change under observed definitions and services | 0 |
+| Legacy Deny account/replacement pairs to review, existing new Denies, new-Grant conflicts | 0, 0, 0 |
+| `account_permission_role_scopes` | **Unavailable**. The table is absent and no scope rows were queried. |
+
+The account query identified four active, Approved, non-framework accounts in the relevant
+role cohorts. Two have Student assignments. One has Admin alone and one has Admin, Instructor
+and Technical Super Admin assignments. None of these four has an active Treasurer assignment.
+These are observed assignments. Source holders for the reviewed codes are zero.
+
+### Catalogue comparison and potential impact
+
+The source-pinned v2.2 catalogue and the v2.3 candidate were validated offline. Each exact code
+below has zero live definitions, role bindings, direct overrides and holders in this snapshot.
+
+| Reviewed code | v2.2 default | Candidate v2.3 default |
+| --- | --- | --- |
+| `academic.catalogue.read` | Admin, Instructor, Student, Treasurer | Same |
+| `academic.courses.manage` | Admin | Same, clarified curriculum definition |
+| `academic.enrollment_verifications.record` | Absent | Admin |
+| `academic.historical_participation.correct` | Absent | Admin |
+| `academic.periods.manage` | Admin | Same, clarified offering definition |
+| `academic.profile.self.read` | Student | Same |
+| `academic.profiles.manage` | Admin | Same |
+| `academic.sections.manage` | Admin | Same |
+| `academic.semester_onboarding.self.submit` | Absent | Student |
+| `clearance.requests.self.submit` | Student | Same |
+| `clearance.subjects.manage` | Admin | Same |
+| `clearance.teaching_assignments.manage` | Admin | Same |
+| `finance.fee_schedule.manage` | Treasurer | Admin |
+
+The reduced model found **zero expansions and zero losses** under the observed service and
+permission baseline. The catalogue defaults have not been provisioned for this scope. If an
+independently approved change later provisions the services, definitions, role bindings and
+applicable runtime prerequisites, the observed Admin cohort has two potential recipients for
+fee management, verification and historical correction. One of those two separately holds
+Technical Super Admin. Authority would come through its genuine Admin assignment. The two
+Student accounts are the potential recipients for the new own-onboarding code. The fee move
+would remove no observed Treasurer holder in this snapshot. These are counts of potential
+recipients conditional on provisioning, eligibility and the applicable role context.
+
+The inventory found no active legacy Deny to mirror for these transitions and no new-code
+Grant conflict. The Deny-only predecessor mapping still applies to any future cutover review.
+Existing Denies elsewhere are outside the reviewed codes. Review a fresh snapshot before
+provisioning and preserve the Deny precedence and genuine Admin fee grant requirements.
+
+### Governance limits and next decision
+
+The missing table leaves persisted role scope unavailable. The inventory did not model the
+scope-enabled resolver. Its conditional comparison covers only scoped Grant evaluation off.
+Live role-selection context, ordinary appointments, switches and workflow conditions were
+outside this snapshot. Any scope-enabled use needs the normal schema and authorization review.
+The resolver remains fail closed on database errors. Independent review stays OPEN.
+
+Request authorization for a separate read-only migration ledger and schema reconciliation for
+`access_control.0005_account_permission_role_scopes` and its ancestors. Use the result for a
+backup and restore rehearsal and a reviewed migration decision. In parallel, scope the base
+service and exact-role provisioning for the first School Admin phase. The empty base is a
+separate blocker from the v2.3 delta. [Pending migration dependencies](../operations/WF11_Migration_and_Activation_Runbook_2026-11-26.md#pending-role-scope-inventory-dependency).
 
 ## Reader setup preflight from `f9cf56b`
 
@@ -69,7 +162,7 @@ configurations/login profiles. This does **not** prove that the server contains 
 server-wide account enumeration was not performed through the prohibited root fallback.
 Per the owner's stop condition, the database operation stopped before connection.
 
-## Inventory results and governance implications
+### Inventory status before reader creation
 
 The prepared scope names **13 permission codes**. That is a source-code scope count, not a count
 of permission rows actually present in `ctug_workspace`.

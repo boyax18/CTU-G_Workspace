@@ -2,8 +2,9 @@
 
 26 November 2026. Every database command and activation below is a **future operator procedure**,
 subject to the separate authorizations in the [handoff](WF11_Controlled_Activation_Preparation_2026-11-26.md).
-No actual database state is asserted. Do not run launcher `-CheckOnly` during this preparation:
-it performs real database reads, although it does not start servers or migrate.
+The role-scope section records the later authorized live schema observation. The live migration
+ledger remains unverified. Launcher `-CheckOnly` performs real database reads, so it belongs to the
+separately authorized preflight.
 
 ## 1. Exact migration dependency closure
 
@@ -29,9 +30,41 @@ generation timestamps. The first two prerequisites must already be recorded and 
 in the actual application; otherwise stop for a separate baseline migration review. Do not use a
 bare `migrate` to apply all unrelated pending workflows.
 
+### Pending role-scope inventory dependency
+
+`access_control.0005_account_permission_role_scopes` creates `account_permission_role_scopes`.
+The migration creates the `AccountPermissionRoleScope` model with a one-to-one reference to
+`account_permissions` and a foreign key to `roles`. It contains no data migration or backfill.
+The 26 November 2026 preflight confirmed that the target table is absent from local
+`ctug_workspace`. The migration ledger was outside the seven-table reader scope. The next
+preflight must distinguish a pending migration from a ledger/schema mismatch.
+[Migration source](../../backend/apps/access_control/migrations/0005_account_permission_role_scopes.py) ·
+[Live inventory evidence](../security/WF11_Permission_Inventory_Preflight_2026-11-26.md).
+
+Django's offline migration loader verified this dependency closure with database connections
+blocked. The scope migration is a prerequisite for the full permission inventory and any
+scope-enabled evaluation. It is separate from the seven Academic Settings schema targets above.
+
+| Migration | Immediate parents |
+| --- | --- |
+| `access_control.0001_initial` | None |
+| `accounts.0001_initial` | `access_control.0001_initial` |
+| `access_control.0002_accountrole` | `access_control.0001_initial`, `accounts.0001_initial` |
+| `access_control.0003_remaining_access_control` | `access_control.0002_accountrole`, `accounts.0001_initial` |
+| `access_control.0004_ordinary_appointments` | `access_control.0003_remaining_access_control`, `accounts.0001_initial` |
+| `access_control.0005_account_permission_role_scopes` | `access_control.0004_ordinary_appointments` |
+
+After authorization, verify ledger rows and schema for this closure using a separately bounded
+read-only preflight. Review and rehearse `manage.py migrate access_control
+0005_account_permission_role_scopes --plan` against an isolated restore. If the ledger already
+records `0005` but the table is still absent, stop for schema drift investigation. If any ancestor
+is pending, include it explicitly in the plan for review. Apply the migration only after separate
+approval of the exact backup, recovery and migration plan. Then verify the table, ledger and
+existing overrides before a separately authorized scope-table SELECT grant and full inventory.
+
 ## 2. Required backup and pre-migration validation
 
-1. Obtain explicit authorization naming the seven migrations, database/server, settings profile,
+1. Obtain explicit authorization naming the seven Academic Settings migrations, database/server, settings profile,
    maintenance window, operator and restore strategy. Permission inventory authorization alone
    permits none of this. Keep every Academic Settings feature off and all application/worker/
    administration writers stopped for backup, migration and verification.

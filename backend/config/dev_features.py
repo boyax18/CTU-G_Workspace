@@ -122,8 +122,12 @@ FEATURES = (
             frontend_flags=("VITE_WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED",),
             note="Phase 1 (local only): courses, subjects and sections. Curriculum, offering and "
                  "teaching-assignment writes keep their own unapproved switches."),
+    # Phase 2 (owner-approved 26 Nov 2026): curriculum (academic.courses.manage), offering
+    # (academic.periods.manage) and instructor-assignment (clearance.teaching_assignments.manage) writes,
+    # all pinned v2.2 Admin bindings; LOCAL mode only.
     Feature("wf11.academic_configuration_governed_writes", "WF-11.01 dependency",
             "Curriculum, offering and instructor-assignment writes",
+            modes=frozenset({LOCAL}),
             backend_env={"WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED": "1",
                          "WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED": "1",
                          "WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED": "1"},
@@ -131,7 +135,7 @@ FEATURES = (
                             "VITE_WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED",
                             "VITE_WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED"),
             requires=("wf11.academic_configuration",),
-            note="Awaits HDAC governance of the curriculum/offering permission mapping."),
+            note="Phase 2 (local only). The v2.3 definition clarifications of the two reused codes stay under independent review."),
     # Semester organizational fee (25 Nov 2026): registered, NOT approved for any mode. Needs finance
     # migration 0001 on ctug_workspace and a reviewed overlay giving Admin finance.fee_schedule.manage.
     Feature("wf11.semester_fee_configuration", "WF-11.01 / WF-07.02 dependency", "Semester fee configuration (Draft)",

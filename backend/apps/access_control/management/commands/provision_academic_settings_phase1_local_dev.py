@@ -197,14 +197,14 @@ def _verify_service_activation(services, actor):
         raise AcademicPhase1Refused("Service activation receipts are missing, duplicated or differ.")
 
 
-def _snapshot_outside_scope(service_ids, permission_ids):
-    """Everything this command must never change: other services, roles, definitions and bindings, every
-    role assignment, every account Grant/Deny and every Grant role scope."""
+def _snapshot_outside_scope(service_ids, permission_ids, admin_id):
+    """Everything this command must never change: other services, roles, definitions and bindings (including
+    non-Admin bindings of these codes), every role assignment, every account Grant/Deny and every Grant role scope."""
     return (
         tuple(Service.objects.exclude(pk__in=service_ids).order_by("pk").values_list("pk", "service_code", "is_active")),
         tuple(Role.objects.order_by("pk").values_list("pk", "role_name", "is_active")),
         tuple(Permission.objects.exclude(pk__in=permission_ids).order_by("pk").values_list("pk", "permission_code", "service_id")),
-        tuple(RolePermission.objects.exclude(permission_id__in=permission_ids).order_by("pk")
+        tuple(RolePermission.objects.exclude(permission_id__in=permission_ids, role_id=admin_id).order_by("pk")
               .values_list("pk", "role_id", "permission_id", "is_active")),
         tuple(AccountRole.objects.order_by("pk").values_list("pk", "account_id", "role_id")),
         tuple(AccountPermission.objects.order_by("pk").values_list("pk", "account_id", "permission_id", "effect", "is_active")),
@@ -257,8 +257,18 @@ def run(*, phase, actor_account_id, confirmation=None, apply=False):
             # Account-level Grants for these codes are not part of the reviewed scope; Denies are preserved and win.
             if AccountPermission.objects.filter(permission_id__in=permission_ids, effect="Grant").exists():
                 raise AcademicPhase1Refused("Account-level Grants for these codes are unauthorized.")
-            bindings = list(RolePermission.objects.select_for_update().filter(permission_id__in=permission_ids).order_by("pk"))
-            before = _snapshot_outside_scope([s.pk for s in services.values()], permission_ids)
+            bindings = list(RolePermission.objects.select_for_update().filter(permission_id__in=permission_ids, role=admin)
+                            .order_by("pk"))
+            others = list(RolePermission.objects.select_for_update().filter(permission_id__in=permission_ids)
+                          .exclude(role=admin).order_by("pk"))
+            if others:
+                # Only the exact, receipted phase-two current-period bindings may exist besides Admin's.
+                from apps.access_control.management.commands import provision_academic_settings_phase2_local_dev as phase2
+                try:
+                    phase2.recognised_by_phase_one(others)
+                except Exception as exc:
+                    raise AcademicPhase1Refused("Foreign bindings for these codes exist; no automatic repair.") from exc
+            before = _snapshot_outside_scope([s.pk for s in services.values()], permission_ids, admin.pk)
             result = "VERIFIED" if phase == "verify" else "ALREADY_COMPLETE"
 
             if phase == "metadata" and not services and not permissions:
@@ -298,7 +308,8 @@ def run(*, phase, actor_account_id, confirmation=None, apply=False):
                                                 old_value=None, new_value={"role_id": admin.pk, "permission_id": permission.pk,
                                                                            "role_permission_id": binding.pk, "is_active": False},
                                                 reason="permission_change")
-                bindings = list(RolePermission.objects.filter(permission_id__in=[p.pk for p in permissions.values()]).order_by("pk"))
+                bindings = list(RolePermission.objects.filter(permission_id__in=[p.pk for p in permissions.values()], role=admin)
+                                .order_by("pk"))
                 result = "CREATED"
             if phase == "activate" and not bindings:
                 raise AcademicPhase1Refused("Inactive bindings must be staged first.")
@@ -336,7 +347,7 @@ def run(*, phase, actor_account_id, confirmation=None, apply=False):
             elif services_active:
                 raise AcademicPhase1Refused("Active services without staged bindings are refused.")
 
-            if _snapshot_outside_scope([s.pk for s in services.values()], [p.pk for p in permissions.values()]) != before:
+            if _snapshot_outside_scope([s.pk for s in services.values()], [p.pk for p in permissions.values()], admin.pk) != before:
                 raise AcademicPhase1Refused("State outside the authorized phase-one scope changed.")
             catalogue_definitions()  # the pinned catalogue must still match before commit
         return result

@@ -55,8 +55,9 @@ def inspect():
         features = [{"key": f.key, "backend_env": f.backend_env, "frontend_flags": f.frontend_flags,
                      "registry_dependencies": f.requires, "approved_modes": sorted(f.modes)}
                     for f in FEATURES if f.key.startswith(("wf11.", "wf05."))]
-        # Owner-approved phase 1 (26 Nov 2026): exactly these three features, local mode only.
-        phase_one = {"wf11.academic_periods", "wf11.academic_configuration", "wf11.academic_catalogue"}
+        # Owner-approved phases 1-2 (26 Nov 2026): exactly these four features, local mode only.
+        phase_one = {"wf11.academic_periods", "wf11.academic_configuration", "wf11.academic_catalogue",
+                     "wf11.academic_configuration_governed_writes"}
         if any(f["approved_modes"] != (["local"] if f["key"] in phase_one else []) for f in features):
             raise ValueError("An Academic Settings launcher mode differs from the approved phase 1; review required.")
         return {"status": "OFFLINE_NO_DATABASE_CONNECTION", "model_drift": False,

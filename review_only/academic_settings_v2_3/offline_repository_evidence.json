@@ -3788,7 +3788,9 @@
       "registry_dependencies": [
         "wf11.academic_configuration"
       ],
-      "approved_modes": []
+      "approved_modes": [
+        "local"
+      ]
     },
     {
       "key": "wf11.semester_fee_configuration",

@@ -130,18 +130,20 @@ class RouteSurfaceTests(SimpleTestCase):
         for model in (SchoolYear, Semester, AcademicPeriodAuditLog):
             self.assertFalse(admin.site.is_registered(model))
 
-    def test_launcher_approves_only_phase_one_for_the_local_mode(self):
-        """Owner-approved phase 1 (26 Nov 2026): periods, configuration and catalogue in LOCAL only."""
-        phase_one = {"wf11.academic_periods", "wf11.academic_configuration", "wf11.academic_catalogue"}
+    def test_launcher_approves_only_phases_one_and_two_for_the_local_mode(self):
+        """Owner-approved phases 1-2 (26 Nov 2026): periods, configuration (incl. governed curriculum, offering
+        and instructor writes) and the read-only current period, in LOCAL only."""
+        phase_one = {"wf11.academic_periods", "wf11.academic_configuration", "wf11.academic_catalogue",
+                     "wf11.academic_configuration_governed_writes"}
         for feature in dev_features.FEATURES:
             if feature.key.startswith(("wf11.", "wf05.")):
                 self.assertEqual(feature.modes, frozenset({"local"}) if feature.key in phase_one else frozenset(),
                                  feature.key)
         on = ("WORKSPACE_ACADEMIC_PERIODS_ENABLED", "WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED",
-              "WORKSPACE_ACADEMIC_CATALOGUE_ENABLED")
+              "WORKSPACE_ACADEMIC_CATALOGUE_ENABLED", "WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED",
+              "WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED", "WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED")
         off = ("WORKSPACE_ACADEMIC_PERIOD_TRANSITIONS_ENABLED", "WORKSPACE_ACADEMIC_PERIOD_CORRECTIONS_ENABLED",
-               "WORKSPACE_ACADEMIC_CURRICULUM_WRITES_ENABLED", "WORKSPACE_ACADEMIC_OFFERING_WRITES_ENABLED",
-               "WORKSPACE_ACADEMIC_TEACHING_ASSIGNMENTS_ENABLED", "WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED",
+               "WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED",
                "WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED", "WORKSPACE_STUDENT_ONBOARDING_ENABLED",
                "WORKSPACE_STUDENT_ONBOARDING_FINALIZATION_ENABLED", "WORKSPACE_ENROLLMENT_VERIFICATION_ENABLED",
                "WORKSPACE_HISTORICAL_PARTICIPATION_CORRECTION_ENABLED")

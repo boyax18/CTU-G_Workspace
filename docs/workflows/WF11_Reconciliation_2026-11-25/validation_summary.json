@@ -1,0 +1,174 @@
+{
+  "date": "2026-11-25",
+  "source_catalogue": "CTU-G_Workspace_System_Workflow_Catalogue_v0.3.52_WF11_Reconciliation_REVIEW.md",
+  "source_SRS": "CTU-G_Workspace_SRS_v0.4_WF11_Stage2_PROPOSED.md",
+  "catalogue_baseline_sha256": "f70e27bb4bdc66e96df589890cb4181e9c036709df2e166dd88f624f2841f7a8",
+  "srs_baseline_sha256": "69cf001749041394de1895aab21240b8b091d82e8cdc63b743603fc46c1f0c0d",
+  "result_catalogue_sha256": "7e334b013166cbd733e5c0c69708ed58119121894f2b8fc6bfc320f65a8ae10d",
+  "result_SRS_sha256": "073ad6473ec2c8d75751fd577a098f918db2f35108ca6042b63112eda786176f",
+  "checks": {
+    "WF-05 count is five in Catalogue": true,
+    "WF-05 count is five in SRS": true,
+    "new WF-05.05 row exactly once": true,
+    "new WF-05.05 detail exactly once": true,
+    "new WF-05.05 individual Human Approval unchecked": true,
+    "no outdated WF-05 onboarding placeholder": true,
+    "WF-08 remains unassigned and unchanged": true,
+    "preserve WF-01/02 historic approvals": true,
+    "preserve all unchecked approval count": true,
+    "preserve all six-stage checklist occurrences": true,
+    "preserve all detailed workflow headings except new WF-05.05": true,
+    "SRS signer rows remain pending": true,
+    "R-01 no applied permission assertion": true,
+    "R-02 CTU safeguards retained": true,
+    "skipped D20 and D21 retained": true,
+    "catalogue document version updated": true,
+    "catalogue correct header": true,
+    "SRS workflow id explicitly assigned": true,
+    "files are nontrivial full documents": true,
+    "WF-05.05 has entire existing template": true,
+    "stage2 source files remain unchanged": true
+  },
+  "operations": [
+    {
+      "target": "catalogue header",
+      "count": 1
+    },
+    {
+      "target": "catalogue WF-05 classification",
+      "count": 1
+    },
+    {
+      "target": "catalogue WF-05.05 register",
+      "count": 1
+    },
+    {
+      "target": "catalogue workflow heading",
+      "count": 1
+    },
+    {
+      "target": "catalogue named pending-id dependencies",
+      "count": 3
+    },
+    {
+      "target": "catalogue remaining named onboarding dependencies",
+      "count": 5
+    },
+    {
+      "target": "catalogue required onboarding feed",
+      "count": 1
+    },
+    {
+      "target": "catalogue WF-05.04 next flow",
+      "count": 1
+    },
+    {
+      "target": "catalogue WF-05.03 next flow typo",
+      "count": 1
+    },
+    {
+      "target": "catalogue WF-05.05 blocker resolution",
+      "count": 1
+    },
+    {
+      "target": "catalogue cross-cutting workflow ID state",
+      "count": 1
+    },
+    {
+      "target": "catalogue scope",
+      "count": 1
+    },
+    {
+      "target": "catalogue version control",
+      "count": 1
+    },
+    {
+      "target": "catalogue document-control status",
+      "count": 1
+    },
+    {
+      "target": "catalogue changelog add entry",
+      "count": 1
+    },
+    {
+      "target": "catalogue decision namespace wording",
+      "count": 1
+    },
+    {
+      "target": "catalogue approved R01-R03 cross-cutting rule",
+      "count": 1
+    },
+    {
+      "target": "SRS title version",
+      "count": 1
+    },
+    {
+      "target": "SRS title status",
+      "count": 1
+    },
+    {
+      "target": "SRS approval-status note",
+      "count": 1
+    },
+    {
+      "target": "SRS revision document control",
+      "count": 1
+    },
+    {
+      "target": "SRS category count",
+      "count": 1
+    },
+    {
+      "target": "SRS terminology",
+      "count": 1
+    },
+    {
+      "target": "SRS registration requirement onboarding ID",
+      "count": 1
+    },
+    {
+      "target": "SRS academic requirement onboarding ID",
+      "count": 1
+    },
+    {
+      "target": "SRS academic status requirement ID",
+      "count": 1
+    },
+    {
+      "target": "SRS finance dependency ID",
+      "count": 1
+    },
+    {
+      "target": "SRS traceability onboarding",
+      "count": 1
+    },
+    {
+      "target": "SRS map heading",
+      "count": 1
+    },
+    {
+      "target": "SRS traceability rule",
+      "count": 1
+    },
+    {
+      "target": "SRS open decisions annotation",
+      "count": 1
+    },
+    {
+      "target": "SRS acceptance record",
+      "count": 1
+    }
+  ],
+  "catalogue_diff_lines": 173,
+  "srs_diff_lines": 122,
+  "files": [
+    "CTU-G_Workspace_SRS_v0.4_WF11_R01-R03_CONSOLIDATED_PROPOSED.md",
+    "CTU-G_Workspace_System_Workflow_Catalogue_v0.3.53_WF11_R01-R03_DOC_RECONCILED.md",
+    "Catalog_v0.3.52_to_v0.3.53_REVIEW_ONLY.patch",
+    "README.md",
+    "SRS_Stage2_to_Consolidated_REVIEW_ONLY.patch",
+    "WF11_Approved_Documentation_Reconciliation_Record.md",
+    "validation_summary.json"
+  ],
+  "runtime_tests": "not run; documentation-only"
+}

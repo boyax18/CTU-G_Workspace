@@ -1,7 +1,7 @@
 # Academic Settings operational acceptance — executable checklist
 
 **NOT PERFORMED against the actual application/database. Every checkbox below remains unchecked.**
-Phase 1 (26 Nov 2026, `d451c67`) is provisioned and approved for the local launcher mode, and its read-only accessibility check passed. See the [runbook record](WF11_Migration_and_Activation_Runbook_2026-11-26.md#phase-1-provisioning-and-local-activation-26-november-2026). SA01–SA04 and SA12 are ready for the owner's interactive School Admin run. SA05–SA11 stay BLOCKED (later phases are off).
+Phase 1 (26 Nov 2026, `d451c67`) is provisioned and approved for the local launcher mode, and its read-only accessibility check passed. See the [runbook record](WF11_Migration_and_Activation_Runbook_2026-11-26.md#phase-1-provisioning-and-local-activation-26-november-2026). Phase 2 (`519badd`) adds curricula, offerings, instructor assignments and the current period for every role. SA01–SA07 and SA12 (Admin context) and ST01 (Student, Instructor and Treasurer contexts, current period only) are ready for the owner's interactive run. SA08–SA11, ST02–ST12 and SEC09 stay BLOCKED until v2.3 is independently approved and provisioned.
 Run only the phase the owner has explicitly authorized. Record PASS/FAIL/BLOCKED, operator,
 commit, mode, date/time in Asia/Manila, expected result, observed result and redacted evidence
 for each ID. A passing isolated/mock test is supporting evidence, not operational acceptance.

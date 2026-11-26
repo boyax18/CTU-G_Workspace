@@ -451,6 +451,52 @@ the WF-02.05 precedent.
   remains: turn the phase-1 flags off by removing the `local` mode approval; to withdraw access,
   deactivate exactly these five bindings and two services with compensating receipts.
 
+#### Phase 2 provisioning and local activation, 26 November 2026
+
+This applies the owner policy decisions of 26 November 2026 (School Admin controls the semester fee;
+all authorized roles view the current period; no fee revision after any obligation; the
+returning-student exception and atomic onboarding creation are kept). Commit `519badd`; audit
+actor account 3.
+
+- **Scope:** only pinned v2.2 definitions and default bindings, so no catalogue change was needed:
+  - `clearance.teaching_assignments.manage` → Admin (new definition).
+  - `academic.catalogue.read` → Student, Instructor and Treasurer (Admin was bound in phase 1).
+
+  Curriculum and offering writes reuse the phase-one `academic.courses.manage` and
+  `academic.periods.manage` Admin bindings. Nothing from the v2.3 candidate was provisioned: the fee
+  binding move, the three narrow codes and the definition restatements still need independent review.
+- **Backup safeguard:** `.local/wf11-phase2-safeguard.py` (ignored; reuses the established helpers
+  unchanged).
+  - Quiet server; full encrypted dump `wf11-phase2-20261126-215019-574912bc`, SHA-256
+    `7ec4243c781c1fc825059ce731a3749e8976efbb53805c6cb380cb8238c59257`.
+  - Restored to an isolated pipe-only instance: all 46 tables and 38 ledger rows matched, with every
+    row hash and all metadata. The 35 normalised differences are the known redundant charset
+    spelling. The disposable copy was removed, and the live database was unchanged before provisioning.
+- **Provisioning:** `provision_academic_settings_phase2_local_dev` ran `metadata` → `bindings` →
+  `activate` → `verify` (9 receipts), then phase 1 `verify` passed again.
+- **Post-check:** only `permissions` (+1), `role_permissions` (+4) and `access_audit_logs` (+9)
+  changed. The other 43 tables are byte-for-byte unchanged, including accounts, role assignments,
+  account Grants/Denies (still 0), Grant role scopes, services and every business table.
+- **Launcher:** `wf11.academic_configuration_governed_writes` is approved for `local`.
+  `-Local -CheckOnly` passed with 9 of 9 mode features available. The local plan turns on the
+  periods, configuration, curriculum, offering, teaching-assignment and catalogue switches and their
+  VITE flags. Lifecycle, fees, verification, onboarding and historical correction remain
+  `not-in-mode`, and `lan` is unapproved.
+- **Live check:** launcher-identical local environment, Django and Vite only, read-only.
+  - Anonymous requests to all phase 1–2 routes returned 401. Fees, onboarding, verification and
+    historical correction returned 503.
+  - With role context enforced, the Admin contexts of accounts 3 and 9, and account 9's Technical
+    Super Admin context through its stored Admin assignment, may manage school years, courses,
+    subjects, sections, curricula, offerings and instructor lookup, and view the current period.
+  - Students 6 and 15, Instructor 13 and account 9 in its Instructor context may view the current
+    period only; every management call is refused. Fee configuration is unavailable. There is no live
+    Treasurer account, so the Treasurer binding is covered by isolated tests.
+- **Automated isolated verification** (disposable MySQL, mocked browser APIs): backend
+  `apps/academic apps/finance apps/clearance apps/access_control` 1,686 run, all passed; Academic Settings
+  browser suites 46/46 (run one file at a time; the same suites timed out when run concurrently with the backend suite, and each failing case passed alone). These cover fee approval, activation, onboarding, atomic
+  participation, clearance and obligation creation, and duplicate and rollback prevention. Fees,
+  activation and onboarding cannot run live until v2.3 is independently approved and provisioned.
+
 Rollback activation by turning **both** backend and frontend approved phase flags off, stopping
 the corresponding servers/workers, reloading/rebuilding the frontend and checking refusal behavior.
 This disables access; it must not reverse schema migrations, delete onboarding/fee records, erase

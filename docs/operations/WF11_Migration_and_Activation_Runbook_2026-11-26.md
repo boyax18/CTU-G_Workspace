@@ -405,6 +405,52 @@ definitions and bindings absent. Actual Academic Settings migrations, provisioni
 approval and operational acceptance remain pending. Independent governance review and workflow
 Human Approval remain open.
 
+#### Phase 1 provisioning and local activation, 26 November 2026
+
+Owner-authorized (Task 2 provisioning and Task 3 local phase-1 activation), at commit `d451c67`.
+The audit actor was application Admin account 3, the attributed registration-review operator, as in
+the WF-02.05 precedent.
+
+- **Before:** read-only check of `ctug_workspace` (MySQL 8.4.13), 38 ledger rows. Both services and
+  all five definitions were absent. There were 2 services, 12 definitions, 12 role bindings, **0
+  account overrides**, 47 access-audit rows, eligible Admin accounts 3 and 9, and every Academic
+  Settings switch off. No server or worker was running.
+- **Provisioning:** `manage.py provision_academic_settings_phase1_local_dev` (the established
+  fixed-purpose pattern) ran the phases `metadata` → `bindings` → `activate` → `verify`, each with
+  its exact confirmation, at **21:09:26–21:09:31 Asia/Manila**. It created the two services
+  (inactive, then activated), the five pinned v2.2 definitions and five Admin bindings (staged
+  inactive, then activated), with **19** attributable receipts. The v2.2 chain validated with
+  digest `192ba955…6d`.
+- **After:** 4 services (all active), 17 definitions, 17 active bindings and **0 account overrides**
+  (unchanged). Every other service, definition, binding, role assignment and role scope is unchanged
+  (verified inside the transaction). Exactly accounts **3** and **9** hold the five codes, both
+  through their stored Admin assignment. Account 9's Technical Super Admin and Instructor roles add
+  nothing.
+- **Launcher:** `wf11.academic_periods`, `wf11.academic_configuration` and `wf11.academic_catalogue`
+  are approved for `local` only. `-Local -CheckOnly` passed: `ctug_workspace` via
+  `config.review_decision_local_settings`, 8 of 8 mode features available. The local plan turns on
+  exactly `WORKSPACE_ACADEMIC_PERIODS_ENABLED`, `WORKSPACE_ACADEMIC_CONFIGURATION_ENABLED` and
+  `WORKSPACE_ACADEMIC_CATALOGUE_ENABLED` and their VITE flags. Every other Academic Settings
+  feature is `not-in-mode`, and `lan` is unapproved.
+- **Accessibility check:** Django and Vite were started with the launcher-identical local
+  environment, without the email worker that the existing local email opt-in would add. All probes
+  were read-only.
+  - Anonymous requests to school years, courses, subjects, sections and the current period returned
+    401 (gate open, session required). Semester fees, onboarding, verification and historical
+    correction returned 503 (gate closed). The dashboard served the app shell, and the Vite proxy
+    reached Django.
+  - With role context enforced and the Admin context selected, accounts 3 and 9 were allowed
+    `academic.periods.manage` (including the school-year list), course, subject and section access
+    (including the course list) and the current period.
+  - Fee configuration was unavailable. The curriculum, offering and teaching-assignment switches
+    are off. Account 9 in its Instructor context was refused (`admin_context_required`), and the
+    three eligible non-Admin accounts were refused (`access_denied`).
+  - No business record was written, and both servers were stopped afterwards.
+- **Not performed:** an interactive School Admin sign-in and the write cases of the acceptance
+  checklist (SA01–SA04, SA12), which need the owner's credentials and approved test data. Rollback
+  remains: turn the phase-1 flags off by removing the `local` mode approval; to withdraw access,
+  deactivate exactly these five bindings and two services with compensating receipts.
+
 Rollback activation by turning **both** backend and frontend approved phase flags off, stopping
 the corresponding servers/workers, reloading/rebuilding the frontend and checking refusal behavior.
 This disables access; it must not reverse schema migrations, delete onboarding/fee records, erase

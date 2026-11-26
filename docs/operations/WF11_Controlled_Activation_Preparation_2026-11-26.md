@@ -1,14 +1,7 @@
 # Academic Settings controlled local activation preparation
 
 26 November 2026 · branch `ronald` · starting commit `2a1bca1`.
-**Current follow-up from `7d9624f`: authorized access-control maintenance and full inventory
-complete; seven Academic Settings migrations rehearsed only. Operational acceptance NOT PERFORMED.**
-Ronald completed the two authorized live access-control migrations, exact scope-table reader
-grant and full read-only inventory in the owner-confirmed current-session window. All seven
-Academic Settings migrations remain unapplied to `ctug_workspace`. v2.3 stays inactive, switches
-OFF and independent governance review OPEN. The original preparation and existing implementation
-milestones are preserved; no HDAC provisioning, launcher approval, feature activation, workflow
-Human Approval, WF-11.02–11.04 work, push or merge occurred.
+**Current follow-up (26 Nov 2026, `d451c67`): all seven Academic Settings migrations are applied; phase 1 is provisioned (2 services, 5 v2.2 definitions, 5 Admin bindings) and approved for the LOCAL launcher mode only.** [Execution record](WF11_Migration_and_Activation_Runbook_2026-11-26.md#phase-1-provisioning-and-local-activation-26-november-2026). Phase 1 used only existing pinned v2.2 definitions and defaults; v2.3 stays inactive and the independent governance review OPEN. Fees, lifecycle, governed curriculum/offering/instructor writes, verification, onboarding and historical correction stay off. No workflow Human Approval, WF-11.02–11.04 work, push or merge occurred. The earlier preparation record below is preserved.
 The existing untracked `docs/workflows/WF11_Reconciliation_2026-11-25/` is preserved and is not
 included in this commit. It is supporting evidence already present in the owner's workspace;
 the committed workflow catalogue and governance proposals also contain the relevant boundaries.

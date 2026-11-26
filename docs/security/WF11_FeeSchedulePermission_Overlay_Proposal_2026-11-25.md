@@ -84,7 +84,23 @@ needs a one-line code change in `apps/finance/fees.py` (`PERMISSION_CODE`) plus 
 1. Independent security and governance review of the breadth (§3) and of Option A vs B.
 2. Read-only live inventory (§5) and an impact note.
 3. Author the overlay JSON, extend the validator chain (v2.3), pin its digest and add tests.
-4. Separately authorized provisioning on `ctug_workspace`, after the finance `0001` migration has been
-   separately approved and applied.
+4. Separately authorized provisioning on `ctug_workspace`, after the finance `0001` and `0002` migrations
+   have been separately approved and applied.
 5. Separate owner decisions to turn on `WORKSPACE_SEMESTER_FEE_CONFIGURATION_ENABLED` and
    `WORKSPACE_SEMESTER_FEE_APPROVAL_ENABLED` for a launcher mode.
+
+## 7. Update, 26 November 2026 (no change to the recommendation)
+
+- **Consolidated package:** this proposal is item A of
+  `WF11_AcademicSettings_Permission_Governance_Proposal_2026-11-26.md`. That package also covers the
+  verification, onboarding, curriculum/offering and historical-correction codes, so all of them can be
+  reviewed in one `v2_3_delta.json`.
+- **Obligations now exist:** `finance.0002_fee_obligation` adds the WF-07.02 obligation snapshot, created
+  only by onboarding finalization or the evidenced WF11-D14 correction. The approval impact is now a real
+  count. Once any Student obligation exists, approving a new rate is refused (`obligations_assessed`)
+  until a separately approved financial adjustment workflow exists. Existing amounts are never
+  rewritten, deleted or split between earlier and later Students. **This rule needs owner
+  confirmation.**
+- **Super Admin:** fee authority reaches a Technical Super Admin only through a genuine Admin assignment
+  (`test_technical_super_admin_only_through_a_genuine_admin_assignment`). This is unchanged by Option A or B.
+
